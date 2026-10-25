@@ -30,7 +30,23 @@ export function useTabBarInset() {
   return PILL_HEIGHT + Math.max(insets.bottom, 10) + 14;
 }
 
-function TabItem({ label, routeName, focused, badge, avatarSeed, onPress }: { label: string; routeName: string; focused: boolean; badge?: number; avatarSeed?: string; onPress: () => void }) {
+function TabItem({
+  label,
+  routeName,
+  focused,
+  badge,
+  avatarSeed,
+  avatarPreset,
+  onPress,
+}: {
+  label: string;
+  routeName: string;
+  focused: boolean;
+  badge?: number;
+  avatarSeed?: string;
+  avatarPreset?: string | null;
+  onPress: () => void;
+}) {
   const Icon = ICONS[routeName] ?? HomeIcon;
   const active = useRef(new Animated.Value(focused ? 1 : 0)).current;
   const bounce = useRef(new Animated.Value(1)).current;
@@ -70,7 +86,7 @@ function TabItem({ label, routeName, focused, badge, avatarSeed, onPress }: { la
         <Animated.View style={{ transform: [{ scale: bounce }, { translateY: active.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }] }}>
           {avatarSeed ? (
             <View style={{ opacity: focused ? 1 : 0.7, borderRadius: 18, borderWidth: focused ? 2 : 0, borderColor: colors.brand }}>
-              <UserAvatar seed={avatarSeed} size={focused ? 34 : 36} />
+              <UserAvatar seed={avatarSeed} preset={avatarPreset} size={focused ? 34 : 36} />
             </View>
           ) : (
             <Icon active={focused} size={38} />
@@ -122,6 +138,7 @@ export function SotechyTabBar({ state, descriptors, emitter, navigateToTab, inse
               focused={focused}
               badge={route.name === "cart" ? count : undefined}
               avatarSeed={route.name === "account" ? user?.id : undefined}
+              avatarPreset={user?.avatarStyle}
               onPress={() => {
                 const event = emitter.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
                 if (!focused && !event.defaultPrevented) navigateToTab(route.key);

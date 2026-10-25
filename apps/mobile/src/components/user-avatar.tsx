@@ -1,4 +1,6 @@
 // Illustrated profile character, generated from the user's id so each person always gets the same look.
+import { useEffect, useRef } from "react";
+import { Animated, Easing, Platform } from "react-native";
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path, Rect } from "react-native-svg";
 
 const BACKGROUNDS = ["#FDB913", "#F7931E", "#5CB8F2", "#8BD3A8", "#F59BB0", "#B9A4F5", "#FFD27A", "#7FD1C7"];
@@ -17,24 +19,85 @@ function hash(seed: string) {
   return h >>> 0;
 }
 
-export function avatarTraits(seed: string) {
+interface Traits {
+  bg: string;
+  skin: string;
+  hair: string;
+  outfit: string;
+  wrap: string;
+  /** 0 short, 1 afro, 2 bun, 3 headwrap (gele), 4 bald + beard, 5 fade with top */
+  style: number;
+  /** 0 none, 1 glasses, 2 headphones, 3 earrings */
+  accessory: number;
+  mouth: number;
+  femme: boolean;
+}
+
+export function avatarTraits(seed: string): Traits {
   const h = hash(seed || "guest");
   const pick = <T,>(list: T[], shift: number) => list[(h >>> shift) % list.length];
+  const style = (h >>> 15) % 6;
   return {
     bg: pick(BACKGROUNDS, 0),
     skin: pick(SKIN, 3),
     hair: pick(HAIR, 6),
     outfit: pick(OUTFIT, 9),
     wrap: pick(WRAP, 12),
-    style: (h >>> 15) % 6, // 0 short, 1 afro, 2 bun, 3 headwrap, 4 bald + beard, 5 fade with top
-    accessory: (h >>> 18) % 4, // 0 none, 1 glasses, 2 headphones, 3 earrings
+    style,
+    accessory: (h >>> 18) % 4,
     mouth: (h >>> 21) % 3,
+    femme: style === 2 || style === 3 || (style !== 4 && (h >>> 24) % 2 === 1),
   };
 }
 
-export function UserAvatar({ seed, size = 56 }: { seed: string; size?: number }) {
-  const t = avatarTraits(seed);
-  const clipId = `av-${hash(seed).toString(36)}`;
+/** The six avatars people can pick in their profile: three men and three women. */
+export const AVATAR_PRESETS: { id: string; group: "men" | "women"; traits: Traits }[] = [
+  { id: "m1", group: "men", traits: { bg: "#FDB913", skin: "#5A3825", hair: "#1E1714", outfit: "#2F6FDE", wrap: "", style: 0, accessory: 0, mouth: 1, femme: false } },
+  { id: "m2", group: "men", traits: { bg: "#5CB8F2", skin: "#8D5524", hair: "#1E1714", outfit: "#1C8A4C", wrap: "", style: 4, accessory: 1, mouth: 0, femme: false } },
+  { id: "m3", group: "men", traits: { bg: "#8BD3A8", skin: "#C68642", hair: "#2B1E17", outfit: "#F7931E", wrap: "", style: 5, accessory: 2, mouth: 0, femme: false } },
+  { id: "f1", group: "women", traits: { bg: "#F59BB0", skin: "#6F4426", hair: "#1E1714", outfit: "#E0533D", wrap: "#7A4FD0", style: 3, accessory: 3, mouth: 1, femme: true } },
+  { id: "f2", group: "women", traits: { bg: "#B9A4F5", skin: "#A0663A", hair: "#1E1714", outfit: "#0F766E", wrap: "", style: 1, accessory: 3, mouth: 0, femme: true } },
+  { id: "f3", group: "women", traits: { bg: "#FFD27A", skin: "#E0AC69", hair: "#3D2A1E", outfit: "#E0533D", wrap: "", style: 2, accessory: 1, mouth: 2, femme: true } },
+];
+
+const useNative = Platform.OS !== "web";
+
+/**
+ * Profile character. `preset` (m1–f3) is the user's chosen avatar; otherwise one is generated from `seed`.
+ * `animated` adds a gentle idle bob.
+ */
+export function UserAvatar({ seed, preset, size = 56, animated }: { seed: string; preset?: string | null; size?: number; animated?: boolean }) {
+  const bob = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!animated) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bob, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: useNative }),
+        Animated.timing(bob, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.sin), useNativeDriver: useNative }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [animated, bob]);
+
+  const art = <AvatarArt traits={AVATAR_PRESETS.find((p) => p.id === preset)?.traits ?? avatarTraits(seed)} clipKey={`${preset ?? ""}${seed}`} size={size} />;
+  if (!animated) return art;
+  return (
+    <Animated.View
+      style={{
+        transform: [
+          { translateY: bob.interpolate({ inputRange: [0, 1], outputRange: [0, -size * 0.04] }) },
+          { rotate: bob.interpolate({ inputRange: [0, 1], outputRange: ["-2deg", "2deg"] }) },
+        ],
+      }}
+    >
+      {art}
+    </Animated.View>
+  );
+}
+
+function AvatarArt({ traits: t, clipKey, size }: { traits: Traits; clipKey: string; size: number }) {
+  const clipId = `av-${hash(clipKey).toString(36)}`;
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64">
       <Defs>
@@ -83,11 +146,17 @@ export function UserAvatar({ seed, size = 56 }: { seed: string; size?: number })
         {/* face */}
         <Circle cx={27.8} cy={28.5} r={1.4} fill="#1E1714" />
         <Circle cx={36.2} cy={28.5} r={1.4} fill="#1E1714" />
+        {t.femme && (
+          <>
+            <Path d="M25.6 26.6 L24.6 25.6 M26.8 26.1 L26.3 24.9" stroke="#1E1714" strokeWidth={0.9} strokeLinecap="round" />
+            <Path d="M38.4 26.6 L39.4 25.6 M37.2 26.1 L37.7 24.9" stroke="#1E1714" strokeWidth={0.9} strokeLinecap="round" />
+          </>
+        )}
         <Circle cx={25.5} cy={32.5} r={1.8} fill="#F59BB0" opacity={0.35} />
         <Circle cx={38.5} cy={32.5} r={1.8} fill="#F59BB0" opacity={0.35} />
-        {t.mouth === 0 && <Path d="M28.5 33 C30 35.5 34 35.5 35.5 33" stroke="#1E1714" strokeWidth={1.5} strokeLinecap="round" fill="none" />}
-        {t.mouth === 1 && <Path d="M28 32.6 C29.5 36.8 34.5 36.8 36 32.6 Z" fill="#1E1714" />}
-        {t.mouth === 2 && <Path d="M29.5 33.6 C31 34.8 33 34.8 34.5 33.6" stroke="#1E1714" strokeWidth={1.5} strokeLinecap="round" fill="none" />}
+        {t.mouth === 0 && <Path d="M28.5 33 C30 35.5 34 35.5 35.5 33" stroke={t.femme ? "#B23A4E" : "#1E1714"} strokeWidth={t.femme ? 2 : 1.5} strokeLinecap="round" fill="none" />}
+        {t.mouth === 1 && <Path d="M28 32.6 C29.5 36.8 34.5 36.8 36 32.6 Z" fill={t.femme ? "#9E2F45" : "#1E1714"} />}
+        {t.mouth === 2 && <Path d="M29.5 33.6 C31 34.8 33 34.8 34.5 33.6" stroke={t.femme ? "#B23A4E" : "#1E1714"} strokeWidth={t.femme ? 2 : 1.5} strokeLinecap="round" fill="none" />}
 
         {/* accessories */}
         {t.accessory === 1 && (

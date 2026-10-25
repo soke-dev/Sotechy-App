@@ -81,6 +81,8 @@ export const users = pgTable("users", {
   passwordHash: text(), // null for accounts that only use Google sign-in
   googleId: text().unique(),
   avatarUrl: text(),
+  /** Chosen illustrated avatar (m1–m3, f1–f3); null = generated from the user id */
+  avatarStyle: text(),
   fullName: text(),
   phone: text(),
   role: roleEnum().notNull().default("customer"),

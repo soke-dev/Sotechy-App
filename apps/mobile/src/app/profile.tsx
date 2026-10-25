@@ -1,8 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { formatDate } from "@sotechy/shared";
+import { AvatarPicker } from "@/components/avatar-picker";
 import { Burst } from "@/components/tab-icons";
 import { UserAvatar } from "@/components/user-avatar";
 import { useToast } from "@/components/toast";
@@ -18,6 +19,7 @@ export default function ProfileScreen() {
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [saving, setSaving] = useState(false);
+  const [picking, setPicking] = useState(false);
   const addresses = useAsync(async () => (user ? api.addresses() : []), [user?.id]);
 
   useFocusEffect(
@@ -55,12 +57,16 @@ export default function ProfileScreen() {
             <View style={{ position: "absolute" }}>
               <Burst size={128} />
             </View>
-            <View style={{ borderRadius: 48, borderWidth: 3, borderColor: colors.surface }}>
-              <UserAvatar seed={user.id} size={90} />
-            </View>
+            <Pressable onPress={() => setPicking(true)} accessibilityLabel="Change avatar" style={{ borderRadius: 48, borderWidth: 3, borderColor: colors.surface }}>
+              <UserAvatar seed={user.id} preset={user.avatarStyle} size={90} animated />
+              <View style={{ position: "absolute", right: -4, bottom: -2, width: 30, height: 30, borderRadius: 15, backgroundColor: colors.inverse, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.surface }}>
+                <Ionicons name="pencil" size={14} color={colors.onInverse} />
+              </View>
+            </Pressable>
           </View>
           <Txt variant="title">{user.fullName || "Your name"}</Txt>
           <Txt variant="small">Member since {formatDate(user.createdAt).split(",")[0]}</Txt>
+          <Button title="Change avatar" icon="happy-outline" variant="outline" size="sm" onPress={() => setPicking(true)} style={{ marginTop: space.xs }} />
         </View>
 
         <View style={{ gap: space.sm }}>
@@ -95,6 +101,21 @@ export default function ProfileScreen() {
           Your details are only used for your orders and deliveries.
         </Txt>
       </ScrollView>
+      <AvatarPicker
+        visible={picking}
+        seed={user.id}
+        current={user.avatarStyle}
+        onClose={() => setPicking(false)}
+        onSelect={async (preset) => {
+          setPicking(false);
+          try {
+            await updateProfile({ avatarStyle: preset });
+            toast(preset ? "Avatar updated" : "Using your auto avatar");
+          } catch (err) {
+            toast(err instanceof Error ? err.message : "Could not update avatar", { icon: "alert-circle" });
+          }
+        }}
+      />
       <BottomBar>
         <Button title={changed ? "Save changes" : "Saved"} variant="dark" icon={changed ? "checkmark" : undefined} onPress={save} loading={saving} disabled={!changed} style={{ flex: 1 }} />
       </BottomBar>

@@ -71,7 +71,14 @@ export const authRoutes = new Hono<AppEnv>()
   .patch(
     "/me",
     requireAuth,
-    zValidator("json", z.object({ fullName: z.string().max(120).optional(), phone: z.string().max(30).optional() })),
+    zValidator(
+      "json",
+      z.object({
+        fullName: z.string().max(120).optional(),
+        phone: z.string().max(30).optional(),
+        avatarStyle: z.enum(["m1", "m2", "m3", "f1", "f2", "f3"]).nullable().optional(),
+      }),
+    ),
     async (c) => {
       const [user] = await db.update(schema.users).set(c.req.valid("json")).where(eq(schema.users.id, c.get("user").id)).returning();
       return c.json(publicUser(user));

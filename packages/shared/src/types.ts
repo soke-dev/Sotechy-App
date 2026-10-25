@@ -255,6 +255,8 @@ export interface User {
   role: Role;
   branchId: string | null;
   avatarUrl?: string | null;
+  /** Chosen illustrated avatar (m1–m3, f1–f3); null = generated */
+  avatarStyle?: string | null;
   createdAt: string;
 }
 

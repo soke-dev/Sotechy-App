@@ -9,7 +9,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: { email: string; password: string; fullName?: string; phone?: string }) => Promise<void>;
   signInWithGoogle: (idToken: string) => Promise<void>;
-  updateProfile: (input: { fullName?: string; phone?: string }) => Promise<void>;
+  updateProfile: (input: { fullName?: string; phone?: string; avatarStyle?: string | null }) => Promise<void>;
   signOut: () => Promise<void>;
 }
 

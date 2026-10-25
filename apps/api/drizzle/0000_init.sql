@@ -331,6 +331,7 @@ CREATE TABLE "users" (
 	"password_hash" text,
 	"google_id" text,
 	"avatar_url" text,
+	"avatar_style" text,
 	"full_name" text,
 	"phone" text,
 	"role" "role" DEFAULT 'customer' NOT NULL,
