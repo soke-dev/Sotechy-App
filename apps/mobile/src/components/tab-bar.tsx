@@ -5,9 +5,11 @@ import type { BottomTabBarProps } from "expo-router/js-tabs";
 import { useEffect, useRef, type ComponentType } from "react";
 import { Animated, Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { colors, fonts } from "@/lib/theme";
 import { AccountIcon, Burst, CartIcon, HomeIcon, OrdersIcon, ShopIcon } from "./tab-icons";
+import { UserAvatar } from "./user-avatar";
 
 const ICONS: Record<string, ComponentType<{ active: boolean; size?: number }>> = {
   index: HomeIcon,
@@ -28,7 +30,7 @@ export function useTabBarInset() {
   return PILL_HEIGHT + Math.max(insets.bottom, 10) + 14;
 }
 
-function TabItem({ label, routeName, focused, badge, onPress }: { label: string; routeName: string; focused: boolean; badge?: number; onPress: () => void }) {
+function TabItem({ label, routeName, focused, badge, avatarSeed, onPress }: { label: string; routeName: string; focused: boolean; badge?: number; avatarSeed?: string; onPress: () => void }) {
   const Icon = ICONS[routeName] ?? HomeIcon;
   const active = useRef(new Animated.Value(focused ? 1 : 0)).current;
   const bounce = useRef(new Animated.Value(1)).current;
@@ -66,7 +68,13 @@ function TabItem({ label, routeName, focused, badge, onPress }: { label: string;
           <Burst size={58} />
         </Animated.View>
         <Animated.View style={{ transform: [{ scale: bounce }, { translateY: active.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }] }}>
-          <Icon active={focused} size={38} />
+          {avatarSeed ? (
+            <View style={{ opacity: focused ? 1 : 0.7, borderRadius: 18, borderWidth: focused ? 2 : 0, borderColor: colors.brand }}>
+              <UserAvatar seed={avatarSeed} size={focused ? 34 : 36} />
+            </View>
+          ) : (
+            <Icon active={focused} size={38} />
+          )}
         </Animated.View>
         {badge ? (
           <View style={{ position: "absolute", top: 0, right: 4, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.surface }}>
@@ -81,6 +89,7 @@ function TabItem({ label, routeName, focused, badge, onPress }: { label: string;
 
 export function SotechyTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const { count } = useCart();
+  const { user } = useAuth();
   return (
     // Absolutely positioned and transparent so page content keeps showing behind the pill.
     <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 14, paddingBottom: Math.max(insets.bottom, 10) }}>
@@ -112,6 +121,7 @@ export function SotechyTabBar({ state, descriptors, emitter, navigateToTab, inse
               routeName={route.name}
               focused={focused}
               badge={route.name === "cart" ? count : undefined}
+              avatarSeed={route.name === "account" ? user?.id : undefined}
               onPress={() => {
                 const event = emitter.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
                 if (!focused && !event.defaultPrevented) navigateToTab(route.key);

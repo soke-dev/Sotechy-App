@@ -5,6 +5,7 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderDetail } from "@sotechy/shared";
+import { useDialog } from "@/components/dialog";
 import { useToast } from "@/components/toast";
 import { Button, Divider, ErrorView, ImagePlaceholder, Loading, productIcon, SummaryRow, tap, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -65,7 +66,7 @@ function Hero({ order, onCopy }: { order: OrderDetail; onCopy: (v: string) => vo
   const stopped = order.status === "cancelled" || order.status === "refunded" || order.status === "payment_failed";
 
   return (
-    <View style={{ backgroundColor: colors.ink, borderRadius: radius.xl, padding: space.xl, gap: space.lg, overflow: "hidden" }}>
+    <View style={{ backgroundColor: colors.panel, borderRadius: radius.xl, padding: space.xl, gap: space.lg, overflow: "hidden" }}>
       <View style={{ position: "absolute", right: -60, top: -60, width: 180, height: 180, borderRadius: 90, backgroundColor: stopped ? "#4A403A" : colors.brand, opacity: 0.9 }} />
       <View style={{ position: "absolute", right: -90, top: -90, width: 240, height: 240, borderRadius: 120, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)" }} />
 
@@ -129,6 +130,7 @@ export default function OrderScreen() {
   const config = useAsync(() => api.storeConfig());
   const [cancelling, setCancelling] = useState(false);
   const toast = useToast();
+  const dialog = useDialog();
   const cart = useCart();
 
   if (loading && !order) return <Loading />;
@@ -148,6 +150,15 @@ export default function OrderScreen() {
   }
 
   async function cancel() {
+    const ok = await dialog.confirm({
+      title: "Cancel this order?",
+      message: "Your reserved items will be released. You can place a new order any time.",
+      illo: "box",
+      confirmLabel: "Cancel order",
+      cancelLabel: "Keep order",
+      tone: "danger",
+    });
+    if (!ok) return;
     setCancelling(true);
     try {
       await api.cancelOrder(order!.id);

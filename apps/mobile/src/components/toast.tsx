@@ -45,7 +45,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         }}
       >
         {toast.message ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.ink, borderRadius: radius.pill, paddingVertical: 12, paddingHorizontal: 18 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.panel, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", borderRadius: radius.pill, paddingVertical: 12, paddingHorizontal: 18 }}>
             <Ionicons name={toast.icon ?? "checkmark-circle"} size={18} color={colors.brandYellow} />
             <Text style={{ fontFamily: fonts.medium, fontSize: 14, color: colors.white }}>{toast.message}</Text>
             {toast.action ? (

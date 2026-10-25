@@ -27,8 +27,8 @@ function Section({ step, title, children }: { step: number; title: string; child
   return (
     <View style={{ gap: space.md }}>
       <View style={ui.row}>
-        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" }}>
-          <Txt variant="caption" color={colors.white}>{step}</Txt>
+        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.inverse, alignItems: "center", justifyContent: "center" }}>
+          <Txt variant="caption" color={colors.onInverse}>{step}</Txt>
         </View>
         <Txt variant="heading">{title}</Txt>
       </View>

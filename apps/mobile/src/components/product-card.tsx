@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 import { formatNaira, type CatalogProduct } from "@sotechy/shared";
 import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
@@ -40,9 +40,9 @@ function QuickAdd({ product }: { product: CatalogProduct }) {
       onPress={add}
       hitSlop={6}
       accessibilityLabel={`Add ${product.name} to cart`}
-      style={({ pressed }) => ({ position: "absolute", top: 8, right: 8, width: 34, height: 34, borderRadius: 17, backgroundColor: pressed ? colors.ink2 : colors.ink, alignItems: "center", justifyContent: "center" })}
+      style={({ pressed }) => ({ position: "absolute", top: 8, right: 8, width: 34, height: 34, borderRadius: 17, backgroundColor: pressed ? colors.inversePressed : colors.inverse, alignItems: "center", justifyContent: "center" })}
     >
-      {busy ? <ActivityIndicator size="small" color={colors.white} /> : <Ionicons name="add" size={20} color={colors.white} />}
+      {busy ? <ActivityIndicator size="small" color={colors.white} /> : <Ionicons name="add" size={20} color={colors.onInverse} />}
     </Pressable>
   );
 }
@@ -91,9 +91,13 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
   );
 }
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line, overflow: "hidden" },
-  media: { width: "100%", aspectRatio: 1, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
-});
+const styles = {
+  get card(): ViewStyle {
+    return { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line, overflow: "hidden" };
+  },
+  get media(): ViewStyle {
+    return { width: "100%", aspectRatio: 1, backgroundColor: colors.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line };
+  },
+};
 
 export const PRODUCT_CARD_GAP = space.md;

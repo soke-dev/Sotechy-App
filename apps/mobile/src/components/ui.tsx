@@ -31,17 +31,18 @@ export function tap() {
 // Typography
 // ---------------------------------------------------------------------------
 const type = StyleSheet.create({
-  display: { fontFamily: fonts.displayHeavy, fontSize: 30, lineHeight: 34, letterSpacing: -0.6, color: colors.ink },
-  title: { fontFamily: fonts.display, fontSize: 24, lineHeight: 28, letterSpacing: -0.4, color: colors.ink },
-  heading: { fontFamily: fonts.display, fontSize: 19, lineHeight: 23, letterSpacing: -0.2, color: colors.ink },
-  body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 21, color: colors.ink },
-  medium: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 21, color: colors.ink },
-  label: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 19, color: colors.ink },
-  small: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.muted },
-  caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16, color: colors.muted },
-  overline: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 14, letterSpacing: 0.9, textTransform: "uppercase", color: colors.muted },
-  price: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 20, color: colors.ink },
+  display: { fontFamily: fonts.displayHeavy, fontSize: 30, lineHeight: 34, letterSpacing: -0.6 },
+  title: { fontFamily: fonts.display, fontSize: 24, lineHeight: 28, letterSpacing: -0.4 },
+  heading: { fontFamily: fonts.display, fontSize: 19, lineHeight: 23, letterSpacing: -0.2 },
+  body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 21 },
+  medium: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 21 },
+  label: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 19 },
+  small: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18 },
+  caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16 },
+  overline: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 14, letterSpacing: 0.9, textTransform: "uppercase" },
+  price: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 20 },
 });
+const mutedVariants = new Set<keyof typeof type>(["small", "caption", "overline"]);
 
 export function Txt({
   variant = "body",
@@ -59,7 +60,7 @@ export function Txt({
   children: ReactNode;
 }) {
   return (
-    <Text numberOfLines={numberOfLines} selectable={selectable} style={[type[variant], color ? { color } : null, style]}>
+    <Text numberOfLines={numberOfLines} selectable={selectable} style={[type[variant], { color: color ?? (mutedVariants.has(variant) ? colors.muted : colors.ink) }, style]}>
       {children}
     </Text>
   );
@@ -192,13 +193,14 @@ export function SummaryRow({ label, value, strong, tone }: { label: string; valu
 // ---------------------------------------------------------------------------
 type ButtonVariant = "primary" | "dark" | "outline" | "ghost" | "danger";
 
-const buttonColors: Record<ButtonVariant, { bg: string; fg: string; border?: string; pressed: string }> = {
-  primary: { bg: colors.brand, fg: colors.white, pressed: colors.brandPressed },
-  dark: { bg: colors.ink, fg: colors.white, pressed: colors.ink2 },
-  outline: { bg: colors.surface, fg: colors.ink, border: colors.line, pressed: colors.surfaceAlt },
-  ghost: { bg: "transparent", fg: colors.ink, pressed: colors.surfaceAlt },
-  danger: { bg: colors.surface, fg: colors.danger, border: colors.line, pressed: colors.dangerSoft },
-};
+const buttonColors = (v: ButtonVariant): { bg: string; fg: string; border?: string; pressed: string } =>
+  ({
+    primary: { bg: colors.brand, fg: colors.white, pressed: colors.brandPressed },
+    dark: { bg: colors.inverse, fg: colors.onInverse, pressed: colors.inversePressed },
+    outline: { bg: colors.surface, fg: colors.ink, border: colors.line, pressed: colors.surfaceAlt },
+    ghost: { bg: "transparent", fg: colors.ink, pressed: colors.surfaceAlt },
+    danger: { bg: colors.surface, fg: colors.danger, border: colors.line, pressed: colors.dangerSoft },
+  })[v];
 
 export function Button({
   title,
@@ -219,7 +221,7 @@ export function Button({
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const c = buttonColors[variant];
+  const c = buttonColors(variant);
   const height = size === "lg" ? 52 : 38;
   return (
     <Pressable
@@ -269,7 +271,7 @@ export function IconButton({
   size?: number;
   color?: string;
 }) {
-  const bg = tone === "surface" ? colors.surface : tone === "glass" ? "rgba(255,255,255,0.92)" : "transparent";
+  const bg = tone === "surface" ? colors.surface : tone === "glass" ? `${colors.surface}EB` : "transparent";
   return (
     <Pressable
       onPress={onPress}
@@ -304,31 +306,32 @@ export function Chip({ label, active, onPress, icon }: { label: string; active?:
         paddingHorizontal: 14,
         borderRadius: radius.pill,
         borderWidth: 1,
-        borderColor: active ? colors.ink : colors.line,
-        backgroundColor: active ? colors.ink : colors.surface,
+        borderColor: active ? colors.inverse : colors.line,
+        backgroundColor: active ? colors.inverse : colors.surface,
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
       }}
     >
-      {icon ? <Ionicons name={icon} size={14} color={active ? colors.white : colors.ink2} /> : null}
-      <Text style={{ fontFamily: fonts.medium, fontSize: 13, color: active ? colors.white : colors.ink2 }}>{label}</Text>
+      {icon ? <Ionicons name={icon} size={14} color={active ? colors.onInverse : colors.ink2} /> : null}
+      <Text style={{ fontFamily: fonts.medium, fontSize: 13, color: active ? colors.onInverse : colors.ink2 }}>{label}</Text>
     </Pressable>
   );
 }
 
 type PillTone = "brand" | "success" | "warning" | "danger" | "neutral" | "dark";
-const pillTones: Record<PillTone, { bg: string; fg: string }> = {
-  brand: { bg: colors.brandSoft, fg: colors.brandPressed },
-  success: { bg: colors.successSoft, fg: colors.success },
-  warning: { bg: colors.warningSoft, fg: colors.warning },
-  danger: { bg: colors.dangerSoft, fg: colors.danger },
-  neutral: { bg: colors.surfaceAlt, fg: colors.ink2 },
-  dark: { bg: colors.ink, fg: colors.white },
-};
+const pillTones = (t: PillTone): { bg: string; fg: string } =>
+  ({
+    brand: { bg: colors.brandSoft, fg: colors.brandPressed },
+    success: { bg: colors.successSoft, fg: colors.success },
+    warning: { bg: colors.warningSoft, fg: colors.warning },
+    danger: { bg: colors.dangerSoft, fg: colors.danger },
+    neutral: { bg: colors.surfaceAlt, fg: colors.ink2 },
+    dark: { bg: colors.inverse, fg: colors.onInverse },
+  })[t];
 
 export function Pill({ label, tone = "neutral", icon }: { label: string; tone?: PillTone; icon?: IconName }) {
-  const t = pillTones[tone];
+  const t = pillTones(tone);
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", backgroundColor: t.bg, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 3 }}>
       {icon ? <Ionicons name={icon} size={12} color={t.fg} /> : null}
@@ -575,14 +578,22 @@ export function ImagePlaceholder({ style, icon = "image-outline", size = 28 }: {
   );
 }
 
-export const ui = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: gutter, gap: space.xl, paddingBottom: space.xxl * 2 },
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line, padding: space.lg },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.xxl, backgroundColor: colors.bg },
-  row: { flexDirection: "row", alignItems: "center", gap: space.sm },
-  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  badgeDot: {
+// Getters so colours always come from the current theme.
+export const ui = {
+  get screen(): ViewStyle {
+    return { flex: 1, backgroundColor: colors.bg };
+  },
+  content: { padding: gutter, gap: space.xl, paddingBottom: space.xxl * 2 } as ViewStyle,
+  get card(): ViewStyle {
+    return { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line, padding: space.lg };
+  },
+  get center(): ViewStyle {
+    return { flex: 1, alignItems: "center", justifyContent: "center", padding: space.xxl, backgroundColor: colors.bg };
+  },
+  row: { flexDirection: "row", alignItems: "center", gap: space.sm } as ViewStyle,
+  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" } as ViewStyle,
+  get badgeDot(): ViewStyle {
+    return {
     position: "absolute",
     top: -2,
     right: -2,
@@ -595,5 +606,6 @@ export const ui = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: colors.bg,
+    };
   },
-});
+};

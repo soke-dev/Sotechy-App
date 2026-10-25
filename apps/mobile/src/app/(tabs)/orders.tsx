@@ -165,9 +165,9 @@ export default function OrdersScreen() {
                   tap();
                   setSegment(s.key);
                 }}
-                style={{ height: 38, paddingHorizontal: 14, borderRadius: radius.pill, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: on ? colors.ink : colors.surface, borderWidth: 1, borderColor: on ? colors.ink : colors.line }}
+                style={{ height: 38, paddingHorizontal: 14, borderRadius: radius.pill, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: on ? colors.inverse : colors.surface, borderWidth: 1, borderColor: on ? colors.inverse : colors.line }}
               >
-                <Txt variant="label" color={on ? colors.white : colors.ink2} style={{ fontSize: 13.5 }}>{s.label}</Txt>
+                <Txt variant="label" color={on ? colors.onInverse : colors.ink2} style={{ fontSize: 13.5 }}>{s.label}</Txt>
                 {count > 0 && s.key !== "all" && (
                   <View style={{ minWidth: 20, height: 20, paddingHorizontal: 5, borderRadius: 10, backgroundColor: on ? colors.brand : colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
                     <Txt variant="caption" color={on ? colors.white : colors.ink2} style={{ fontSize: 11, fontFamily: fonts.bold }}>{count}</Txt>

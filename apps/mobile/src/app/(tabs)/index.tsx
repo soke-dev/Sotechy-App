@@ -22,7 +22,7 @@ import { Illo, type IlloName } from "@/components/illustrations";
 function CircleLink({ label, onPress, image, icon, illo, dark }: { label: string; onPress: () => void; image?: string | null; icon?: IconName; illo?: IlloName; dark?: boolean }) {
   return (
     <Pressable onPress={onPress} style={{ width: "25%", alignItems: "center", gap: 6, paddingHorizontal: 2 }}>
-      <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: dark ? colors.ink : colors.brandSoft, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.surface }}>
+      <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: dark ? colors.panel : colors.brandSoft, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.surface }}>
         {illo ? <Illo name={illo} size={40} /> : image ? <Image source={{ uri: image }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : <Ionicons name={icon ?? "grid-outline"} size={26} color={dark ? colors.brandYellow : colors.brandPressed} />}
       </View>
       <Txt variant="caption" color={colors.ink2} numberOfLines={2} style={{ textAlign: "center", fontFamily: fonts.medium }}>{label}</Txt>
@@ -43,8 +43,8 @@ function DealBubble({ product, size }: { product: CatalogProduct; size: number }
           )}
         </View>
         {off > 0 && (
-          <View style={{ position: "absolute", top: 0, right: 0, backgroundColor: colors.ink, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 2, borderColor: colors.surface }}>
-            <Txt variant="caption" color={colors.white} style={{ fontSize: 11 }}>-{off}%</Txt>
+          <View style={{ position: "absolute", top: 0, right: 0, backgroundColor: colors.inverse, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 2, borderColor: colors.surface }}>
+            <Txt variant="caption" color={colors.onInverse} style={{ fontSize: 11 }}>-{off}%</Txt>
           </View>
         )}
       </View>
@@ -119,7 +119,7 @@ export default function HomeScreen() {
               flex: 1,
               height: 44,
               borderRadius: radius.pill,
-              backgroundColor: pressed ? colors.ink2 : colors.ink,
+              backgroundColor: pressed ? colors.panelPressed : colors.panel,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
@@ -160,8 +160,8 @@ export default function HomeScreen() {
               <Txt variant="title" style={{ fontFamily: fonts.displayHeavy }}>Deals of the day</Txt>
               <Txt variant="small">While stock lasts</Txt>
             </View>
-            <Pressable onPress={() => shop({ featured: "1" })} style={{ height: 34, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: colors.ink, justifyContent: "center" }}>
-              <Ionicons name="arrow-forward" size={18} color={colors.white} />
+            <Pressable onPress={() => shop({ featured: "1" })} style={{ height: 34, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: colors.inverse, justifyContent: "center" }}>
+              <Ionicons name="arrow-forward" size={18} color={colors.onInverse} />
             </Pressable>
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>

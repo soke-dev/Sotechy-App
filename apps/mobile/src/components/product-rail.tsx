@@ -30,9 +30,9 @@ export function ProductRail({
         <Pressable
           onPress={onSeeAll}
           accessibilityLabel={`See all ${title}`}
-          style={{ height: 34, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: dark ? colors.white : colors.ink, alignItems: "center", justifyContent: "center" }}
+          style={{ height: 34, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: dark ? colors.white : colors.inverse, alignItems: "center", justifyContent: "center" }}
         >
-          <Ionicons name="arrow-forward" size={18} color={dark ? colors.ink : colors.white} />
+          <Ionicons name="arrow-forward" size={18} color={dark ? colors.panel : colors.onInverse} />
         </Pressable>
       )}
     </View>
@@ -54,7 +54,7 @@ export function ProductRail({
     );
   }
   return (
-    <View style={{ marginHorizontal: gutter, backgroundColor: colors.ink, borderRadius: radius.xl, paddingVertical: space.lg }}>
+    <View style={{ marginHorizontal: gutter, backgroundColor: colors.panel, borderRadius: radius.xl, paddingVertical: space.lg }}>
       {header}
       {row}
     </View>

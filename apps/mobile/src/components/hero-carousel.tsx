@@ -4,7 +4,10 @@ import { router, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Linking, Pressable, ScrollView, View } from "react-native";
 import { demoMedia } from "@/lib/mock-api";
-import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { colors as theme, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
+
+// Banners are designed artwork: they keep the same colours in light and dark mode.
+const colors = lightPalette;
 import { Txt } from "./ui";
 
 /** A product picture placed on the banner; sizes and offsets are fractions of the banner. */
@@ -211,7 +214,7 @@ export function HeroCarousel({ width }: { width: number }) {
       </ScrollView>
       <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, marginTop: space.md }}>
         {slides.map((_, i) => (
-          <View key={i} style={{ height: 6, width: i === index ? 18 : 6, borderRadius: 3, backgroundColor: i === index ? colors.ink : colors.line }} />
+          <View key={i} style={{ height: 6, width: i === index ? 18 : 6, borderRadius: 3, backgroundColor: i === index ? theme.ink : theme.line }} />
         ))}
       </View>
     </View>

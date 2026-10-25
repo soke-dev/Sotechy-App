@@ -266,7 +266,7 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
         }}
       >
           {/* Header */}
-          <View style={{ backgroundColor: colors.ink, paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.lg, flexDirection: "row", alignItems: "center", gap: space.md }}>
+          <View style={{ backgroundColor: colors.panel, paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.lg, flexDirection: "row", alignItems: "center", gap: space.md }}>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" }}>
               <Image source={require("../../assets/brand/sotechylogo.png")} style={{ width: 28, height: 28 }} contentFit="contain" />
             </View>
@@ -305,10 +305,10 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
                   <Pressable
                     key={a.label}
                     onPress={() => runAction(a)}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.ink }}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.inverse }}
                   >
-                    <Ionicons name={a.kind === "whatsapp" ? "logo-whatsapp" : "arrow-forward"} size={15} color={a.kind === "whatsapp" ? colors.brand : colors.white} />
-                    <Txt variant="label" color={colors.white} style={{ fontSize: 13 }}>{a.label}</Txt>
+                    <Ionicons name={a.kind === "whatsapp" ? "logo-whatsapp" : "arrow-forward"} size={15} color={a.kind === "whatsapp" ? colors.brand : colors.onInverse} />
+                    <Txt variant="label" color={colors.onInverse} style={{ fontSize: 13 }}>{a.label}</Txt>
                   </Pressable>
                 ))}
               </View>

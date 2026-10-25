@@ -2,17 +2,18 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import { ScrollView, View } from "react-native";
 import { AddressCard } from "@/components/address-card";
+import { useDialog } from "@/components/dialog";
 import { useToast } from "@/components/toast";
 import { BottomBar, Button, EmptyState, ErrorView, Loading, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { confirm } from "@/lib/confirm";
 import { colors, gutter, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 
 export default function AddressesScreen() {
   const { user } = useAuth();
   const toast = useToast();
+  const dialog = useDialog();
   const list = useAsync(async () => (user ? api.addresses() : []), [user?.id]);
 
   useFocusEffect(
@@ -37,7 +38,14 @@ export default function AddressesScreen() {
   }
 
   async function remove(id: string) {
-    if (!(await confirm("Delete address?", "This address will be removed from your account."))) return;
+    const ok = await dialog.confirm({
+      title: "Delete this address?",
+      message: "It will be removed from your saved addresses. You can add it again any time.",
+      illo: "pin",
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     await api.deleteAddress(id);
     await list.reload();
     toast("Address deleted", { icon: "trash" });

@@ -1,10 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { formatDate } from "@sotechy/shared";
 import { Burst } from "@/components/tab-icons";
+import { UserAvatar } from "@/components/user-avatar";
 import { useToast } from "@/components/toast";
 import { BottomBar, Button, EmptyState, Input, ListRow, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -31,12 +31,6 @@ export default function ProfileScreen() {
     return <EmptyState illo="user" title="Your profile" message="Sign in to see and edit your details." action={<Button title="Sign in" onPress={() => router.push("/sign-in")} />} />;
   }
 
-  const initials = (user.fullName ?? user.email)
-    .split(/[\s@]/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join("");
   const changed = fullName.trim() !== (user.fullName ?? "") || phone.trim() !== (user.phone ?? "");
   const saved = addresses.data?.length ?? 0;
   const defaultAddress = addresses.data?.find((a) => a.isDefault);
@@ -61,13 +55,9 @@ export default function ProfileScreen() {
             <View style={{ position: "absolute" }}>
               <Burst size={128} />
             </View>
-            {user.avatarUrl ? (
-              <Image source={{ uri: user.avatarUrl }} style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 3, borderColor: colors.surface }} />
-            ) : (
-              <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: colors.surface }}>
-                <Txt variant="display" color={colors.white} style={{ fontSize: 30, lineHeight: 34 }}>{initials}</Txt>
-              </View>
-            )}
+            <View style={{ borderRadius: 48, borderWidth: 3, borderColor: colors.surface }}>
+              <UserAvatar seed={user.id} size={90} />
+            </View>
           </View>
           <Txt variant="title">{user.fullName || "Your name"}</Txt>
           <Txt variant="small">Member since {formatDate(user.createdAt).split(",")[0]}</Txt>

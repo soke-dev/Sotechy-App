@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Category } from "@sotechy/shared";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { colors, fonts, radius, space } from "@/lib/theme";
+import { colors, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { Button, Divider, IconButton, productIcon, Txt, ui, type IconName } from "./ui";
 import { Illo, type IlloName } from "./illustrations";
@@ -105,12 +105,6 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
     setExpanded((current) => (current === id ? null : id));
   };
 
-  const initials = (user?.fullName ?? user?.email ?? "")
-    .split(/[\s@]/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join("");
 
   return (
     <View style={{ flex: 1 }}>
@@ -139,28 +133,6 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
             <IconButton icon="close" onPress={onClose} />
           </View>
 
-          {/* Account */}
-          {user ? (
-            <Pressable onPress={() => go("/account")} style={[ui.card, ui.row, { gap: space.md }]}>
-              <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
-                <Txt variant="label" color={colors.brandPressed} style={{ fontFamily: fonts.displayHeavy }}>{initials}</Txt>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Txt variant="label" numberOfLines={1}>{user.fullName ?? user.email}</Txt>
-                <Txt variant="caption">View account</Txt>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.faint} />
-            </Pressable>
-          ) : (
-            <Pressable onPress={() => go("/sign-in")} style={{ backgroundColor: colors.ink, borderRadius: radius.lg, padding: space.lg, flexDirection: "row", alignItems: "center", gap: space.md }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Txt variant="label" color={colors.white}>Sign in or create account</Txt>
-                <Txt variant="caption" color="#BDB3A8">Track orders and check out faster</Txt>
-              </View>
-              <Ionicons name="arrow-forward" size={18} color={colors.brandYellow} />
-            </Pressable>
-          )}
-
           {/* Search */}
           <Pressable
             onPress={() => go({ pathname: "/shop", params: { focus: "1" } })}
@@ -177,6 +149,18 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
             <QuickLink illo="receipt" label="Track order" onPress={() => go("/orders")} />
             <QuickLink illo="heart" label="Saved" onPress={() => go("/wishlist")} />
           </View>
+
+          {/* Guests only: sign-in prompt */}
+          {!user && (
+            <Pressable onPress={() => go("/sign-in")} style={{ backgroundColor: colors.panel, borderRadius: radius.lg, padding: space.lg, flexDirection: "row", alignItems: "center", gap: space.md }}>
+              <Illo name="user" size={36} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Txt variant="label" color={colors.white}>Sign in or create account</Txt>
+                <Txt variant="caption" color="#BDB3A8">Track orders and check out faster</Txt>
+              </View>
+              <Ionicons name="arrow-forward" size={18} color={colors.brandYellow} />
+            </Pressable>
+          )}
 
           {/* Categories */}
           <View style={{ gap: space.sm }}>
@@ -197,11 +181,11 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
                         <Txt variant="label">{c.name}</Txt>
                         {kids.length > 0 && <Txt variant="caption">{kids.length} sections</Txt>}
                       </View>
-                      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: isOpen ? colors.ink : colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
+                      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: isOpen ? colors.inverse : colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
                         <Ionicons
                           name={kids.length ? "chevron-down" : "chevron-forward"}
                           size={15}
-                          color={isOpen ? colors.white : colors.ink}
+                          color={isOpen ? colors.onInverse : colors.ink}
                           style={{ transform: [{ rotate: isOpen ? "180deg" : "0deg" }] }}
                         />
                       </View>
