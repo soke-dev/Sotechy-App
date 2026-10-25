@@ -16,7 +16,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-3 text-sm">
-          <span className="font-medium md:hidden">Sotechy Admin</span>
+          {/* Phones and small tablets: the menu folds into the header */}
+          <details className="relative md:hidden">
+            <summary className="cursor-pointer list-none rounded border border-neutral-300 px-3 py-1.5 font-medium">☰ Menu</summary>
+            <div className="absolute left-0 z-20 mt-2 max-h-[75vh] w-64 overflow-y-auto rounded-lg border border-neutral-200 bg-neutral-50 p-3 shadow-lg">
+              <Nav />
+            </div>
+          </details>
           <div className="ml-auto flex items-center gap-4">
             <span className="text-neutral-600">
               {user.fullName ?? user.email} · {ROLE_LABELS[user.role]}

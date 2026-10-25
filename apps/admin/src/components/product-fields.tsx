@@ -59,9 +59,22 @@ export function ProductFields({ categories, product }: { categories: Category[];
       <Field label="In the box (one per line)">
         <textarea name="inTheBox" rows={4} defaultValue={product?.inTheBox?.join("\n")} className={inputClass} placeholder={"Phone\nCharger\nUser manual"} />
       </Field>
-      <Field label="Image URLs (one per line)">
-        <textarea name="images" rows={4} defaultValue={product?.images.join("\n")} className={inputClass} placeholder="https://…" />
-      </Field>
+      <div className="flex flex-col gap-2">
+        <Field label="Upload photos (first photo is the main one)">
+          <input name="photos" type="file" multiple accept="image/png,image/jpeg,image/webp" className="text-sm" />
+        </Field>
+        {product && product.images.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {product.images.map((src) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={src} src={src} alt="" className="h-14 w-14 rounded border border-neutral-200 object-contain" />
+            ))}
+          </div>
+        )}
+        <Field label="Photo links (one per line; delete a line to remove a photo)">
+          <textarea name="images" rows={3} defaultValue={product?.images.join("\n")} className={inputClass} placeholder="https://…" />
+        </Field>
+      </div>
       <div className="sm:col-span-2">
         <Field label="Return policy">
           <input name="returnPolicy" defaultValue={product?.returnPolicy ?? ""} className={inputClass} />

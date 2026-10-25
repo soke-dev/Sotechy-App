@@ -37,6 +37,9 @@ interface Pending {
   resolve: (paid: boolean) => void;
 }
 
+/** Money Moves sends customers to the API's /payments/return page, which opens this app scheme (app.json "scheme"). */
+const RETURN_SCHEME = "sotechy://";
+
 /**
  * `pay(order)` opens Money Moves for an unpaid order. It resolves true when the payment was
  * completed in the app (demo); with the real provider the order turns paid when its webhook arrives.
@@ -49,7 +52,8 @@ export function useMoneyMoves() {
     if (checkoutUrl.startsWith(DEMO_CHECKOUT_URL)) {
       return new Promise<boolean>((resolve) => setPending({ order, resolve }));
     }
-    await WebBrowser.openBrowserAsync(checkoutUrl);
+    // An auth session closes by itself when the page hands back to sotechy://
+    await WebBrowser.openAuthSessionAsync(checkoutUrl, RETURN_SCHEME);
     return false;
   }, []);
 

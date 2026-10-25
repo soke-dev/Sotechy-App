@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  customType,
   index,
   integer,
   jsonb,
@@ -522,3 +523,49 @@ export const auditLogs = pgTable(
   },
   (t) => [index().on(t.createdAt)],
 );
+
+// ---------------------------------------------------------------------------
+// Content managed from the admin dashboard
+// ---------------------------------------------------------------------------
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/** Uploaded images (product photos, banners, category art), served at /media/:id. */
+export const media = pgTable("media", {
+  id: uuid().primaryKey().defaultRandom(),
+  filename: text().notNull(),
+  contentType: text().notNull(),
+  size: integer().notNull(),
+  data: bytea().notNull(),
+  createdBy: uuid().references(() => users.id, { onDelete: "set null" }),
+  createdAt: createdAt(),
+});
+
+export const bannerStyleEnum = pgEnum("banner_style", ["dark", "orange", "light"]);
+export const bannerLinkEnum = pgEnum("banner_link", ["none", "category", "product", "deals", "url"]);
+
+/** Home-screen carousel slides. */
+export const banners = pgTable("banners", {
+  id: uuid().primaryKey().defaultRandom(),
+  eyebrow: text(),
+  title: text().notNull(),
+  subtitle: text(),
+  ctaLabel: text().notNull().default("Shop now"),
+  imageUrl: text(),
+  style: bannerStyleEnum().notNull().default("dark"),
+  linkType: bannerLinkEnum().notNull().default("none"),
+  linkValue: text(),
+  sortOrder: integer().notNull().default(0),
+  isActive: boolean().notNull().default(true),
+  startsAt: timestamp({ withTimezone: true }),
+  endsAt: timestamp({ withTimezone: true }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** Payment-provider webhook events already handled (the same event can arrive more than once). */
+export const webhookEvents = pgTable("webhook_events", {
+  id: text().primaryKey(),
+  provider: text().notNull(),
+  type: text().notNull(),
+  receivedAt: createdAt(),
+});

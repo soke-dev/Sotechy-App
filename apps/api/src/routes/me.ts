@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { notFound } from "../lib/errors";
+import { requireFeature } from "../services/features";
 import { catalogQuery } from "./store";
 
 const addressSchema = z.object({
@@ -85,6 +86,7 @@ export const meRoutes = new Hono<AppEnv>()
       z.object({ productId: z.uuid(), rating: z.number().int().min(1).max(5), title: z.string().max(120).nullable().optional(), body: z.string().min(3).max(3000) }),
     ),
     async (c) => {
+      await requireFeature("reviews", "Reviews are turned off right now");
       const userId = c.get("user").id;
       const input = c.req.valid("json");
       const [product] = await db.select({ id: schema.products.id }).from(schema.products).where(eq(schema.products.id, input.productId));

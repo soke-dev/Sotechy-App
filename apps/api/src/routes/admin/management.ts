@@ -162,7 +162,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     },
   )
   .put("/settings/:key", ADMIN, zValidator("json", z.record(z.string(), z.unknown())), async (c) => {
-    const key = z.enum(["delivery", "reservation_hold", "bank_transfer", "support"]).parse(c.req.param("key"));
+    const key = z.enum(["delivery", "reservation_hold", "bank_transfer", "support", "fx"]).parse(c.req.param("key"));
     const value = c.req.valid("json");
     const [row] = await db
       .insert(appSettings)

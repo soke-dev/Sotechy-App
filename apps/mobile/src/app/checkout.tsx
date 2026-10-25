@@ -11,6 +11,7 @@ import { BottomBar, Button, Divider, ErrorView, Input, Loading, OptionRow, Summa
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
+import { useFeatures } from "@/lib/store-config";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 
@@ -51,11 +52,12 @@ export default function CheckoutScreen() {
   const { user } = useAuth();
   const toast = useToast();
   const moneyMoves = useMoneyMoves();
+  const features = useFeatures();
   const config = useAsync(() => api.storeConfig());
   const fx = useAsync(() => api.exchangeRate());
   // One key per checkout attempt so a double tap or retry can't create two orders.
   const [idempotencyKey] = useState(newKey);
-  const [fulfilment, setFulfilment] = useState<FulfilmentType>("pickup");
+  const [chosenFulfilment, setFulfilment] = useState<FulfilmentType>("pickup");
   const [branchId, setBranchId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promo, setPromo] = useState<PromoCheck | null>(null);
@@ -80,11 +82,16 @@ export default function CheckoutScreen() {
   if (config.error || !config.data) return <ErrorView message={config.error ?? "Could not load checkout"} onRetry={config.reload} />;
 
   const cfg = config.data;
+  // Switches from admin: fall back to whichever of delivery/pickup is still on.
+  const fulfilment: FulfilmentType =
+    chosenFulfilment === "pickup" && !features.pickup ? "delivery" : chosenFulfilment === "delivery" && !features.delivery ? "pickup" : chosenFulfilment;
+  const paused = !features.ordering || (!features.delivery && !features.pickup);
+  const promoOn = features.promoCodes;
   // Deliveries go out from the main store; pickup lets the customer choose.
   const selectedBranch = (fulfilment === "pickup" ? branchId : null) ?? cfg.branches[0]?.id ?? null;
   const freeDelivery = cfg.delivery.freeOver != null && cart.subtotal >= cfg.delivery.freeOver;
   const deliveryFee = fulfilment === "delivery" && !freeDelivery ? cfg.delivery.flatFee : 0;
-  const discount = promo?.discount ?? 0;
+  const discount = features.promoCodes ? (promo?.discount ?? 0) : 0;
   const total = Math.max(0, cart.subtotal + deliveryFee - discount);
   const savedList = saved.data ?? [];
   const chosenId = addressId ?? savedList.find((a) => a.isDefault)?.id ?? savedList[0]?.id ?? "new";
@@ -115,8 +122,8 @@ export default function CheckoutScreen() {
     if (!selectedBranch) return;
     setError(null);
     // A typed but unapplied code is checked first so it can't fail after payment opens.
-    let applied = promo;
-    if (!applied && promoCode.trim()) {
+    let applied = promoOn ? promo : null;
+    if (promoOn && !applied && promoCode.trim()) {
       try {
         applied = await checkPromo();
       } catch {
@@ -151,7 +158,8 @@ export default function CheckoutScreen() {
       } catch {
         toast("Payment didn't open. You can pay from your order.", { icon: "alert-circle" });
       }
-      router.replace({ pathname: "/order/[id]", params: { id: order.id } });
+      // Without an in-app confirmation, the order screen keeps checking until the payment lands.
+      router.replace({ pathname: "/order/[id]", params: paid ? { id: order.id } : { id: order.id, checking: "1" } });
       if (paid) toast("Payment received", { icon: "checkmark-circle" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not place order");
@@ -163,16 +171,25 @@ export default function CheckoutScreen() {
   return (
     <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90}>
       <ScrollView contentContainerStyle={{ padding: gutter, gap: space.xxl, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
+        {paused && (
+          <View style={{ flexDirection: "row", gap: space.md, alignItems: "center", backgroundColor: colors.warningSoft, borderRadius: radius.lg, padding: space.lg }}>
+            <Ionicons name="pause-circle" size={26} color={colors.warning} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt variant="label">Ordering is paused right now</Txt>
+              <Txt variant="small" color={colors.ink2}>Your cart is saved. Please check back soon, or contact us to order.</Txt>
+            </View>
+          </View>
+        )}
         <Section step={1} title="How do you want it?">
           <View style={[ui.row, { gap: space.md, alignItems: "stretch" }]}>
-            <FulfilmentCard illo="store" title="Store pickup" subtitle="Free · usually same day" active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />
-            <FulfilmentCard
+            {features.pickup && <FulfilmentCard illo="store" title="Store pickup" subtitle="Free · usually same day" active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />}
+            {features.delivery && <FulfilmentCard
               illo="bike"
               title="Delivery"
               subtitle={freeDelivery ? "Free for this order" : `${formatNaira(cfg.delivery.flatFee)} · 1–2 days`}
               active={fulfilment === "delivery"}
               onPress={() => setFulfilment("delivery")}
-            />
+            />}
           </View>
         </Section>
 
@@ -233,7 +250,7 @@ export default function CheckoutScreen() {
             <Ionicons name="lock-closed" size={18} color={colors.success} />
           </View>
 
-          {promo ? (
+          {!promoOn ? null : promo ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.successSoft, borderRadius: radius.md, padding: space.md }}>
               <Ionicons name="checkmark-circle" size={20} color={colors.success} />
               <View style={{ flex: 1 }}>
@@ -288,7 +305,7 @@ export default function CheckoutScreen() {
           <View style={[ui.between, { paddingVertical: 4 }]}>
             <Txt variant="label">Total</Txt>
             <View style={[ui.row, { gap: space.sm }]}>
-              {fx.data ? <Txt variant="small">≈ {formatUsd(total, fx.data.rate)}</Txt> : null}
+              {features.usdPrices && fx.data ? <Txt variant="small">≈ {formatUsd(total, fx.data.rate)}</Txt> : null}
               <Txt variant="price">{formatNaira(total)}</Txt>
             </View>
           </View>
@@ -305,12 +322,12 @@ export default function CheckoutScreen() {
       <BottomBar>
         <View style={{ flex: 1, gap: space.sm }}>
           <Button
-            title={`Proceed to payment · ${formatNaira(total)}`}
+            title={paused ? "Ordering paused" : `Proceed to payment · ${formatNaira(total)}`}
             icon="lock-closed"
             variant="dark"
             onPress={proceedToPayment}
             loading={submitting || checkingPromo}
-            disabled={!selectedBranch || cart.lines.length === 0 || !addressOk}
+            disabled={paused || !selectedBranch || cart.lines.length === 0 || !addressOk}
           />
           <PayOptionsLine />
         </View>

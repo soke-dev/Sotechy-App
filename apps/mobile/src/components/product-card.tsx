@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from "
 import { formatNaira, type CatalogProduct } from "@sotechy/shared";
 import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
+import { useFeatures } from "@/lib/store-config";
 import { colors, radius, space } from "@/lib/theme";
 import { useCartFeedback } from "./cart-feedback";
 import { useToast } from "./toast";
@@ -51,6 +52,8 @@ function QuickAdd({ product }: { product: CatalogProduct }) {
 export function ProductCard({ product, width, quickAdd = true }: { product: CatalogProduct; width?: number; quickAdd?: boolean }) {
   const off = discountPercent(product.minPrice, product.compareAtPrice);
   const soldOut = product.totalAvailable <= 0;
+  const features = useFeatures();
+  const rated = features.reviews && !!product.ratingCount;
   // The fixed width lives on a wrapper View: Link's asChild doesn't keep function styles on web.
   return (
     <View style={{ width }}>
@@ -65,10 +68,10 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
             )}
           </View>
           <View style={{ padding: 10, gap: 3 }}>
-            {product.brand || product.ratingCount ? (
+            {product.brand || rated ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Txt variant="overline" numberOfLines={1} style={{ flex: 1 }}>{product.brand ?? ""}</Txt>
-                {product.ratingCount ? (
+                {rated ? (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
                     <Ionicons name="star" size={11} color={colors.brandYellow} />
                     <Txt variant="caption" style={{ fontSize: 11 }} color={colors.ink2}>
@@ -88,7 +91,7 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
                   <Txt variant="caption" style={{ textDecorationLine: "line-through", color: colors.faint }}>{formatNaira(product.compareAtPrice)}</Txt>
                   <Pill label={`-${off}%`} tone="success" />
                 </>
-              ) : !soldOut && product.totalAvailable <= 3 ? (
+              ) : features.lowStockBadges && !soldOut && product.totalAvailable <= 3 ? (
                 <Txt variant="caption" color={colors.warning}>Only {product.totalAvailable} left</Txt>
               ) : null}
             </View>

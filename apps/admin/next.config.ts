@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // uses the classic request-time rendering model instead of Cache Components.
   reactCompiler: true,
   transpilePackages: ["@sotechy/shared"],
+  // Photo uploads go through server actions (default limit 1 MB); the API caps each image at 5 MB.
+  experimental: { serverActions: { bodySizeLimit: "25mb" } },
   turbopack: {
     rules: {
       "*.css": {

@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GoogleButton } from "@/components/google-button";
+import { useFeatures } from "@/lib/store-config";
 import { Illo } from "@/components/illustrations";
 import { Burst } from "@/components/tab-icons";
 import { Button, Input, Txt, ui } from "@/components/ui";
@@ -17,7 +18,10 @@ type Mode = "signin" | "signup";
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const { signIn, signUp, signInWithGoogle } = useAuth();
-  const [mode, setMode] = useState<Mode>("signin");
+  const [chosenMode, setMode] = useState<Mode>("signin");
+  const features = useFeatures();
+  // With sign-ups switched off in admin, only signing in is offered.
+  const mode: Mode = features.signups ? chosenMode : "signin";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -101,13 +105,16 @@ export default function SignInScreen() {
             </Txt>
           </View>
 
-          <GoogleButton onIdToken={onGoogleToken} onError={onGoogleError} busy={loading === "google"} />
-
-          <View style={[ui.row, { gap: space.md }]}>
-            <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
-            <Txt variant="caption">or use email</Txt>
-            <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
-          </View>
+          {features.googleSignIn && (
+            <>
+              <GoogleButton onIdToken={onGoogleToken} onError={onGoogleError} busy={loading === "google"} />
+              <View style={[ui.row, { gap: space.md }]}>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
+                <Txt variant="caption">or use email</Txt>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
+              </View>
+            </>
+          )}
 
           {mode === "signup" && (
             <>
@@ -147,12 +154,14 @@ export default function SignInScreen() {
             disabled={!email || password.length < (mode === "signup" ? 8 : 1) || loading === "google"}
           />
 
-          <Pressable onPress={switchMode} style={{ alignSelf: "center", paddingVertical: space.sm }}>
-            <Txt variant="small" style={{ fontSize: 14 }}>
-              {mode === "signin" ? "New to Sotechy? " : "Already have an account? "}
-              <Txt variant="label" color={colors.brandPressed} style={{ fontSize: 14 }}>{mode === "signin" ? "Create an account" : "Sign in"}</Txt>
-            </Txt>
-          </Pressable>
+          {features.signups && (
+            <Pressable onPress={switchMode} style={{ alignSelf: "center", paddingVertical: space.sm }}>
+              <Txt variant="small" style={{ fontSize: 14 }}>
+                {mode === "signin" ? "New to Sotechy? " : "Already have an account? "}
+                <Txt variant="label" color={colors.brandPressed} style={{ fontSize: 14 }}>{mode === "signin" ? "Create an account" : "Sign in"}</Txt>
+              </Txt>
+            </Pressable>
+          )}
 
           <Txt variant="caption" style={{ textAlign: "center", fontFamily: fonts.medium }}>
             {DEMO_MODE ? "Demo mode: any email and password, or Google, signs you in." : "By continuing you agree to Sotechy's terms and privacy policy. No crypto wallet needed to shop."}

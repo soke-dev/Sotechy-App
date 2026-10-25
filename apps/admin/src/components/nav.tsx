@@ -26,10 +26,17 @@ const sections = [
     links: [
       { href: "/products", label: "Products" },
       { href: "/categories", label: "Categories" },
-      { href: "/reviews", label: "Reviews" },
       { href: "/inventory", label: "Inventory" },
       { href: "/suppliers", label: "Suppliers & purchasing" },
       { href: "/promotions", label: "Promotions" },
+    ],
+  },
+  {
+    title: "App",
+    links: [
+      { href: "/switches", label: "App switches" },
+      { href: "/banners", label: "Home banners" },
+      { href: "/reviews", label: "Reviews" },
     ],
   },
   {

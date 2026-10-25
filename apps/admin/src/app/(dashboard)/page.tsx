@@ -1,19 +1,33 @@
 import Link from "next/link";
-import { formatDate, formatNaira } from "@sotechy/shared";
+import { formatDate, formatNaira, type AppFeatures } from "@sotechy/shared";
 import { Card, DataTable, ErrorNote, PageHeader, StatCard, StatusBadge } from "@/components/ui";
 import { load } from "@/lib/api";
 import type { AdminOrderRow, SalesSummary } from "@/lib/types";
 
 export default async function DashboardPage() {
-  const [summary, orders] = await Promise.all([
+  const [summary, orders, switches] = await Promise.all([
     load<SalesSummary>("/admin/reports/summary"),
     load<AdminOrderRow[]>("/admin/orders"),
+    load<{ features: AppFeatures }>("/admin/features"),
   ]);
   const s = summary.data;
+  const f = switches.data?.features;
 
   return (
     <>
       <PageHeader title="Dashboard" description="Last 30 days" />
+      {f && (
+        <Link
+          href="/switches"
+          className={`mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border px-4 py-3 text-sm ${f.maintenance || !f.ordering ? "border-amber-300 bg-amber-50" : "border-neutral-200 bg-white"}`}
+        >
+          <span className="font-medium">Shop status</span>
+          {f.maintenance ? <span className="text-red-700">Maintenance screen is ON: customers can&apos;t shop</span> : <span>App is live</span>}
+          <span>Online ordering: {f.ordering ? "on" : <b className="text-amber-700">paused</b>}</span>
+          <span>Delivery: {f.delivery ? "on" : "off"} · Pickup: {f.pickup ? "on" : "off"}</span>
+          <span className="ml-auto text-neutral-500 underline">App switches →</span>
+        </Link>
+      )}
       {summary.error && <ErrorNote error={`Sales summary: ${summary.error}`} />}
       {s && (
         <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">

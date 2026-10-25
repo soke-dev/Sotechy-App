@@ -6,9 +6,11 @@ import { corsOrigins } from "./env";
 import { requireAuth, requireRole, STAFF, type AppEnv } from "./lib/auth";
 import { HttpError } from "./lib/errors";
 import { adminCatalogRoutes } from "./routes/admin/catalog";
+import { adminContentRoutes } from "./routes/admin/content";
 import { adminManagementRoutes } from "./routes/admin/management";
 import { adminOperationsRoutes } from "./routes/admin/operations";
 import { authRoutes } from "./routes/auth";
+import { mediaRoutes } from "./routes/media";
 import { meRoutes } from "./routes/me";
 import { orderRoutes } from "./routes/orders";
 import { paymentRoutes } from "./routes/payments";
@@ -18,11 +20,13 @@ const admin = new Hono<AppEnv>()
   .use(requireAuth, requireRole(...STAFF))
   .route("/", adminCatalogRoutes)
   .route("/", adminOperationsRoutes)
-  .route("/", adminManagementRoutes);
+  .route("/", adminManagementRoutes)
+  .route("/", adminContentRoutes);
 
 export const app = new Hono()
   .use(logger())
-  .use(secureHeaders())
+  // Images under /media are loaded by the admin site and the apps from other origins.
+  .use(secureHeaders({ crossOriginResourcePolicy: "cross-origin" }))
   .use(cors({ origin: corsOrigins, credentials: true }))
   .get("/", (c) => c.json({ name: "Sotechy API", status: "ok" }))
   .get("/health", (c) => c.json({ ok: true }))
@@ -31,6 +35,7 @@ export const app = new Hono()
   .route("/orders", orderRoutes)
   .route("/me", meRoutes)
   .route("/payments", paymentRoutes)
+  .route("/media", mediaRoutes)
   .route("/admin", admin);
 
 app.onError((err, c) => {

@@ -55,8 +55,8 @@ Landing page (Next.js) ─────────┘         ▲
 - **Server-side totals.** Prices, discounts and delivery fees are computed in `apps/api/src/services/orders.ts`, and the client only sends variant IDs and quantities.
 - **No overselling.** Stock rows are locked (`SELECT … FOR UPDATE`) inside transactions. Unpaid orders *reserve* stock, payment *commits* it, and expired holds are released automatically every minute.
 - **Paid only when verified.** An order becomes paid only through one of three paths:
-  1. a signed Money Moves webhook, re-checked against the Money Moves API (the adapter still has to be written);
-  2. a manager confirming a bank transfer or crypto transfer in Admin → Orders, with the reference recorded;
+  1. a Money Moves webhook with a valid `mm-signature` (HMAC-SHA256, at most five minutes old), after the payment is re-read from the Money Moves API. Each event is handled once;
+  2. a manager confirming a bank transfer in Admin → Payments, with the reference recorded (walk-in sales);
   3. cash or POS-terminal payment confirmed at the till by staff.
   Screenshots and customer-submitted hashes never mark an order paid.
 - **Idempotent.** Checkout requires an idempotency key, and payment confirmation is safe to repeat.
@@ -68,17 +68,34 @@ Landing page (Next.js) ─────────┘         ▲
 
 ## Deploying to Railway
 
-Create one Railway project, then add a **Postgres** service and these services from this repo. Keep the root directory at the repo root, because pnpm workspaces need it, and set each service's *config file path*:
+One Railway project with a **Postgres** database and two services from this GitHub repo (plus the landing page if you want it). Keep each service's root directory at the repo root, because pnpm workspaces need it, and set its *config file path*:
 
 | Service | Config file | Variables |
 | --- | --- | --- |
-| api | `apps/api/railway.json` | `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `CORS_ORIGINS`, `MONEYMOVES_*` |
-| admin | `apps/admin/railway.json` | `API_URL` (the API's URL) |
-| web | `apps/web/railway.json` | `NEXT_PUBLIC_SHOP_URL` |
+| **api** | `apps/api/railway.json` | `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `CORS_ORIGINS` (the admin's URL), `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO_PRODUCTS`, `MONEYMOVES_SECRET_KEY`, `MONEYMOVES_WEBHOOK_SECRET`, `GOOGLE_CLIENT_IDS` |
+| **admin** | `apps/admin/railway.json` | `API_URL=https://${{api.RAILWAY_PUBLIC_DOMAIN}}` |
+| web (optional) | `apps/web/railway.json` | `NEXT_PUBLIC_SHOP_URL` |
 
-The API runs migrations as its pre-deploy step. Seed once with `railway run --service api pnpm --filter @sotechy/api db:seed` (with `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` set).
+Give **api** and **admin** a public domain (Settings → Networking → Generate domain). Every API deploy runs the database migrations and then the seed, which only adds what's missing: payment methods, the head office, base categories, and the first admin from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`. Set `SEED_DEMO_PRODUCTS=true` for a few `[DEMO]` products to test with. Every variable is explained in [`apps/api/.env.example`](apps/api/.env.example).
 
-**Customer app.** Build Android and iOS with EAS: `cd apps/mobile && npx eas-cli@latest build`. Deploy the web version with `npx expo export -p web`, then host `dist/` (EAS Hosting via `eas deploy`, or any static host). `EXPO_PUBLIC_API_URL` is baked in at build time.
+**Money Moves.** In the Money Moves dashboard, create an API key (`sk_test_…` while testing) and add a webhook endpoint `https://<api-domain>/payments/webhooks/moneymoves`. Put the key and the webhook's `whsec_…` secret in the api service. Admin → Settings shows whether the connection works and the exact webhook URL. Switch to the `sk_live_…` key and the live webhook secret when you go live.
+
+**Customer app.** Point it at the API with `EXPO_PUBLIC_API_URL=https://<api-domain>` in `apps/mobile/.env` (leave it empty for demo mode). Build Android and iOS with EAS: `cd apps/mobile && npx eas-cli@latest build`. `EXPO_PUBLIC_API_URL` is baked in at build time, or loaded live by the dev build.
+
+## Running the shop from the admin dashboard
+
+| Admin page | What it controls in the app |
+| --- | --- |
+| **App switches** | Online ordering, delivery, pickup, promo codes, reviews, dollar estimates, low-stock badges, live chat, WhatsApp ordering, sign-ups, Google sign-in, **maintenance mode** (with message) and the **announcement bar**. Each switch saves straight away; the app picks changes up within a minute. The API enforces them too. |
+| **Home banners** | The Home carousel: text, colour, picture upload, what it opens (category, product, Deals or a link), order, start/end dates, show/hide. With none on, the app shows its built-in banners. |
+| Products, Categories | Everything on a product page, including photo uploads, key features, what's in the box, specs and options. Categories have pictures and sub-categories. |
+| Inventory, Suppliers | Stock per branch, adjustments, transfers, purchase orders |
+| Orders, Payments & refunds | Order status and tracking updates; Money Moves payments are confirmed automatically by webhook |
+| Promotions | Promo codes and automatic offers |
+| Reviews | Hide or show customer reviews |
+| Customers | Block or unblock accounts |
+| Settings | Money Moves connection status, the dollar exchange rate (live from Money Moves or your own), delivery fees, support phone / email / WhatsApp, stock hold time |
+| Branches, Staff & roles, Audit log, Reports | As named |
 
 ## iOS development build (testing designs and updates)
 
@@ -120,16 +137,14 @@ It uses `expo-auth-session`'s Google provider. Expo now recommends `@react-nativ
 
 Put the logo and images in `brand-assets/`, run `pnpm assets:sync`, and commit. See [brand-assets/README.md](brand-assets/README.md). The images you added to `apps/mobile/assets` were moved there.
 
-## Still needs credentials or implementation
+## Still needs credentials or decisions
 
 | Item | Status |
 | --- | --- |
-| **Money Moves** (online payments) | **Adapter not written yet.** Checkout and webhook routes, server-side amounts and order confirmation are ready. Fill in the three TODOs in `apps/api/src/services/moneymoves.ts` from Money Moves API docs, set the `MONEYMOVES_*` variables, register the webhook `https://<api>/payments/webhooks/moneymoves`, then enable "Pay online (Money Moves)" in Admin → Settings. |
-| **Crypto / $MOVE verification** | **Not implemented.** `POST /payments/crypto/verify` returns 501. Integrate Sotechy's crypto payment provider or a Movement chain verifier in `apps/api/src/routes/payments.ts`, then enable Crypto and the MOVE asset. Until then, in-store crypto can be verified manually by a manager. |
-| **$MOVE discount** | The promotion exists but is **off**. Turn it on, and set the cap, dates and limits, in Admin → Promotions. |
-| Bank account details, delivery fees, support contacts | Admin → Settings |
-| Second branch address | Admin → Branches |
-| Product image uploads | Image URLs for now. Add object storage (e.g. Railway bucket or S3) later. |
+| **Money Moves** keys | Integration done (checkout, signed webhooks, live exchange rate). Needs `MONEYMOVES_SECRET_KEY` and `MONEYMOVES_WEBHOOK_SECRET` on the API, and the webhook endpoint registered in Money Moves. Online orders are refused until the key is set. |
+| Orders over ₦1,000,000 | Money Moves takes ₦100 to ₦1,000,000 per checkout for a registered business. Bigger orders get a message asking the customer to split the order or contact the store. |
+| **$MOVE discount** | It applied when customers picked crypto at checkout. Crypto is now chosen inside Money Moves, so the automatic discount doesn't apply. Decide whether to run it as a promo code or apply it once Money Moves reports the method. |
+| Bank details, delivery fees, support contacts | Admin → Settings |
 | Notifications (email / SMS / push) | Not started |
 | Policies (delivery, returns, warranty, privacy) | Placeholder text in `apps/web/src/app/policies` |
 | App icons and store listings | Expo default icons in `brand-assets/app-icon/` |

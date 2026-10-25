@@ -16,6 +16,7 @@ import { ArtButton, Button, discountPercent, ErrorView, IconButton, Loading, pro
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
+import { useFeatures } from "@/lib/store-config";
 import { demoMedia } from "@/lib/mock-api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
@@ -68,6 +69,7 @@ export default function HomeScreen() {
   const { count } = useCart();
   const { user } = useAuth();
   const tabInset = useTabBarInset();
+  const features = useFeatures();
   const contentWidth = Math.min(width, 720) - gutter * 2;
 
   const { data, error, loading, reload } = useAsync(async () => {
@@ -113,6 +115,12 @@ export default function HomeScreen() {
             </ArtButton>
           </View>
         </View>
+        {features.announcementOn && features.announcement ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.brandSoft, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: 10 }}>
+            <Ionicons name="megaphone-outline" size={16} color={colors.brandPressed} />
+            <Txt variant="label" color={colors.ink} style={{ flex: 1, fontSize: 13 }}>{features.announcement}</Txt>
+          </View>
+        ) : null}
         <Pressable
           onPress={() => shop({ focus: "1" })}
           style={{ height: 50, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18 }}
@@ -121,24 +129,26 @@ export default function HomeScreen() {
           <Txt variant="body" color={colors.faint}>Search products, brands and categories</Txt>
         </Pressable>
         <View style={[ui.row, { gap: space.sm }]}>
-          <Pressable
-            onPress={() => openWhatsApp(support.whatsapp, ORDER_MESSAGE)}
-            accessibilityRole="button"
-            style={({ pressed }) => ({
-              flex: 1,
-              height: 44,
-              borderRadius: radius.pill,
-              backgroundColor: pressed ? colors.panelPressed : colors.panel,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              paddingHorizontal: 14,
-            })}
-          >
-            <Ionicons name="logo-whatsapp" size={19} color={colors.brand} />
-            <Txt variant="label" color={colors.white} numberOfLines={1} style={{ fontSize: 14 }}>Order on WhatsApp</Txt>
-          </Pressable>
+          {features.whatsapp && (
+            <Pressable
+              onPress={() => openWhatsApp(support.whatsapp, ORDER_MESSAGE)}
+              accessibilityRole="button"
+              style={({ pressed }) => ({
+                flex: 1,
+                height: 44,
+                borderRadius: radius.pill,
+                backgroundColor: pressed ? colors.panelPressed : colors.panel,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                paddingHorizontal: 14,
+              })}
+            >
+              <Ionicons name="logo-whatsapp" size={19} color={colors.brand} />
+              <Txt variant="label" color={colors.white} numberOfLines={1} style={{ fontSize: 14 }}>Order on WhatsApp</Txt>
+            </Pressable>
+          )}
           {[
             { icon: "pricetag" as const, label: "Deals", onPress: () => shop({ featured: "1" }) },
             {
@@ -223,7 +233,7 @@ export default function HomeScreen() {
       {/* Can't find it */}
       <Pressable
         onPress={async () => {
-          if (!(await openWhatsApp(support.whatsapp, "Hello Sotechy, I'm looking for: "))) router.push("/support");
+          if (!features.whatsapp || !(await openWhatsApp(support.whatsapp, "Hello Sotechy, I'm looking for: "))) router.push("/support");
         }}
         style={{ marginHorizontal: gutter, flexDirection: "row", alignItems: "center", gap: space.lg, padding: space.lg, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }}
       >
@@ -273,7 +283,7 @@ export default function HomeScreen() {
         ))}
       </View>
     </ScrollView>
-    <SupportChat teaser bottomOffset={tabInset} />
+    {features.liveChat && <SupportChat teaser bottomOffset={tabInset} />}
     </View>
   );
 }

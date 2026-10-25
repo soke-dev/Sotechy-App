@@ -149,7 +149,7 @@ export interface ExchangeRate {
   quote: "NGN";
   rate: number;
   /** "placeholder" until the live Money Moves rate is connected */
-  source: "moneymoves" | "placeholder";
+  source: "moneymoves" | "manual" | "placeholder";
   updatedAt: string;
 }
 
@@ -360,6 +360,71 @@ export interface StoreConfig {
   promotions: Promotion[];
   delivery: { flatFee: number; freeOver: number | null; note: string | null };
   support: { phone: string | null; email: string | null; whatsapp: string | null };
+  /** App switches set in Admin → App switches */
+  features: AppFeatures;
+  /** Home carousel slides from Admin → Banners (empty = the app's built-in ones) */
+  banners: Banner[];
+}
+
+/** On/off switches for the customer app, controlled from the admin dashboard. */
+export interface AppFeatures {
+  /** Customers can place orders (off = browse only) */
+  ordering: boolean;
+  delivery: boolean;
+  pickup: boolean;
+  promoCodes: boolean;
+  reviews: boolean;
+  liveChat: boolean;
+  whatsapp: boolean;
+  usdPrices: boolean;
+  signups: boolean;
+  googleSignIn: boolean;
+  /** "Only 3 left" badges */
+  lowStockBadges: boolean;
+  /** Shows a full-screen notice instead of the app */
+  maintenance: boolean;
+  maintenanceMessage: string;
+  /** Strip at the top of the home screen */
+  announcement: string;
+  announcementOn: boolean;
+}
+
+export const DEFAULT_FEATURES: AppFeatures = {
+  ordering: true,
+  delivery: true,
+  pickup: true,
+  promoCodes: true,
+  reviews: true,
+  liveChat: true,
+  whatsapp: true,
+  usdPrices: true,
+  signups: true,
+  googleSignIn: true,
+  lowStockBadges: true,
+  maintenance: false,
+  maintenanceMessage: "We're making improvements and will be back shortly.",
+  announcement: "",
+  announcementOn: false,
+};
+
+export type BannerStyle = "dark" | "orange" | "light";
+export type BannerLink = "none" | "category" | "product" | "deals" | "url";
+
+export interface Banner {
+  id: string;
+  eyebrow: string | null;
+  title: string;
+  subtitle: string | null;
+  ctaLabel: string;
+  imageUrl: string | null;
+  style: BannerStyle;
+  /** category → slug, product → slug, url → https link */
+  linkType: BannerLink;
+  linkValue: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
 }
 
 export interface PlaceOrderInput {

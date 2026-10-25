@@ -1,3 +1,5 @@
+CREATE TYPE "public"."banner_link" AS ENUM('none', 'category', 'product', 'deals', 'url');--> statement-breakpoint
+CREATE TYPE "public"."banner_style" AS ENUM('dark', 'orange', 'light');--> statement-breakpoint
 CREATE TYPE "public"."discount_type" AS ENUM('percentage', 'fixed');--> statement-breakpoint
 CREATE TYPE "public"."fulfilment_type" AS ENUM('delivery', 'pickup');--> statement-breakpoint
 CREATE TYPE "public"."merchant_status" AS ENUM('pending', 'approved', 'suspended');--> statement-breakpoint
@@ -40,6 +42,24 @@ CREATE TABLE "audit_logs" (
 	"entity_id" uuid,
 	"details" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "banners" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"eyebrow" text,
+	"title" text NOT NULL,
+	"subtitle" text,
+	"cta_label" text DEFAULT 'Shop now' NOT NULL,
+	"image_url" text,
+	"style" "banner_style" DEFAULT 'dark' NOT NULL,
+	"link_type" "banner_link" DEFAULT 'none' NOT NULL,
+	"link_value" text,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"starts_at" timestamp with time zone,
+	"ends_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "branches" (
@@ -88,6 +108,16 @@ CREATE TABLE "inventory" (
 	CONSTRAINT "inventory_variantId_branchId_unique" UNIQUE("variant_id","branch_id"),
 	CONSTRAINT "inventory_quantity_nonneg" CHECK ("inventory"."quantity" >= 0),
 	CONSTRAINT "inventory_reserved_valid" CHECK ("inventory"."reserved" >= 0 and "inventory"."reserved" <= "inventory"."quantity")
+);
+--> statement-breakpoint
+CREATE TABLE "media" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"filename" text NOT NULL,
+	"content_type" text NOT NULL,
+	"size" integer NOT NULL,
+	"data" "bytea" NOT NULL,
+	"created_by" uuid,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "merchants" (
@@ -360,6 +390,13 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_googleId_unique" UNIQUE("google_id")
 );
 --> statement-breakpoint
+CREATE TABLE "webhook_events" (
+	"id" text PRIMARY KEY NOT NULL,
+	"provider" text NOT NULL,
+	"type" text NOT NULL,
+	"received_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "wishlists" (
 	"user_id" uuid NOT NULL,
 	"product_id" uuid NOT NULL,
@@ -371,6 +408,7 @@ ALTER TABLE "addresses" ADD CONSTRAINT "addresses_user_id_users_id_fk" FOREIGN K
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_actor_id_users_id_fk" FOREIGN KEY ("actor_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory" ADD CONSTRAINT "inventory_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory" ADD CONSTRAINT "inventory_branch_id_branches_id_fk" FOREIGN KEY ("branch_id") REFERENCES "public"."branches"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "media" ADD CONSTRAINT "media_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "merchants" ADD CONSTRAINT "merchants_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "order_items" ADD CONSTRAINT "order_items_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "order_items" ADD CONSTRAINT "order_items_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

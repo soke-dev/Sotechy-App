@@ -10,6 +10,7 @@ import { useTabBarInset } from "@/components/tab-bar";
 import { Button, Chip, EmptyState, ErrorView, Input, Loading, ScreenHeader, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { useFeatures } from "@/lib/store-config";
 import { useAsync } from "@/lib/use-async";
 
 /** "Filters" button with a count of the filters in use. */
@@ -41,6 +42,7 @@ export default function ShopScreen() {
   const [sort, setSort] = useState(params.sort ?? "newest");
   const [filters, setFilters] = useState<ShopFilters>(params.featured === "1" ? { ...NO_FILTERS, deals: true } : NO_FILTERS);
   const [sheet, setSheet] = useState<"filters" | "sort" | null>(null);
+  const features = useFeatures();
 
   // The tab stays mounted, so follow new filters passed from other screens (home, menu).
   useEffect(() => {
@@ -132,7 +134,7 @@ export default function ShopScreen() {
           <Chip icon="swap-vertical" label={sortShort} trailingIcon="chevron-down" active={sort !== "newest"} onPress={() => setSheet("sort")} />
           <Chip icon="pricetag-outline" label="Deals" active={filters.deals} onPress={() => toggle({ deals: !filters.deals })} />
           <Chip icon="cube-outline" label="In stock" active={filters.inStock} onPress={() => toggle({ inStock: !filters.inStock })} />
-          <Chip icon="star" label="4 & up" active={filters.minRating === 4} onPress={() => toggle({ minRating: filters.minRating === 4 ? undefined : 4 })} />
+          {features.reviews && <Chip icon="star" label="4 & up" active={filters.minRating === 4} onPress={() => toggle({ minRating: filters.minRating === 4 ? undefined : 4 })} />}
           <Chip label={brandLabel(filters)} trailingIcon="chevron-down" active={filters.brands.length > 0} onPress={() => setSheet("filters")} />
           <Chip label={priceLabel(filters)} trailingIcon="chevron-down" active={hasPrice} onPress={() => setSheet("filters")} />
         </ScrollView>
@@ -171,7 +173,7 @@ export default function ShopScreen() {
           keyboardDismissMode="on-drag"
         />
       )}
-      <SupportChat bottomOffset={tabInset} />
+      {features.liveChat && <SupportChat bottomOffset={tabInset} />}
 
       <FilterSheet
         visible={sheet === "filters"}

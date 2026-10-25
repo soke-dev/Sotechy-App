@@ -1,10 +1,11 @@
 // Public storefront routes: no auth, published products only, never exposes cost prices.
-import { and, asc, desc, eq, getTableColumns, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gt, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../db/client";
 import { notFound } from "../lib/errors";
+import { getFeatures, requireFeature } from "../services/features";
 import { getUsdRate } from "../services/moneymoves";
 import { findPromotion } from "../services/promotions";
 import { getSetting, type DeliverySettings } from "../services/settings";
@@ -107,13 +108,21 @@ const { costPrice: _cost, ...publicVariantColumns } = getTableColumns(productVar
 
 export const storeRoutes = new Hono()
   .get("/config", async (c) => {
-    const [branchList, methods, assets, promos, delivery, support] = await Promise.all([
+    const now = new Date();
+    const b = schema.banners;
+    const [branchList, methods, assets, promos, delivery, support, features, bannerRows] = await Promise.all([
       db.select().from(branches).where(eq(branches.isActive, true)).orderBy(asc(branches.name)),
       db.select().from(schema.paymentMethods),
       db.select().from(schema.cryptoAssets).where(eq(schema.cryptoAssets.isEnabled, true)),
       db.select().from(schema.promotions).where(and(eq(schema.promotions.isActive, true), isNull(schema.promotions.code))),
       getSetting<DeliverySettings>("delivery"),
       getSetting<{ phone: string | null; email: string | null; whatsapp: string | null }>("support"),
+      getFeatures(),
+      db
+        .select()
+        .from(b)
+        .where(and(eq(b.isActive, true), or(isNull(b.startsAt), lte(b.startsAt, now)), or(isNull(b.endsAt), gt(b.endsAt, now))))
+        .orderBy(asc(b.sortOrder), desc(b.createdAt)),
     ]);
     return c.json({
       branches: branchList,
@@ -122,10 +131,13 @@ export const storeRoutes = new Hono()
       promotions: promos,
       delivery: delivery ?? { flatFee: 0, freeOver: null, note: null },
       support: support ?? { phone: null, email: null, whatsapp: null },
+      features,
+      banners: bannerRows,
     });
   })
   .post("/promo/check", zValidator("json", z.object({ code: z.string().trim().min(1).max(40), subtotal: z.number().nonnegative() })), async (c) => {
     // Preview only: the discount is worked out again from real prices when the order is placed.
+    await requireFeature("promoCodes", "Promo codes can't be used right now");
     const { code, subtotal } = c.req.valid("json");
     const { promotion, discount } = await db.transaction((tx) => findPromotion(tx, { subtotal, paymentMethod: "online", code }));
     return c.json({ code: promotion!.code ?? code.toUpperCase(), name: promotion!.name, discount });

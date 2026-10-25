@@ -2,6 +2,7 @@
 // Products, prices and stock here are dummy data, not real Sotechy inventory.
 import { Asset } from "expo-asset";
 import { DEMO_DETAILS, DEMO_REVIEWS } from "./mock-content";
+import { DEFAULT_FEATURES } from "@sotechy/shared";
 import type {
   Address,
   ProductReviews,
@@ -232,6 +233,9 @@ const config: StoreConfig = {
   ],
   delivery: { flatFee: 3000, freeOver: 500000, note: "Delivery within Benin City in 1–2 days (demo text)." },
   support: { phone: "+234 000 000 0000", email: "hello@sotechy.shop", whatsapp: "+234 000 000 0000" },
+  features: DEFAULT_FEATURES,
+  // Empty = the app's built-in banners
+  banners: [],
 };
 
 const demoUser: User = { id: "u1", email: "demo@sotechy.shop", fullName: "Demo Customer", phone: null, role: "customer", branchId: null, createdAt: now() };

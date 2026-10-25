@@ -5,7 +5,9 @@ import { z } from "zod";
 import type { PaymentInstructions } from "@sotechy/shared";
 import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
-import { notFound } from "../lib/errors";
+import { badRequest, HttpError, notFound } from "../lib/errors";
+import { requireFeature } from "../services/features";
+import { moneyMovesConfigured } from "../services/moneymoves";
 import { cancelOrder, placeOrder } from "../services/orders";
 import { getSetting } from "../services/settings";
 
@@ -82,7 +84,14 @@ export async function itemsWithImages(orderIds: string[]) {
 export const orderRoutes = new Hono<AppEnv>()
   .use(requireAuth)
   .post("/", zValidator("json", placeOrderSchema), async (c) => {
-    const order = await placeOrder(c.get("user").id, c.req.valid("json"));
+    const input = c.req.valid("json");
+    const features = await requireFeature("ordering", "Online ordering is paused right now. Please try again later.");
+    if (input.fulfilmentType === "delivery" && !features.delivery) throw badRequest("Delivery isn't available right now. Choose store pickup.");
+    if (input.fulfilmentType === "pickup" && !features.pickup) throw badRequest("Store pickup isn't available right now. Choose delivery.");
+    if (input.promoCode && !features.promoCodes) throw badRequest("Promo codes can't be used right now");
+    // Don't take an order nobody can pay for.
+    if (input.paymentMethod === "online" && !moneyMovesConfigured()) throw new HttpError(503, "Online payments aren't set up yet. Please contact us to order.");
+    const order = await placeOrder(c.get("user").id, input);
     return c.json(order, 201);
   })
   .get("/", async (c) => {

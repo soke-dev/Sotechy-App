@@ -5,7 +5,8 @@ import { z } from "zod";
 import { db, schema } from "../db/client";
 import { checkPassword, hashPassword, issueToken, requireAuth, type AppEnv } from "../lib/auth";
 import { env } from "../env";
-import { conflict, HttpError, unauthorized } from "../lib/errors";
+import { conflict, forbidden, HttpError, unauthorized } from "../lib/errors";
+import { getFeatures, requireFeature } from "../services/features";
 import { publicUser } from "../lib/serialize";
 
 const credentials = z.object({
@@ -18,6 +19,7 @@ export const authRoutes = new Hono<AppEnv>()
     "/register",
     zValidator("json", credentials.extend({ fullName: z.string().max(120).optional(), phone: z.string().max(30).optional() })),
     async (c) => {
+      await requireFeature("signups", "New accounts can't be created right now");
       const input = c.req.valid("json");
       const [existing] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, input.email));
       if (existing) throw conflict("An account with this email already exists");
@@ -40,6 +42,8 @@ export const authRoutes = new Hono<AppEnv>()
   })
   /** Google sign-in: the app sends Google's ID token; we verify it with Google before trusting it. */
   .post("/google", zValidator("json", z.object({ idToken: z.string().min(20) })), async (c) => {
+    const features = await getFeatures();
+    if (!features.googleSignIn) throw forbidden("Google sign-in is turned off");
     const allowed = env.GOOGLE_CLIENT_IDS.split(",").map((s) => s.trim()).filter(Boolean);
     if (allowed.length === 0) throw new HttpError(503, "Google sign-in is not configured yet");
 
@@ -59,6 +63,7 @@ export const authRoutes = new Hono<AppEnv>()
       [user] = await db.update(schema.users).set({ googleId: g.sub, avatarUrl: user.avatarUrl ?? g.picture ?? null }).where(eq(schema.users.id, user.id)).returning();
     }
     if (!user) {
+      if (!features.signups) throw forbidden("New accounts can't be created right now");
       [user] = await db.insert(schema.users).values({ email, googleId: g.sub, fullName: g.name ?? null, avatarUrl: g.picture ?? null }).returning();
     }
     if (!user.isActive) throw unauthorized("This account is disabled");

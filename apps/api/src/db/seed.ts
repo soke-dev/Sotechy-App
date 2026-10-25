@@ -1,17 +1,20 @@
 // Seeds required configuration, the head-office branch, base categories and the first admin.
-// Pass --demo to also insert clearly labelled [DEMO] products (not real Sotechy inventory).
+// Safe to run on every deploy: existing rows are kept. Add [DEMO] products with --demo or SEED_DEMO_PRODUCTS=true.
 import bcrypt from "bcryptjs";
 import { db, pool } from "./client";
 import * as s from "./schema";
 
-const withDemo = process.argv.includes("--demo");
+// Demo products: `--demo`, or SEED_DEMO_PRODUCTS=true on a test deployment (they are marked [DEMO]).
+const withDemo = process.argv.includes("--demo") || process.env.SEED_DEMO_PRODUCTS === "true";
 
 await db
   .insert(s.paymentMethods)
   .values([
-    { code: "bank_transfer", label: "Bank transfer", isEnabled: true, online: true, inStore: true, instructions: "Transfer the exact order total and use your order number as the narration." },
-    { code: "online", label: "Pay online (Money Moves)", isEnabled: false, online: true, inStore: false, instructions: "Enable after the Money Moves integration is completed." },
-    { code: "crypto", label: "Crypto", isEnabled: false, online: true, inStore: true, instructions: "Enable after crypto payment verification is configured." },
+    // The app pays through Money Moves (bank transfer, crypto or the Money Moves app on their page).
+    { code: "online", label: "Money Moves", isEnabled: true, online: true, inStore: false, instructions: "Pay securely with Money Moves: bank transfer, crypto or the Money Moves app." },
+    // Walk-in sales at the POS
+    { code: "bank_transfer", label: "Bank transfer", isEnabled: true, online: false, inStore: true, instructions: "Transfer the exact order total and use your order number as the narration." },
+    { code: "crypto", label: "Crypto (manual)", isEnabled: false, online: false, inStore: true, instructions: "Customers paying online use crypto inside Money Moves." },
     { code: "cash", label: "Cash", isEnabled: true, online: false, inStore: true },
     { code: "pos_terminal", label: "POS terminal", isEnabled: true, online: false, inStore: true },
   ])

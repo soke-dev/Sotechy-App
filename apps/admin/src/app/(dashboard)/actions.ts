@@ -5,9 +5,9 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { OrderStatus, PaymentMethodCode } from "@sotechy/shared";
+import type { AppFeatures, OrderStatus, PaymentMethodCode } from "@sotechy/shared";
 import type { ActionResult } from "@/lib/action-result";
-import { api, errorMessage, TOKEN_COOKIE } from "@/lib/api";
+import { api, errorMessage, TOKEN_COOKIE, uploadImages } from "@/lib/api";
 
 type Prev = ActionResult | null;
 
@@ -70,11 +70,17 @@ function productFields(f: FormData) {
   };
 }
 
+/** Product fields plus any photos chosen in the upload box. */
+async function productWithPhotos(f: FormData) {
+  const fields = productFields(f);
+  return { ...fields, images: [...fields.images, ...(await uploadImages(f.getAll("photos")))] };
+}
+
 export async function createProduct(_: Prev, f: FormData): Promise<ActionResult> {
   let id: string;
   try {
     const product = await api.post<{ id: string }>("/admin/products", {
-      ...productFields(f),
+      ...(await productWithPhotos(f)),
       variant: {
         sku: str(f, "sku"),
         name: str(f, "variantName") ?? "Standard",
@@ -93,7 +99,7 @@ export async function createProduct(_: Prev, f: FormData): Promise<ActionResult>
 
 export async function updateProduct(_: Prev, f: FormData) {
   const id = str(f, "id")!;
-  return run(() => api.patch(`/admin/products/${id}`, productFields(f)), [`/products/${id}`, "/products"]);
+  return run(async () => api.patch(`/admin/products/${id}`, await productWithPhotos(f)), [`/products/${id}`, "/products"]);
 }
 
 export async function addVariant(_: Prev, f: FormData) {
@@ -126,18 +132,22 @@ export async function updateVariant(_: Prev, f: FormData) {
   );
 }
 
+async function categoryFields(f: FormData) {
+  const [uploaded] = await uploadImages(f.getAll("image"));
+  return {
+    name: str(f, "name"),
+    parentId: str(f, "parentId") ?? null,
+    sortOrder: num(f, "sortOrder") ?? 0,
+    imageUrl: uploaded ?? str(f, "imageUrl") ?? null,
+  };
+}
+
 export async function createCategory(_: Prev, f: FormData) {
-  return run(
-    () =>
-      api.post("/admin/categories", {
-        name: str(f, "name"),
-        parentId: str(f, "parentId") ?? null,
-        sortOrder: num(f, "sortOrder") ?? 0,
-        imageUrl: str(f, "imageUrl") ?? null,
-      }),
-    ["/categories"],
-    "Category added",
-  );
+  return run(async () => api.post("/admin/categories", await categoryFields(f)), ["/categories"], "Category added");
+}
+
+export async function updateCategory(_: Prev, f: FormData) {
+  return run(async () => api.patch(`/admin/categories/${str(f, "id")}`, await categoryFields(f)), ["/categories"]);
 }
 
 export async function toggleCategory(_: Prev, f: FormData) {
@@ -370,4 +380,87 @@ export async function setReviewPublished(_: Prev, f: FormData) {
 
 export async function updateTicket(_: Prev, f: FormData) {
   return run(() => api.patch(`/admin/support/${str(f, "id")}`, { status: str(f, "status") }), ["/support"]);
+}
+
+// --- App switches, banners, exchange rate, customers ---------------------------
+type Switch = { [K in keyof AppFeatures]: AppFeatures[K] extends boolean ? K : never }[keyof AppFeatures];
+
+/** Saves one app switch straight away (called from a LiveSwitch). */
+export async function setFeature(key: Switch, value: boolean): Promise<{ error?: string }> {
+  try {
+    await api.patch("/admin/features", { [key]: value });
+  } catch (err) {
+    return { error: errorMessage(err) };
+  }
+  revalidatePath("/switches");
+  return {};
+}
+
+export async function saveFeatureText(_: Prev, f: FormData) {
+  const field = str(f, "field") as "maintenanceMessage" | "announcement";
+  return run(() => api.patch("/admin/features", { [field]: (f.get("value") as string | null)?.trim() ?? "" }), ["/switches"]);
+}
+
+function bannerFields(f: FormData, imageUrl: string | null) {
+  // Times are typed in Lagos time (UTC+1, no daylight saving), whatever the server's timezone.
+  const date = (k: string) => (str(f, k) ? new Date(`${str(f, k)}:00+01:00`).toISOString() : null);
+  return {
+    eyebrow: str(f, "eyebrow") ?? null,
+    title: str(f, "title"),
+    subtitle: str(f, "subtitle") ?? null,
+    ctaLabel: str(f, "ctaLabel") ?? "Shop now",
+    imageUrl,
+    style: str(f, "style") ?? "dark",
+    linkType: str(f, "linkType") ?? "none",
+    linkValue: str(f, "linkValue") ?? null,
+    sortOrder: num(f, "sortOrder") ?? 0,
+    isActive: bool(f, "isActive"),
+    startsAt: date("startsAt"),
+    endsAt: date("endsAt"),
+  };
+}
+
+export async function saveBanner(_: Prev, f: FormData) {
+  const id = str(f, "id");
+  return run(
+    async () => {
+      const [uploaded] = await uploadImages(f.getAll("image"));
+      const imageUrl = bool(f, "removeImage") ? null : (uploaded ?? str(f, "imageUrl") ?? null);
+      const body = bannerFields(f, imageUrl);
+      return id ? api.patch(`/admin/banners/${id}`, body) : api.post("/admin/banners", body);
+    },
+    ["/banners"],
+    id ? "Banner saved" : "Banner added",
+  );
+}
+
+export async function setBannerActive(id: string, isActive: boolean): Promise<{ error?: string }> {
+  try {
+    await api.patch(`/admin/banners/${id}`, { isActive });
+  } catch (err) {
+    return { error: errorMessage(err) };
+  }
+  revalidatePath("/banners");
+  return {};
+}
+
+export async function deleteBanner(_: Prev, f: FormData) {
+  return run(() => api.delete(`/admin/banners/${str(f, "id")}`), ["/banners"], "Banner deleted");
+}
+
+export async function saveFx(_: Prev, f: FormData) {
+  return run(
+    () => api.put("/admin/settings/fx", { source: str(f, "source") === "manual" ? "manual" : "moneymoves", manualRate: num(f, "manualRate") ?? null }),
+    ["/settings"],
+  );
+}
+
+export async function setCustomerActive(id: string, isActive: boolean): Promise<{ error?: string }> {
+  try {
+    await api.patch(`/admin/users/${id}`, { isActive });
+  } catch (err) {
+    return { error: errorMessage(err) };
+  }
+  revalidatePath("/customers");
+  return {};
 }

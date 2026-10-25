@@ -30,6 +30,24 @@ export async function getCurrentUser(): Promise<User> {
   }
 }
 
+/** Uploads images to the API (served at /media/:id) and returns their public URLs. Empty file inputs are skipped. */
+export async function uploadImages(files: FormDataEntryValue[]): Promise<string[]> {
+  const images = files.filter((f): f is File => f instanceof File && f.size > 0);
+  if (images.length === 0) return [];
+  const body = new FormData();
+  for (const file of images) body.append("file", file, file.name);
+  const token = (await cookies()).get(TOKEN_COOKIE)?.value;
+  const res = await fetch(`${(process.env.API_URL ?? "http://localhost:4000").replace(/\/$/, "")}/admin/media`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body,
+    cache: "no-store",
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, json?.error ?? "Upload failed");
+  return (json as { url: string }[]).map((m) => m.url);
+}
+
 export function errorMessage(err: unknown) {
   if (err instanceof ApiError && err.details) {
     const issues = (err.details as { issues?: { message: string }[] })?.issues;

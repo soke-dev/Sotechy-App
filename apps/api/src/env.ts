@@ -8,11 +8,19 @@ const schema = z.object({
   CORS_ORIGINS: z.string().default("http://localhost:3000,http://localhost:3001,http://localhost:8081"),
   /** Comma-separated Google OAuth client IDs (iOS, Android, web) accepted for Google sign-in */
   GOOGLE_CLIENT_IDS: z.string().default(""),
+  /** Defaults to https://business.usemoneymoves.xyz/api/v1 (test and live share it) */
   MONEYMOVES_API_URL: z.string().optional(),
+  /** sk_test_… or sk_live_… from Money Moves → Developers → API keys */
   MONEYMOVES_SECRET_KEY: z.string().optional(),
+  /** whsec_… from Money Moves → Developers → Webhooks (test and live have different secrets) */
   MONEYMOVES_WEBHOOK_SECRET: z.string().optional(),
-  MONEYMOVES_CALLBACK_URL: z.string().optional(),
+  /** This API's public URL, e.g. https://api.sotechy.shop (Railway sets RAILWAY_PUBLIC_DOMAIN automatically) */
+  PUBLIC_API_URL: z.string().optional(),
+  RAILWAY_PUBLIC_DOMAIN: z.string().optional(),
+  /** The customer app's URL scheme, used to send people back to the app after paying */
+  APP_SCHEME: z.string().default("sotechy"),
 });
 
 export const env = schema.parse(process.env);
 export const corsOrigins = env.CORS_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean);
+export const publicApiUrl = (env.PUBLIC_API_URL || (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : "")).replace(/\/+$/, "");

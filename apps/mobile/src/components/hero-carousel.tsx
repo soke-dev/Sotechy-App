@@ -3,7 +3,9 @@ import { Image, type ImageSource } from "expo-image";
 import { router, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Linking, Pressable, ScrollView, View } from "react-native";
+import type { Banner as AdminBanner } from "@sotechy/shared";
 import { demoMedia } from "@/lib/mock-api";
+import { useStoreConfig } from "@/lib/store-config";
 import { colors as theme, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
 
 // Banners are designed artwork: they keep the same colours in light and dark mode.
@@ -39,9 +41,8 @@ interface Slide {
   outlined?: boolean;
 }
 
-// Custom-designed banners built from product images. Copy and offers are placeholders —
-// later these should be managed from the admin dashboard.
-const slides: Slide[] = [
+// Built-in banners, shown until banners are added in Admin → Home banners.
+const builtInSlides: Slide[] = [
   {
     bg: colors.ink,
     fg: colors.white,
@@ -166,6 +167,35 @@ function Banner({ s, width, height }: { s: Slide; width: number; height: number 
   );
 }
 
+/** Admin colour styles mapped onto the banner artwork. */
+const STYLES: Record<AdminBanner["style"], Pick<Slide, "bg" | "fg" | "accent" | "circle" | "outlined">> = {
+  dark: { bg: colors.ink, fg: colors.white, accent: colors.brandYellow, circle: colors.brand },
+  orange: { bg: colors.brand, fg: colors.ink, accent: colors.ink, circle: colors.brandYellow },
+  light: { bg: colors.brandSoft, fg: colors.ink, accent: colors.brandPressed, circle: colors.brand, outlined: true },
+};
+
+function fromAdmin(b: AdminBanner): Slide {
+  const action: Slide["action"] =
+    b.linkType === "category" && b.linkValue
+      ? { pathname: "/shop", params: { category: b.linkValue } }
+      : b.linkType === "product" && b.linkValue
+        ? { pathname: "/product/[id]", params: { id: b.linkValue } }
+        : b.linkType === "deals"
+          ? { pathname: "/shop", params: { featured: "1" } }
+          : b.linkType === "url" && b.linkValue?.startsWith("https://")
+            ? () => Linking.openURL(b.linkValue!)
+            : () => {};
+  return {
+    ...STYLES[b.style],
+    overline: b.eyebrow ?? "",
+    title: b.title,
+    subtitle: b.subtitle ?? "",
+    cta: b.ctaLabel,
+    action,
+    art: b.imageUrl ? [{ source: { uri: b.imageUrl }, w: 0.5, h: 0.7, right: 0.02, bottom: 0.1 }] : undefined,
+  };
+}
+
 const AUTOPLAY_MS = 5000;
 
 export function HeroCarousel({ width }: { width: number }) {
@@ -174,19 +204,21 @@ export function HeroCarousel({ width }: { width: number }) {
   const pausedUntil = useRef(0);
   const height = Math.round(width * 0.52);
   const step = width + space.md;
+  const adminBanners = useStoreConfig().config?.banners;
+  const slides = adminBanners?.length ? adminBanners.map(fromAdmin) : builtInSlides;
 
   // Auto-advance; pauses for a while after the user swipes.
   useEffect(() => {
     const t = setInterval(() => {
       if (Date.now() < pausedUntil.current) return;
       setIndex((i) => {
-        const next = (i + 1) % slides.length;
+        const next = (i + 1) % Math.max(1, slides.length);
         scroller.current?.scrollTo({ x: next * step, animated: true });
         return next;
       });
     }, AUTOPLAY_MS);
     return () => clearInterval(t);
-  }, [step]);
+  }, [step, slides.length]);
 
   return (
     <View>

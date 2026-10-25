@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderDetail } from "@sotechy/shared";
 import { useDialog } from "@/components/dialog";
 import { PayOptionsLine, useMoneyMoves } from "@/components/money-moves";
@@ -126,12 +126,27 @@ function Hero({ order, onCopy }: { order: OrderDetail; onCopy: (v: string) => vo
 }
 
 export default function OrderScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, checking } = useLocalSearchParams<{ id: string; checking?: string }>();
   const { data: order, error, loading, reload } = useAsync(() => api.order(id), [id]);
   const config = useAsync(() => api.storeConfig());
   const [cancelling, setCancelling] = useState(false);
   const [paying, setPaying] = useState(false);
   const moneyMoves = useMoneyMoves();
+  // After Money Moves closes, look for the payment for a minute (the webhook can take a few seconds).
+  const [watchUntil, setWatchUntil] = useState(checking ? Date.now() + 60_000 : 0);
+  const watching = !!order && order.status === "pending_payment" && watchUntil > Date.now();
+  useEffect(() => {
+    if (!watching) return;
+    const t = setTimeout(reload, 4000);
+    return () => clearTimeout(t);
+  }, [watching, order, reload]);
+  useEffect(() => {
+    if (watchUntil && order?.status === "paid") {
+      setWatchUntil(0);
+      toast("Payment received", { icon: "checkmark-circle" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.status]);
   const toast = useToast();
   const dialog = useDialog();
   const cart = useCart();
@@ -178,8 +193,8 @@ export default function OrderScreen() {
     setPaying(true);
     try {
       const paid = await moneyMoves.pay({ id: order!.id, orderNumber: order!.orderNumber, total: order!.total });
+      if (!paid) setWatchUntil(Date.now() + 60_000);
       await reload();
-      if (paid) toast("Payment received", { icon: "checkmark-circle" });
     } catch (err) {
       toast(err instanceof Error ? err.message : "Payment didn't open", { icon: "alert-circle" });
     } finally {
@@ -200,6 +215,13 @@ export default function OrderScreen() {
       <Stack.Screen options={{ title: "Track order" }} />
 
       <Hero order={order} onCopy={copy} />
+
+      {watching && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: space.md }}>
+          <ActivityIndicator color={colors.brandPressed} />
+          <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>Checking for your Money Moves payment. This usually takes a few seconds.</Txt>
+        </View>
+      )}
 
       {pi && (
         <Section title="How to pay" illo="wallet" right={<Txt variant="caption">{PAYMENT_METHOD_LABELS[pi.method]}</Txt>}>

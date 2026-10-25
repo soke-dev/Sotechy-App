@@ -34,6 +34,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
+import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
@@ -69,11 +70,11 @@ function timeAgo(iso: string) {
 }
 
 /** Segmented tabs; the Reviews tab shows the product's star rating. */
-function ProductTabs({ tab, onChange, rating, count }: { tab: Tab; onChange: (t: Tab) => void; rating: number; count: number }) {
+function ProductTabs({ tab, onChange, rating, count, reviews }: { tab: Tab; onChange: (t: Tab) => void; rating: number; count: number; reviews: boolean }) {
   const items: { key: Tab; label: string; sub?: string }[] = [
     { key: "overview", label: "Overview", sub: "Options & store" },
     { key: "about", label: "About & specs", sub: "Full details" },
-    { key: "reviews", label: "Reviews" },
+    ...(reviews ? [{ key: "reviews" as const, label: "Reviews" }] : []),
   ];
   return (
     <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 4, padding: 4, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt }}>
@@ -336,6 +337,7 @@ export default function ProductScreen() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const galleryRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const cart = useCart();
+  const features = useFeatures();
   const showAdded = useCartFeedback();
   const { user } = useAuth();
   const toast = useToast();
@@ -362,6 +364,9 @@ export default function ProductScreen() {
   const available = stock.reduce((n, s) => n + s.quantity - s.reserved, 0);
   const storesWithStock = stock.filter((s) => s.quantity - s.reserved > 0);
   const off = variant ? discountPercent(variant.price, variant.compareAtPrice) : 0;
+  const lowStock = features.lowStockBadges && available <= product.lowStockThreshold;
+  // The Reviews tab disappears when reviews are switched off in admin.
+  const shownTab: Tab = tab === "reviews" && !features.reviews ? "overview" : tab;
   const rating = reviews.data?.summary.average ?? product.ratingAverage ?? 0;
   const ratingCount = reviews.data?.summary.count ?? product.ratingCount ?? 0;
   const mine = user ? reviews.data?.reviews.find((r) => r.userId === user.id) : undefined;
@@ -428,19 +433,21 @@ export default function ProductScreen() {
               <Txt variant="caption" color={colors.white}>{imageIndex + 1} / {product.images.length}</Txt>
             </View>
           )}
-          <Pressable
-            onPress={() =>
-              openWhatsApp(
-                config.data?.support.whatsapp,
-                `Hello Sotechy, I'd like to order: ${product.name}${product.variants.length > 1 && variant ? ` (${variant.name})` : ""} – ${formatNaira(variant?.price)}`,
-              )
-            }
-            accessibilityLabel="Order on WhatsApp"
-            style={({ pressed }) => ({ position: "absolute", right: gutter, bottom: radius.xl + space.md, flexDirection: "row", alignItems: "center", gap: 6, height: 40, paddingLeft: 14, paddingRight: 12, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : `${colors.surface}F2` })}
-          >
-            <Txt variant="label">Order on</Txt>
-            <Ionicons name="logo-whatsapp" size={21} color={colors.brandPressed} />
-          </Pressable>
+          {features.whatsapp && (
+            <Pressable
+              onPress={() =>
+                openWhatsApp(
+                  config.data?.support.whatsapp,
+                  `Hello Sotechy, I'd like to order: ${product.name}${product.variants.length > 1 && variant ? ` (${variant.name})` : ""} – ${formatNaira(variant?.price)}`,
+                )
+              }
+              accessibilityLabel="Order on WhatsApp"
+              style={({ pressed }) => ({ position: "absolute", right: gutter, bottom: radius.xl + space.md, flexDirection: "row", alignItems: "center", gap: 6, height: 40, paddingLeft: 14, paddingRight: 12, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : `${colors.surface}F2` })}
+            >
+              <Txt variant="label">Order on</Txt>
+              <Ionicons name="logo-whatsapp" size={21} color={colors.brandPressed} />
+            </Pressable>
+          )}
           <View style={[ui.between, { position: "absolute", top: insets.top + space.sm, left: gutter, right: gutter }]}>
             <IconButton icon="chevron-back" tone="glass" onPress={() => router.back()} />
             <View style={ui.row}>
@@ -474,7 +481,7 @@ export default function ProductScreen() {
             <Txt variant="title">{product.name}</Txt>
             <View style={[ui.row, { marginTop: 4, flexWrap: "wrap" }]}>
               <Price amount={variant?.price ?? 0} compareAt={variant?.compareAtPrice} size="lg" />
-              {fx.data && variant ? (
+              {features.usdPrices && fx.data && variant ? (
                 <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 }}>
                   <Txt variant="label" color={colors.ink2} style={{ fontSize: 13 }}>≈ {formatUsd(variant.price, fx.data.rate)}</Txt>
                 </View>
@@ -484,19 +491,19 @@ export default function ProductScreen() {
             {available > 0 ? (
               <Pill
                 icon="checkmark-circle"
-                tone={available <= product.lowStockThreshold ? "warning" : "success"}
-                label={available <= product.lowStockThreshold ? `Only ${available} left` : `In stock at ${storesWithStock.length} store${storesWithStock.length === 1 ? "" : "s"}`}
+                tone={lowStock ? "warning" : "success"}
+                label={lowStock ? `Only ${available} left` : `In stock at ${storesWithStock.length} store${storesWithStock.length === 1 ? "" : "s"}`}
               />
             ) : (
               <Pill icon="close-circle" tone="danger" label="Out of stock" />
             )}
           </View>
 
-          <ProductTabs tab={tab} onChange={setTab} rating={rating} count={ratingCount} />
+          <ProductTabs tab={shownTab} onChange={setTab} rating={rating} count={ratingCount} reviews={features.reviews} />
 
-          {tab === "overview" && <OverviewTab product={product} variantId={variant?.id} onVariant={setVariantId} pickupBranch={storesWithStock[0]?.branchName} />}
-          {tab === "about" && <AboutTab product={product} />}
-          {tab === "reviews" && <ReviewsTab data={reviews.data} loading={reviews.loading} mine={mine} onWrite={openReview} />}
+          {shownTab === "overview" && <OverviewTab product={product} variantId={variant?.id} onVariant={setVariantId} pickupBranch={storesWithStock[0]?.branchName} />}
+          {shownTab === "about" && <AboutTab product={product} />}
+          {shownTab === "reviews" && <ReviewsTab data={reviews.data} loading={reviews.loading} mine={mine} onWrite={openReview} />}
         </View>
 
         {related.data && related.data.items.length > 0 && (

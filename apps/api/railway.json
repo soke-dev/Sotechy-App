@@ -3,11 +3,16 @@
   "build": {
     "builder": "RAILPACK",
     "buildCommand": "pnpm --filter @sotechy/api build",
-    "watchPatterns": ["apps/api/**", "packages/shared/**"]
+    "watchPatterns": [
+      "apps/api/**",
+      "packages/shared/**"
+    ]
   },
   "deploy": {
     "startCommand": "pnpm --filter @sotechy/api start",
-    "preDeployCommand": ["pnpm --filter @sotechy/api db:migrate:prod"],
+    "preDeployCommand": [
+      "pnpm --filter @sotechy/api db:migrate:prod && pnpm --filter @sotechy/api db:seed:prod"
+    ],
     "healthcheckPath": "/health",
     "restartPolicyType": "ON_FAILURE"
   }
