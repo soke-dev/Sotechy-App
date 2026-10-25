@@ -1,3 +1,4 @@
+import { Building2 } from "lucide-react";
 import type { Branch } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { Card, DataTable, ErrorNote, Field, inputClass, PageHeader } from "@/components/ui";
@@ -8,7 +9,7 @@ export default async function BranchesPage() {
   const { data, error } = await load<Branch[]>("/admin/branches");
   return (
     <>
-      <PageHeader title="Branches" description="Physical stores. Each has its own stock." />
+      <PageHeader icon={Building2} title="Branches" description="Physical stores. Each has its own stock." />
       <Card title="Add branch (admins)" className="mb-4">
         <ActionForm action={createBranch} submitLabel="Add branch">
           <Field label="Name"><input name="name" required className={inputClass} /></Field>

@@ -1,3 +1,4 @@
+import { Star } from "lucide-react";
 import { formatDate } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { Card, DataTable, ErrorNote, PageHeader } from "@/components/ui";
@@ -15,6 +16,7 @@ export default async function ReviewsPage() {
   return (
     <>
       <PageHeader
+        icon={Star}
         title="Reviews"
         description={`Customer reviews shown in the app · ${published.length} live, average ${average}. Hide anything abusive or off-topic (managers).`}
       />
@@ -31,7 +33,7 @@ export default async function ReviewsPage() {
               cell: (r) => (
                 <div className="max-w-md">
                   {r.title && <p className="font-medium">{r.title}</p>}
-                  <p className="line-clamp-3 text-neutral-600">{r.body}</p>
+                  <p className="line-clamp-3 text-muted">{r.body}</p>
                 </div>
               ),
             },
@@ -40,7 +42,7 @@ export default async function ReviewsPage() {
               cell: (r) => (
                 <div>
                   <p>{r.customerName ?? "—"}</p>
-                  <p className="text-xs text-neutral-500">{r.customerEmail}</p>
+                  <p className="text-xs text-muted">{r.customerEmail}</p>
                   {r.verified && <p className="text-xs text-green-700">Verified purchase</p>}
                 </div>
               ),
@@ -51,7 +53,7 @@ export default async function ReviewsPage() {
                 <ActionForm action={setReviewPublished} submitLabel={r.isPublished ? "Hide" : "Show"}>
                   <input type="hidden" name="id" value={r.id} />
                   <input type="hidden" name="isPublished" value={String(!r.isPublished)} />
-                  <span className={`text-sm ${r.isPublished ? "text-green-700" : "text-neutral-500"}`}>{r.isPublished ? "Live" : "Hidden"}</span>
+                  <span className={`text-sm ${r.isPublished ? "text-green-700" : "text-muted"}`}>{r.isPublished ? "Live" : "Hidden"}</span>
                 </ActionForm>
               ),
             },

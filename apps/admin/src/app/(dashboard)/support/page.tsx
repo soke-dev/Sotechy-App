@@ -1,3 +1,4 @@
+import { LifeBuoy } from "lucide-react";
 import { formatDate } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { Card, DataTable, ErrorNote, PageHeader, StatusBadge, inputClass } from "@/components/ui";
@@ -9,7 +10,7 @@ export default async function SupportPage() {
   const { data, error } = await load<SupportTicketRow[]>("/admin/support");
   return (
     <>
-      <PageHeader title="Support requests" description="Messages sent from the customer app" />
+      <PageHeader icon={LifeBuoy} title="Support requests" description="Messages sent from the customer app" />
       <Card>
         <ErrorNote error={error} />
         <DataTable
@@ -18,7 +19,7 @@ export default async function SupportPage() {
             { header: "When", cell: (t) => formatDate(t.createdAt) },
             { header: "Customer", cell: (t) => t.customerEmail ?? "—" },
             { header: "Subject", cell: (t) => <span className="font-medium">{t.subject}</span> },
-            { header: "Message", cell: (t) => <p className="max-w-md whitespace-pre-wrap text-neutral-600">{t.message}</p> },
+            { header: "Message", cell: (t) => <p className="max-w-md whitespace-pre-wrap text-muted">{t.message}</p> },
             {
               header: "Status",
               cell: (t) => (

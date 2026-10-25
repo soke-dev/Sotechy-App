@@ -1,5 +1,7 @@
 import type { CryptoAsset, PaymentMethodConfig } from "@sotechy/shared";
+import { CircleAlert, CircleCheck, Settings as SettingsIcon } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
+import { SwitchField } from "@/components/switch";
 import { Card, ErrorNote, Field, inputClass, PageHeader } from "@/components/ui";
 import { load } from "@/lib/api";
 import { saveFx, saveSetting, updateCryptoAsset, updatePaymentMethod } from "../actions";
@@ -18,9 +20,9 @@ interface MoneyMovesStatus {
 
 function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
-    <li className="flex gap-2">
-      <span className={ok ? "text-green-700" : "text-amber-600"}>{ok ? "✓" : "!"}</span>
-      <span>{children}</span>
+    <li className="flex items-start gap-2">
+      {ok ? <CircleCheck size={16} className="mt-0.5 shrink-0 text-green-600" /> : <CircleAlert size={16} className="mt-0.5 shrink-0 text-amber-600" />}
+      <span className="text-ink-2">{children}</span>
     </li>
   );
 }
@@ -39,33 +41,32 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" description="Payments, exchange rate, delivery and contact details (admins)" />
-      <div className="flex flex-col gap-4">
-        <Card title="Money Moves (online payments)">
+      <PageHeader title="Settings" description="Payments, exchange rate, delivery and contact details (admins)" icon={SettingsIcon} />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card title="Money Moves (online payments)" className="xl:col-span-2">
           <ErrorNote error={mm.error} />
           {m && (
             <div className="flex flex-col gap-3 text-sm">
-              <p>
-                {m.account ? (
-                  <span className="font-medium text-green-700">Connected to {m.account.name}</span>
-                ) : m.configured ? (
-                  <span className="font-medium text-red-700">Can&apos;t connect: {m.error}</span>
-                ) : (
-                  <span className="font-medium text-amber-700">Not connected yet</span>
+              <div
+                className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3 ${m.account ? "bg-green-50 text-green-800" : m.configured ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}
+              >
+                {m.account ? <CircleCheck size={20} /> : <CircleAlert size={20} />}
+                <span className="font-semibold">{m.account ? `Connected to ${m.account.name}` : m.configured ? `Can't connect: ${m.error}` : "Not connected yet"}</span>
+                {m.mode && (
+                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${m.mode === "live" ? "bg-green-600 text-white" : "bg-amber-500 text-white"}`}>{m.mode} mode</span>
                 )}
-                {m.mode && <span className="ml-2 rounded bg-neutral-100 px-2 py-0.5 text-xs uppercase">{m.mode} mode</span>}
-                {m.account && !m.account.verified && m.mode === "live" && <span className="ml-2 text-xs text-amber-700">Business not verified yet</span>}
-              </p>
+                {m.account && !m.account.verified && m.mode === "live" && <span className="text-xs">Business not verified yet</span>}
+              </div>
               <ul className="flex flex-col gap-1">
                 <Check ok={m.configured}>API key set on the server (<code>MONEYMOVES_SECRET_KEY</code>: sk_test_… while testing, sk_live_… to take real money)</Check>
                 <Check ok={m.webhookSecretSet}>Webhook secret set (<code>MONEYMOVES_WEBHOOK_SECRET</code>, starts with whsec_)</Check>
                 <Check ok={m.publicUrlSet}>Public API address known, so customers return to the app after paying</Check>
               </ul>
-              <div className="rounded bg-neutral-50 p-3">
-                <p className="text-xs text-neutral-500">In Money Moves → Developers → Webhooks, add this endpoint:</p>
-                <code className="select-all break-all text-sm">{m.webhookUrl}</code>
+              <div className="rounded-xl border border-line bg-canvas p-3">
+                <p className="text-xs text-muted">In Money Moves → Developers → Webhooks, add this endpoint:</p>
+                <code className="mt-1 block select-all break-all text-sm">{m.webhookUrl}</code>
               </div>
-              <p className="text-xs text-neutral-500">Customers choose bank transfer, crypto or the Money Moves app on the Money Moves page. Keep &quot;Money Moves&quot; below enabled and set to Online.</p>
+              <p className="text-xs text-muted">Customers choose bank transfer, crypto or the Money Moves app on the Money Moves page. Keep &quot;Money Moves&quot; below enabled and set to Online.</p>
             </div>
           )}
         </Card>
@@ -74,7 +75,7 @@ export default async function SettingsPage() {
           {m && (
             <p className="mb-3 text-sm">
               Now: <span className="font-medium">₦{m.rate.rate.toLocaleString("en-NG")} = $1</span>{" "}
-              <span className="text-neutral-500">({m.rate.source === "moneymoves" ? "live from Money Moves" : m.rate.source === "manual" ? "your manual rate" : "placeholder until Money Moves is connected"})</span>
+              <span className="text-muted">({m.rate.source === "moneymoves" ? "live from Money Moves" : m.rate.source === "manual" ? "your manual rate" : "placeholder until Money Moves is connected"})</span>
             </p>
           )}
           <ActionForm action={saveFx}>
@@ -88,32 +89,38 @@ export default async function SettingsPage() {
           </ActionForm>
         </Card>
 
-        <Card title="Payment methods">
-          <p className="mb-3 text-xs text-neutral-500">
-            The app pays through Money Moves only. Cash, POS terminal and bank transfer are used for walk-in sales at the POS.
-          </p>
-          <div className="flex flex-col gap-3">
+        <Card className="xl:col-span-2" title="Payment methods" description="The app pays through Money Moves only. Cash, POS terminal and bank transfer are for walk-in sales at the POS.">
+          <div className="flex flex-col divide-y divide-line">
             {data.paymentMethods.map((m) => (
-              <ActionForm key={m.code} action={updatePaymentMethod}>
+              <ActionForm
+                key={m.code}
+                action={updatePaymentMethod}
+                className="grid gap-3 py-4 first:pt-0 last:pb-0 md:grid-cols-[170px_minmax(0,auto)_minmax(0,1fr)_auto] md:items-center"
+              >
                 <input type="hidden" name="code" value={m.code} />
-                <span className="w-40 text-sm font-medium">{m.label}</span>
-                <label className="text-sm"><input type="checkbox" name="isEnabled" defaultChecked={m.isEnabled} /> Enabled</label>
-                <label className="text-sm"><input type="checkbox" name="online" defaultChecked={m.online} /> Online</label>
-                <label className="text-sm"><input type="checkbox" name="inStore" defaultChecked={m.inStore} /> In store</label>
-                <input name="instructions" defaultValue={m.instructions ?? ""} placeholder="Customer instructions" className={`${inputClass} min-w-64 flex-1`} />
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                  <span className={`h-2 w-2 rounded-full ${m.isEnabled ? "bg-green-500" : "bg-neutral-300"}`} />
+                  {m.label}
+                </span>
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                  <SwitchField name="isEnabled" label="Enabled" defaultChecked={m.isEnabled} />
+                  <SwitchField name="online" label="Online" defaultChecked={m.online} />
+                  <SwitchField name="inStore" label="In store" defaultChecked={m.inStore} />
+                </div>
+                <input name="instructions" defaultValue={m.instructions ?? ""} placeholder="What customers see" className={`${inputClass} w-full`} />
               </ActionForm>
             ))}
           </div>
         </Card>
 
         <Card title="Crypto assets">
-          <p className="mb-3 text-xs text-neutral-500">Public receiving addresses only. Never enter private keys or seed phrases.</p>
+          <p className="mb-3 text-xs text-muted">Public receiving addresses only. Never enter private keys or seed phrases.</p>
           {data.cryptoAssets.map((a) => (
             <ActionForm key={a.id} action={updateCryptoAsset}>
               <input type="hidden" name="id" value={a.id} />
               <span className="w-40 text-sm font-medium">{a.symbol} · {a.network}</span>
               <input name="receivingAddress" defaultValue={a.receivingAddress ?? ""} placeholder="Receiving address" className={`${inputClass} min-w-80 flex-1`} />
-              <label className="text-sm"><input type="checkbox" name="isEnabled" defaultChecked={a.isEnabled} /> Enabled</label>
+              <SwitchField name="isEnabled" label="Enabled" defaultChecked={a.isEnabled} />
             </ActionForm>
           ))}
         </Card>

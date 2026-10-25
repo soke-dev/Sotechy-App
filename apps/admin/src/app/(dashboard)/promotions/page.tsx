@@ -1,3 +1,4 @@
+import { BadgePercent } from "lucide-react";
 import { formatDate, formatNaira, PAYMENT_METHOD_LABELS, type Promotion } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { Card, DataTable, ErrorNote, Field, inputClass, PageHeader } from "@/components/ui";
@@ -9,6 +10,7 @@ export default async function PromotionsPage() {
   return (
     <>
       <PageHeader
+        icon={BadgePercent}
         title="Promotions"
         description="Leave the code empty to apply automatically when eligible (e.g. up to 10% off when paying with $MOVE)"
       />

@@ -1,3 +1,4 @@
+import { Truck } from "lucide-react";
 import { formatDate, formatNaira, type Branch } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { Card, DataTable, ErrorNote, Field, inputClass, PageHeader, StatusBadge } from "@/components/ui";
@@ -15,7 +16,7 @@ export default async function SuppliersPage() {
 
   return (
     <>
-      <PageHeader title="Suppliers & purchasing" description="Receiving a purchase order adds stock and records the latest cost price (managers)" />
+      <PageHeader icon={Truck} title="Suppliers & purchasing" description="Receiving a purchase order adds stock and records the latest cost price (managers)" />
       <ErrorNote error={suppliers.error} />
       <div className="mb-4 grid gap-4 lg:grid-cols-2">
         <Card title="Add supplier">

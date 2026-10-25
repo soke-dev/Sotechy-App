@@ -21,10 +21,11 @@ export function ActionForm({
     <form action={formAction} className={className}>
       {children}
       <button type="submit" disabled={pending} className={buttonClass}>
+        {pending && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
         {pending ? "Saving…" : submitLabel}
       </button>
-      {state?.error && <p className="w-full text-sm text-red-600">{state.error}</p>}
-      {state?.message && <p className="w-full text-sm text-green-700">{state.message}</p>}
+      {state?.error && <p className="w-full rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
+      {state?.message && <p className="w-full text-sm font-medium text-green-700">✓ {state.message}</p>}
     </form>
   );
 }

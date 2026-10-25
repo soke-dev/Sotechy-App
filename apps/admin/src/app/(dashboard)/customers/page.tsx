@@ -1,3 +1,4 @@
+import { Users } from "lucide-react";
 import { formatDate, type User } from "@sotechy/shared";
 import { LiveSwitch } from "@/components/switch";
 import { Card, DataTable, ErrorNote, PageHeader } from "@/components/ui";
@@ -8,7 +9,7 @@ export default async function CustomersPage() {
   const { data, error } = await load<(User & { isActive: boolean })[]>("/admin/customers");
   return (
     <>
-      <PageHeader title="Customers" description="Registered customer accounts. Blocking signs a customer out and stops them signing in (admins)." />
+      <PageHeader icon={Users} title="Customers" description="Registered customer accounts. Blocking signs a customer out and stops them signing in (admins)." />
       <Card>
         <ErrorNote error={error} />
         <DataTable

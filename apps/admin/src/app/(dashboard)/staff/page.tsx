@@ -1,3 +1,4 @@
+import { UserCog } from "lucide-react";
 import { ROLE_LABELS, type Branch, type Role, type User } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { Card, DataTable, ErrorNote, Field, inputClass, PageHeader } from "@/components/ui";
@@ -12,7 +13,7 @@ export default async function StaffPage() {
 
   return (
     <>
-      <PageHeader title="Staff & roles" description="Staff record sales at their branch; managers adjust stock and verify payments; admins configure everything" />
+      <PageHeader icon={UserCog} title="Staff & roles" description="Staff record sales at their branch; managers adjust stock and verify payments; admins configure everything" />
       <Card title="Add staff account (admins)" className="mb-4">
         <ActionForm action={createStaff} submitLabel="Create account">
           <Field label="Full name"><input name="fullName" className={inputClass} /></Field>

@@ -1,3 +1,4 @@
+import { Package } from "lucide-react";
 import Link from "next/link";
 import { formatNaira, type CatalogProduct } from "@sotechy/shared";
 import { Card, DataTable, ErrorNote, PageHeader, buttonClass } from "@/components/ui";
@@ -8,6 +9,7 @@ export default async function ProductsPage() {
   return (
     <>
       <PageHeader
+        icon={Package}
         title="Products"
         description="Central catalogue shared by the app, website and stores"
         actions={<Link href="/products/new" className={buttonClass}>Add product</Link>}

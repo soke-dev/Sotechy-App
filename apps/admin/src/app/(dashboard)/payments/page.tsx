@@ -1,3 +1,4 @@
+import { CreditCard } from "lucide-react";
 import Link from "next/link";
 import { formatDate, formatNaira, PAYMENT_METHOD_LABELS } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
@@ -15,10 +16,10 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title="Payments & refunds" description="Orders become paid only after provider or manager verification" />
+      <PageHeader icon={CreditCard} title="Payments & refunds" description="Orders become paid only after provider or manager verification" />
       <div className="mb-4 flex gap-2 text-sm">
         {["", "pending", "confirmed", "expired", "refunded"].map((s) => (
-          <Link key={s} href={s ? `/payments?status=${s}` : "/payments"} className="rounded-full border border-neutral-300 bg-white px-3 py-1">
+          <Link key={s} href={s ? `/payments?status=${s}` : "/payments"} className="rounded-full border border-line bg-white px-3 py-1">
             {s || "All"}
           </Link>
         ))}

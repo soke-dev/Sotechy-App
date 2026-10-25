@@ -1,3 +1,4 @@
+import { ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from "@sotechy/shared";
 import { Card, DataTable, ErrorNote, PageHeader, StatusBadge } from "@/components/ui";
@@ -20,10 +21,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <PageHeader title="Orders" description="Online and in-store orders" />
+      <PageHeader icon={ShoppingBag} title="Orders" description="Online and in-store orders" />
       <div className="mb-4 flex flex-wrap gap-2 text-sm">
         {filters.map((f) => (
-          <Link key={f.href} href={f.href} className="rounded-full border border-neutral-300 bg-white px-3 py-1 hover:bg-neutral-100">
+          <Link key={f.href} href={f.href} className="rounded-full border border-line bg-white px-3 py-1 hover:bg-canvas">
             {f.label}
           </Link>
         ))}

@@ -1,3 +1,4 @@
+import { Boxes } from "lucide-react";
 import Link from "next/link";
 import { formatDate, type Branch } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
@@ -21,11 +22,11 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title="Inventory" description="Stock per branch. Reserved = held by unpaid orders." />
+      <PageHeader icon={Boxes} title="Inventory" description="Stock per branch. Reserved = held by unpaid orders." />
       <div className="mb-4 flex flex-wrap gap-2 text-sm">
-        <Link href="/inventory" className="rounded-full border border-neutral-300 bg-white px-3 py-1">All branches</Link>
+        <Link href="/inventory" className="rounded-full border border-line bg-white px-3 py-1">All branches</Link>
         {(branches.data ?? []).map((b) => (
-          <Link key={b.id} href={`/inventory?branchId=${b.id}`} className="rounded-full border border-neutral-300 bg-white px-3 py-1">{b.name}</Link>
+          <Link key={b.id} href={`/inventory?branchId=${b.id}`} className="rounded-full border border-line bg-white px-3 py-1">{b.name}</Link>
         ))}
       </div>
 

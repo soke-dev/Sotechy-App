@@ -1,7 +1,8 @@
+import { ToggleRight } from "lucide-react";
 import type { AppFeatures } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { LiveSwitch } from "@/components/switch";
-import { Card, ErrorNote, PageHeader } from "@/components/ui";
+import { Card, ErrorNote, inputClass, PageHeader } from "@/components/ui";
 import { load } from "@/lib/api";
 import { saveFeatureText, setFeature } from "../actions";
 
@@ -48,7 +49,7 @@ export default async function SwitchesPage() {
 
   return (
     <>
-      <PageHeader title="App switches" description="Turn parts of the customer app on or off. Changes save straight away and reach the app within a minute." />
+      <PageHeader icon={ToggleRight} title="App switches" description="Turn parts of the customer app on or off. Changes save straight away and reach the app within a minute." />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Maintenance mode">
           <LiveSwitch
@@ -60,7 +61,7 @@ export default async function SwitchesPage() {
           />
           <ActionForm action={saveFeatureText} submitLabel="Save message" className="flex flex-col gap-2">
             <input type="hidden" name="field" value="maintenanceMessage" />
-            <textarea name="value" rows={2} maxLength={300} defaultValue={f.maintenanceMessage} className="rounded border border-neutral-300 px-2 py-1.5 text-sm" />
+            <textarea name="value" rows={2} maxLength={300} defaultValue={f.maintenanceMessage} className={inputClass} />
           </ActionForm>
         </Card>
 
@@ -68,13 +69,13 @@ export default async function SwitchesPage() {
           <LiveSwitch label="Show on the home screen" description="A short strip at the top of Home, e.g. delivery times or a sale." initial={f.announcementOn} onChange={setFeature.bind(null, "announcementOn")} />
           <ActionForm action={saveFeatureText} submitLabel="Save text" className="flex flex-col gap-2">
             <input type="hidden" name="field" value="announcement" />
-            <input name="value" maxLength={160} defaultValue={f.announcement} placeholder="Free delivery in Benin City this week" className="rounded border border-neutral-300 px-2 py-1.5 text-sm" />
+            <input name="value" maxLength={160} defaultValue={f.announcement} placeholder="Free delivery in Benin City this week" className={inputClass} />
           </ActionForm>
         </Card>
 
         {GROUPS.map((g) => (
           <Card key={g.title} title={g.title}>
-            <div className="divide-y divide-neutral-100">
+            <div className="divide-y divide-line">
               {g.items.map((s) => (
                 <LiveSwitch key={s.key} label={s.label} description={s.description} initial={f[s.key]} onChange={setFeature.bind(null, s.key)} />
               ))}

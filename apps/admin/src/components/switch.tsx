@@ -12,7 +12,7 @@ function Toggle({ on, disabled, onClick, label }: { on: boolean; disabled?: bool
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${on ? "bg-orange-500" : "bg-neutral-300"}`}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${on ? "bg-brand" : "bg-neutral-300"}`}
     >
       <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${on ? "translate-x-5" : "translate-x-0.5"}`} />
     </button>
@@ -57,12 +57,12 @@ export function LiveSwitch({
   return (
     <div className="flex items-start justify-between gap-4 py-3">
       <div className="min-w-0">
-        <p className={`text-sm font-medium ${danger && on ? "text-red-700" : ""}`}>{label}</p>
-        {description && <p className="text-xs text-neutral-500">{description}</p>}
+        <p className={`text-sm font-medium ${danger && on ? "text-red-700" : "text-ink"}`}>{label}</p>
+        {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
       <div className="flex items-center gap-2">
-        {pending ? <span className="text-xs text-neutral-400">Saving…</span> : saved ? <span className="text-xs text-green-700">Saved</span> : null}
+        {pending ? <span className="text-xs text-faint">Saving…</span> : saved ? <span className="text-xs text-green-700">Saved</span> : null}
         <Toggle on={on} disabled={pending} onClick={flip} label={label} />
       </div>
     </div>

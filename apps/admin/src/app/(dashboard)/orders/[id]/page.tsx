@@ -86,7 +86,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               {order.history.map((h) => (
                 <li key={h.id}>
                   {formatDate(h.createdAt)} — {h.fromStatus ? `${ORDER_STATUS_LABELS[h.fromStatus]} → ` : ""}
-                  {ORDER_STATUS_LABELS[h.toStatus]} {h.note && <span className="text-neutral-500">({h.note})</span>}
+                  {ORDER_STATUS_LABELS[h.toStatus]} {h.note && <span className="text-muted">({h.note})</span>}
                 </li>
               ))}
             </ul>
@@ -96,12 +96,12 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <div className="flex flex-col gap-4">
           <Card title="Customer">
             <p className="text-sm">{order.customer?.fullName ?? order.walkInCustomer?.name ?? "Walk-in customer"}</p>
-            <p className="text-sm text-neutral-500">{order.customer?.email}</p>
-            <p className="text-sm text-neutral-500">{order.customer?.phone ?? order.walkInCustomer?.phone}</p>
+            <p className="text-sm text-muted">{order.customer?.email}</p>
+            <p className="text-sm text-muted">{order.customer?.phone ?? order.walkInCustomer?.phone}</p>
           </Card>
           <Card title="Fulfilment">
             <p className="text-sm capitalize">{order.fulfilmentType}</p>
-            <p className="text-sm text-neutral-500">{order.branch?.name}</p>
+            <p className="text-sm text-muted">{order.branch?.name}</p>
             {order.deliveryAddress && (
               <p className="mt-2 text-sm">
                 {order.deliveryAddress.recipientName}, {order.deliveryAddress.phone}
@@ -125,7 +125,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           )}
           {["pending_payment", "payment_failed", "paid", "processing", "ready_for_pickup"].includes(order.status) && (
             <Card title="Cancel order">
-              <p className="mb-2 text-xs text-neutral-500">Releases or returns stock. Paid orders get a refund request.</p>
+              <p className="mb-2 text-xs text-muted">Releases or returns stock. Paid orders get a refund request.</p>
               <ActionForm action={cancelOrder} submitLabel="Cancel order" className="flex flex-col gap-2">
                 <input type="hidden" name="id" value={order.id} />
                 <input name="note" placeholder="Reason" className={inputClass} />

@@ -1,3 +1,4 @@
+import { ScanBarcode } from "lucide-react";
 import type { Branch, PaymentMethodConfig } from "@sotechy/shared";
 import { ErrorNote, PageHeader } from "@/components/ui";
 import { getCurrentUser, load } from "@/lib/api";
@@ -15,7 +16,7 @@ export default async function PosPage() {
 
   return (
     <>
-      <PageHeader title="Walk-in sale" description="Record in-store sales in the same system as online orders" />
+      <PageHeader icon={ScanBarcode} title="Walk-in sale" description="Record in-store sales in the same system as online orders" />
       <ErrorNote error={branches.error ?? products.error} />
       <PosClient
         branches={(branches.data ?? []).filter((b) => b.isActive)}

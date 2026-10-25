@@ -72,12 +72,12 @@ export function PosClient({
     <div className="grid gap-4 lg:grid-cols-2">
       <Card title="Find product">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or SKU" className={`${inputClass} mb-3 w-full`} />
-        <ul className="divide-y divide-neutral-100 text-sm">
+        <ul className="divide-y divide-line text-sm">
           {matches.map((p) => (
             <li key={p.variantId} className="flex items-center justify-between gap-2 py-2">
               <div>
                 <p>{p.productName} — {p.variantName}</p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-muted">
                   {p.sku} · {formatNaira(p.price)}
                   {p.quantity != null && ` · ${p.quantity - (p.reserved ?? 0)} available here`}
                 </p>
@@ -111,7 +111,7 @@ export function PosClient({
             Transfers and crypto are saved as pending. Stock is held until a manager confirms the money arrived.
           </p>
         )}
-        <ul className="mb-3 divide-y divide-neutral-100 text-sm">
+        <ul className="mb-3 divide-y divide-line text-sm">
           {lines.map((l) => (
             <li key={l.variantId} className="flex items-center justify-between gap-2 py-2">
               <span className="flex-1">{l.label}</span>
@@ -133,7 +133,7 @@ export function PosClient({
             {pending ? "Recording…" : "Record sale"}
           </button>
         </div>
-        <p className="mt-1 text-xs text-neutral-500">Final total is calculated by the server (eligible promotions apply).</p>
+        <p className="mt-1 text-xs text-muted">Final total is calculated by the server (eligible promotions apply).</p>
         {result?.error && <p className="mt-2 text-sm text-red-600">{result.error}</p>}
         {result?.message && <p className="mt-2 text-sm text-green-700">{result.message}</p>}
       </Card>

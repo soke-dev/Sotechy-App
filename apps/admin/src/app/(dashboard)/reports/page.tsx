@@ -1,3 +1,4 @@
+import { BarChart3 } from "lucide-react";
 import { formatNaira, PAYMENT_METHOD_LABELS, type PaymentMethodCode } from "@sotechy/shared";
 import { Card, DataTable, ErrorNote, Field, PageHeader, StatCard, buttonClass, inputClass } from "@/components/ui";
 import { load } from "@/lib/api";
@@ -12,7 +13,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageHeader title="Reports" description="Revenue, cost and profit are reported separately (managers)" />
+      <PageHeader icon={BarChart3} title="Reports" description="Revenue, cost and profit are reported separately (managers)" />
       <form className="mb-4 flex flex-wrap items-end gap-3">
         <Field label="From"><input type="date" name="from" defaultValue={from} className={inputClass} /></Field>
         <Field label="To"><input type="date" name="to" defaultValue={to} className={inputClass} /></Field>

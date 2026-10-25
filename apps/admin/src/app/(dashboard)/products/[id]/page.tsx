@@ -34,7 +34,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 <input type="hidden" name="productId" value={product.id} />
                 <div className="w-48 text-sm">
                   <p className="font-medium">{v.name}</p>
-                  <p className="text-neutral-500">{v.sku}</p>
+                  <p className="text-muted">{v.sku}</p>
                 </div>
                 <Field label="Price (₦)"><input name="price" type="number" step="0.01" defaultValue={v.price} className={inputClass} /></Field>
                 <Field label="Compare-at"><input name="compareAtPrice" type="number" step="0.01" defaultValue={v.compareAtPrice ?? ""} className={inputClass} /></Field>

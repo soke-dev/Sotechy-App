@@ -1,3 +1,4 @@
+import { FolderTree } from "lucide-react";
 import type { Category } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { Card, DataTable, ErrorNote, Field, inputClass, PageHeader } from "@/components/ui";
@@ -31,7 +32,7 @@ export default async function CategoriesPage() {
   const tops = (data ?? []).filter((c) => !c.parentId);
   return (
     <>
-      <PageHeader title="Categories" description="Main categories show on the app's Home and Shop screens; sub-categories appear under them." />
+      <PageHeader icon={FolderTree} title="Categories" description="Main categories show on the app's Home and Shop screens; sub-categories appear under them." />
       <Card title="Add category" className="mb-4">
         <ActionForm action={createCategory} submitLabel="Add">
           <CategoryFields tops={tops} />
@@ -47,8 +48,8 @@ export default async function CategoriesPage() {
               cell: (c) => (
                 <div className="flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {c.imageUrl ? <img src={c.imageUrl} alt="" className="h-8 w-8 rounded object-cover" /> : <span className="h-8 w-8 rounded bg-neutral-100" />}
-                  {c.parentId ? <span className="pl-3 text-neutral-600">↳ {c.name}</span> : <span className="font-medium">{c.name}</span>}
+                  {c.imageUrl ? <img src={c.imageUrl} alt="" className="h-8 w-8 rounded object-cover" /> : <span className="h-8 w-8 rounded bg-canvas" />}
+                  {c.parentId ? <span className="pl-3 text-muted">↳ {c.name}</span> : <span className="font-medium">{c.name}</span>}
                 </div>
               ),
             },
@@ -68,7 +69,7 @@ export default async function CategoriesPage() {
               header: "",
               cell: (c) => (
                 <details>
-                  <summary className="cursor-pointer text-sm text-neutral-700">Edit</summary>
+                  <summary className="cursor-pointer text-sm text-ink-2">Edit</summary>
                   <div className="mt-2 min-w-80">
                     <ActionForm action={updateCategory} submitLabel="Save" className="flex flex-col items-start gap-2">
                       <CategoryFields category={c} tops={tops} />

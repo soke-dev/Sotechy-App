@@ -1,3 +1,4 @@
+import { Images } from "lucide-react";
 import type { Banner, Category } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { LiveSwitch, SwitchField } from "@/components/switch";
@@ -71,7 +72,7 @@ function BannerFields({ banner, categories }: { banner?: Banner; categories: Cat
       <Field label="Picture (PNG with a clear background looks best)">
         <input name="image" type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" />
         {banner?.imageUrl && (
-          <span className="mt-1 flex items-center gap-2 text-xs text-neutral-500">
+          <span className="mt-1 flex items-center gap-2 text-xs text-muted">
             <input type="hidden" name="imageUrl" value={banner.imageUrl} />
             <label><input type="checkbox" name="removeImage" /> Remove current picture</label>
           </span>
@@ -97,7 +98,7 @@ export default async function BannersPage() {
 
   return (
     <>
-      <PageHeader title="Home banners" description="The sliding banners at the top of the app's Home screen. With none switched on, the app shows its built-in banners." />
+      <PageHeader icon={Images} title="Home banners" description="The sliding banners at the top of the app's Home screen. With none switched on, the app shows its built-in banners." />
       <Card title="Add a banner" className="mb-4">
         <ActionForm action={saveBanner} submitLabel="Add banner" className="flex flex-col items-start gap-4">
           <BannerFields categories={cats} />
@@ -111,13 +112,13 @@ export default async function BannersPage() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
               <Preview banner={b} />
               <div className="flex flex-1 flex-col gap-1 text-sm">
-                <p className="text-neutral-500">{linkLabel(b)} · order {b.sortOrder}</p>
-                {(b.startsAt || b.endsAt) && <p className="text-neutral-500">Runs {b.startsAt ? lagos(b.startsAt).replace("T", " ") : "now"} → {b.endsAt ? lagos(b.endsAt).replace("T", " ") : "no end"}</p>}
+                <p className="text-muted">{linkLabel(b)} · order {b.sortOrder}</p>
+                {(b.startsAt || b.endsAt) && <p className="text-muted">Runs {b.startsAt ? lagos(b.startsAt).replace("T", " ") : "now"} → {b.endsAt ? lagos(b.endsAt).replace("T", " ") : "no end"}</p>}
                 <div className="max-w-xs">
                   <LiveSwitch label="Showing in the app" initial={b.isActive} onChange={setBannerActive.bind(null, b.id)} />
                 </div>
                 <details className="mt-2">
-                  <summary className="cursor-pointer font-medium text-neutral-700">Edit</summary>
+                  <summary className="cursor-pointer font-medium text-ink-2">Edit</summary>
                   <div className="mt-3">
                     <ActionForm action={saveBanner} submitLabel="Save banner" className="flex flex-col items-start gap-4">
                       <BannerFields banner={b} categories={cats} />
@@ -131,7 +132,7 @@ export default async function BannersPage() {
             </div>
           </Card>
         ))}
-        {banners.data?.length === 0 && <p className="text-sm text-neutral-500">No banners yet: the app is showing its built-in ones.</p>}
+        {banners.data?.length === 0 && <p className="text-sm text-muted">No banners yet: the app is showing its built-in ones.</p>}
       </div>
     </>
   );
