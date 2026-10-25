@@ -1,0 +1,22 @@
+{
+  "name": "sotechy",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "dev:api": "pnpm --filter @sotechy/api dev",
+    "dev:mobile": "pnpm --filter @sotechy/mobile start",
+    "dev:web": "pnpm --filter @sotechy/web dev",
+    "dev:admin": "pnpm --filter @sotechy/admin dev",
+    "build:api": "pnpm --filter @sotechy/api build",
+    "build:web": "pnpm --filter @sotechy/web build",
+    "build:admin": "pnpm --filter @sotechy/admin build",
+    "db:migrate": "pnpm --filter @sotechy/api db:migrate",
+    "db:seed": "pnpm --filter @sotechy/api db:seed",
+    "assets:sync": "node scripts/sync-assets.mjs",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

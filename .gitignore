@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# env
+.env
+.env.*
+!.env.example
+
+# next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+ios/
+android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# misc
+.DS_Store
+*.log
+.vercel
+.turbo
+coverage/
+
+# windows
+desktop.ini
+Thumbs.db
