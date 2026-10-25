@@ -24,7 +24,45 @@ export const catalogColumns = {
   isPublished: products.isPublished,
   isDemo: products.isDemo,
   createdAt: products.createdAt,
+  ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r where r.product_id = ${products.id} and r.is_published)`,
+  ratingCount: sql<number>`(select count(*)::int from product_reviews r where r.product_id = ${products.id} and r.is_published)`,
 };
+
+/** Review summary + latest published reviews for a product. */
+export async function loadReviews(productId: string) {
+  const r = schema.productReviews;
+  const rows = await db
+    .select({
+      id: r.id,
+      productId: r.productId,
+      userId: r.userId,
+      rating: r.rating,
+      title: r.title,
+      body: r.body,
+      verified: r.verified,
+      createdAt: r.createdAt,
+      fullName: schema.users.fullName,
+      avatarStyle: schema.users.avatarStyle,
+    })
+    .from(r)
+    .innerJoin(schema.users, eq(schema.users.id, r.userId))
+    .where(and(eq(r.productId, productId), eq(r.isPublished, true)))
+    .orderBy(desc(r.createdAt))
+    .limit(100);
+  const distribution = [0, 0, 0, 0, 0];
+  for (const row of rows) distribution[row.rating - 1]++;
+  const count = rows.length;
+  const average = count ? Math.round((rows.reduce((n, x) => n + x.rating, 0) / count) * 10) / 10 : 0;
+  // Show first name + last initial only
+  const author = (name: string | null) => {
+    const parts = (name ?? "Sotechy customer").trim().split(/\s+/);
+    return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
+  };
+  return {
+    summary: { average, count, distribution },
+    reviews: rows.map(({ fullName, ...x }) => ({ ...x, authorName: author(fullName) })),
+  };
+}
 
 export function catalogQuery(where: SQL | undefined) {
   return db
@@ -114,5 +152,13 @@ export const storeRoutes = new Hono()
       .innerJoin(productVariants, eq(productVariants.id, inventory.variantId))
       .where(and(eq(productVariants.productId, product.id), eq(branches.isActive, true)));
 
-    return c.json({ ...product, variants, stock });
+    const { summary } = await loadReviews(product.id);
+    return c.json({ ...product, variants, stock, ratingAverage: summary.count ? summary.average : null, ratingCount: summary.count });
+  })
+  .get("/products/:idOrSlug/reviews", async (c) => {
+    const key = c.req.param("idOrSlug");
+    const isUuid = /^[0-9a-f-]{36}$/i.test(key);
+    const [product] = await db.select({ id: products.id }).from(products).where(isUuid ? eq(products.id, key) : eq(products.slug, key));
+    if (!product) throw notFound("Product not found");
+    return c.json(await loadReviews(product.id));
   });

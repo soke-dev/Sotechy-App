@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
-import { Animated, Pressable, Text, View } from "react-native";
+import { Animated, Platform, Pressable, Text, View } from "react-native";
+import { FullWindowOverlay } from "react-native-screens";
 import { colors, fonts, radius } from "@/lib/theme";
 import type { IconName } from "./ui";
 
@@ -32,32 +33,39 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={show}>
       {children}
-      <Animated.View
-        pointerEvents="box-none"
-        style={{
-          position: "absolute",
-          left: 16,
-          right: 16,
-          bottom: 128,
-          alignItems: "center",
-          opacity: anim,
-          transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
-        }}
-      >
-        {toast.message ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.panel, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", borderRadius: radius.pill, paddingVertical: 12, paddingHorizontal: 18 }}>
-            <Ionicons name={toast.icon ?? "checkmark-circle"} size={18} color={colors.brandYellow} />
-            <Text style={{ fontFamily: fonts.medium, fontSize: 14, color: colors.white }}>{toast.message}</Text>
-            {toast.action ? (
-              <Pressable onPress={toast.action.onPress} hitSlop={8}>
-                <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.brand }}>{toast.action.label}</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
-      </Animated.View>
+      <Overlay>
+        <Animated.View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            left: 16,
+            right: 16,
+            bottom: 128,
+            alignItems: "center",
+            opacity: anim,
+            transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],
+          }}
+        >
+          {toast.message ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.panel, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", borderRadius: radius.pill, paddingVertical: 12, paddingHorizontal: 18 }}>
+              <Ionicons name={toast.icon ?? "checkmark-circle"} size={18} color={colors.brandYellow} />
+              <Text style={{ fontFamily: fonts.medium, fontSize: 14, color: colors.white }}>{toast.message}</Text>
+              {toast.action ? (
+                <Pressable onPress={toast.action.onPress} hitSlop={8}>
+                  <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.brand }}>{toast.action.label}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+        </Animated.View>
+      </Overlay>
     </ToastContext.Provider>
   );
+}
+
+/** On iOS native screens sit above plain views, so the toast goes in a window-level overlay. */
+function Overlay({ children }: { children: ReactNode }) {
+  return Platform.OS === "ios" ? <FullWindowOverlay>{children}</FullWindowOverlay> : <>{children}</>;
 }
 
 export const useToast = () => useContext(ToastContext);

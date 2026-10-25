@@ -11,6 +11,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { CartFeedbackProvider } from "@/components/cart-feedback";
 import { DialogProvider } from "@/components/dialog";
 import { MenuProvider } from "@/components/menu";
 import { ToastProvider } from "@/components/toast";
@@ -92,11 +93,13 @@ export default function RootLayout() {
           <AuthProvider>
             <CartProvider>
               <ToastProvider>
-                <DialogProvider>
-                  <MenuProvider>
-                    <ThemedNavigator />
-                  </MenuProvider>
-                </DialogProvider>
+                <CartFeedbackProvider>
+                  <DialogProvider>
+                    <MenuProvider>
+                      <ThemedNavigator />
+                    </MenuProvider>
+                  </DialogProvider>
+                </CartFeedbackProvider>
               </ToastProvider>
             </CartProvider>
           </AuthProvider>

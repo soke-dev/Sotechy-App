@@ -26,6 +26,7 @@ const sections = [
     links: [
       { href: "/products", label: "Products" },
       { href: "/categories", label: "Categories" },
+      { href: "/reviews", label: "Reviews" },
       { href: "/inventory", label: "Inventory" },
       { href: "/suppliers", label: "Suppliers & purchasing" },
       { href: "/promotions", label: "Promotions" },

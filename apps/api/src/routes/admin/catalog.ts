@@ -34,6 +34,8 @@ const productFields = z.object({
   allowPickup: z.boolean().optional(),
   isPublished: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
+  highlights: z.array(z.string().min(1).max(200)).max(12).optional(),
+  inTheBox: z.array(z.string().min(1).max(120)).max(20).optional(),
 });
 
 const variantFields = z.object({
@@ -107,6 +109,25 @@ export const adminCatalogRoutes = new Hono<AppEnv>()
     if (!variant) throw notFound("Variant not found");
     await audit(db, { actorId: c.get("user").id, action: "variant.update", entityType: "product_variant", entityId: variant.id, details: input });
     return c.json(variant);
+  })
+
+  // --- Reviews (moderation) ---
+  .get("/reviews", async (c) => {
+    const r = schema.productReviews;
+    const rows = await db
+      .select({ review: r, productName: products.name, customerEmail: schema.users.email, customerName: schema.users.fullName })
+      .from(r)
+      .innerJoin(products, eq(products.id, r.productId))
+      .innerJoin(schema.users, eq(schema.users.id, r.userId))
+      .orderBy(desc(r.createdAt))
+      .limit(300);
+    return c.json(rows.map((x) => ({ ...x.review, productName: x.productName, customerEmail: x.customerEmail, customerName: x.customerName })));
+  })
+  .patch("/reviews/:id", requireRole(...MANAGERS), zValidator("json", z.object({ isPublished: z.boolean() })), async (c) => {
+    const [row] = await db.update(schema.productReviews).set(c.req.valid("json")).where(eq(schema.productReviews.id, c.req.param("id"))).returning();
+    if (!row) throw notFound("Review not found");
+    await audit(db, { actorId: c.get("user").id, action: row.isPublished ? "review.publish" : "review.hide", entityType: "product_review", entityId: row.id });
+    return c.json(row);
   })
 
   // --- Categories ---

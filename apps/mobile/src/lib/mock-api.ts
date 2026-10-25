@@ -1,8 +1,11 @@
 // DEMO MODE: an in-memory stand-in for the Sotechy API so the UI can be built without a backend.
 // Products, prices and stock here are dummy data, not real Sotechy inventory.
 import { Asset } from "expo-asset";
+import { DEMO_DETAILS, DEMO_REVIEWS } from "./mock-content";
 import type {
   Address,
+  ProductReviews,
+  Review,
   ApiClient,
   Branch,
   CatalogProduct,
@@ -137,8 +140,10 @@ const products: ProductDetail[] = seeds.map((s, i) => {
     slug: `demo-${i + 1}`,
     brand: s.brand,
     model: `DM-${100 + i}`,
-    description: "Demo product used while the design is being built. Real products, prices and photos will come from the admin dashboard.",
-    specifications: s.specs ?? {},
+    description: DEMO_DETAILS[s.name]?.about ?? "Demo product used while the design is being built. Real products, prices and photos will come from the admin dashboard.",
+    specifications: DEMO_DETAILS[s.name]?.specs ?? s.specs ?? {},
+    highlights: DEMO_DETAILS[s.name]?.highlights ?? [],
+    inTheBox: DEMO_DETAILS[s.name]?.box ?? [],
     images: (s.imgs ?? []).map((k) => images[k]),
     condition: "new",
     warrantyMonths: 12,
@@ -157,6 +162,32 @@ const products: ProductDetail[] = seeds.map((s, i) => {
   };
 });
 
+// Demo reviews keyed by product id
+const reviewsByProduct = new Map<string, Review[]>();
+for (const p of products) {
+  const list = (DEMO_REVIEWS[p.name] ?? []).map((r, i) => ({
+    id: `${p.id}-r${i + 1}`,
+    productId: p.id,
+    userId: `demo-reviewer-${i}`,
+    authorName: r.author,
+    avatarStyle: r.avatar,
+    rating: r.rating,
+    title: r.title,
+    body: r.body,
+    verified: r.verified,
+    createdAt: new Date(Date.now() - r.daysAgo * 86_400_000).toISOString(),
+  }));
+  reviewsByProduct.set(p.id, list);
+}
+
+function reviewSummary(productId: string): ProductReviews["summary"] {
+  const list = reviewsByProduct.get(productId) ?? [];
+  const distribution = [0, 0, 0, 0, 0];
+  for (const r of list) distribution[r.rating - 1]++;
+  const average = list.length ? Math.round((list.reduce((n, r) => n + r.rating, 0) / list.length) * 10) / 10 : 0;
+  return { average, count: list.length, distribution };
+}
+
 const toCatalog = (p: ProductDetail): CatalogProduct => ({
   id: p.id,
   name: p.name,
@@ -173,6 +204,8 @@ const toCatalog = (p: ProductDetail): CatalogProduct => ({
   isPublished: true,
   isDemo: true,
   createdAt: p.createdAt,
+  ratingAverage: reviewSummary(p.id).count ? reviewSummary(p.id).average : null,
+  ratingCount: reviewSummary(p.id).count,
 });
 
 const config: StoreConfig = {
@@ -363,7 +396,33 @@ export const mockApi: ApiClient = {
   },
   product: async (idOrSlug) => {
     const p = products.find((x) => x.id === idOrSlug || x.slug === idOrSlug);
-    return p ? wait(p) : Promise.reject(new Error("Product not found"));
+    if (!p) return Promise.reject(new Error("Product not found"));
+    const summary = reviewSummary(p.id);
+    return wait({ ...p, ratingAverage: summary.count ? summary.average : null, ratingCount: summary.count });
+  },
+  productReviews: async (idOrSlug) => {
+    const p = products.find((x) => x.id === idOrSlug || x.slug === idOrSlug);
+    if (!p) return Promise.reject(new Error("Product not found"));
+    const reviews = [...(reviewsByProduct.get(p.id) ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return wait({ summary: reviewSummary(p.id), reviews });
+  },
+  submitReview: async (input) => {
+    const list = reviewsByProduct.get(input.productId) ?? [];
+    const verified = orders.some((o) => o.status === "delivered" && o.items.some((i) => i.productId === input.productId));
+    const review: Review = {
+      id: `mine-${input.productId}`,
+      productId: input.productId,
+      userId: demoUser.id,
+      authorName: demoUser.fullName?.split(" ")[0] ?? "You",
+      avatarStyle: demoUser.avatarStyle ?? null,
+      rating: input.rating,
+      title: input.title ?? null,
+      body: input.body,
+      verified,
+      createdAt: now(),
+    };
+    reviewsByProduct.set(input.productId, [review, ...list.filter((r) => r.userId !== demoUser.id)]);
+    return wait({ id: review.id });
   },
 
   placeOrder: async (input) => {

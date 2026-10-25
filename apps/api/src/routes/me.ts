@@ -77,6 +77,35 @@ export const meRoutes = new Hono<AppEnv>()
     await db.delete(schema.addresses).where(and(eq(schema.addresses.id, c.req.param("id")), eq(schema.addresses.userId, c.get("user").id)));
     return c.body(null, 204);
   })
+  /** Create or update the signed-in customer's review of a product. */
+  .post(
+    "/reviews",
+    zValidator(
+      "json",
+      z.object({ productId: z.uuid(), rating: z.number().int().min(1).max(5), title: z.string().max(120).nullable().optional(), body: z.string().min(3).max(3000) }),
+    ),
+    async (c) => {
+      const userId = c.get("user").id;
+      const input = c.req.valid("json");
+      const [product] = await db.select({ id: schema.products.id }).from(schema.products).where(eq(schema.products.id, input.productId));
+      if (!product) throw notFound("Product not found");
+      // Verified when the customer has a completed order with this product in it.
+      const purchased = await db
+        .select({ id: schema.orders.id })
+        .from(schema.orders)
+        .innerJoin(schema.orderItems, eq(schema.orderItems.orderId, schema.orders.id))
+        .innerJoin(schema.productVariants, eq(schema.productVariants.id, schema.orderItems.variantId))
+        .where(and(eq(schema.orders.customerId, userId), eq(schema.orders.status, "delivered"), eq(schema.productVariants.productId, input.productId)))
+        .limit(1);
+      const values = { rating: input.rating, title: input.title ?? null, body: input.body, verified: purchased.length > 0 };
+      const [row] = await db
+        .insert(schema.productReviews)
+        .values({ ...values, productId: input.productId, userId })
+        .onConflictDoUpdate({ target: [schema.productReviews.productId, schema.productReviews.userId], set: { ...values, isPublished: true } })
+        .returning();
+      return c.json(row, 201);
+    },
+  )
   .post(
     "/support",
     zValidator("json", z.object({ subject: z.string().min(3).max(150), message: z.string().min(5).max(5000), orderId: z.uuid().optional() })),

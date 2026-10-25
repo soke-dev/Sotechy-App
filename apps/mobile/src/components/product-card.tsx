@@ -6,14 +6,16 @@ import { formatNaira, type CatalogProduct } from "@sotechy/shared";
 import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { colors, radius, space } from "@/lib/theme";
+import { useCartFeedback } from "./cart-feedback";
 import { useToast } from "./toast";
-import { discountPercent, Pill, tap, Txt } from "./ui";
+import { discountPercent, Pill, Txt } from "./ui";
 import { ProductImage } from "./product-image";
 
 /** Floating "+" button: adds single-option products straight to the cart, otherwise opens the product. */
 function QuickAdd({ product }: { product: CatalogProduct }) {
   const cart = useCart();
   const toast = useToast();
+  const showAdded = useCartFeedback();
   const [busy, setBusy] = useState(false);
 
   async function add() {
@@ -25,9 +27,8 @@ function QuickAdd({ product }: { product: CatalogProduct }) {
         return;
       }
       const v = detail.variants[0];
-      tap();
       cart.add({ variantId: v.id, productId: detail.id, productName: detail.name, variantName: v.name, unitPrice: v.price, imageUrl: detail.images[0] ?? null });
-      toast("Added to cart", { action: { label: "View", onPress: () => router.push("/cart") } });
+      showAdded({ name: detail.name, imageUrl: detail.images[0] ?? null, quantity: 1, unitPrice: v.price });
     } catch (err) {
       toast(err instanceof Error ? err.message : "Could not add", { icon: "alert-circle" });
     } finally {
@@ -64,7 +65,19 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
             )}
           </View>
           <View style={{ padding: 10, gap: 3 }}>
-            {product.brand ? <Txt variant="overline">{product.brand}</Txt> : null}
+            {product.brand || product.ratingCount ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Txt variant="overline" numberOfLines={1} style={{ flex: 1 }}>{product.brand ?? ""}</Txt>
+                {product.ratingCount ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+                    <Ionicons name="star" size={11} color={colors.brandYellow} />
+                    <Txt variant="caption" style={{ fontSize: 11 }} color={colors.ink2}>
+                      {(product.ratingAverage ?? 0).toFixed(1)} ({product.ratingCount})
+                    </Txt>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
             <Txt variant="medium" numberOfLines={2} style={{ fontSize: 13.5, lineHeight: 18, minHeight: 36 }}>
               {product.name}
             </Txt>

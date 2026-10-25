@@ -56,6 +56,8 @@ function productFields(f: FormData) {
     model: str(f, "model") ?? null,
     description: str(f, "description") ?? null,
     specifications: specs(f, "specifications"),
+    highlights: lines(f, "highlights"),
+    inTheBox: lines(f, "inTheBox"),
     images: lines(f, "images"),
     condition: (str(f, "condition") ?? "new") as "new" | "used" | "refurbished",
     warrantyMonths: num(f, "warrantyMonths") ?? null,
@@ -360,6 +362,10 @@ export async function createPurchaseOrder(_: Prev, f: FormData) {
 
 export async function receivePurchaseOrder(_: Prev, f: FormData) {
   return run(() => api.post(`/admin/purchase-orders/${str(f, "id")}/receive`), ["/suppliers", "/inventory"], "Stock received");
+}
+
+export async function setReviewPublished(_: Prev, f: FormData) {
+  return run(() => api.patch(`/admin/reviews/${str(f, "id")}`, { isPublished: str(f, "isPublished") === "true" }), ["/reviews"]);
 }
 
 export async function updateTicket(_: Prev, f: FormData) {

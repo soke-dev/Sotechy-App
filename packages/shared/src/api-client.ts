@@ -9,6 +9,7 @@ import type {
   OrderSummary,
   PlaceOrderInput,
   ProductDetail,
+  ProductReviews,
   StoreConfig,
   User,
 } from "./types";
@@ -80,6 +81,8 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
       return get<CatalogProduct[]>(`/store/products${qs.size ? `?${qs}` : ""}`);
     },
     product: (idOrSlug: string) => get<ProductDetail>(`/store/products/${encodeURIComponent(idOrSlug)}`),
+    productReviews: (idOrSlug: string) => get<ProductReviews>(`/store/products/${encodeURIComponent(idOrSlug)}/reviews`),
+    submitReview: (input: { productId: string; rating: number; title?: string | null; body: string }) => send<{ id: string }>("POST", "/me/reviews", input),
 
     // Customer
     placeOrder: (input: PlaceOrderInput) => send<Order>("POST", "/orders", input),

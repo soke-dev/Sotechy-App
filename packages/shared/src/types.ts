@@ -66,6 +66,9 @@ export interface CatalogProduct {
   isPublished: boolean;
   isDemo: boolean;
   createdAt: string;
+  /** Average star rating (null when there are no reviews) */
+  ratingAverage?: number | null;
+  ratingCount?: number;
 }
 
 export interface Product {
@@ -88,6 +91,10 @@ export interface Product {
   isFeatured: boolean;
   isDemo: boolean;
   createdAt: string;
+  /** Short selling points */
+  highlights?: string[];
+  /** What comes in the box */
+  inTheBox?: string[];
 }
 
 export interface ProductVariant {
@@ -112,6 +119,28 @@ export interface BranchStock {
 export interface ProductDetail extends Product {
   variants: ProductVariant[];
   stock: BranchStock[];
+  ratingAverage?: number | null;
+  ratingCount?: number;
+}
+
+export interface Review {
+  id: string;
+  productId: string;
+  userId: string;
+  authorName: string;
+  avatarStyle?: string | null;
+  rating: number;
+  title: string | null;
+  body: string;
+  /** reviewer bought this product */
+  verified: boolean;
+  createdAt: string;
+}
+
+export interface ProductReviews {
+  /** distribution[0] = number of 1-star reviews … distribution[4] = 5-star */
+  summary: { average: number; count: number; distribution: number[] };
+  reviews: Review[];
 }
 
 export interface DeliveryAddress {

@@ -142,6 +142,10 @@ export const products = pgTable(
     isPublished: boolean().notNull().default(false),
     isFeatured: boolean().notNull().default(false),
     isDemo: boolean().notNull().default(false),
+    /** Short selling points shown as a checklist */
+    highlights: text().array().notNull().default(sql`'{}'::text[]`),
+    /** What comes in the box */
+    inTheBox: text().array().notNull().default(sql`'{}'::text[]`),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -165,6 +169,32 @@ export const productVariants = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index().on(t.productId), check("variant_price_nonneg", sql`${t.price} >= 0`)],
+);
+
+// ---------------------------------------------------------------------------
+// Reviews
+// ---------------------------------------------------------------------------
+export const productReviews = pgTable(
+  "product_reviews",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    productId: uuid()
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    rating: integer().notNull(),
+    title: text(),
+    body: text().notNull(),
+    /** true when the reviewer has a completed order containing this product */
+    verified: boolean().notNull().default(false),
+    /** admins can hide a review */
+    isPublished: boolean().notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique().on(t.productId, t.userId), index().on(t.productId, t.createdAt), check("review_rating_range", sql`${t.rating} between 1 and 5`)],
 );
 
 // ---------------------------------------------------------------------------

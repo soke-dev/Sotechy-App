@@ -127,6 +127,20 @@ export interface SupportTicketRow {
   createdAt: string;
 }
 
+export interface ReviewRow {
+  id: string;
+  productId: string;
+  productName: string;
+  rating: number;
+  title: string | null;
+  body: string;
+  verified: boolean;
+  isPublished: boolean;
+  customerName: string | null;
+  customerEmail: string | null;
+  createdAt: string;
+}
+
 export interface AuditLogRow {
   id: string;
   action: string;

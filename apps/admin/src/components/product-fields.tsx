@@ -46,12 +46,18 @@ export function ProductFields({ categories, product }: { categories: Category[];
         <label><input type="checkbox" name="allowPickup" defaultChecked={product?.allowPickup ?? true} /> Pickup</label>
       </div>
       <div className="sm:col-span-2">
-        <Field label="Description">
-          <textarea name="description" rows={3} defaultValue={product?.description ?? ""} className={inputClass} />
+        <Field label="About this item (blank line between paragraphs)">
+          <textarea name="description" rows={5} defaultValue={product?.description ?? ""} className={inputClass} />
         </Field>
       </div>
       <Field label="Specifications (one per line, Key: Value)">
         <textarea name="specifications" rows={4} defaultValue={specText} className={inputClass} placeholder={"RAM: 8GB\nStorage: 256GB"} />
+      </Field>
+      <Field label="Key features (one per line)">
+        <textarea name="highlights" rows={4} defaultValue={product?.highlights?.join("\n")} className={inputClass} placeholder={"5000mAh battery\n120Hz display"} />
+      </Field>
+      <Field label="In the box (one per line)">
+        <textarea name="inTheBox" rows={4} defaultValue={product?.inTheBox?.join("\n")} className={inputClass} placeholder={"Phone\nCharger\nUser manual"} />
       </Field>
       <Field label="Image URLs (one per line)">
         <textarea name="images" rows={4} defaultValue={product?.images.join("\n")} className={inputClass} placeholder="https://…" />

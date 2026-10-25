@@ -2,10 +2,15 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState, type ComponentRef } from "react";
-import { Linking, Pressable, ScrollView, Share, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatNaira, type CatalogProduct } from "@sotechy/shared";
+import { formatNaira, type CatalogProduct, type ProductDetail, type ProductReviews, type Review } from "@sotechy/shared";
+import { useCartFeedback } from "@/components/cart-feedback";
+import { Illo, type IlloName } from "@/components/illustrations";
 import { ProductCard } from "@/components/product-card";
+import { ProductImage } from "@/components/product-image";
+import { ReviewSheet } from "@/components/review-sheet";
+import { Stars } from "@/components/stars";
 import { useToast } from "@/components/toast";
 import {
   BottomBar,
@@ -15,11 +20,9 @@ import {
   Divider,
   ErrorView,
   IconButton,
-  ImagePlaceholder,
   Loading,
   Pill,
   Price,
-  productIcon,
   QtyStepper,
   SectionHeader,
   tap,
@@ -27,14 +30,15 @@ import {
   ui,
   type IconName,
 } from "@/components/ui";
+import { UserAvatar } from "@/components/user-avatar";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
-import { colors, gutter, lightPalette, radius, space } from "@/lib/theme";
+import { colors, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
-import { Illo, type IlloName } from "@/components/illustrations";
-import { ProductImage } from "@/components/product-image";
+
+type Tab = "overview" | "about" | "reviews";
 
 function InfoRow({ illo, title, subtitle }: { illo: IlloName; title: string; subtitle?: string }) {
   return (
@@ -48,17 +52,291 @@ function InfoRow({ illo, title, subtitle }: { illo: IlloName; title: string; sub
   );
 }
 
+function timeAgo(iso: string) {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days < 1) return "Today";
+  if (days < 2) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  if (days < 35) {
+    const w = Math.floor(days / 7);
+    return `${w} week${w > 1 ? "s" : ""} ago`;
+  }
+  if (days < 365) {
+    const m = Math.floor(days / 30);
+    return `${m} month${m > 1 ? "s" : ""} ago`;
+  }
+  return new Date(iso).toLocaleDateString("en-NG", { month: "short", year: "numeric" });
+}
+
+/** Segmented tabs; the Reviews tab shows the product's star rating. */
+function ProductTabs({ tab, onChange, rating, count }: { tab: Tab; onChange: (t: Tab) => void; rating: number; count: number }) {
+  const items: { key: Tab; label: string; sub?: string }[] = [
+    { key: "overview", label: "Overview", sub: "Options & store" },
+    { key: "about", label: "About & specs", sub: "Full details" },
+    { key: "reviews", label: "Reviews" },
+  ];
+  return (
+    <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 4, padding: 4, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt }}>
+      {items.map((t) => {
+        const active = t.key === tab;
+        return (
+          <Pressable
+            key={t.key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            onPress={() => {
+              tap();
+              onChange(t.key);
+            }}
+            style={{
+              flex: 1,
+              minHeight: 54,
+              paddingHorizontal: 4,
+              borderRadius: radius.md,
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 3,
+              backgroundColor: active ? colors.surface : "transparent",
+              borderWidth: active ? StyleSheet.hairlineWidth : 0,
+              borderColor: colors.line,
+            }}
+          >
+            <Txt variant="label" numberOfLines={1} color={active ? colors.ink : colors.muted} style={{ fontSize: 13 }}>
+              {t.label}
+            </Txt>
+            {t.key === "reviews" ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Stars value={rating} size={10} emptyColor={colors.faint} />
+                <Txt variant="caption" style={{ fontSize: 11 }}>{count ? `${rating.toFixed(1)} (${count})` : "New"}</Txt>
+              </View>
+            ) : (
+              <Txt variant="caption" numberOfLines={1} style={{ fontSize: 11 }}>{t.sub}</Txt>
+            )}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function OverviewTab({
+  product,
+  variantId,
+  onVariant,
+  pickupBranch,
+}: {
+  product: ProductDetail;
+  variantId: string | undefined;
+  onVariant: (id: string) => void;
+  pickupBranch: string | undefined;
+}) {
+  return (
+    <View style={{ gap: space.lg }}>
+      {product.variants.length > 1 && (
+        <View style={{ gap: space.sm }}>
+          <Txt variant="label">Choose an option</Txt>
+          <View style={[ui.row, { flexWrap: "wrap" }]}>
+            {product.variants.map((v) => (
+              <Chip key={v.id} label={v.name} active={v.id === variantId} onPress={() => onVariant(v.id)} />
+            ))}
+          </View>
+        </View>
+      )}
+
+      <View style={[ui.card, { paddingVertical: space.sm }]}>
+        {product.allowPickup && (
+          <InfoRow
+            illo="store"
+            title={pickupBranch ? `Pick up at ${pickupBranch}` : "Store pickup"}
+            subtitle={pickupBranch ? "Usually ready the same day" : "Currently unavailable"}
+          />
+        )}
+        {product.allowDelivery && <InfoRow illo="bike" title="Delivery in Benin City" subtitle="Fee and timing shown at checkout" />}
+        <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "Warranty details on request"} subtitle={product.returnPolicy ?? undefined} />
+        <InfoRow illo="wallet" title="Pay your way" subtitle="Bank transfer, online payment or $MOVE" />
+      </View>
+
+      <View style={[ui.card, { gap: space.md }]}>
+        <View style={[ui.row, { gap: space.md }]}>
+          <Image source={require("../../../assets/brand/sotechylogo.png")} style={{ width: 40, height: 40 }} contentFit="contain" />
+          <View style={{ flex: 1 }}>
+            <Txt variant="overline">Sold by</Txt>
+            <Txt variant="label">Sotechy Shop · Benin City</Txt>
+          </View>
+          <Pill label="Official store" tone="brand" icon="checkmark-circle" />
+        </View>
+        <Divider />
+        {[
+          ["shield-checkmark-outline", "Genuine products with warranty"],
+          ["storefront-outline", "Inspect and pick up in store"],
+          ["chatbubbles-outline", "Real people on call and WhatsApp"],
+        ].map(([icon, text]) => (
+          <View key={text} style={[ui.row, { gap: space.sm }]}>
+            <Ionicons name={icon as IconName} size={16} color={colors.success} />
+            <Txt variant="small" color={colors.ink2}>{text}</Txt>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function AboutTab({ product }: { product: ProductDetail }) {
+  const paragraphs = (product.description ?? "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  const highlights = product.highlights ?? [];
+  const box = product.inTheBox ?? [];
+  const specs = Object.entries(product.specifications);
+  return (
+    <View style={{ gap: space.xl }}>
+      {paragraphs.length > 0 && (
+        <View style={{ gap: space.sm }}>
+          <Txt variant="heading">About this item</Txt>
+          {paragraphs.map((p, i) => (
+            <Txt key={i} variant="body" color={colors.ink2}>{p}</Txt>
+          ))}
+        </View>
+      )}
+
+      {highlights.length > 0 && (
+        <View style={[ui.card, { gap: space.md }]}>
+          <Txt variant="heading">Key features</Txt>
+          {highlights.map((h) => (
+            <View key={h} style={{ flexDirection: "row", gap: space.sm, alignItems: "flex-start" }}>
+              <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+                <Ionicons name="checkmark" size={13} color={colors.brandPressed} />
+              </View>
+              <Txt variant="body" color={colors.ink2} style={{ flex: 1 }}>{h}</Txt>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {box.length > 0 && (
+        <View style={{ gap: space.sm }}>
+          <Txt variant="heading">What’s in the box</Txt>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
+            {box.map((item) => (
+              <View key={item} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, paddingVertical: 7, paddingHorizontal: 12 }}>
+                <Ionicons name="cube-outline" size={14} color={colors.muted} />
+                <Txt variant="small" color={colors.ink2}>{item}</Txt>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {specs.length > 0 && (
+        <View style={{ gap: space.sm }}>
+          <Txt variant="heading">Specifications</Txt>
+          <View style={{ borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, overflow: "hidden", backgroundColor: colors.surface }}>
+            {specs.map(([k, v], i) => (
+              <View key={k} style={{ flexDirection: "row", gap: space.md, paddingVertical: 11, paddingHorizontal: space.md, backgroundColor: i % 2 ? colors.surface : colors.surfaceAlt }}>
+                <Txt variant="small" style={{ width: "40%" }}>{k}</Txt>
+                <Txt variant="label" color={colors.ink} style={{ flex: 1 }}>{v}</Txt>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      <View style={[ui.card, { gap: space.xs }]}>
+        <Txt variant="heading">Warranty & returns</Txt>
+        <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month Sotechy warranty` : "Warranty details on request"} subtitle="Keep your receipt or order number for warranty claims at any branch." />
+        <InfoRow illo="receipt" title="Returns" subtitle={product.returnPolicy ?? "Faulty items can be returned for inspection within 7 days."} />
+      </View>
+
+      {paragraphs.length === 0 && specs.length === 0 && highlights.length === 0 && <Txt variant="small">More details for this product are coming soon.</Txt>}
+    </View>
+  );
+}
+
+function ReviewItem({ review }: { review: Review }) {
+  return (
+    <View style={[ui.card, { gap: space.sm }]}>
+      <View style={[ui.row, { gap: space.sm }]}>
+        <UserAvatar seed={review.userId} preset={review.avatarStyle} size={38} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt variant="label" numberOfLines={1}>{review.authorName}</Txt>
+          <View style={[ui.row, { gap: 6 }]}>
+            <Stars value={review.rating} size={12} />
+            <Txt variant="caption">{timeAgo(review.createdAt)}</Txt>
+          </View>
+        </View>
+        {review.verified && <Pill label="Verified purchase" tone="success" icon="checkmark-circle" />}
+      </View>
+      {review.title ? <Txt variant="label">{review.title}</Txt> : null}
+      <Txt variant="body" color={colors.ink2}>{review.body}</Txt>
+    </View>
+  );
+}
+
+function ReviewsTab({ data, loading, mine, onWrite }: { data: ProductReviews | undefined; loading: boolean; mine: Review | undefined; onWrite: () => void }) {
+  const [showAll, setShowAll] = useState(false);
+  if (loading && !data) return <Txt variant="small">Loading reviews…</Txt>;
+  const summary = data?.summary ?? { average: 0, count: 0, distribution: [0, 0, 0, 0, 0] };
+  const reviews = data?.reviews ?? [];
+  const visible = showAll ? reviews : reviews.slice(0, 4);
+  const top = Math.max(1, ...summary.distribution);
+
+  return (
+    <View style={{ gap: space.lg }}>
+      {summary.count > 0 ? (
+        <View style={[ui.card, { flexDirection: "row", gap: space.lg, alignItems: "center" }]}>
+          <View style={{ alignItems: "center", gap: 4, minWidth: 92 }}>
+            <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 42, lineHeight: 46, color: colors.ink }}>{summary.average.toFixed(1)}</Text>
+            <Stars value={summary.average} size={14} />
+            <Txt variant="caption">{summary.count} review{summary.count === 1 ? "" : "s"}</Txt>
+          </View>
+          <View style={{ flex: 1, gap: 6 }}>
+            {[5, 4, 3, 2, 1].map((star) => {
+              const n = summary.distribution[star - 1] ?? 0;
+              return (
+                <View key={star} style={[ui.row, { gap: 6 }]}>
+                  <Txt variant="caption" style={{ width: 10, textAlign: "right" }}>{star}</Txt>
+                  <Ionicons name="star" size={10} color={colors.brandYellow} />
+                  <View style={{ flex: 1, height: 7, borderRadius: 4, backgroundColor: colors.surfaceAlt, overflow: "hidden" }}>
+                    <View style={{ width: `${(n / top) * 100}%`, height: "100%", borderRadius: 4, backgroundColor: colors.brandYellow }} />
+                  </View>
+                  <Txt variant="caption" style={{ width: 18, textAlign: "right" }}>{n}</Txt>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      ) : (
+        <View style={[ui.card, { alignItems: "center", gap: space.sm, paddingVertical: space.xl }]}>
+          <Illo name="chat" size={56} />
+          <Txt variant="heading">No reviews yet</Txt>
+          <Txt variant="small" style={{ textAlign: "center" }}>Bought this item? Tell other shoppers what you think.</Txt>
+        </View>
+      )}
+
+      <Button title={mine ? "Edit your review" : "Write a review"} icon={mine ? "create-outline" : "star-outline"} variant="outline" onPress={onWrite} />
+
+      {visible.map((r) => (
+        <ReviewItem key={r.id} review={r} />
+      ))}
+      {reviews.length > visible.length && <Button title={`Show all ${reviews.length} reviews`} variant="ghost" icon="chevron-down" onPress={() => setShowAll(true)} />}
+    </View>
+  );
+}
+
 export default function ProductScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab: tabParam } = useLocalSearchParams<{ id: string; tab?: string }>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { data: product, error, loading, reload } = useAsync(() => api.product(id), [id]);
+  const reviews = useAsync(() => api.productReviews(id), [id]);
   const [variantId, setVariantId] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
   const [saved, setSaved] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
+  // ?tab=about or ?tab=reviews opens straight on that tab (e.g. from "Rate your purchase")
+  const [tab, setTab] = useState<Tab>(tabParam === "about" || tabParam === "reviews" ? tabParam : "overview");
+  const [reviewOpen, setReviewOpen] = useState(false);
   const galleryRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const cart = useCart();
+  const showAdded = useCartFeedback();
   const { user } = useAuth();
   const toast = useToast();
   const config = useAsync(() => api.storeConfig());
@@ -83,11 +361,12 @@ export default function ProductScreen() {
   const available = stock.reduce((n, s) => n + s.quantity - s.reserved, 0);
   const storesWithStock = stock.filter((s) => s.quantity - s.reserved > 0);
   const off = variant ? discountPercent(variant.price, variant.compareAtPrice) : 0;
-  const specs = Object.entries(product.specifications);
+  const rating = reviews.data?.summary.average ?? product.ratingAverage ?? 0;
+  const ratingCount = reviews.data?.summary.count ?? product.ratingCount ?? 0;
+  const mine = user ? reviews.data?.reviews.find((r) => r.userId === user.id) : undefined;
 
   function addToCart() {
     if (!variant || !product) return;
-    tap();
     cart.add(
       {
         variantId: variant.id,
@@ -99,7 +378,7 @@ export default function ProductScreen() {
       },
       qty,
     );
-    toast("Added to cart", { action: { label: "View", onPress: () => router.push("/cart") } });
+    showAdded({ name: product.name, variant: product.variants.length > 1 ? variant.name : undefined, imageUrl: product.images[0] ?? null, quantity: qty, unitPrice: variant.price });
   }
 
   async function toggleSaved() {
@@ -108,6 +387,19 @@ export default function ProductScreen() {
     const res = await api.toggleWishlist(product!.id);
     setSaved(res.saved);
     toast(res.saved ? "Saved for later" : "Removed from saved", { icon: res.saved ? "heart" : "heart-dislike" });
+  }
+
+  function openReview() {
+    if (!user) return router.push("/sign-in");
+    setReviewOpen(true);
+  }
+
+  async function submitReview(input: { rating: number; title: string; body: string }) {
+    await api.submitReview({ productId: product!.id, rating: input.rating, title: input.title || null, body: input.body });
+    setReviewOpen(false);
+    setTab("reviews");
+    reviews.reload();
+    toast(mine ? "Review updated" : "Thanks for your review!", { icon: "star" });
   }
 
   return (
@@ -140,6 +432,7 @@ export default function ProductScreen() {
             <View style={ui.row}>
               <IconButton icon="share-outline" tone="glass" onPress={() => Share.share({ message: `${product.name} — ${formatNaira(variant?.price)} at Sotechy Shop` })} />
               <IconButton icon={saved ? "heart" : "heart-outline"} color={saved ? colors.danger : colors.ink} tone="glass" onPress={toggleSaved} />
+              <IconButton icon="bag-handle-outline" tone="glass" badge={cart.count} onPress={() => router.push("/cart")} />
             </View>
           </View>
         </View>
@@ -166,6 +459,12 @@ export default function ProductScreen() {
           <View style={{ gap: 6 }}>
             {product.brand ? <Txt variant="overline">{product.brand}{product.model ? ` · ${product.model}` : ""}</Txt> : null}
             <Txt variant="title">{product.name}</Txt>
+            <Pressable onPress={() => setTab("reviews")} hitSlop={6} style={[ui.row, { gap: 6, alignSelf: "flex-start" }]}>
+              <Stars value={rating} size={14} />
+              <Txt variant="small" color={colors.ink2}>
+                {ratingCount ? `${rating.toFixed(1)} · ${ratingCount} review${ratingCount === 1 ? "" : "s"}` : "No reviews yet"}
+              </Txt>
+            </Pressable>
             <View style={[ui.row, { marginTop: 4 }]}>
               <Price amount={variant?.price ?? 0} compareAt={variant?.compareAtPrice} size="lg" />
               {off > 0 && <Pill label={`Save ${off}%`} tone="brand" />}
@@ -188,101 +487,17 @@ export default function ProductScreen() {
                 `Hello Sotechy, I'd like to order: ${product.name}${product.variants.length > 1 && variant ? ` (${variant.name})` : ""} – ${formatNaira(variant?.price)}`,
               )
             }
-            style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, height: 48, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line })}
+            style={({ pressed }) => ({ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingHorizontal: space.lg, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line })}
           >
-            <Ionicons name="logo-whatsapp" size={20} color={colors.brandPressed} />
-            <Txt variant="label">Order this on WhatsApp</Txt>
+            <Ionicons name="logo-whatsapp" size={18} color={colors.brandPressed} />
+            <Txt variant="label">Order on WhatsApp</Txt>
           </Pressable>
 
-          {product.variants.length > 1 && (
-            <View style={{ gap: space.sm }}>
-              <Txt variant="label">Option</Txt>
-              <View style={[ui.row, { flexWrap: "wrap" }]}>
-                {product.variants.map((v) => (
-                  <Chip key={v.id} label={v.name} active={v.id === variant?.id} onPress={() => setVariantId(v.id)} />
-                ))}
-              </View>
-            </View>
-          )}
+          <ProductTabs tab={tab} onChange={setTab} rating={rating} count={ratingCount} />
 
-          <View style={[ui.card, { paddingVertical: space.sm }]}>
-            {product.allowPickup && (
-              <InfoRow
-                illo="store"
-                title={storesWithStock[0] ? `Pick up at ${storesWithStock[0].branchName}` : "Store pickup"}
-                subtitle={storesWithStock[0] ? "Usually ready the same day" : "Currently unavailable"}
-              />
-            )}
-            {product.allowDelivery && <InfoRow illo="bike" title="Delivery in Benin City" subtitle="Fee and timing shown at checkout" />}
-            <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "Warranty details on request"} subtitle={product.returnPolicy ?? undefined} />
-            <InfoRow illo="wallet" title="Pay your way" subtitle="Bank transfer, online payment or $MOVE" />
-          </View>
-
-          <View style={[ui.card, { gap: space.md }]}>
-            <View style={[ui.row, { gap: space.md }]}>
-              <Image source={require("../../../assets/brand/sotechylogo.png")} style={{ width: 40, height: 40 }} contentFit="contain" />
-              <View style={{ flex: 1 }}>
-                <Txt variant="overline">Sold by</Txt>
-                <Txt variant="label">Sotechy Shop · Benin City</Txt>
-              </View>
-              <Pill label="Official store" tone="brand" icon="checkmark-circle" />
-            </View>
-            <Divider />
-            {[
-              ["shield-checkmark-outline", "Genuine products with warranty"],
-              ["storefront-outline", "Inspect and pick up in store"],
-              ["chatbubbles-outline", "Real people on call and WhatsApp"],
-            ].map(([icon, text]) => (
-              <View key={text} style={[ui.row, { gap: space.sm }]}>
-                <Ionicons name={icon as IconName} size={16} color={colors.success} />
-                <Txt variant="small" color={colors.ink2}>{text}</Txt>
-              </View>
-            ))}
-          </View>
-
-          {stock.length > 0 && (
-            <View style={{ gap: space.sm }}>
-              <Txt variant="heading">Availability</Txt>
-              <View style={ui.card}>
-                {stock.map((s, i) => {
-                  const left = s.quantity - s.reserved;
-                  return (
-                    <View key={s.branchId}>
-                      {i > 0 && <Divider style={{ marginVertical: space.md }} />}
-                      <View style={ui.between}>
-                        <View style={[ui.row, { flex: 1 }]}>
-                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: left > 0 ? colors.success : colors.faint }} />
-                          <Txt variant="medium" numberOfLines={1} style={{ flex: 1 }}>{s.branchName}</Txt>
-                        </View>
-                        <Txt variant="small" color={left > 0 ? colors.success : colors.muted}>{left > 0 ? `${left} available` : "Out of stock"}</Txt>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {product.description ? (
-            <View style={{ gap: space.sm }}>
-              <Txt variant="heading">About this item</Txt>
-              <Txt variant="body" color={colors.ink2}>{product.description}</Txt>
-            </View>
-          ) : null}
-
-          {specs.length > 0 && (
-            <View style={{ gap: space.sm }}>
-              <Txt variant="heading">Specifications</Txt>
-              <View style={[ui.card, { paddingVertical: 0 }]}>
-                {specs.map(([k, v], i) => (
-                  <View key={k} style={[ui.between, { paddingVertical: space.md, borderTopWidth: i ? StyleSheet.hairlineWidth : 0, borderTopColor: colors.line }]}>
-                    <Txt variant="small">{k}</Txt>
-                    <Txt variant="medium">{v}</Txt>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
+          {tab === "overview" && <OverviewTab product={product} variantId={variant?.id} onVariant={setVariantId} pickupBranch={storesWithStock[0]?.branchName} />}
+          {tab === "about" && <AboutTab product={product} />}
+          {tab === "reviews" && <ReviewsTab data={reviews.data} loading={reviews.loading} mine={mine} onWrite={openReview} />}
         </View>
 
         {related.data && related.data.items.length > 0 && (
@@ -308,6 +523,8 @@ export default function ProductScreen() {
         <QtyStepper value={qty} onChange={setQty} max={Math.max(1, available)} />
         <Button title={available > 0 ? `Add · ${formatNaira((variant?.price ?? 0) * qty)}` : "Out of stock"} icon="bag-add-outline" onPress={addToCart} disabled={available <= 0} style={{ flex: 1 }} />
       </BottomBar>
+
+      <ReviewSheet visible={reviewOpen} productName={product.name} initial={mine} onClose={() => setReviewOpen(false)} onSubmit={submitReview} />
     </View>
   );
 }
