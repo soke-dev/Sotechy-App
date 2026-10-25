@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState, type ComponentRef } from "react";
-import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira, type CatalogProduct, type ProductDetail, type ProductReviews, type Review } from "@sotechy/shared";
 import { useCartFeedback } from "@/components/cart-feedback";
@@ -423,14 +423,26 @@ export default function ProductScreen() {
             <ProductImage name={product.name} style={{ flex: 1 }} iconSize={80} />
           )}
           {product.images.length > 1 && (
-            <View style={{ position: "absolute", right: gutter, bottom: radius.xl + space.md, backgroundColor: "rgba(23,18,14,0.7)", borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <View style={{ position: "absolute", left: gutter, bottom: radius.xl + space.md + 8, backgroundColor: "rgba(23,18,14,0.7)", borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
               <Txt variant="caption" color={colors.white}>{imageIndex + 1} / {product.images.length}</Txt>
             </View>
           )}
+          <Pressable
+            onPress={() =>
+              openWhatsApp(
+                config.data?.support.whatsapp,
+                `Hello Sotechy, I'd like to order: ${product.name}${product.variants.length > 1 && variant ? ` (${variant.name})` : ""} – ${formatNaira(variant?.price)}`,
+              )
+            }
+            accessibilityLabel="Order on WhatsApp"
+            style={({ pressed }) => ({ position: "absolute", right: gutter, bottom: radius.xl + space.md, flexDirection: "row", alignItems: "center", gap: 6, height: 40, paddingLeft: 14, paddingRight: 12, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : `${colors.surface}F2` })}
+          >
+            <Txt variant="label">Order on</Txt>
+            <Ionicons name="logo-whatsapp" size={21} color={colors.brandPressed} />
+          </Pressable>
           <View style={[ui.between, { position: "absolute", top: insets.top + space.sm, left: gutter, right: gutter }]}>
             <IconButton icon="chevron-back" tone="glass" onPress={() => router.back()} />
             <View style={ui.row}>
-              <IconButton icon="share-outline" tone="glass" onPress={() => Share.share({ message: `${product.name} — ${formatNaira(variant?.price)} at Sotechy Shop` })} />
               <IconButton icon={saved ? "heart" : "heart-outline"} color={saved ? colors.danger : colors.ink} tone="glass" onPress={toggleSaved} />
               <IconButton icon="bag-handle-outline" tone="glass" badge={cart.count} onPress={() => router.push("/cart")} />
             </View>
@@ -479,19 +491,6 @@ export default function ProductScreen() {
               <Pill icon="close-circle" tone="danger" label="Out of stock" />
             )}
           </View>
-
-          <Pressable
-            onPress={() =>
-              openWhatsApp(
-                config.data?.support.whatsapp,
-                `Hello Sotechy, I'd like to order: ${product.name}${product.variants.length > 1 && variant ? ` (${variant.name})` : ""} – ${formatNaira(variant?.price)}`,
-              )
-            }
-            style={({ pressed }) => ({ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, height: 40, paddingHorizontal: space.lg, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line })}
-          >
-            <Ionicons name="logo-whatsapp" size={18} color={colors.brandPressed} />
-            <Txt variant="label">Order on WhatsApp</Txt>
-          </Pressable>
 
           <ProductTabs tab={tab} onChange={setTab} rating={rating} count={ratingCount} />
 
