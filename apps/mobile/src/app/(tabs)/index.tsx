@@ -9,6 +9,7 @@ import { HeroCarousel } from "@/components/hero-carousel";
 import { MenuButton } from "@/components/menu";
 import { ProductRail } from "@/components/product-rail";
 import { SupportChat } from "@/components/support-chat";
+import { useTabBarInset } from "@/components/tab-bar";
 import { Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
@@ -61,6 +62,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { count } = useCart();
+  const tabInset = useTabBarInset();
   const contentWidth = Math.min(width, 720) - gutter * 2;
 
   const { data, error, loading, reload } = useAsync(async () => {
@@ -85,7 +87,7 @@ export default function HomeScreen() {
     <View style={ui.screen}>
     <ScrollView
       style={ui.screen}
-      contentContainerStyle={{ paddingTop: insets.top + space.sm, paddingBottom: space.xxl * 2, gap: space.xxl }}
+      contentContainerStyle={{ paddingTop: insets.top + space.sm, paddingBottom: tabInset + space.xl, gap: space.xxl }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.brand} />}
       showsVerticalScrollIndicator={false}
     >
@@ -261,7 +263,7 @@ export default function HomeScreen() {
         ))}
       </View>
     </ScrollView>
-    <SupportChat teaser />
+    <SupportChat teaser bottomOffset={tabInset} />
     </View>
   );
 }

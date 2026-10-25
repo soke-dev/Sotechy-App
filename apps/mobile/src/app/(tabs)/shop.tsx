@@ -5,6 +5,7 @@ import { FlatList, Pressable, ScrollView, useWindowDimensions, View } from "reac
 import { MenuButton } from "@/components/menu";
 import { ProductCard } from "@/components/product-card";
 import { SupportChat } from "@/components/support-chat";
+import { useTabBarInset } from "@/components/tab-bar";
 import { Chip, EmptyState, ErrorView, Input, Loading, ScreenHeader, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
@@ -19,6 +20,7 @@ const SORTS = [
 export default function ShopScreen() {
   const params = useLocalSearchParams<{ q?: string; category?: string; sort?: string; focus?: string; featured?: string }>();
   const { width } = useWindowDimensions();
+  const tabInset = useTabBarInset();
   const [query, setQuery] = useState(params.q ?? "");
   const [search, setSearch] = useState(params.q ?? "");
   const [category, setCategory] = useState(params.category ?? "");
@@ -119,7 +121,7 @@ export default function ShopScreen() {
           keyExtractor={(p) => p.id}
           numColumns={2}
           columnWrapperStyle={{ gap: space.md }}
-          contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: space.xxl * 2, gap: space.md }}
+          contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabInset + space.lg, gap: space.md }}
           renderItem={({ item }) => <ProductCard product={item} width={cardWidth} />}
           ListEmptyComponent={<EmptyState icon="search-outline" title="No matches" message="Try another search or browse a different category." />}
           onRefresh={products.reload}
@@ -127,7 +129,7 @@ export default function ShopScreen() {
           keyboardDismissMode="on-drag"
         />
       )}
-      <SupportChat />
+      <SupportChat bottomOffset={tabInset} />
     </View>
   );
 }

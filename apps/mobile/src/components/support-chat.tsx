@@ -7,6 +7,7 @@ import { router, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import {
   Animated,
+  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -22,6 +23,7 @@ import { useAuth } from "@/lib/auth";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
+import { SupportAgentArt } from "./tab-icons";
 import { Chip, tap, Txt } from "./ui";
 
 type Action = { label: string; kind: "whatsapp"; message: string } | { label: string; kind: "route"; href: Href };
@@ -54,10 +56,85 @@ const TOPICS: { label: string; reply: Omit<Message, "id" | "from"> }[] = [
   },
 ];
 
+const useNative = Platform.OS !== "web";
+
+/** Three dots that "type" in sequence inside the launcher's speech bubble. */
+function TypingDots() {
+  const a = useRef(new Animated.Value(0.3)).current;
+  const b = useRef(new Animated.Value(0.3)).current;
+  const c = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    const loops = [a, b, c].map((v, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 160),
+          Animated.timing(v, { toValue: 1, duration: 300, useNativeDriver: useNative }),
+          Animated.timing(v, { toValue: 0.3, duration: 300, useNativeDriver: useNative }),
+          Animated.delay((2 - i) * 160 + 700),
+        ]),
+      ),
+    );
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, [a, b, c]);
+  return (
+    <View style={{ flexDirection: "row", gap: 3 }}>
+      {[a, b, c].map((v, i) => (
+        <Animated.View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: colors.brand, opacity: v }} />
+      ))}
+    </View>
+  );
+}
+
+/** Illustrated support agent with a typing bubble and a soft pulse ring. */
+function ChatLauncher({ onPress, bottom }: { onPress: () => void; bottom: number }) {
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([Animated.timing(pulse, { toValue: 1, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: useNative }), Animated.delay(2200)]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Chat with support" style={{ position: "absolute", right: 16, bottom, width: 64, height: 64 }}>
+      {({ pressed }) => (
+        <>
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: 32,
+              borderWidth: 2,
+              borderColor: colors.brand,
+              opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] }) }],
+            }}
+          />
+          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface, padding: 3, transform: [{ scale: pressed ? 0.94 : 1 }], shadowColor: "#2B1D0E", shadowOpacity: 0.22, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 9 }}>
+            <View style={{ flex: 1, borderRadius: 29, overflow: "hidden" }}>
+              <SupportAgentArt size={58} />
+            </View>
+          </View>
+          <View style={{ position: "absolute", top: -10, left: -14, backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 6, borderWidth: 1, borderColor: colors.line, shadowColor: "#2B1D0E", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}>
+            <TypingDots />
+            <View style={{ position: "absolute", bottom: -4, right: 8, width: 8, height: 8, backgroundColor: colors.surface, borderRightWidth: 1, borderBottomWidth: 1, borderColor: colors.line, transform: [{ rotate: "45deg" }] }} />
+          </View>
+        </>
+      )}
+    </Pressable>
+  );
+}
+
 // Show the pop-up at most once per app session.
 let teaserDismissed = false;
 
-export function SupportChat({ teaser = false }: { teaser?: boolean }) {
+export function SupportChat({ teaser = false, bottomOffset = 0 }: { teaser?: boolean; bottomOffset?: number }) {
   const [open, setOpen] = useState(false);
   const [showTeaser, setShowTeaser] = useState(false);
   const fade = useRef(new Animated.Value(0)).current;
@@ -89,7 +166,7 @@ export function SupportChat({ teaser = false }: { teaser?: boolean }) {
           style={{
             position: "absolute",
             right: 16,
-            bottom: 86,
+            bottom: bottomOffset + 92,
             maxWidth: 270,
             opacity: fade,
             transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
@@ -109,29 +186,7 @@ export function SupportChat({ teaser = false }: { teaser?: boolean }) {
         </Animated.View>
       )}
 
-      <Pressable
-        onPress={openChat}
-        accessibilityLabel="Chat with support"
-        style={({ pressed }) => ({
-          position: "absolute",
-          right: 16,
-          bottom: 16,
-          width: 58,
-          height: 58,
-          borderRadius: 29,
-          backgroundColor: pressed ? colors.ink2 : colors.ink,
-          alignItems: "center",
-          justifyContent: "center",
-          shadowColor: "#000",
-          shadowOpacity: 0.2,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 8,
-        })}
-      >
-        <Ionicons name="chatbubble-ellipses" size={26} color={colors.brand} />
-        <View style={{ position: "absolute", top: 4, right: 4, width: 13, height: 13, borderRadius: 7, backgroundColor: colors.success, borderWidth: 2, borderColor: colors.ink }} />
-      </Pressable>
+      <ChatLauncher onPress={openChat} bottom={bottomOffset + 16} />
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <ChatSheet onClose={() => setOpen(false)} />

@@ -3,6 +3,7 @@ import { ScrollView, View } from "react-native";
 import { BUSINESS } from "@sotechy/shared";
 import { Button, Divider, ListRow, Pill, ScreenHeader, Txt, ui } from "@/components/ui";
 import { DEMO_MODE } from "@/lib/api";
+import { useTabBarInset } from "@/components/tab-bar";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
@@ -17,6 +18,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 
 export default function AccountScreen() {
   const { user, signOut } = useAuth();
+  const tabInset = useTabBarInset();
   const initials = (user?.fullName ?? user?.email ?? "?")
     .split(/[\s@]/)
     .filter(Boolean)
@@ -27,7 +29,7 @@ export default function AccountScreen() {
   return (
     <View style={ui.screen}>
       <ScreenHeader title="Account" />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: space.xxl * 2, gap: space.xl }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabInset + space.lg, gap: space.xl }}>
         {user ? (
           <View style={[ui.card, ui.row, { gap: space.lg }]}>
             <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>

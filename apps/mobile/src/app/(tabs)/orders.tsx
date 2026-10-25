@@ -5,12 +5,14 @@ import { FlatList, View } from "react-native";
 import { formatDate, formatNaira, PAYMENT_METHOD_LABELS } from "@sotechy/shared";
 import { Button, Card, EmptyState, ErrorView, Loading, ScreenHeader, StatusPill, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
+import { useTabBarInset } from "@/components/tab-bar";
 import { useAuth } from "@/lib/auth";
 import { colors, gutter, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 
 export default function OrdersScreen() {
   const { user } = useAuth();
+  const tabInset = useTabBarInset();
   const orders = useAsync(async () => (user ? api.myOrders() : []), [user?.id]);
 
   // Tabs stay mounted, so refresh when the tab comes back into view (e.g. after checkout).
@@ -41,7 +43,7 @@ export default function OrdersScreen() {
           keyExtractor={(o) => o.id}
           onRefresh={orders.reload}
           refreshing={orders.loading}
-          contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: space.xxl, gap: space.md, flexGrow: 1 }}
+          contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabInset + space.lg, gap: space.md, flexGrow: 1 }}
           ListEmptyComponent={
             <EmptyState icon="receipt-outline" title="No orders yet" message="When you place an order it will appear here." action={<Button title="Browse products" variant="outline" onPress={() => router.push("/shop")} />} />
           }

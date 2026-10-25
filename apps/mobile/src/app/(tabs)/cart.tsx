@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 import { formatNaira } from "@sotechy/shared";
 import { BottomBar, Button, Divider, EmptyState, ImagePlaceholder, productIcon, QtyStepper, ScreenHeader, SummaryRow, Txt, ui } from "@/components/ui";
+import { useTabBarInset } from "@/components/tab-bar";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { colors, gutter, radius, space } from "@/lib/theme";
@@ -11,6 +12,7 @@ import { colors, gutter, radius, space } from "@/lib/theme";
 export default function CartScreen() {
   const cart = useCart();
   const { user } = useAuth();
+  const tabInset = useTabBarInset();
 
   if (cart.lines.length === 0) {
     return (
@@ -29,7 +31,7 @@ export default function CartScreen() {
   return (
     <View style={ui.screen}>
       <ScreenHeader title="Cart" subtitle={`${cart.count} item${cart.count === 1 ? "" : "s"}`} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: space.xxl, gap: space.lg }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabInset + 96, gap: space.lg }}>
         <View style={[ui.card, { paddingVertical: space.sm }]}>
           {cart.lines.map((line, i) => (
             <View key={line.variantId}>
@@ -73,7 +75,7 @@ export default function CartScreen() {
           <Txt variant="caption">Prices and stock are confirmed when you place the order</Txt>
         </View>
       </ScrollView>
-      <BottomBar>
+      <BottomBar aboveTabBar={tabInset}>
         <View style={{ flex: 1 }}>
           <Txt variant="caption">Total</Txt>
           <Txt variant="price" style={{ fontSize: 19 }}>{formatNaira(cart.subtotal)}</Txt>

@@ -127,9 +127,36 @@ export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
   return <View style={[{ height: StyleSheet.hairlineWidth, backgroundColor: colors.line }, style]} />;
 }
 
-/** Bottom action bar that sits above the home indicator. */
-export function BottomBar({ children }: { children: ReactNode }) {
+/** Bottom action bar that sits above the home indicator, or floats above the tab bar (`aboveTabBar` = inset). */
+export function BottomBar({ children, aboveTabBar }: { children: ReactNode; aboveTabBar?: number }) {
   const insets = useSafeAreaInsets();
+  if (aboveTabBar) {
+    return (
+      <View
+        style={{
+          position: "absolute",
+          left: gutter,
+          right: gutter,
+          bottom: aboveTabBar - 6,
+          padding: space.md,
+          borderRadius: radius.xl,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.line,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space.md,
+          shadowColor: "#2B1D0E",
+          shadowOpacity: 0.12,
+          shadowRadius: 16,
+          shadowOffset: { width: 0, height: 6 },
+          elevation: 8,
+        }}
+      >
+        {children}
+      </View>
+    );
+  }
   return (
     <View
       style={{

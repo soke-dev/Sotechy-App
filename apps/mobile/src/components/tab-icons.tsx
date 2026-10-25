@@ -97,6 +97,33 @@ export function AccountIcon({ active, size = 40 }: Props) {
   );
 }
 
+/** Friendly support agent with a headset, used for the live-chat launcher. */
+export function SupportAgentArt({ size = 60 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 64 64">
+      <Circle cx={32} cy={32} r={32} fill="#FDB913" />
+      {/* shoulders / top */}
+      <Path d="M12 58 C13 46 21 41 32 41 C43 41 51 46 52 58 C46 62.5 39.5 64 32 64 C24.5 64 18 62.5 12 58 Z" fill="#3A322C" />
+      <Path d="M27 41.5 L32 47 L37 41.5 Z" fill="#FFF4E0" />
+      {/* neck + head */}
+      <Rect x={28.5} y={33} width={7} height={8} rx={3} fill="#F3DFC4" />
+      <Circle cx={32} cy={26} r={11} fill="#FFF4E0" />
+      {/* hair */}
+      <Path d="M21 25 C21 16.5 26 13 32.5 13 C39 13 43.5 17 43 24.5 C40 21 35 19.5 29 20.5 C26 21 23 22.5 21 25 Z" fill="#3A322C" />
+      {/* face */}
+      <Circle cx={28} cy={27} r={1.3} fill="#3A322C" />
+      <Circle cx={36} cy={27} r={1.3} fill="#3A322C" />
+      <Path d="M28.6 31 a3.8 3.8 0 0 0 6.8 0" stroke="#3A322C" strokeWidth={1.6} strokeLinecap="round" fill="none" />
+      {/* headset */}
+      <Path d="M19.5 27 C19.5 17.5 25 11.5 32 11.5 C39 11.5 44.5 17.5 44.5 27" stroke="#F7931E" strokeWidth={3.2} strokeLinecap="round" fill="none" />
+      <Rect x={16.5} y={23.5} width={6} height={9.5} rx={3} fill="#F7931E" />
+      <Rect x={41.5} y={23.5} width={6} height={9.5} rx={3} fill="#F7931E" />
+      <Path d="M19.5 32.5 C19.5 36.5 22.5 38 27 37.5" stroke="#F7931E" strokeWidth={2.2} strokeLinecap="round" fill="none" />
+      <Circle cx={27.8} cy={37.3} r={2} fill="#E07F0C" />
+    </Svg>
+  );
+}
+
 /** Soft scalloped burst drawn behind the active icon. */
 export function Burst({ size = 64, color = "#FFE9BD" }: { size?: number; color?: string }) {
   const points = 12;

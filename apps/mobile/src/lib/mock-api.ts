@@ -307,10 +307,10 @@ export const mockApi: ApiClient = {
 };
 
 export const demoMedia = {
-  flyerWalkIn: require("../../assets/demo/banner-walkin.jpg"),
-  flyerMaxi: require("../../assets/demo/banner-maxi.jpg"),
-  appliances: require("../../assets/demo/banner-appliances.jpg"),
   cutoutHome: require("../../assets/demo/cutout-home.png"),
+  fridge: require("../../assets/demo/item-fridge.png"),
+  microwave: require("../../assets/demo/item-microwave.png"),
+  ac: require("../../assets/demo/item-ac.png"),
   power: require("../../assets/demo/cat-power.jpg"),
   storeFront: require("../../assets/demo/store-front.jpg"),
   storeInside: require("../../assets/demo/store-inside.jpg"),

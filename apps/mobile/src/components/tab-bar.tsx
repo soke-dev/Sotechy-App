@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import type { BottomTabBarProps } from "expo-router/js-tabs";
 import { useEffect, useRef, type ComponentType } from "react";
 import { Animated, Platform, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCart } from "@/lib/cart";
 import { colors, fonts } from "@/lib/theme";
 import { AccountIcon, Burst, CartIcon, HomeIcon, OrdersIcon, ShopIcon } from "./tab-icons";
@@ -17,6 +18,15 @@ const ICONS: Record<string, ComponentType<{ active: boolean; size?: number }>> =
 };
 
 const useNative = Platform.OS !== "web";
+
+/** Height of the floating pill itself. */
+const PILL_HEIGHT = 78;
+
+/** Space tab screens must leave at the bottom so content can scroll clear of the floating bar. */
+export function useTabBarInset() {
+  const insets = useSafeAreaInsets();
+  return PILL_HEIGHT + Math.max(insets.bottom, 10) + 14;
+}
 
 function TabItem({ label, routeName, focused, badge, onPress }: { label: string; routeName: string; focused: boolean; badge?: number; onPress: () => void }) {
   const Icon = ICONS[routeName] ?? HomeIcon;
@@ -72,10 +82,12 @@ function TabItem({ label, routeName, focused, badge, onPress }: { label: string;
 export function SotechyTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const { count } = useCart();
   return (
-    <View style={{ backgroundColor: colors.bg, paddingHorizontal: 14, paddingTop: 6, paddingBottom: Math.max(insets.bottom, 10) }}>
+    // Absolutely positioned and transparent so page content keeps showing behind the pill.
+    <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 14, paddingBottom: Math.max(insets.bottom, 10) }}>
       <View
         role="tablist"
         style={{
+          height: PILL_HEIGHT,
           flexDirection: "row",
           backgroundColor: colors.surface,
           borderRadius: 999,
