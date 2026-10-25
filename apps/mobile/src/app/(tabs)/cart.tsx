@@ -19,7 +19,7 @@ export default function CartScreen() {
       <View style={ui.screen}>
         <ScreenHeader title="Cart" />
         <EmptyState
-          icon="bag-handle-outline"
+          illo="cart"
           title="Your cart is empty"
           message="Phones, laptops, TVs and home appliances: find something you like and it will show up here."
           action={<Button title="Start shopping" onPress={() => router.push("/shop")} />}

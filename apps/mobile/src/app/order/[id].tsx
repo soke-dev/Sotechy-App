@@ -13,14 +13,15 @@ import { orderSteps, statusCopy } from "@/lib/orders";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
+import { Illo, type IlloName } from "@/components/illustrations";
 
-function Section({ title, icon, right, children }: { title: string; icon: IconName; right?: ReactNode; children: ReactNode }) {
+function Section({ title, illo, right, children }: { title: string; illo: IlloName; right?: ReactNode; children: ReactNode }) {
   return (
     <View style={[ui.card, { gap: space.md }]}>
       <View style={ui.between}>
         <View style={ui.row}>
-          <View style={{ width: 30, height: 30, borderRadius: 9, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name={icon} size={16} color={colors.brandPressed} />
+          <View style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
+            <Illo name={illo} size={26} />
           </View>
           <Txt variant="heading" style={{ fontSize: 17 }}>{title}</Txt>
         </View>
@@ -174,7 +175,7 @@ export default function OrderScreen() {
       <Hero order={order} onCopy={copy} />
 
       {pi && (
-        <Section title="How to pay" icon="wallet-outline" right={<Txt variant="caption">{PAYMENT_METHOD_LABELS[pi.method]}</Txt>}>
+        <Section title="How to pay" illo="wallet" right={<Txt variant="caption">{PAYMENT_METHOD_LABELS[pi.method]}</Txt>}>
           <View style={{ backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: space.md, gap: 2 }}>
             <Txt variant="caption" color={colors.brandPressed}>Amount to pay</Txt>
             <Txt variant="display" style={{ fontSize: 28, lineHeight: 32 }}>{formatNaira(order.total)}</Txt>
@@ -212,7 +213,7 @@ export default function OrderScreen() {
         </Section>
       )}
 
-      <Section title="Order updates" icon="pulse-outline">
+      <Section title="Order updates" illo="receipt">
         {history.map((h, i) => {
           const latest = i === 0;
           return (
@@ -231,7 +232,7 @@ export default function OrderScreen() {
         })}
       </Section>
 
-      <Section title={`Items (${order.items.reduce((n, i) => n + i.quantity, 0)})`} icon="cube-outline" right={finished ? <Button title="Buy again" size="sm" variant="outline" icon="refresh" onPress={buyAgain} /> : undefined}>
+      <Section title={`Items (${order.items.reduce((n, i) => n + i.quantity, 0)})`} illo="box" right={finished ? <Button title="Buy again" size="sm" variant="outline" icon="refresh" onPress={buyAgain} /> : undefined}>
         {order.items.map((i, idx) => (
           <View key={i.id}>
             {idx > 0 && <Divider style={{ marginBottom: space.md }} />}
@@ -251,7 +252,7 @@ export default function OrderScreen() {
         ))}
       </Section>
 
-      <Section title={order.fulfilmentType === "pickup" ? "Pickup" : "Delivery"} icon={order.fulfilmentType === "pickup" ? "storefront-outline" : "bicycle-outline"}>
+      <Section title={order.fulfilmentType === "pickup" ? "Pickup" : "Delivery"} illo={order.fulfilmentType === "pickup" ? "store" : "bike"}>
         {order.fulfilmentType === "pickup" && store ? (
           <>
             <View style={{ gap: 2 }}>
@@ -277,7 +278,7 @@ export default function OrderScreen() {
         ) : null}
       </Section>
 
-      <Section title="Payment summary" icon="receipt-outline">
+      <Section title="Payment summary" illo="card">
         <View>
           <SummaryRow label="Subtotal" value={formatNaira(order.subtotal)} />
           {order.discountTotal > 0 && <SummaryRow label="Discount" value={`-${formatNaira(order.discountTotal)}`} tone={colors.success} />}

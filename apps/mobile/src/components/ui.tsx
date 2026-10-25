@@ -17,6 +17,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ORDER_STATUS_LABELS, formatNaira, type OrderStatus } from "@sotechy/shared";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { Illo, type IlloName } from "./illustrations";
+import { Burst } from "./tab-icons";
 
 export type IconName = ComponentProps<typeof Ionicons>["name"];
 
@@ -416,6 +418,7 @@ export function OptionRow({
   title,
   subtitle,
   icon,
+  illo,
   selected,
   onPress,
   right,
@@ -423,6 +426,7 @@ export function OptionRow({
   title: string;
   subtitle?: string;
   icon?: IconName;
+  illo?: IlloName;
   selected: boolean;
   onPress: () => void;
   right?: ReactNode;
@@ -444,7 +448,11 @@ export function OptionRow({
         backgroundColor: colors.surface,
       }}
     >
-      {icon ? (
+      {illo ? (
+        <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: selected ? colors.brandSoft : colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
+          <Illo name={illo} size={28} />
+        </View>
+      ) : icon ? (
         <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: selected ? colors.brandSoft : colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name={icon} size={19} color={selected ? colors.brandPressed : colors.ink2} />
         </View>
@@ -459,13 +467,35 @@ export function OptionRow({
   );
 }
 
-export function ListRow({ icon, title, subtitle, onPress, tone, right }: { icon: IconName; title: string; subtitle?: string; onPress?: () => void; tone?: "danger"; right?: ReactNode }) {
+export function ListRow({
+  icon,
+  illo,
+  title,
+  subtitle,
+  onPress,
+  tone,
+  right,
+}: {
+  icon?: IconName;
+  illo?: IlloName;
+  title: string;
+  subtitle?: string;
+  onPress?: () => void;
+  tone?: "danger";
+  right?: ReactNode;
+}) {
   const color = tone === "danger" ? colors.danger : colors.ink;
   return (
     <Pressable onPress={onPress} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: 14, paddingHorizontal: space.lg, backgroundColor: pressed ? colors.surfaceAlt : "transparent" })}>
-      <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: tone === "danger" ? colors.dangerSoft : colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
-        <Ionicons name={icon} size={17} color={color} />
-      </View>
+      {illo ? (
+        <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: tone === "danger" ? colors.dangerSoft : colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
+          <Illo name={illo} size={26} />
+        </View>
+      ) : (
+        <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: tone === "danger" ? colors.dangerSoft : colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name={icon ?? "ellipse-outline"} size={17} color={color} />
+        </View>
+      )}
       <View style={{ flex: 1 }}>
         <Txt variant="medium" color={color}>{title}</Txt>
         {subtitle ? <Txt variant="small">{subtitle}</Txt> : null}
@@ -486,12 +516,21 @@ export function Loading() {
   );
 }
 
-export function EmptyState({ icon, title, message, action }: { icon: IconName; title: string; message?: string; action?: ReactNode }) {
+export function EmptyState({ icon, illo, title, message, action }: { icon?: IconName; illo?: IlloName; title: string; message?: string; action?: ReactNode }) {
   return (
     <View style={[ui.center, { gap: space.md }]}>
-      <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
-        <Ionicons name={icon} size={32} color={colors.brandPressed} />
-      </View>
+      {illo ? (
+        <View style={{ width: 120, height: 120, alignItems: "center", justifyContent: "center" }}>
+          <View style={{ position: "absolute" }}>
+            <Burst size={120} />
+          </View>
+          <Illo name={illo} size={68} />
+        </View>
+      ) : (
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+          <Ionicons name={icon ?? "information-circle-outline"} size={32} color={colors.brandPressed} />
+        </View>
+      )}
       <Txt variant="heading" style={{ textAlign: "center" }}>{title}</Txt>
       {message ? <Txt variant="small" style={{ textAlign: "center", maxWidth: 280 }}>{message}</Txt> : null}
       {action ? <View style={{ marginTop: space.sm }}>{action}</View> : null}

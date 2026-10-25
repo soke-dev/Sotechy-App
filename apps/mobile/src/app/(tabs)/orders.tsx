@@ -134,7 +134,7 @@ export default function OrdersScreen() {
       <View style={ui.screen}>
         <ScreenHeader title="Orders" />
         <EmptyState
-          icon="receipt-outline"
+          illo="receipt"
           title="Track your orders"
           message="Sign in to see payment status, pickup details and delivery updates."
           action={<Button title="Sign in" onPress={() => router.push("/sign-in")} />}
@@ -206,7 +206,7 @@ export default function OrdersScreen() {
           }
           ListEmptyComponent={
             <EmptyState
-              icon="receipt-outline"
+              illo="receipt"
               title={segment === "all" ? "No orders yet" : `Nothing in “${active.label}”`}
               message={segment === "all" ? "When you place an order it will appear here." : "Orders will show up here when they reach this stage."}
               action={segment === "all" ? <Button title="Browse products" variant="outline" onPress={() => router.push("/shop")} /> : undefined}

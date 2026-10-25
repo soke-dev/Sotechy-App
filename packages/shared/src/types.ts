@@ -163,6 +163,29 @@ export interface OrderSummary extends Order {
   items: OrderItem[];
 }
 
+export interface Address {
+  id: string;
+  label: string | null;
+  recipientName: string;
+  phone: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  isDefault: boolean;
+}
+
+export interface AddressInput {
+  label?: string | null;
+  recipientName: string;
+  phone: string;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  state: string;
+  isDefault?: boolean;
+}
+
 export interface Payment {
   id: string;
   orderId: string;

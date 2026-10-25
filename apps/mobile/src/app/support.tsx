@@ -9,17 +9,16 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+import { Illo, type IlloName } from "@/components/illustrations";
 
-function ContactTile({ icon, label, onPress, disabled }: { icon: IconName; label: string; onPress: () => void; disabled?: boolean }) {
+function ContactTile({ illo, label, onPress, disabled }: { illo: IlloName; label: string; onPress: () => void; disabled?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => ({ flex: 1, alignItems: "center", gap: 8, paddingVertical: space.lg, borderRadius: radius.lg, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line, opacity: disabled ? 0.4 : 1 })}
     >
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
-        <Ionicons name={icon} size={20} color={colors.brandPressed} />
-      </View>
+      <Illo name={illo} size={40} />
       <Txt variant="label">{label}</Txt>
     </Pressable>
   );
@@ -58,9 +57,9 @@ export default function SupportScreen() {
         </View>
 
         <View style={[ui.row, { gap: space.md }]}>
-          <ContactTile icon="call" label="Call" disabled={!support?.phone} onPress={() => Linking.openURL(`tel:${digits(support!.phone!)}`)} />
-          <ContactTile icon="logo-whatsapp" label="WhatsApp" disabled={!support?.whatsapp} onPress={() => Linking.openURL(`https://wa.me/${digits(support!.whatsapp!).replace("+", "")}`)} />
-          <ContactTile icon="mail" label="Email" disabled={!support?.email} onPress={() => Linking.openURL(`mailto:${support!.email}`)} />
+          <ContactTile illo="phone" label="Call" disabled={!support?.phone} onPress={() => Linking.openURL(`tel:${digits(support!.phone!)}`)} />
+          <ContactTile illo="chat" label="WhatsApp" disabled={!support?.whatsapp} onPress={() => Linking.openURL(`https://wa.me/${digits(support!.whatsapp!).replace("+", "")}`)} />
+          <ContactTile illo="mail" label="Email" disabled={!support?.email} onPress={() => Linking.openURL(`mailto:${support!.email}`)} />
         </View>
 
         <View style={[ui.card, { gap: space.md }]}>
@@ -79,11 +78,11 @@ export default function SupportScreen() {
         <View style={{ gap: space.sm }}>
           <Txt variant="overline" style={{ paddingHorizontal: 4 }}>Policies</Txt>
           <View style={[ui.card, { padding: 0, overflow: "hidden" }]}>
-            <ListRow icon="bicycle-outline" title="Delivery & pickup" subtitle="To be published" />
+            <ListRow illo="bike" title="Delivery & pickup" subtitle="To be published" />
             <Divider style={{ marginLeft: 62 }} />
-            <ListRow icon="return-down-back-outline" title="Returns" subtitle="To be published" />
+            <ListRow illo="doc" title="Returns" subtitle="To be published" />
             <Divider style={{ marginLeft: 62 }} />
-            <ListRow icon="shield-checkmark-outline" title="Warranty" subtitle="To be published" />
+            <ListRow illo="shield" title="Warranty" subtitle="To be published" />
           </View>
         </View>
 

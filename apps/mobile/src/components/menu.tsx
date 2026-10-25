@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { Button, Divider, IconButton, productIcon, Txt, ui, type IconName } from "./ui";
+import { Illo, type IlloName } from "./illustrations";
 
 const MenuContext = createContext<{ open: () => void; close: () => void }>({ open: () => {}, close: () => {} });
 export const useMenu = () => useContext(MenuContext);
@@ -55,13 +56,13 @@ export function MenuButton() {
   return <IconButton icon="menu" onPress={open} />;
 }
 
-function QuickLink({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+function QuickLink({ illo, label, onPress }: { illo: IlloName; label: string; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({ width: "48%", flexDirection: "row", alignItems: "center", gap: 10, padding: space.md, borderRadius: radius.md, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line })}
     >
-      <Ionicons name={icon} size={18} color={colors.brandPressed} />
+      <Illo name={illo} size={26} />
       <Txt variant="label">{label}</Txt>
     </Pressable>
   );
@@ -171,10 +172,10 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
 
           {/* Quick links */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: space.sm }}>
-            <QuickLink icon="pricetag-outline" label="Deals" onPress={() => go({ pathname: "/shop", params: { featured: "1" } })} />
-            <QuickLink icon="sparkles-outline" label="New in" onPress={() => go({ pathname: "/shop", params: { sort: "newest" } })} />
-            <QuickLink icon="receipt-outline" label="Track order" onPress={() => go("/orders")} />
-            <QuickLink icon="heart-outline" label="Saved" onPress={() => go("/wishlist")} />
+            <QuickLink illo="tag" label="Deals" onPress={() => go({ pathname: "/shop", params: { featured: "1" } })} />
+            <QuickLink illo="sparkle" label="New in" onPress={() => go({ pathname: "/shop", params: { sort: "newest" } })} />
+            <QuickLink illo="receipt" label="Track order" onPress={() => go("/orders")} />
+            <QuickLink illo="heart" label="Saved" onPress={() => go("/wishlist")} />
           </View>
 
           {/* Categories */}
@@ -236,7 +237,7 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
                     onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${b.address}, ${b.city}, Nigeria`)}`)}
                     style={[ui.row, { gap: space.md }]}
                   >
-                    <Ionicons name="location-outline" size={18} color={colors.ink2} />
+                    <Illo name="pin" size={28} />
                     <View style={{ flex: 1 }}>
                       <Txt variant="label">{b.name}</Txt>
                       <Txt variant="caption">{b.address}, {b.city}{b.openingHours ? ` · ${b.openingHours}` : ""}</Txt>

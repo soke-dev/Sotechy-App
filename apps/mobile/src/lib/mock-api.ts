@@ -2,6 +2,7 @@
 // Products, prices and stock here are dummy data, not real Sotechy inventory.
 import { Asset } from "expo-asset";
 import type {
+  Address,
   ApiClient,
   Branch,
   CatalogProduct,
@@ -173,6 +174,11 @@ let signedIn = false;
 const wishlist = new Set<string>(["p4"]);
 const orders: OrderDetail[] = [];
 const ordersByKey = new Map<string, OrderDetail>();
+const addresses: Address[] = [
+  { id: "a1", label: "Home", recipientName: "Demo Customer", phone: "0800 000 0000", line1: "12 Airport Road", line2: "Opposite the filling station", city: "Benin City", state: "Edo", isDefault: true },
+  { id: "a2", label: "Office", recipientName: "Demo Customer", phone: "0800 000 0000", line1: "45 Sapele Road", line2: null, city: "Benin City", state: "Edo", isDefault: false },
+];
+const sortedAddresses = () => [...addresses].sort((a, b) => Number(b.isDefault) - Number(a.isDefault));
 
 const STEP_NOTES: Partial<Record<Order["status"], string>> = {
   pending_payment: "Order placed",
@@ -287,6 +293,30 @@ export const mockApi: ApiClient = {
     signedIn = true;
     demoUser.email = input.email || demoUser.email;
     return wait({ token: "demo-token", user: demoUser });
+  },
+  updateProfile: async (input) => {
+    Object.assign(demoUser, input);
+    return wait({ ...demoUser });
+  },
+  addresses: async () => wait(sortedAddresses()),
+  addAddress: async (input) => {
+    const makeDefault = !!input.isDefault || addresses.length === 0;
+    if (makeDefault) addresses.forEach((a) => (a.isDefault = false));
+    const address: Address = { ...input, id: `a${Date.now()}`, label: input.label ?? null, line2: input.line2 ?? null, isDefault: makeDefault };
+    addresses.push(address);
+    return wait(address);
+  },
+  updateAddress: async (id, input) => {
+    const address = addresses.find((a) => a.id === id);
+    if (!address) return Promise.reject(new Error("Address not found"));
+    if (input.isDefault) addresses.forEach((a) => (a.isDefault = false));
+    Object.assign(address, input);
+    return wait({ ...address });
+  },
+  deleteAddress: async (id) => {
+    const i = addresses.findIndex((a) => a.id === id);
+    if (i >= 0) addresses.splice(i, 1);
+    return wait(null);
   },
   me: async () => {
     signedIn = true; // a stored demo token means the user signed in earlier

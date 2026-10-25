@@ -1,24 +1,26 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useState, type ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { useCallback, useState, type ReactNode } from "react";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, View } from "react-native";
 import { formatNaira, PAYMENT_METHOD_LABELS, type FulfilmentType, type PaymentMethodCode } from "@sotechy/shared";
 import { BottomBar, Button, Chip, Divider, ErrorView, Input, Loading, OptionRow, Pill, SummaryRow, tap, Txt, ui, type IconName } from "@/components/ui";
+import { AddressCard } from "@/components/address-card";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+import { Illo, type IlloName } from "@/components/illustrations";
 
 const newKey = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 
-const methodIcon: Record<PaymentMethodCode, IconName> = {
-  bank_transfer: "business-outline",
-  online: "card-outline",
-  crypto: "logo-bitcoin",
-  cash: "cash-outline",
-  pos_terminal: "card-outline",
+const methodIllo: Record<PaymentMethodCode, IlloName> = {
+  bank_transfer: "bank",
+  online: "card",
+  crypto: "coin",
+  cash: "wallet",
+  pos_terminal: "card",
 };
 
 function Section({ step, title, children }: { step: number; title: string; children: ReactNode }) {
@@ -35,7 +37,7 @@ function Section({ step, title, children }: { step: number; title: string; child
   );
 }
 
-function FulfilmentCard({ icon, title, subtitle, active, onPress }: { icon: IconName; title: string; subtitle: string; active: boolean; onPress: () => void }) {
+function FulfilmentCard({ illo, title, subtitle, active, onPress }: { illo: IlloName; title: string; subtitle: string; active: boolean; onPress: () => void }) {
   return (
     <Pressable
       onPress={() => {
@@ -44,7 +46,7 @@ function FulfilmentCard({ icon, title, subtitle, active, onPress }: { icon: Icon
       }}
       style={{ flex: 1, padding: space.lg, borderRadius: radius.lg, borderWidth: active ? 1.5 : 1, borderColor: active ? colors.ink : colors.line, backgroundColor: active ? colors.surface : colors.bg, gap: 6 }}
     >
-      <Ionicons name={icon} size={22} color={active ? colors.brandPressed : colors.ink2} />
+      <Illo name={illo} size={38} />
       <Txt variant="label">{title}</Txt>
       <Txt variant="caption">{subtitle}</Txt>
     </Pressable>
@@ -64,6 +66,17 @@ export default function CheckoutScreen() {
   const [promoCode, setPromoCode] = useState("");
   const [address, setAddress] = useState({ recipientName: user?.fullName ?? "", phone: user?.phone ?? "", line1: "", line2: "", city: "Benin City", state: "Edo" });
   const [submitting, setSubmitting] = useState(false);
+  const saved = useAsync(async () => (user ? api.addresses() : []), [user?.id]);
+  // null = use the default saved address; "new" = type a new one; otherwise a saved address id
+  const [addressId, setAddressId] = useState<string | null>(null);
+  const [saveNew, setSaveNew] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      saved.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
   const [error, setError] = useState<string | null>(null);
 
   if (config.loading && !config.data) return <Loading />;
@@ -82,7 +95,10 @@ export default function CheckoutScreen() {
       ? Math.min(movePromo.maxDiscountAmount ?? Infinity, Math.round((cart.subtotal * movePromo.value) / 100))
       : 0;
   const total = cart.subtotal + deliveryFee - estDiscount;
-  const addressOk = fulfilment === "pickup" || (address.recipientName && address.phone && address.line1 && address.city);
+  const savedList = saved.data ?? [];
+  const chosenId = addressId ?? savedList.find((a) => a.isDefault)?.id ?? savedList[0]?.id ?? "new";
+  const chosen = savedList.find((a) => a.id === chosenId);
+  const addressOk = fulfilment === "pickup" || !!chosen || !!(address.recipientName && address.phone && address.line1 && address.city);
 
   async function placeOrder() {
     if (!selectedBranch || !selectedMethod) return;
@@ -93,13 +109,22 @@ export default function CheckoutScreen() {
         items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
         fulfilmentType: fulfilment,
         branchId: selectedBranch,
-        deliveryAddress: fulfilment === "delivery" ? address : undefined,
+        deliveryAddress:
+          fulfilment !== "delivery"
+            ? undefined
+            : chosen
+              ? { recipientName: chosen.recipientName, phone: chosen.phone, line1: chosen.line1, line2: chosen.line2 ?? undefined, city: chosen.city, state: chosen.state }
+              : address,
         paymentMethod: selectedMethod,
         cryptoAsset: selectedMethod === "crypto" ? (selectedAsset ?? undefined) : undefined,
         promoCode: promoCode.trim() || undefined,
         idempotencyKey,
       });
       cart.clear();
+      if (fulfilment === "delivery" && !chosen && saveNew && user) {
+        // Remember the new address for next time; the order already succeeded, so ignore failures.
+        api.addAddress({ ...address, label: savedList.length ? "Other" : "Home", line2: address.line2 || null }).catch(() => {});
+      }
       if (selectedMethod === "online") {
         try {
           const { checkoutUrl } = await api.startOnlinePayment(order.id);
@@ -121,9 +146,9 @@ export default function CheckoutScreen() {
       <ScrollView contentContainerStyle={{ padding: gutter, gap: space.xxl, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
         <Section step={1} title="How do you want it?">
           <View style={[ui.row, { gap: space.md, alignItems: "stretch" }]}>
-            <FulfilmentCard icon="storefront-outline" title="Store pickup" subtitle="Free · usually same day" active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />
+            <FulfilmentCard illo="store" title="Store pickup" subtitle="Free · usually same day" active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />
             <FulfilmentCard
-              icon="bicycle-outline"
+              illo="bike"
               title="Delivery"
               subtitle={freeDelivery ? "Free for this order" : `${formatNaira(cfg.delivery.flatFee)} · 1–2 days`}
               active={fulfilment === "delivery"}
@@ -135,23 +160,47 @@ export default function CheckoutScreen() {
         <Section step={2} title={fulfilment === "pickup" ? "Pickup store" : "Delivery details"}>
           {fulfilment === "delivery" && (
             <View style={{ gap: space.md }}>
-              <Input label="Full name" icon="person-outline" value={address.recipientName} onChangeText={(v) => setAddress({ ...address, recipientName: v })} />
-              <Input label="Phone number" icon="call-outline" keyboardType="phone-pad" value={address.phone} onChangeText={(v) => setAddress({ ...address, phone: v })} />
-              <Input label="Street address" icon="home-outline" value={address.line1} onChangeText={(v) => setAddress({ ...address, line1: v })} />
-              <Input label="Landmark or apartment (optional)" value={address.line2} onChangeText={(v) => setAddress({ ...address, line2: v })} />
-              <View style={[ui.row, { gap: space.md }]}>
-                <View style={{ flex: 1 }}>
-                  <Input label="City" value={address.city} onChangeText={(v) => setAddress({ ...address, city: v })} />
+              {savedList.map((a) => (
+                <AddressCard key={a.id} address={a} selected={chosenId === a.id} onPress={() => setAddressId(a.id)} />
+              ))}
+              {savedList.length > 0 && (
+                <OptionRow illo="pin" title="Use a different address" subtitle="Enter a new delivery address" selected={chosenId === "new"} onPress={() => setAddressId("new")} />
+              )}
+              {chosenId === "new" && (
+                <View style={{ gap: space.md }}>
+                  <Input label="Full name" icon="person-outline" value={address.recipientName} onChangeText={(v) => setAddress({ ...address, recipientName: v })} />
+                  <Input label="Phone number" icon="call-outline" keyboardType="phone-pad" value={address.phone} onChangeText={(v) => setAddress({ ...address, phone: v })} />
+                  <Input label="Street address" icon="home-outline" value={address.line1} onChangeText={(v) => setAddress({ ...address, line1: v })} />
+                  <Input label="Landmark or apartment (optional)" value={address.line2} onChangeText={(v) => setAddress({ ...address, line2: v })} />
+                  <View style={[ui.row, { gap: space.md }]}>
+                    <View style={{ flex: 1 }}>
+                      <Input label="City" value={address.city} onChangeText={(v) => setAddress({ ...address, city: v })} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Input label="State" value={address.state} onChangeText={(v) => setAddress({ ...address, state: v })} />
+                    </View>
+                  </View>
+                  {user && (
+                    <View style={[ui.card, ui.between, { paddingVertical: space.md }]}>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Txt variant="label">Save this address</Txt>
+                        <Txt variant="small">Pick it in one tap next time</Txt>
+                      </View>
+                      <Switch value={saveNew} onValueChange={setSaveNew} trackColor={{ true: colors.brand, false: colors.line }} thumbColor={colors.white} />
+                    </View>
+                  )}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Input label="State" value={address.state} onChangeText={(v) => setAddress({ ...address, state: v })} />
-                </View>
-              </View>
+              )}
+              {savedList.length > 0 && (
+                <Pressable onPress={() => router.push("/addresses")} style={{ alignSelf: "flex-start" }} hitSlop={8}>
+                  <Txt variant="label" color={colors.brandPressed}>Manage saved addresses</Txt>
+                </Pressable>
+              )}
               <Txt variant="label" style={{ marginTop: space.sm }}>Ships from</Txt>
             </View>
           )}
           {cfg.branches.map((b) => (
-            <OptionRow key={b.id} icon="location-outline" title={b.name} subtitle={`${b.address}, ${b.city}`} selected={selectedBranch === b.id} onPress={() => setBranchId(b.id)} />
+            <OptionRow key={b.id} illo="store" title={b.name} subtitle={`${b.address}, ${b.city}`} selected={selectedBranch === b.id} onPress={() => setBranchId(b.id)} />
           ))}
         </Section>
 
@@ -159,7 +208,7 @@ export default function CheckoutScreen() {
           {methods.map((m) => (
             <OptionRow
               key={m.code}
-              icon={methodIcon[m.code]}
+              illo={methodIllo[m.code]}
               title={PAYMENT_METHOD_LABELS[m.code]}
               subtitle={m.code === "bank_transfer" ? "Pay into our account, we confirm it" : m.code === "online" ? "Card or bank via Money Moves" : "Pay with supported crypto"}
               selected={selectedMethod === m.code}

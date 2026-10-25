@@ -23,7 +23,7 @@ export default function WishlistScreen() {
 
   if (!user) {
     return (
-      <EmptyState icon="heart-outline" title="Save what you love" message="Sign in to keep a list of products you want to come back to." action={<Button title="Sign in" onPress={() => router.push("/sign-in")} />} />
+      <EmptyState illo="heart" title="Save what you love" message="Sign in to keep a list of products you want to come back to." action={<Button title="Sign in" onPress={() => router.push("/sign-in")} />} />
     );
   }
   if (wishlist.loading && !wishlist.data) return <Loading />;
@@ -38,7 +38,7 @@ export default function WishlistScreen() {
         columnWrapperStyle={{ gap: space.md }}
         contentContainerStyle={{ padding: gutter, gap: space.xl, flexGrow: 1 }}
         renderItem={({ item }) => <ProductCard product={item} width={cardWidth} />}
-        ListEmptyComponent={<EmptyState icon="heart-outline" title="Nothing saved yet" message="Tap the heart on a product to save it here." />}
+        ListEmptyComponent={<EmptyState illo="heart" title="Nothing saved yet" message="Tap the heart on a product to save it here." />}
       />
     </View>
   );

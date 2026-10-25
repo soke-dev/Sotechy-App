@@ -33,11 +33,12 @@ import { useCart } from "@/lib/cart";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
+import { Illo, type IlloName } from "@/components/illustrations";
 
-function InfoRow({ icon, title, subtitle }: { icon: IconName; title: string; subtitle?: string }) {
+function InfoRow({ illo, title, subtitle }: { illo: IlloName; title: string; subtitle?: string }) {
   return (
     <View style={{ flexDirection: "row", gap: space.md, alignItems: "flex-start", paddingVertical: space.sm }}>
-      <Ionicons name={icon} size={20} color={colors.ink2} style={{ marginTop: 1 }} />
+      <Illo name={illo} size={32} />
       <View style={{ flex: 1 }}>
         <Txt variant="label">{title}</Txt>
         {subtitle ? <Txt variant="small">{subtitle}</Txt> : null}
@@ -206,14 +207,14 @@ export default function ProductScreen() {
           <View style={[ui.card, { paddingVertical: space.sm }]}>
             {product.allowPickup && (
               <InfoRow
-                icon="storefront-outline"
+                illo="store"
                 title={storesWithStock[0] ? `Pick up at ${storesWithStock[0].branchName}` : "Store pickup"}
                 subtitle={storesWithStock[0] ? "Usually ready the same day" : "Currently unavailable"}
               />
             )}
-            {product.allowDelivery && <InfoRow icon="bicycle-outline" title="Delivery in Benin City" subtitle="Fee and timing shown at checkout" />}
-            <InfoRow icon="shield-checkmark-outline" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "Warranty details on request"} subtitle={product.returnPolicy ?? undefined} />
-            <InfoRow icon="wallet-outline" title="Pay your way" subtitle="Bank transfer, online payment or $MOVE" />
+            {product.allowDelivery && <InfoRow illo="bike" title="Delivery in Benin City" subtitle="Fee and timing shown at checkout" />}
+            <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "Warranty details on request"} subtitle={product.returnPolicy ?? undefined} />
+            <InfoRow illo="wallet" title="Pay your way" subtitle="Bank transfer, online payment or $MOVE" />
           </View>
 
           <View style={[ui.card, { gap: space.md }]}>

@@ -1,5 +1,6 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import { ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { BUSINESS } from "@sotechy/shared";
 import { Button, Divider, ListRow, Pill, ScreenHeader, Txt, ui } from "@/components/ui";
 import { DEMO_MODE } from "@/lib/api";
@@ -31,15 +32,17 @@ export default function AccountScreen() {
       <ScreenHeader title="Account" />
       <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabInset + space.lg, gap: space.xl }}>
         {user ? (
-          <View style={[ui.card, ui.row, { gap: space.lg }]}>
+          <Pressable onPress={() => router.push("/profile")} style={({ pressed }) => [ui.card, ui.row, { gap: space.lg, opacity: pressed ? 0.9 : 1 }]}>
             <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
               <Txt variant="heading" color={colors.brandPressed} style={{ fontFamily: fonts.displayHeavy }}>{initials}</Txt>
             </View>
             <View style={{ flex: 1 }}>
               <Txt variant="heading" numberOfLines={1}>{user.fullName ?? "Sotechy customer"}</Txt>
               <Txt variant="small" numberOfLines={1}>{user.email}</Txt>
+              <Txt variant="caption" color={colors.brandPressed} style={{ marginTop: 2 }}>View and edit profile</Txt>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+          </Pressable>
         ) : (
           <View style={{ backgroundColor: colors.ink, borderRadius: radius.xl, padding: space.xl, gap: space.md }}>
             <Txt variant="title" color={colors.white}>Sign in for faster checkout</Txt>
@@ -48,23 +51,31 @@ export default function AccountScreen() {
           </View>
         )}
 
+        {user && (
+          <Group title="Your account">
+            <ListRow illo="user" title="Profile & details" subtitle="Name, phone and email" onPress={() => router.push("/profile")} />
+            <Divider style={{ marginLeft: 66 }} />
+            <ListRow illo="pin" title="Saved addresses" subtitle="Used automatically at checkout" onPress={() => router.push("/addresses")} />
+          </Group>
+        )}
+
         <Group title="Shopping">
-          <ListRow icon="receipt-outline" title="My orders" onPress={() => router.push("/orders")} />
+          <ListRow illo="receipt" title="My orders" onPress={() => router.push("/orders")} />
           <Divider style={{ marginLeft: 62 }} />
-          <ListRow icon="heart-outline" title="Saved items" onPress={() => router.push("/wishlist")} />
+          <ListRow illo="heart" title="Saved items" onPress={() => router.push("/wishlist")} />
           <Divider style={{ marginLeft: 62 }} />
-          <ListRow icon="bag-handle-outline" title="Cart" onPress={() => router.push("/cart")} />
+          <ListRow illo="cart" title="Cart" onPress={() => router.push("/cart")} />
         </Group>
 
         <Group title="Help">
-          <ListRow icon="chatbubble-ellipses-outline" title="Help & support" subtitle="Call, WhatsApp or send a message" onPress={() => router.push("/support")} />
+          <ListRow illo="chat" title="Help & support" subtitle="Call, WhatsApp or send a message" onPress={() => router.push("/support")} />
           <Divider style={{ marginLeft: 62 }} />
-          <ListRow icon="document-text-outline" title="Delivery, returns & warranty" onPress={() => router.push("/support")} />
+          <ListRow illo="doc" title="Delivery, returns & warranty" onPress={() => router.push("/support")} />
         </Group>
 
         {user && (
           <View style={[ui.card, { padding: 0, overflow: "hidden" }]}>
-            <ListRow icon="log-out-outline" title="Sign out" tone="danger" onPress={signOut} />
+            <ListRow illo="logout" title="Sign out" tone="danger" onPress={signOut} />
           </View>
         )}
 

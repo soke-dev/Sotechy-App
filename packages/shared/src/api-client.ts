@@ -1,4 +1,6 @@
 import type {
+  Address,
+  AddressInput,
   AuthResponse,
   CatalogProduct,
   Category,
@@ -61,6 +63,13 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
     login: (input: { email: string; password: string }) => send<AuthResponse>("POST", "/auth/login", input),
     googleSignIn: (idToken: string) => send<AuthResponse>("POST", "/auth/google", { idToken }),
     me: () => get<User>("/auth/me"),
+    updateProfile: (input: { fullName?: string; phone?: string }) => send<User>("PATCH", "/auth/me", input),
+
+    // Saved addresses
+    addresses: () => get<Address[]>("/me/addresses"),
+    addAddress: (input: AddressInput) => send<Address>("POST", "/me/addresses", input),
+    updateAddress: (id: string, input: Partial<AddressInput>) => send<Address>("PATCH", `/me/addresses/${id}`, input),
+    deleteAddress: (id: string) => send<null>("DELETE", `/me/addresses/${id}`),
 
     // Storefront
     storeConfig: () => get<StoreConfig>("/store/config"),

@@ -123,7 +123,7 @@ export default function ShopScreen() {
           columnWrapperStyle={{ gap: space.md }}
           contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabInset + space.lg, gap: space.md }}
           renderItem={({ item }) => <ProductCard product={item} width={cardWidth} />}
-          ListEmptyComponent={<EmptyState icon="search-outline" title="No matches" message="Try another search or browse a different category." />}
+          ListEmptyComponent={<EmptyState illo="search" title="No matches" message="Try another search or browse a different category." />}
           onRefresh={products.reload}
           refreshing={products.loading}
           keyboardDismissMode="on-drag"

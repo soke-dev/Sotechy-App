@@ -2,20 +2,20 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GoogleButton } from "@/components/google-button";
+import { Illo } from "@/components/illustrations";
+import { Burst } from "@/components/tab-icons";
 import { Button, Input, Txt, ui } from "@/components/ui";
 import { DEMO_MODE } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { demoMedia } from "@/lib/mock-api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
 type Mode = "signin" | "signup";
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
@@ -25,7 +25,6 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState<"email" | "google" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const heroHeight = Math.min(220, width * 0.5);
 
   const done = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
@@ -69,25 +68,35 @@ export default function SignInScreen() {
   return (
     <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + space.xxl }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* Hero: product art on a brand circle */}
-        <View style={{ height: heroHeight + insets.top, paddingTop: insets.top, overflow: "hidden" }}>
-          <View style={{ position: "absolute", right: -heroHeight * 0.35, top: insets.top - heroHeight * 0.25, width: heroHeight * 1.5, height: heroHeight * 1.5, borderRadius: heroHeight, backgroundColor: colors.brand }} />
-          <View style={{ position: "absolute", right: -heroHeight * 0.55, top: insets.top - heroHeight * 0.45, width: heroHeight * 1.9, height: heroHeight * 1.9, borderRadius: heroHeight * 2, borderWidth: 1.5, borderColor: "rgba(23,18,14,0.06)" }} />
-          <Image source={demoMedia.fridge} style={{ position: "absolute", right: heroHeight * 0.32, bottom: 6, width: heroHeight * 0.55, height: heroHeight * 0.9 }} contentFit="contain" />
-          <Image source={demoMedia.microwave} style={{ position: "absolute", right: -heroHeight * 0.02, bottom: heroHeight * 0.1, width: heroHeight * 0.55, height: heroHeight * 0.4 }} contentFit="contain" />
-          <Image source={demoMedia.ac} style={{ position: "absolute", right: heroHeight * 0.06, top: insets.top + heroHeight * 0.12, width: heroHeight * 0.55, height: heroHeight * 0.22 }} contentFit="contain" />
-          <View style={[ui.between, { paddingHorizontal: gutter, paddingTop: space.md, width: width * 0.55 }]}>
+        {/* Compact header: illustrated sticker cluster in the tab-bar style */}
+        <View style={{ paddingTop: insets.top + space.sm, paddingHorizontal: gutter }}>
+          <View style={ui.between}>
             <Pressable onPress={done} hitSlop={10} accessibilityLabel="Close" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" }}>
               <Ionicons name="close" size={20} color={colors.ink} />
             </Pressable>
+            <Image source={require("../../assets/brand/light-logo-small.png")} style={{ width: 96, height: 40 }} contentFit="contain" />
+            <View style={{ width: 40 }} />
           </View>
-          <Image source={require("../../assets/brand/light-logo-small.png")} style={{ position: "absolute", left: gutter, bottom: space.lg, width: 120, height: 52 }} contentFit="contain" contentPosition="left" />
+          <View style={{ height: 116, marginTop: space.xs }}>
+            {[
+              { el: <Burst size={116} />, size: 116, x: 0, y: 0, r: "0deg" },
+              { el: <Illo name="user" size={70} />, size: 70, x: 0, y: 2, r: "0deg" },
+              { el: <Illo name="bag" size={42} />, size: 42, x: -96, y: -26, r: "-12deg" },
+              { el: <Illo name="box" size={38} />, size: 38, x: 92, y: 28, r: "10deg" },
+              { el: <Illo name="heart" size={28} />, size: 28, x: 74, y: -34, r: "14deg" },
+              { el: <Illo name="sparkle" size={30} />, size: 30, x: -80, y: 34, r: "0deg" },
+            ].map((s, i) => (
+              <View key={i} style={{ position: "absolute", left: "50%", top: "50%", marginLeft: s.x - s.size / 2, marginTop: s.y - s.size / 2, transform: [{ rotate: s.r }] }}>
+                {s.el}
+              </View>
+            ))}
+          </View>
         </View>
 
-        <View style={{ paddingHorizontal: gutter, gap: space.lg, marginTop: space.md }}>
-          <View style={{ gap: 6 }}>
-            <Txt variant="display" style={{ fontSize: 32, lineHeight: 35 }}>{mode === "signin" ? "Welcome back" : "Create your\naccount"}</Txt>
-            <Txt variant="small" style={{ fontSize: 14 }}>
+        <View style={{ paddingHorizontal: gutter, gap: space.lg, marginTop: space.lg }}>
+          <View style={{ gap: 6, alignItems: "center" }}>
+            <Txt variant="display" style={{ fontSize: 30, lineHeight: 34, textAlign: "center" }}>{mode === "signin" ? "Welcome back" : "Create your account"}</Txt>
+            <Txt variant="small" style={{ fontSize: 14, textAlign: "center", maxWidth: 300 }}>
               {mode === "signin" ? "Sign in to check out faster and follow your orders." : "Save your details, track orders and get deals first."}
             </Txt>
           </View>

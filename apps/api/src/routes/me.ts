@@ -1,17 +1,18 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
+import { notFound } from "../lib/errors";
 import { catalogQuery } from "./store";
 
 const addressSchema = z.object({
-  label: z.string().max(40).optional(),
+  label: z.string().max(40).nullable().optional(),
   recipientName: z.string().min(1),
   phone: z.string().min(5),
   line1: z.string().min(1),
-  line2: z.string().optional(),
+  line2: z.string().max(200).nullable().optional(),
   city: z.string().min(1),
   state: z.string().min(1),
   isDefault: z.boolean().optional(),
@@ -37,11 +38,40 @@ export const meRoutes = new Hono<AppEnv>()
     return c.json({ saved: true });
   })
   .get("/addresses", async (c) => {
-    return c.json(await db.select().from(schema.addresses).where(eq(schema.addresses.userId, c.get("user").id)));
+    const rows = await db
+      .select()
+      .from(schema.addresses)
+      .where(eq(schema.addresses.userId, c.get("user").id))
+      .orderBy(desc(schema.addresses.isDefault), desc(schema.addresses.createdAt));
+    return c.json(rows);
   })
   .post("/addresses", zValidator("json", addressSchema), async (c) => {
-    const [row] = await db.insert(schema.addresses).values({ ...c.req.valid("json"), userId: c.get("user").id }).returning();
+    const userId = c.get("user").id;
+    const input = c.req.valid("json");
+    const row = await db.transaction(async (tx) => {
+      const existing = await tx.select({ id: schema.addresses.id }).from(schema.addresses).where(eq(schema.addresses.userId, userId)).limit(1);
+      // The first address, or one explicitly marked default, becomes the default.
+      const makeDefault = input.isDefault || existing.length === 0;
+      if (makeDefault) await tx.update(schema.addresses).set({ isDefault: false }).where(eq(schema.addresses.userId, userId));
+      const [r] = await tx.insert(schema.addresses).values({ ...input, isDefault: makeDefault, userId }).returning();
+      return r;
+    });
     return c.json(row, 201);
+  })
+  .patch("/addresses/:id", zValidator("json", addressSchema.partial()), async (c) => {
+    const userId = c.get("user").id;
+    const input = c.req.valid("json");
+    const row = await db.transaction(async (tx) => {
+      if (input.isDefault) await tx.update(schema.addresses).set({ isDefault: false }).where(eq(schema.addresses.userId, userId));
+      const [r] = await tx
+        .update(schema.addresses)
+        .set(input)
+        .where(and(eq(schema.addresses.id, c.req.param("id")), eq(schema.addresses.userId, userId)))
+        .returning();
+      return r;
+    });
+    if (!row) throw notFound("Address not found");
+    return c.json(row);
   })
   .delete("/addresses/:id", async (c) => {
     await db.delete(schema.addresses).where(and(eq(schema.addresses.id, c.req.param("id")), eq(schema.addresses.userId, c.get("user").id)));

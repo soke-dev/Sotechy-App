@@ -17,12 +17,13 @@ import { demoMedia } from "@/lib/mock-api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp, ORDER_MESSAGE } from "@/lib/whatsapp";
+import { Illo, type IlloName } from "@/components/illustrations";
 
-function CircleLink({ label, onPress, image, icon, dark }: { label: string; onPress: () => void; image?: string | null; icon?: IconName; dark?: boolean }) {
+function CircleLink({ label, onPress, image, icon, illo, dark }: { label: string; onPress: () => void; image?: string | null; icon?: IconName; illo?: IlloName; dark?: boolean }) {
   return (
     <Pressable onPress={onPress} style={{ width: "25%", alignItems: "center", gap: 6, paddingHorizontal: 2 }}>
       <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: dark ? colors.ink : colors.brandSoft, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.surface }}>
-        {image ? <Image source={{ uri: image }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : <Ionicons name={icon ?? "grid-outline"} size={26} color={dark ? colors.brandYellow : colors.brandPressed} />}
+        {illo ? <Illo name={illo} size={40} /> : image ? <Image source={{ uri: image }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : <Ionicons name={icon ?? "grid-outline"} size={26} color={dark ? colors.brandYellow : colors.brandPressed} />}
       </View>
       <Txt variant="caption" color={colors.ink2} numberOfLines={2} style={{ textAlign: "center", fontFamily: fonts.medium }}>{label}</Txt>
     </Pressable>
@@ -178,9 +179,9 @@ export default function HomeScreen() {
           {tops.map((c) => (
             <CircleLink key={c.id} label={c.name} image={c.imageUrl} icon={productIcon(c.name)} onPress={() => shop({ category: c.slug })} />
           ))}
-          <CircleLink label="Deals" icon="pricetag" dark onPress={() => shop({ featured: "1" })} />
-          <CircleLink label="New in" icon="sparkles" onPress={() => shop({ sort: "newest" })} />
-          <CircleLink label="Stores" icon="location" onPress={() => headOffice && Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${headOffice.address}, ${headOffice.city}, Nigeria`)}`)} />
+          <CircleLink label="Deals" illo="tag" onPress={() => shop({ featured: "1" })} />
+          <CircleLink label="New in" illo="sparkle" onPress={() => shop({ sort: "newest" })} />
+          <CircleLink label="Stores" illo="pin" onPress={() => headOffice && Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${headOffice.address}, ${headOffice.city}, Nigeria`)}`)} />
         </View>
       </View>
 
@@ -251,13 +252,13 @@ export default function HomeScreen() {
       {/* Promise strip */}
       <View style={[ui.row, { marginHorizontal: gutter, justifyContent: "space-between" }]}>
         {[
-          { icon: "storefront-outline" as const, label: "Pick up\nin store" },
-          { icon: "bicycle-outline" as const, label: "Fast local\ndelivery" },
-          { icon: "shield-checkmark-outline" as const, label: "Genuine\nwarranty" },
-          { icon: "wallet-outline" as const, label: "Bank, online\n& crypto" },
+          { illo: "store" as const, label: "Pick up\nin store" },
+          { illo: "bike" as const, label: "Fast local\ndelivery" },
+          { illo: "shield" as const, label: "Genuine\nwarranty" },
+          { illo: "wallet" as const, label: "Bank, online\n& crypto" },
         ].map((item) => (
           <View key={item.label} style={{ alignItems: "center", gap: 6, flex: 1 }}>
-            <Ionicons name={item.icon} size={22} color={colors.ink2} />
+            <Illo name={item.illo} size={34} />
             <Txt variant="caption" style={{ textAlign: "center", fontFamily: fonts.medium }}>{item.label}</Txt>
           </View>
         ))}

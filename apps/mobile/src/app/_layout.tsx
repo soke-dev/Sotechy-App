@@ -61,6 +61,9 @@ export default function RootLayout() {
                 <Stack.Screen name="sign-in" options={{ headerShown: false, presentation: "modal" }} />
                 <Stack.Screen name="wishlist" options={{ title: "Saved items" }} />
                 <Stack.Screen name="support" options={{ title: "Help & support" }} />
+                <Stack.Screen name="profile" options={{ title: "My profile" }} />
+                <Stack.Screen name="addresses" options={{ title: "Saved addresses" }} />
+                <Stack.Screen name="address/[id]" options={{ title: "Address" }} />
               </Stack>
               </MenuProvider>
             </ToastProvider>
