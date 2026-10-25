@@ -133,6 +133,9 @@ export interface OrderItem {
   unitPrice: number;
   quantity: number;
   lineTotal: number;
+  /** First product photo, for thumbnails */
+  imageUrl?: string | null;
+  productId?: string | null;
 }
 
 export interface Order {
@@ -153,6 +156,11 @@ export interface Order {
   cryptoAsset: string | null;
   reservationExpiresAt: string | null;
   createdAt: string;
+}
+
+/** An order as listed in "My orders", with its items for thumbnails. */
+export interface OrderSummary extends Order {
+  items: OrderItem[];
 }
 
 export interface Payment {
@@ -223,6 +231,7 @@ export interface User {
   phone: string | null;
   role: Role;
   branchId: string | null;
+  avatarUrl?: string | null;
   createdAt: string;
 }
 

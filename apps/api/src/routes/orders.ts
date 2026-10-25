@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { PaymentInstructions } from "@sotechy/shared";
@@ -40,7 +40,7 @@ export async function loadOrderDetail(orderId: string) {
   if (!order) return null;
 
   const [items, paymentRows, history, branch, method] = await Promise.all([
-    db.select().from(orderItems).where(eq(orderItems.orderId, orderId)),
+    itemsWithImages([orderId]),
     db.select().from(payments).where(eq(payments.orderId, orderId)).orderBy(desc(payments.createdAt)),
     db.select().from(orderStatusHistory).where(eq(orderStatusHistory.orderId, orderId)).orderBy(asc(orderStatusHistory.createdAt)),
     order.branchId ? db.select().from(schema.branches).where(eq(schema.branches.id, order.branchId)) : Promise.resolve([]),
@@ -68,6 +68,17 @@ export async function loadOrderDetail(orderId: string) {
   return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions };
 }
 
+/** Order items with the product's first photo, for thumbnails. */
+export async function itemsWithImages(orderIds: string[]) {
+  if (orderIds.length === 0) return [];
+  return db
+    .select({ ...getTableColumns(orderItems), productId: schema.products.id, imageUrl: sql<string | null>`${schema.products.images}[1]` })
+    .from(orderItems)
+    .leftJoin(schema.productVariants, eq(schema.productVariants.id, orderItems.variantId))
+    .leftJoin(schema.products, eq(schema.products.id, schema.productVariants.productId))
+    .where(inArray(orderItems.orderId, orderIds));
+}
+
 export const orderRoutes = new Hono<AppEnv>()
   .use(requireAuth)
   .post("/", zValidator("json", placeOrderSchema), async (c) => {
@@ -76,7 +87,8 @@ export const orderRoutes = new Hono<AppEnv>()
   })
   .get("/", async (c) => {
     const rows = await db.select().from(orders).where(eq(orders.customerId, c.get("user").id)).orderBy(desc(orders.createdAt)).limit(100);
-    return c.json(rows);
+    const items = await itemsWithImages(rows.map((r) => r.id));
+    return c.json(rows.map(({ idempotencyKey: _k, ...o }) => ({ ...o, items: items.filter((i) => i.orderId === o.id) })));
   })
   .get("/:id", async (c) => {
     const user = c.get("user");

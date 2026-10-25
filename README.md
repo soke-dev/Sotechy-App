@@ -105,6 +105,17 @@ The phone and computer must be on the same Wi-Fi (or run `npx expo start --tunne
 
 Native packages already included: camera and barcode/QR scanning, image picker, location, push notifications, Face ID, haptics, clipboard, sharing and printing (receipts), file system, WebView (payment pages), network status, Reanimated and Gesture Handler, SVG, FlashList, gradients and blur, keyboard controller, localization, store review and OTA updates.
 
+## Google sign-in
+
+The app has "Continue with Google", and the API verifies Google's ID token before signing anyone in. To switch it on:
+
+1. In Google Cloud Console, create OAuth client IDs: **iOS** (bundle ID `shop.sotechy.app`), **Android** (package `shop.sotechy.app` plus your signing SHA-1), and **Web**.
+2. Put them in `apps/mobile/.env` (`EXPO_PUBLIC_GOOGLE_*_CLIENT_ID`) and, comma-separated, in the API's `GOOGLE_CLIENT_IDS`.
+3. iOS: add the reversed iOS client ID (`com.googleusercontent.apps.XXXX`) to `scheme` in `apps/mobile/app.json`, e.g. `"scheme": ["sotechy", "com.googleusercontent.apps.XXXX"]`.
+4. **Rebuild the dev app** (`pnpm --filter @sotechy/mobile build:ios:dev`). Google sign-in uses `expo-crypto`, a native module. Older builds show a friendly "needs the latest app build" message instead of crashing.
+
+It uses `expo-auth-session`'s Google provider. Expo now recommends `@react-native-google-signin/google-signin` for native Google sign-in, so consider switching before release.
+
 ## Brand assets
 
 Put the logo and images in `brand-assets/`, run `pnpm assets:sync`, and commit. See [brand-assets/README.md](brand-assets/README.md). The images you added to `apps/mobile/assets` were moved there.

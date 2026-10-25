@@ -8,6 +8,7 @@ import type {
   Category,
   Order,
   OrderDetail,
+  OrderSummary,
   PlaceOrderInput,
   ProductDetail,
   StoreConfig,
@@ -173,12 +174,37 @@ const wishlist = new Set<string>(["p4"]);
 const orders: OrderDetail[] = [];
 const ordersByKey = new Map<string, OrderDetail>();
 
-function makeOrder(input: PlaceOrderInput, status: Order["status"] = "pending_payment"): OrderDetail {
+const STEP_NOTES: Partial<Record<Order["status"], string>> = {
+  pending_payment: "Order placed",
+  paid: "Payment confirmed",
+  processing: "We're preparing your order",
+  ready_for_pickup: "Ready for collection at the store",
+  dispatched: "Out for delivery with our rider",
+  delivered: "Order completed",
+  cancelled: "Order cancelled",
+};
+
+/** Builds a believable status history up to `status`, spaced out after `placedAt`. */
+function buildHistory(id: string, status: Order["status"], fulfilment: PlaceOrderInput["fulfilmentType"], placedAt: Date) {
+  const flow: Order["status"][] =
+    fulfilment === "pickup" ? ["pending_payment", "paid", "processing", "ready_for_pickup", "delivered"] : ["pending_payment", "paid", "processing", "dispatched", "delivered"];
+  const steps = status === "cancelled" ? (["pending_payment", "cancelled"] as Order["status"][]) : flow.slice(0, flow.indexOf(status) + 1);
+  const gaps = [0, 25, 120, 1440, 2880]; // minutes after placing
+  return steps.map((to, i) => ({
+    id: `${id}-h${i + 1}`,
+    fromStatus: i === 0 ? null : steps[i - 1],
+    toStatus: to,
+    note: to === "delivered" && fulfilment === "pickup" ? "Collected from the store" : (STEP_NOTES[to] ?? null),
+    createdAt: new Date(placedAt.getTime() + (gaps[i] ?? i * 60) * 60_000).toISOString(),
+  }));
+}
+
+function makeOrder(input: PlaceOrderInput, status: Order["status"] = "pending_payment", placedAt = new Date()): OrderDetail {
   const id = `o${orders.length + 1}`;
   const items = input.items.map((line, i) => {
     const product = products.find((p) => p.variants.some((v) => v.id === line.variantId))!;
     const variant = product.variants.find((v) => v.id === line.variantId)!;
-    return { id: `${id}-i${i}`, orderId: id, variantId: variant.id, productName: product.name, variantName: variant.name, sku: variant.sku, unitPrice: variant.price, quantity: line.quantity, lineTotal: variant.price * line.quantity };
+    return { id: `${id}-i${i}`, orderId: id, variantId: variant.id, productName: product.name, variantName: variant.name, sku: variant.sku, unitPrice: variant.price, quantity: line.quantity, lineTotal: variant.price * line.quantity, imageUrl: product.images[0] ?? null, productId: product.id };
   });
   const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
   const deliveryFee = input.fulfilmentType === "delivery" && subtotal < (config.delivery.freeOver ?? Infinity) ? config.delivery.flatFee : 0;
@@ -201,11 +227,11 @@ function makeOrder(input: PlaceOrderInput, status: Order["status"] = "pending_pa
     currency: "NGN",
     paymentMethod: input.paymentMethod,
     cryptoAsset: input.paymentMethod === "crypto" ? (input.cryptoAsset ?? "MOVE") : null,
-    reservationExpiresAt: status === "pending_payment" ? new Date(Date.now() + 30 * 60_000).toISOString() : null,
-    createdAt: now(),
+    reservationExpiresAt: status === "pending_payment" ? new Date(placedAt.getTime() + 30 * 60_000).toISOString() : null,
+    createdAt: placedAt.toISOString(),
     items,
     payments: [],
-    history: [{ id: `${id}-h1`, fromStatus: null, toStatus: status, note: "Order placed", createdAt: now() }],
+    history: buildHistory(id, status, input.fulfilmentType, placedAt),
     branch,
     paymentInstructions:
       status !== "pending_payment"
@@ -218,17 +244,26 @@ function makeOrder(input: PlaceOrderInput, status: Order["status"] = "pending_pa
   };
 }
 
-// A couple of sample orders so the Orders tab has something to show.
-orders.push(
-  { ...makeOrder({ items: [{ variantId: "p11-v1", quantity: 1 }], fulfilmentType: "pickup", branchId: "b1", paymentMethod: "bank_transfer", idempotencyKey: "seed1" }, "delivered"), createdAt: new Date(2026, 9, 18).toISOString() },
-);
-orders.push(makeOrder({ items: [{ variantId: "p2-v1", quantity: 2 }], fulfilmentType: "delivery", branchId: "b1", paymentMethod: "bank_transfer", idempotencyKey: "seed2", deliveryAddress: { recipientName: "Demo Customer", phone: "0800 000 0000", line1: "1 Demo Street", city: "Benin City", state: "Edo" } }));
+// Sample orders covering each status so the Orders screens have something to show.
+const daysAgo = (d: number, h = 10) => {
+  const t = new Date();
+  t.setDate(t.getDate() - d);
+  t.setHours(h, 15, 0, 0);
+  return t;
+};
+const demoAddress = { recipientName: "Demo Customer", phone: "0800 000 0000", line1: "12 Airport Road", city: "Benin City", state: "Edo" };
+orders.push(makeOrder({ items: [{ variantId: "p2-v1", quantity: 2 }, { variantId: "p3-v1", quantity: 1 }], fulfilmentType: "delivery", branchId: "b1", paymentMethod: "bank_transfer", idempotencyKey: "seed1", deliveryAddress: demoAddress }, "pending_payment", new Date(Date.now() - 6 * 60_000)));
+orders.push(makeOrder({ items: [{ variantId: "p8-v1", quantity: 1 }, { variantId: "p13-v1", quantity: 1 }], fulfilmentType: "pickup", branchId: "b1", paymentMethod: "bank_transfer", idempotencyKey: "seed2" }, "ready_for_pickup", daysAgo(1, 11)));
+orders.push(makeOrder({ items: [{ variantId: "p7-v1", quantity: 1 }], fulfilmentType: "delivery", branchId: "b1", paymentMethod: "crypto", cryptoAsset: "MOVE", idempotencyKey: "seed3", deliveryAddress: demoAddress }, "dispatched", daysAgo(2, 9)));
+orders.push(makeOrder({ items: [{ variantId: "p14-v1", quantity: 1 }], fulfilmentType: "pickup", branchId: "b1", paymentMethod: "bank_transfer", idempotencyKey: "seed4" }, "delivered", daysAgo(7, 14)));
+orders.push(makeOrder({ items: [{ variantId: "p16-v1", quantity: 1 }], fulfilmentType: "pickup", branchId: "b2", paymentMethod: "bank_transfer", idempotencyKey: "seed5" }, "cancelled", daysAgo(12, 16)));
 
 const unsupported = () => Promise.reject(new Error("Not available in demo mode"));
 const summary = (o: OrderDetail): Order => {
   const { items: _i, payments: _p, history: _h, branch: _b, paymentInstructions: _pi, ...rest } = o;
   return rest;
 };
+const listItem = (o: OrderDetail): OrderSummary => ({ ...summary(o), items: o.items });
 
 export const mockApi: ApiClient = {
   request: unsupported,
@@ -241,6 +276,11 @@ export const mockApi: ApiClient = {
   register: async (input) => {
     signedIn = true;
     Object.assign(demoUser, { email: input.email, fullName: input.fullName ?? demoUser.fullName, phone: input.phone ?? null });
+    return wait({ token: "demo-token", user: demoUser });
+  },
+  googleSignIn: async () => {
+    signedIn = true;
+    Object.assign(demoUser, { email: "demo.google@sotechy.shop", fullName: "Demo Google User" });
     return wait({ token: "demo-token", user: demoUser });
   },
   login: async (input) => {
@@ -283,7 +323,7 @@ export const mockApi: ApiClient = {
     orders.unshift(order);
     return wait(summary(order), 600);
   },
-  myOrders: async () => wait(signedIn ? orders.map(summary) : []),
+  myOrders: async () => wait(signedIn ? orders.map(listItem) : []),
   order: async (id) => {
     const o = orders.find((x) => x.id === id);
     return o ? wait(o) : Promise.reject(new Error("Order not found"));

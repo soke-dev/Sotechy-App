@@ -2,12 +2,14 @@
 // Messages are sent to the support inbox (Admin → Support) when signed in; instant replies go via WhatsApp.
 // A real-time agent chat (agent replies inside the app) still needs a backend/inbox — see README.
 import Ionicons from "@expo/vector-icons/Ionicons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { router, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import {
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -58,35 +60,7 @@ const TOPICS: { label: string; reply: Omit<Message, "id" | "from"> }[] = [
 
 const useNative = Platform.OS !== "web";
 
-/** Three dots that "type" in sequence inside the launcher's speech bubble. */
-function TypingDots() {
-  const a = useRef(new Animated.Value(0.3)).current;
-  const b = useRef(new Animated.Value(0.3)).current;
-  const c = useRef(new Animated.Value(0.3)).current;
-  useEffect(() => {
-    const loops = [a, b, c].map((v, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 160),
-          Animated.timing(v, { toValue: 1, duration: 300, useNativeDriver: useNative }),
-          Animated.timing(v, { toValue: 0.3, duration: 300, useNativeDriver: useNative }),
-          Animated.delay((2 - i) * 160 + 700),
-        ]),
-      ),
-    );
-    loops.forEach((l) => l.start());
-    return () => loops.forEach((l) => l.stop());
-  }, [a, b, c]);
-  return (
-    <View style={{ flexDirection: "row", gap: 3 }}>
-      {[a, b, c].map((v, i) => (
-        <Animated.View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: colors.brand, opacity: v }} />
-      ))}
-    </View>
-  );
-}
-
-/** Illustrated support agent with a typing bubble and a soft pulse ring. */
+/** Illustrated support agent with a soft pulse ring. */
 function ChatLauncher({ onPress, bottom }: { onPress: () => void; bottom: number }) {
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -121,17 +95,14 @@ function ChatLauncher({ onPress, bottom }: { onPress: () => void; bottom: number
               <SupportAgentArt size={58} />
             </View>
           </View>
-          <View style={{ position: "absolute", top: -10, left: -14, backgroundColor: colors.surface, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 6, borderWidth: 1, borderColor: colors.line, shadowColor: "#2B1D0E", shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}>
-            <TypingDots />
-            <View style={{ position: "absolute", bottom: -4, right: 8, width: 8, height: 8, backgroundColor: colors.surface, borderRightWidth: 1, borderBottomWidth: 1, borderColor: colors.line, transform: [{ rotate: "45deg" }] }} />
-          </View>
         </>
       )}
     </Pressable>
   );
 }
 
-// Show the pop-up at most once per app session.
+// Once closed, the pop-up never shows again on this device (remembered in storage).
+const TEASER_KEY = "sotechy_chat_teaser_dismissed";
 let teaserDismissed = false;
 
 export function SupportChat({ teaser = false, bottomOffset = 0 }: { teaser?: boolean; bottomOffset?: number }) {
@@ -141,15 +112,29 @@ export function SupportChat({ teaser = false, bottomOffset = 0 }: { teaser?: boo
 
   useEffect(() => {
     if (!teaser || teaserDismissed) return;
-    const t = setTimeout(() => {
-      setShowTeaser(true);
-      Animated.spring(fade, { toValue: 1, useNativeDriver: Platform.OS !== "web", speed: 14, bounciness: 6 }).start();
-    }, 2500);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    AsyncStorage.getItem(TEASER_KEY)
+      .catch(() => null)
+      .then((stored) => {
+        if (cancelled || stored) {
+          teaserDismissed = !!stored;
+          return;
+        }
+        t = setTimeout(() => {
+          setShowTeaser(true);
+          Animated.spring(fade, { toValue: 1, useNativeDriver: Platform.OS !== "web", speed: 14, bounciness: 6 }).start();
+        }, 2500);
+      });
+    return () => {
+      cancelled = true;
+      if (t) clearTimeout(t);
+    };
   }, [teaser, fade]);
 
   const dismissTeaser = () => {
     teaserDismissed = true;
+    AsyncStorage.setItem(TEASER_KEY, "1").catch(() => {});
     Animated.timing(fade, { toValue: 0, duration: 150, useNativeDriver: Platform.OS !== "web" }).start(() => setShowTeaser(false));
   };
 
@@ -208,6 +193,11 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
     { id: 2, from: "agent", text: "How can we help you today? Pick a topic or type your question." },
   ]);
   const whatsapp = config.data?.support.whatsapp;
+  const sheetHeight = Math.min(height * 0.78, 640);
+  const close = () => {
+    Keyboard.dismiss();
+    onClose();
+  };
 
   const push = (...m: Omit<Message, "id">[]) => {
     setMessages((prev) => [...prev, ...m.map((x, i) => ({ ...x, id: prev.length + i + 1 }))]);
@@ -222,7 +212,7 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
 
   const runAction = async (a: Action) => {
     if (a.kind === "route") {
-      onClose();
+      close();
       router.push(a.href);
     } else if (!(await openWhatsApp(whatsapp, a.message))) {
       push({ from: "agent", text: "Our WhatsApp number isn't set up yet. Please try again later." });
@@ -261,10 +251,20 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: "flex-end" }}>
-      <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(23,18,14,0.45)" }} onPress={onClose} accessibilityLabel="Close chat" />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={{ height: Math.min(height * 0.78, 640), backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, overflow: "hidden" }}>
+    <KeyboardAvoidingView style={{ flex: 1, justifyContent: "flex-end" }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(23,18,14,0.45)" }} onPress={close} accessibilityLabel="Close chat" />
+      <View
+        style={{
+          flexBasis: sheetHeight,
+          maxHeight: sheetHeight,
+          flexShrink: 1,
+          marginTop: insets.top + space.md,
+          backgroundColor: colors.bg,
+          borderTopLeftRadius: radius.xl,
+          borderTopRightRadius: radius.xl,
+          overflow: "hidden",
+        }}
+      >
           {/* Header */}
           <View style={{ backgroundColor: colors.ink, paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.lg, flexDirection: "row", alignItems: "center", gap: space.md }}>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.white, alignItems: "center", justifyContent: "center" }}>
@@ -277,7 +277,7 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
                 <Txt variant="caption" color="#C9C0B6">Online · usually replies in minutes</Txt>
               </View>
             </View>
-            <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Close chat" style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
+            <Pressable onPress={close} hitSlop={12} accessibilityLabel="Close chat" style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
               <Ionicons name="close" size={18} color={colors.white} />
             </Pressable>
           </View>
@@ -341,8 +341,7 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
               <Ionicons name="send" size={18} color={colors.white} />
             </Pressable>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }

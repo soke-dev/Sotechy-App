@@ -328,7 +328,9 @@ CREATE TABLE "support_tickets" (
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" text NOT NULL,
-	"password_hash" text NOT NULL,
+	"password_hash" text,
+	"google_id" text,
+	"avatar_url" text,
 	"full_name" text,
 	"phone" text,
 	"role" "role" DEFAULT 'customer' NOT NULL,
@@ -336,7 +338,8 @@ CREATE TABLE "users" (
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "users_email_unique" UNIQUE("email")
+	CONSTRAINT "users_email_unique" UNIQUE("email"),
+	CONSTRAINT "users_googleId_unique" UNIQUE("google_id")
 );
 --> statement-breakpoint
 CREATE TABLE "wishlists" (

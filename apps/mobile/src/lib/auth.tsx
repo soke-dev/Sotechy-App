@@ -8,6 +8,7 @@ interface AuthState {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: { email: string; password: string; fullName?: string; phone?: string }) => Promise<void>;
+  signInWithGoogle: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -44,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     signIn: async (email, password) => accept(await api.login({ email, password })),
     signUp: async (input) => accept(await api.register(input)),
+    signInWithGoogle: async (idToken) => accept(await api.googleSignIn(idToken)),
     signOut: async () => {
       setApiToken(null);
       await tokenStore.clear();

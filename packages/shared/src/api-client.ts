@@ -4,6 +4,7 @@ import type {
   Category,
   Order,
   OrderDetail,
+  OrderSummary,
   PlaceOrderInput,
   ProductDetail,
   StoreConfig,
@@ -58,6 +59,7 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
     register: (input: { email: string; password: string; fullName?: string; phone?: string }) =>
       send<AuthResponse>("POST", "/auth/register", input),
     login: (input: { email: string; password: string }) => send<AuthResponse>("POST", "/auth/login", input),
+    googleSignIn: (idToken: string) => send<AuthResponse>("POST", "/auth/google", { idToken }),
     me: () => get<User>("/auth/me"),
 
     // Storefront
@@ -72,7 +74,7 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
 
     // Customer
     placeOrder: (input: PlaceOrderInput) => send<Order>("POST", "/orders", input),
-    myOrders: () => get<Order[]>("/orders"),
+    myOrders: () => get<OrderSummary[]>("/orders"),
     order: (id: string) => get<OrderDetail>(`/orders/${id}`),
     cancelOrder: (id: string) => send<Order>("POST", `/orders/${id}/cancel`),
     startOnlinePayment: (orderId: string) =>
