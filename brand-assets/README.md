@@ -14,7 +14,7 @@ That copies everything into the apps that need it, and you commit the result.
 | `app-icon/` | `icon.png` (1024×1024, no transparency), `splash-icon.png`, `favicon.png` (48×48), `android-icon-foreground.png`, `android-icon-background.png`, `android-icon-monochrome.png` | `apps/mobile/assets/` (replaces Expo's placeholder icons) |
 | `images/` | Banners, hero images, category images, branch photos | `apps/web/public/images/`, `apps/mobile/assets/images/` |
 
-Keep the exact file names in `app-icon/`, because `apps/mobile/app.json` refers to them. They are still Expo's default icons. Replace them with Sotechy versions built from the bag mark.
+Keep the exact file names in `app-icon/`, because `apps/mobile/app.json` refers to them. They are generated from `logo/sotechylogo.png` (the bag mark). That file is only 104×97px, so the icons are upscaled and slightly soft. Add a high-resolution or SVG bag mark and regenerate them before the App Store release.
 
 If you rename a logo file, update the places that use it: `apps/web/src/app/page.tsx`, the admin layout and login page, and `apps/mobile/src/app/(tabs)/index.tsx`.
 
