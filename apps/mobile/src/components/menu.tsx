@@ -22,7 +22,8 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
-import { Button, Divider, IconButton, productIcon, Txt, ui, type IconName } from "./ui";
+import { MenuIcon } from "./tab-icons";
+import { ArtButton, Button, Divider, IconButton, productIcon, Txt, ui, type IconName } from "./ui";
 import { Illo, type IlloName } from "./illustrations";
 
 const MenuContext = createContext<{ open: () => void; close: () => void }>({ open: () => {}, close: () => {} });
@@ -53,7 +54,11 @@ export function MenuProvider({ children }: { children: ReactNode }) {
 
 export function MenuButton() {
   const { open } = useMenu();
-  return <IconButton icon="menu" onPress={open} />;
+  return (
+    <ArtButton label="Menu" onPress={open}>
+      <MenuIcon size={28} />
+    </ArtButton>
+  );
 }
 
 function QuickLink({ illo, label, onPress }: { illo: IlloName; label: string; onPress: () => void }) {

@@ -97,6 +97,24 @@ export function AccountIcon({ active, size = 40 }: Props) {
   );
 }
 
+/** Illustrated menu icon: three rounded bars in Sotechy colours with a sparkle. */
+export function MenuIcon({ size = 40 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      {/* bars */}
+      <Rect x={7} y={10} width={34} height={7} rx={3.5} fill="#F7931E" />
+      <Rect x={7} y={20.5} width={23} height={7} rx={3.5} fill="#C2410C" />
+      <Rect x={7} y={31} width={29} height={7} rx={3.5} fill="#FDB913" />
+      {/* highlights */}
+      <Rect x={10} y={11.6} width={10} height={2} rx={1} fill="#FFD9A8" />
+      <Rect x={10} y={22.1} width={7} height={2} rx={1} fill="#E8692E" />
+      <Rect x={10} y={32.6} width={8} height={2} rx={1} fill="#FFF0C2" />
+      {/* sparkle */}
+      <Path d="M38 19.5 l1.4 2.9 2.9 1.4 -2.9 1.4 -1.4 2.9 -1.4 -2.9 -2.9 -1.4 2.9 -1.4 Z" fill="#FDB913" />
+    </Svg>
+  );
+}
+
 /** Friendly support agent with a headset, used for the live-chat launcher. */
 export function SupportAgentArt({ size = 60 }: { size?: number }) {
   return (

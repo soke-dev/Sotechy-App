@@ -10,8 +10,11 @@ import { MenuButton } from "@/components/menu";
 import { ProductRail } from "@/components/product-rail";
 import { SupportChat } from "@/components/support-chat";
 import { useTabBarInset } from "@/components/tab-bar";
-import { Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
+import { AccountIcon, CartIcon } from "@/components/tab-icons";
+import { UserAvatar } from "@/components/user-avatar";
+import { ArtButton, Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { demoMedia } from "@/lib/mock-api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
@@ -63,6 +66,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { count } = useCart();
+  const { user } = useAuth();
   const tabInset = useTabBarInset();
   const contentWidth = Math.min(width, 720) - gutter * 2;
 
@@ -100,8 +104,12 @@ export default function HomeScreen() {
             <Image source={require("../../../assets/brand/light-logo-small.png")} style={{ width: 100, height: 42 }} contentFit="contain" contentPosition="left" />
           </View>
           <View style={ui.row}>
-            <IconButton icon="person-outline" onPress={() => router.push("/account")} />
-            <IconButton icon="bag-handle-outline" badge={count} onPress={() => router.push("/cart")} />
+            <ArtButton label={user ? "My account" : "Sign in"} onPress={() => router.push("/account")}>
+              {user ? <UserAvatar seed={user.id} preset={user.avatarStyle} size={40} /> : <AccountIcon active size={32} />}
+            </ArtButton>
+            <ArtButton label="Cart" badge={count} onPress={() => router.push("/cart")}>
+              <CartIcon active size={30} />
+            </ArtButton>
           </View>
         </View>
         <Pressable

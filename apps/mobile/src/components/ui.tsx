@@ -297,6 +297,35 @@ export function IconButton({
   );
 }
 
+/** Round button holding an illustrated (SVG) icon or avatar instead of a line icon. */
+export function ArtButton({ children, label, onPress, badge, size = 44 }: { children: ReactNode; label: string; onPress?: () => void; badge?: number; size?: number }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => ({
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: pressed ? colors.surfaceAlt : colors.surface,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: colors.line,
+        alignItems: "center",
+        justifyContent: "center",
+      })}
+    >
+      {children}
+      {badge ? (
+        <View style={ui.badgeDot}>
+          <Text style={{ fontFamily: fonts.bold, fontSize: 10, color: colors.white }}>{badge > 99 ? "99+" : badge}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
 export function Chip({ label, active, onPress, icon, trailingIcon }: { label: string; active?: boolean; onPress?: () => void; icon?: IconName; trailingIcon?: IconName }) {
   return (
     <Pressable

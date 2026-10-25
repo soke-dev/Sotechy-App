@@ -61,6 +61,9 @@ const TOPICS: { label: string; reply: Omit<Message, "id" | "from"> }[] = [
 const useNative = Platform.OS !== "web";
 
 /** Illustrated support agent with a soft pulse ring. */
+/** Diameter of the floating support button. */
+const LAUNCHER = 52;
+
 function ChatLauncher({ onPress, bottom }: { onPress: () => void; bottom: number }) {
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -72,7 +75,7 @@ function ChatLauncher({ onPress, bottom }: { onPress: () => void; bottom: number
   }, [pulse]);
 
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Chat with support" style={{ position: "absolute", right: 16, bottom, width: 64, height: 64 }}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Chat with support" style={{ position: "absolute", right: 16, bottom, width: LAUNCHER, height: LAUNCHER }}>
       {({ pressed }) => (
         <>
           <Animated.View
@@ -83,16 +86,16 @@ function ChatLauncher({ onPress, bottom }: { onPress: () => void; bottom: number
               left: 0,
               right: 0,
               bottom: 0,
-              borderRadius: 32,
+              borderRadius: LAUNCHER / 2,
               borderWidth: 2,
               borderColor: colors.brand,
               opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] }),
               transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] }) }],
             }}
           />
-          <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface, padding: 3, transform: [{ scale: pressed ? 0.94 : 1 }], shadowColor: "#2B1D0E", shadowOpacity: 0.22, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 9 }}>
-            <View style={{ flex: 1, borderRadius: 29, overflow: "hidden" }}>
-              <SupportAgentArt size={58} />
+          <View style={{ width: LAUNCHER, height: LAUNCHER, borderRadius: LAUNCHER / 2, backgroundColor: colors.surface, padding: 3, transform: [{ scale: pressed ? 0.94 : 1 }], shadowColor: "#2B1D0E", shadowOpacity: 0.22, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 9 }}>
+            <View style={{ flex: 1, borderRadius: LAUNCHER / 2 - 3, overflow: "hidden" }}>
+              <SupportAgentArt size={LAUNCHER - 6} />
             </View>
           </View>
         </>
@@ -151,7 +154,7 @@ export function SupportChat({ teaser = false, bottomOffset = 0 }: { teaser?: boo
           style={{
             position: "absolute",
             right: 16,
-            bottom: bottomOffset + 92,
+            bottom: bottomOffset + LAUNCHER + 28,
             maxWidth: 270,
             opacity: fade,
             transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
