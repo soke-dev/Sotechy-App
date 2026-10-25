@@ -15,20 +15,6 @@ import { demoMedia } from "@/lib/mock-api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 
-function QuickTile({ title, icon, bg, fg, iconBg, onPress }: { title: string; icon: IconName; bg: string; fg: string; iconBg: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ width: 112, height: 112, borderRadius: radius.lg, backgroundColor: bg, padding: space.md, justifyContent: "space-between", opacity: pressed ? 0.85 : 1 })}>
-      <View style={ui.between}>
-        <Txt variant="label" color={fg} style={{ flex: 1, fontSize: 13, lineHeight: 16 }}>{title}</Txt>
-        <Ionicons name="arrow-forward" size={14} color={fg} />
-      </View>
-      <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: iconBg, alignItems: "center", justifyContent: "center", alignSelf: "flex-end" }}>
-        <Ionicons name={icon} size={20} color={bg === colors.ink ? colors.ink : colors.white} />
-      </View>
-    </Pressable>
-  );
-}
-
 function CircleLink({ label, onPress, image, icon, dark }: { label: string; onPress: () => void; image?: string | null; icon?: IconName; dark?: boolean }) {
   return (
     <Pressable onPress={onPress} style={{ width: "25%", alignItems: "center", gap: 6, paddingHorizontal: 2 }}>
@@ -131,15 +117,6 @@ export default function HomeScreen() {
       </View>
 
       <HeroCarousel width={contentWidth} />
-
-      {/* Quick tiles */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
-        <QuickTile title="Call to order" icon="call" bg={colors.brandSoft} fg={colors.ink} iconBg={colors.brand} onPress={() => support.phone && Linking.openURL(`tel:${support.phone.replace(/[^\d+]/g, "")}`)} />
-        <QuickTile title="Pay with $MOVE" icon="flash" bg={colors.ink} fg={colors.white} iconBg={colors.brandYellow} onPress={() => shop({})} />
-        <QuickTile title="Pick up today" icon="storefront" bg={colors.successSoft} fg={colors.ink} iconBg={colors.success} onPress={() => shop({})} />
-        <QuickTile title="WhatsApp us" icon="logo-whatsapp" bg="#E3F6EA" fg={colors.ink} iconBg="#25A366" onPress={() => support.whatsapp && Linking.openURL(`https://wa.me/${support.whatsapp.replace(/[^\d]/g, "")}`)} />
-        <QuickTile title="Track my order" icon="receipt" bg={colors.surfaceAlt} fg={colors.ink} iconBg={colors.ink2} onPress={() => router.push("/orders")} />
-      </ScrollView>
 
       {/* Deals of the day */}
       {deals.length > 0 && (
