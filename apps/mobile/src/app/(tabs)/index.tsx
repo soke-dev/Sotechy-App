@@ -105,7 +105,8 @@ export default function HomeScreen() {
           </View>
           <View style={ui.row}>
             <ArtButton label={user ? "My account" : "Sign in"} onPress={() => router.push("/account")}>
-              {user ? <UserAvatar seed={user.id} preset={user.avatarStyle} size={40} /> : <AccountIcon active size={32} />}
+              {/* Avatar sits inside the ring like the signed-out icon */}
+              {user ? <UserAvatar seed={user.id} preset={user.avatarStyle} size={30} /> : <AccountIcon active size={32} />}
             </ArtButton>
             <ArtButton label="Cart" badge={count} onPress={() => router.push("/cart")}>
               <CartIcon active size={30} />
