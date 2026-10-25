@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dev:api": "pnpm --filter @sotechy/api dev",
+    "dev:local": "pnpm --filter @sotechy/api dev:local",
     "dev:mobile": "pnpm --filter @sotechy/mobile start",
     "dev:web": "pnpm --filter @sotechy/web dev",
     "dev:admin": "pnpm --filter @sotechy/admin dev",

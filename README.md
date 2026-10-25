@@ -41,6 +41,16 @@ pnpm dev:web                                # http://localhost:3000
 
 Leave out `--demo` when seeding production. Demo products are clearly labelled `[DEMO]` and are not real inventory.
 
+### Test everything locally (no Railway, no installs)
+
+```bash
+pnpm dev:local     # API + built-in Postgres + local Money Moves test page, on your Wi-Fi address
+pnpm dev:admin     # admin at http://localhost:3000 (admin@local.test / password123)
+pnpm dev:mobile    # app; set EXPO_PUBLIC_API_URL in apps/mobile/.env to the address dev:local prints
+```
+
+`dev:local` keeps its data in `apps/api/.local-db` (delete the folder to start fresh) and adds demo products. Payments go through a local stand-in for Money Moves: a test page where you choose bank transfer, crypto or the app (or simulate an underpayment), which then sends a signed webhook and returns you to the app. No real money moves.
+
 ## How it fits together
 
 ```

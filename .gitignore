@@ -37,3 +37,6 @@ coverage/
 # windows
 desktop.ini
 Thumbs.db
+
+# local database for pnpm dev:local
+apps/api/.local-db/

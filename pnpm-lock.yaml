@@ -71,7 +71,7 @@ importers:
         version: 3.0.3
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@types/pg@8.23.1)(pg@8.23.1)
+        version: 0.45.4(@electric-sql/pglite@0.5.11)(@types/pg@8.23.1)(pg@8.23.1)
       hono:
         specifier: ^4.13.13
         version: 4.13.13
@@ -82,6 +82,12 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
     devDependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.11
+        version: 0.5.11
+      '@electric-sql/pglite-socket':
+        specifier: ^0.2.14
+        version: 0.2.14(@electric-sql/pglite-age@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pg_hashids@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pg_ivm@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pg_textsearch@0.0.13(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pg_uuidv7@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pgtap@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pgvector@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite@0.5.11)
       '@types/node':
         specifier: ^20
         version: 20.19.43
@@ -721,6 +727,57 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@electric-sql/pglite-age@0.0.12':
+    resolution: {integrity: sha512-h3w0ZbR/thNxbRiHrakK5XOJE5bbyIGT0mknREwiE2ELCLAEVv10x3jhnIkXTU5YJ5WzTZj2NbrFcAl/iHj3XQ==}
+    peerDependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pg_hashids@0.0.12':
+    resolution: {integrity: sha512-2vXH899hpmiKMhI1NvR9wxfyyW2SyvAMlBOwm8t02BRMpHIkXtl++fsBUTibL0TzTMAVLRFts53czelLPN0rDw==}
+    peerDependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pg_ivm@0.0.12':
+    resolution: {integrity: sha512-I+WQ0Hb7u7ZxMmznazZ15C0T6c4OKRuKVc5LaKkPNU+Cv7/aZmqRfPOHVu4MY65HC65dU3YmxT0A+tdWHcUF8w==}
+    peerDependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pg_textsearch@0.0.13':
+    resolution: {integrity: sha512-TQX6Opop6fRkfgbZcuUDZ4UYm7x07uQ5JznVJWG9QL3H3hx3qQ1CbqG6eSHzVEjGxxFqoH+2UJs0l/XR/Y3esA==}
+    peerDependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pg_uuidv7@0.0.12':
+    resolution: {integrity: sha512-Q+JvI5fSE0bws+qNa9hzoZEqhGFql/LjTZ5Fq1ojKx2hd99RNkLRcpDUNjqeyluCpZS5Aq/PsLjb5JBUevkXGw==}
+    peerDependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pgtap@0.0.12':
+    resolution: {integrity: sha512-qp8jE4sx+fNoCkcyd/cL8od+Nir4hFVphSh4/vH7P3cFCH6/sayWjQas9OyzPL0JHe7XQRFquyOvgwtUzbJgXQ==}
+    peerDependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pgvector@0.0.12':
+    resolution: {integrity: sha512-n3TJqjWI9FXwFrGhuTVMghef8SL3E6nb4lxZnxYFW3UTg/7/hMUWfz7v2y0+idWzEsQ/raRpMNCsw9zvSdC/SA==}
+    peerDependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-socket@0.2.14':
+    resolution: {integrity: sha512-n7JO9FzxQHdF5oBKzovf/LuRUrEUpOgGP/tmfxmOB5lqWPySTKkCb6FBkzj7kztWGJu9eB0FoilqxvOJ+9+0fQ==}
+    hasBin: true
+    peerDependencies:
+      '@electric-sql/pglite': 0.5.11
+      '@electric-sql/pglite-age': 0.0.12
+      '@electric-sql/pglite-pg_hashids': 0.0.12
+      '@electric-sql/pglite-pg_ivm': 0.0.12
+      '@electric-sql/pglite-pg_textsearch': 0.0.13
+      '@electric-sql/pglite-pg_uuidv7': 0.0.12
+      '@electric-sql/pglite-pgtap': 0.0.12
+      '@electric-sql/pglite-pgvector': 0.0.12
+
+  '@electric-sql/pglite@0.5.11':
+    resolution: {integrity: sha512-SWuqsTjA4DDWqgZ05PC1RJaq8e00p5KACxbqaikDFQ8dIGA0SLRzuPniky7IW+q/c5RDNMdEXwv7mFBWIx9Hxw==}
 
   '@emnapi/core@1.10.0':
     resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
@@ -6222,6 +6279,47 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
+  '@electric-sql/pglite-age@0.0.12(@electric-sql/pglite@0.5.11)':
+    dependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pg_hashids@0.0.12(@electric-sql/pglite@0.5.11)':
+    dependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pg_ivm@0.0.12(@electric-sql/pglite@0.5.11)':
+    dependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pg_textsearch@0.0.13(@electric-sql/pglite@0.5.11)':
+    dependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pg_uuidv7@0.0.12(@electric-sql/pglite@0.5.11)':
+    dependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pgtap@0.0.12(@electric-sql/pglite@0.5.11)':
+    dependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-pgvector@0.0.12(@electric-sql/pglite@0.5.11)':
+    dependencies:
+      '@electric-sql/pglite': 0.5.11
+
+  '@electric-sql/pglite-socket@0.2.14(@electric-sql/pglite-age@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pg_hashids@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pg_ivm@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pg_textsearch@0.0.13(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pg_uuidv7@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pgtap@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite-pgvector@0.0.12(@electric-sql/pglite@0.5.11))(@electric-sql/pglite@0.5.11)':
+    dependencies:
+      '@electric-sql/pglite': 0.5.11
+      '@electric-sql/pglite-age': 0.0.12(@electric-sql/pglite@0.5.11)
+      '@electric-sql/pglite-pg_hashids': 0.0.12(@electric-sql/pglite@0.5.11)
+      '@electric-sql/pglite-pg_ivm': 0.0.12(@electric-sql/pglite@0.5.11)
+      '@electric-sql/pglite-pg_textsearch': 0.0.13(@electric-sql/pglite@0.5.11)
+      '@electric-sql/pglite-pg_uuidv7': 0.0.12(@electric-sql/pglite@0.5.11)
+      '@electric-sql/pglite-pgtap': 0.0.12(@electric-sql/pglite@0.5.11)
+      '@electric-sql/pglite-pgvector': 0.0.12(@electric-sql/pglite@0.5.11)
+
+  '@electric-sql/pglite@0.5.11': {}
+
   '@emnapi/core@1.10.0':
     dependencies:
       '@emnapi/wasi-threads': 1.2.1
@@ -8405,8 +8503,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.4(@types/pg@8.23.1)(pg@8.23.1):
+  drizzle-orm@0.45.4(@electric-sql/pglite@0.5.11)(@types/pg@8.23.1)(pg@8.23.1):
     optionalDependencies:
+      '@electric-sql/pglite': 0.5.11
       '@types/pg': 8.23.1
       pg: 8.23.1
 
@@ -8646,8 +8745,8 @@ snapshots:
       '@next/eslint-plugin-next': 16.4.3(eslint@9.39.5(jiti@2.7.0))
       eslint: 9.39.5(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@2.7.0))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.5(jiti@2.7.0))
       eslint-plugin-react: 7.37.5(eslint@9.39.5(jiti@2.7.0))
       eslint-plugin-react-hooks: 7.1.1(eslint@9.39.5(jiti@2.7.0))
@@ -8689,6 +8788,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0)):
+    dependencies:
+      '@nolyfill/is-core-module': 1.0.39
+      debug: 4.4.3
+      eslint: 9.39.5(jiti@2.7.0)
+      get-tsconfig: 4.14.3
+      is-bun-module: 2.0.0
+      stable-hash: 0.0.5
+      tinyglobby: 0.2.17
+      unrs-resolver: 1.12.2
+    optionalDependencies:
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0))
+    transitivePeerDependencies:
+      - supports-color
+
   eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@2.7.0)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
@@ -8700,22 +8814,32 @@ snapshots:
       tinyglobby: 0.2.17
       unrs-resolver: 1.12.2
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.14.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0)):
+  eslint-module-utils@2.14.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       '@typescript-eslint/parser': 8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
       eslint: 9.39.5(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0))
+    transitivePeerDependencies:
+      - supports-color
+
+  eslint-module-utils@2.14.0(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0)):
+    dependencies:
+      debug: 3.2.7
+    optionalDependencies:
+      eslint: 9.39.5(jiti@2.7.0)
+      eslint-import-resolver-node: 0.3.10
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@2.7.0))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0)):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.2.0
@@ -8726,7 +8850,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.5(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
-      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0))
+      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0))
       hasown: 2.0.4
       is-core-module: 2.17.0
       is-glob: 4.0.3
@@ -8755,7 +8879,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.5(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
-      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0))
+      eslint-module-utils: 2.14.0(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0))
       hasown: 2.0.4
       is-core-module: 2.17.0
       is-glob: 4.0.3

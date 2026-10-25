@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "dev:local": "node dev/local.mjs",
     "build": "tsup",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
@@ -26,6 +27,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
+    "@electric-sql/pglite-socket": "^0.2.14",
     "@types/node": "^20",
     "@types/pg": "^8",
     "drizzle-kit": "^0.31.11",
