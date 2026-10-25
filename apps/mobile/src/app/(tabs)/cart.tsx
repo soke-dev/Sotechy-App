@@ -1,13 +1,13 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 import { formatNaira } from "@sotechy/shared";
-import { BottomBar, Button, Divider, EmptyState, ImagePlaceholder, productIcon, QtyStepper, ScreenHeader, SummaryRow, Txt, ui } from "@/components/ui";
+import { BottomBar, Button, Divider, EmptyState, QtyStepper, ScreenHeader, SummaryRow, Txt, ui } from "@/components/ui";
 import { useTabBarInset } from "@/components/tab-bar";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { colors, gutter, radius, space } from "@/lib/theme";
+import { ProductImage } from "@/components/product-image";
 
 export default function CartScreen() {
   const cart = useCart();
@@ -38,11 +38,7 @@ export default function CartScreen() {
               {i > 0 && <Divider />}
               <View style={{ flexDirection: "row", gap: space.md, paddingVertical: space.md }}>
                 <Pressable onPress={() => router.push({ pathname: "/product/[id]", params: { id: line.productId } })}>
-                  {line.imageUrl ? (
-                    <Image source={{ uri: line.imageUrl }} style={{ width: 76, height: 76, borderRadius: radius.md, backgroundColor: colors.surfaceAlt }} contentFit="cover" />
-                  ) : (
-                    <ImagePlaceholder style={{ width: 76, height: 76, borderRadius: radius.md }} icon={productIcon(line.productName)} />
-                  )}
+                  <ProductImage uri={line.imageUrl} name={line.productName} style={{ width: 76, height: 76 }} radius={radius.md} padding={6} iconSize={26} />
                 </Pressable>
                 <View style={{ flex: 1, gap: 2 }}>
                   <View style={[ui.between, { alignItems: "flex-start", gap: space.sm }]}>

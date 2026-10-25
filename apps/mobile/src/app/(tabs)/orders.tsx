@@ -1,18 +1,18 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { formatDate, formatNaira, type OrderStatus, type OrderSummary } from "@sotechy/shared";
 import { useTabBarInset } from "@/components/tab-bar";
 import { useToast } from "@/components/toast";
-import { Button, EmptyState, ErrorView, ImagePlaceholder, Loading, productIcon, ScreenHeader, StatusPill, tap, Txt, ui } from "@/components/ui";
+import { Button, EmptyState, ErrorView, Loading, ScreenHeader, StatusPill, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { orderSteps } from "@/lib/orders";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+import { ProductImage } from "@/components/product-image";
 
 type Segment = "all" | "to_pay" | "active" | "completed" | "cancelled";
 
@@ -26,8 +26,8 @@ const SEGMENTS: { key: Segment; label: string; match: (s: OrderStatus) => boolea
 
 function Thumb({ uri, name, size = 52 }: { uri?: string | null; name: string; size?: number }) {
   return (
-    <View style={{ width: size, height: size, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, overflow: "hidden" }}>
-      {uri ? <Image source={{ uri }} style={{ flex: 1, margin: 4 }} contentFit="contain" /> : <ImagePlaceholder style={{ flex: 1 }} icon={productIcon(name)} size={22} />}
+    <View style={{ width: size, height: size, borderRadius: 13, borderWidth: 2, borderColor: colors.surface, overflow: "hidden" }}>
+      <ProductImage uri={uri} name={name} style={{ flex: 1 }} padding={4} iconSize={22} />
     </View>
   );
 }

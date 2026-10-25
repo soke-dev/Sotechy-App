@@ -30,10 +30,11 @@ import {
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
-import { colors, gutter, radius, space } from "@/lib/theme";
+import { colors, gutter, lightPalette, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { Illo, type IlloName } from "@/components/illustrations";
+import { ProductImage } from "@/components/product-image";
 
 function InfoRow({ illo, title, subtitle }: { illo: IlloName; title: string; subtitle?: string }) {
   return (
@@ -113,7 +114,7 @@ export default function ProductScreen() {
     <View style={ui.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
         {/* Photo gallery: swipe, or tap a thumbnail below */}
-        <View style={{ height: heroHeight, backgroundColor: colors.surface }}>
+        <View style={{ height: heroHeight, backgroundColor: lightPalette.brand }}>
           {product.images.length > 0 ? (
             <ScrollView
               ref={galleryRef}
@@ -123,11 +124,11 @@ export default function ProductScreen() {
               onMomentumScrollEnd={(e) => setImageIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
             >
               {product.images.map((src, i) => (
-                <Image key={i} source={{ uri: src }} style={{ width, height: heroHeight - radius.xl }} contentFit="contain" transition={150} />
+                <ProductImage key={i} uri={src} name={product.name} style={{ width, height: heroHeight }} padding={heroHeight * 0.12} />
               ))}
             </ScrollView>
           ) : (
-            <ImagePlaceholder style={{ flex: 1 }} icon={productIcon(product.name)} size={72} />
+            <ProductImage name={product.name} style={{ flex: 1 }} iconSize={80} />
           )}
           {product.images.length > 1 && (
             <View style={{ position: "absolute", right: gutter, bottom: radius.xl + space.md, backgroundColor: "rgba(23,18,14,0.7)", borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
@@ -156,7 +157,7 @@ export default function ProductScreen() {
                   }}
                   style={{ width: 64, height: 64, borderRadius: radius.md, overflow: "hidden", borderWidth: 2, borderColor: i === imageIndex ? colors.ink : "transparent", padding: 2 }}
                 >
-                  <Image source={{ uri: src }} style={{ flex: 1, borderRadius: radius.sm, backgroundColor: colors.surface }} contentFit="contain" />
+                  <ProductImage uri={src} name={product.name} style={{ flex: 1 }} radius={radius.sm} padding={4} />
                 </Pressable>
               ))}
             </ScrollView>

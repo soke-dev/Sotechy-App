@@ -1,13 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
-import { Image } from "expo-image";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderDetail } from "@sotechy/shared";
 import { useDialog } from "@/components/dialog";
 import { useToast } from "@/components/toast";
-import { Button, Divider, ErrorView, ImagePlaceholder, Loading, productIcon, SummaryRow, tap, Txt, ui, type IconName } from "@/components/ui";
+import { Button, Divider, ErrorView, Loading, SummaryRow, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { orderSteps, statusCopy } from "@/lib/orders";
@@ -15,6 +14,7 @@ import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { Illo, type IlloName } from "@/components/illustrations";
+import { ProductImage } from "@/components/product-image";
 
 function Section({ title, illo, right, children }: { title: string; illo: IlloName; right?: ReactNode; children: ReactNode }) {
   return (
@@ -248,9 +248,7 @@ export default function OrderScreen() {
           <View key={i.id}>
             {idx > 0 && <Divider style={{ marginBottom: space.md }} />}
             <Pressable onPress={() => i.productId && router.push({ pathname: "/product/[id]", params: { id: i.productId } })} style={[ui.row, { gap: space.md }]}>
-              <View style={{ width: 60, height: 60, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, overflow: "hidden" }}>
-                {i.imageUrl ? <Image source={{ uri: i.imageUrl }} style={{ flex: 1, margin: 5 }} contentFit="contain" /> : <ImagePlaceholder style={{ flex: 1 }} icon={productIcon(i.productName)} size={24} />}
-              </View>
+              <ProductImage uri={i.imageUrl} name={i.productName} style={{ width: 60, height: 60 }} radius={12} padding={5} iconSize={24} />
               <View style={{ flex: 1, gap: 2 }}>
                 <Txt variant="medium" numberOfLines={2}>{i.productName}</Txt>
                 <Txt variant="caption">

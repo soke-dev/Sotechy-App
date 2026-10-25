@@ -1,5 +1,4 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
@@ -8,7 +7,8 @@ import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { colors, radius, space } from "@/lib/theme";
 import { useToast } from "./toast";
-import { discountPercent, ImagePlaceholder, Pill, productIcon, tap, Txt } from "./ui";
+import { discountPercent, Pill, tap, Txt } from "./ui";
+import { ProductImage } from "./product-image";
 
 /** Floating "+" button: adds single-option products straight to the cart, otherwise opens the product. */
 function QuickAdd({ product }: { product: CatalogProduct }) {
@@ -55,12 +55,8 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
     <View style={{ width }}>
       <Link href={{ pathname: "/product/[id]", params: { id: product.slug } }} asChild>
         <Pressable style={styles.card}>
-          <View style={styles.media}>
-            {product.imageUrl ? (
-              <Image source={{ uri: product.imageUrl }} style={{ flex: 1, margin: 10, opacity: soldOut ? 0.45 : 1 }} contentFit="contain" transition={150} />
-            ) : (
-              <ImagePlaceholder style={{ flex: 1 }} icon={productIcon(product.name)} size={40} />
-            )}
+          <View style={{ width: "100%", aspectRatio: 1 }}>
+            <ProductImage uri={product.imageUrl} name={product.name} style={{ flex: 1 }} padding={14} mark dimmed={soldOut} />
             {soldOut && (
               <View style={{ position: "absolute", top: 8, left: 8 }}>
                 <Pill label="Sold out" tone="dark" />
