@@ -11,6 +11,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { MenuProvider } from "@/components/menu";
 import { ToastProvider } from "@/components/toast";
 import { AuthProvider } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
@@ -41,6 +42,7 @@ export default function RootLayout() {
         <AuthProvider>
           <CartProvider>
             <ToastProvider>
+              <MenuProvider>
               <StatusBar style="dark" />
               <Stack
                 screenOptions={{
@@ -60,6 +62,7 @@ export default function RootLayout() {
                 <Stack.Screen name="wishlist" options={{ title: "Saved items" }} />
                 <Stack.Screen name="support" options={{ title: "Help & support" }} />
               </Stack>
+              </MenuProvider>
             </ToastProvider>
           </CartProvider>
         </AuthProvider>

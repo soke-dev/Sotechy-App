@@ -68,7 +68,13 @@ export const storeRoutes = new Hono()
       const term = `%${q}%`;
       filters.push(or(ilike(products.name, term), ilike(products.brand, term), ilike(products.model, term)));
     }
-    if (category) filters.push(or(eq(categories.slug, category), sql`${products.categoryId}::text = ${category}`));
+    if (category) {
+      // A parent category includes its sub-categories (slug or id accepted)
+      filters.push(sql`${products.categoryId} in (
+        select c.id from categories c
+        where c.slug = ${category} or c.id::text = ${category}
+           or c.parent_id in (select p.id from categories p where p.slug = ${category} or p.id::text = ${category}))`);
+    }
     if (featured === "true") filters.push(eq(products.isFeatured, true));
 
     const order =

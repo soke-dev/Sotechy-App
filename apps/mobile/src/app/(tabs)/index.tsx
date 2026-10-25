@@ -1,17 +1,73 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { Linking, Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { formatNaira, type CatalogProduct, type Category } from "@sotechy/shared";
 import { HeroCarousel } from "@/components/hero-carousel";
-import { ProductCard } from "@/components/product-card";
-import { Button, ErrorView, IconButton, Loading, Pill, SectionHeader, Txt, ui } from "@/components/ui";
+import { MenuButton } from "@/components/menu";
+import { ProductRail } from "@/components/product-rail";
+import { Button, discountPercent, ErrorView, IconButton, Loading, Pill, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
 import { api, DEMO_MODE } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { demoMedia } from "@/lib/mock-api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+
+function QuickTile({ title, icon, bg, fg, iconBg, onPress }: { title: string; icon: IconName; bg: string; fg: string; iconBg: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => ({ width: 112, height: 112, borderRadius: radius.lg, backgroundColor: bg, padding: space.md, justifyContent: "space-between", opacity: pressed ? 0.85 : 1 })}>
+      <View style={ui.between}>
+        <Txt variant="label" color={fg} style={{ flex: 1, fontSize: 13, lineHeight: 16 }}>{title}</Txt>
+        <Ionicons name="arrow-forward" size={14} color={fg} />
+      </View>
+      <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: iconBg, alignItems: "center", justifyContent: "center", alignSelf: "flex-end" }}>
+        <Ionicons name={icon} size={20} color={bg === colors.ink ? colors.ink : colors.white} />
+      </View>
+    </Pressable>
+  );
+}
+
+function CircleLink({ label, onPress, image, icon, dark }: { label: string; onPress: () => void; image?: string | null; icon?: IconName; dark?: boolean }) {
+  return (
+    <Pressable onPress={onPress} style={{ width: "25%", alignItems: "center", gap: 6, paddingHorizontal: 2 }}>
+      <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: dark ? colors.ink : colors.brandSoft, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.surface }}>
+        {image ? <Image source={{ uri: image }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : <Ionicons name={icon ?? "grid-outline"} size={26} color={dark ? colors.brandYellow : colors.brandPressed} />}
+      </View>
+      <Txt variant="caption" color={colors.ink2} numberOfLines={2} style={{ textAlign: "center", fontFamily: fonts.medium }}>{label}</Txt>
+    </Pressable>
+  );
+}
+
+function DealBubble({ product, size }: { product: CatalogProduct; size: number }) {
+  const off = discountPercent(product.minPrice, product.compareAtPrice);
+  return (
+    <Pressable onPress={() => router.push({ pathname: "/product/[id]", params: { id: product.slug } })} style={{ width: size, alignItems: "center", gap: 6 }}>
+      <View style={{ width: size, height: size }}>
+        <View style={{ flex: 1, borderRadius: size / 2, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+          {product.imageUrl ? (
+            <Image source={{ uri: product.imageUrl }} style={{ width: "74%", height: "74%" }} contentFit="contain" />
+          ) : (
+            <Ionicons name={productIcon(product.name)} size={size * 0.4} color={colors.white} />
+          )}
+        </View>
+        {off > 0 && (
+          <View style={{ position: "absolute", top: 0, right: 0, backgroundColor: colors.ink, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 2, borderColor: colors.surface }}>
+            <Txt variant="caption" color={colors.white} style={{ fontSize: 11 }}>-{off}%</Txt>
+          </View>
+        )}
+      </View>
+      <Txt variant="price" style={{ fontSize: 14 }}>{formatNaira(product.minPrice)}</Txt>
+    </Pressable>
+  );
+}
+
+/** Top-level category id for any category (itself if already top-level). */
+const topOf = (cats: Category[], id: string | null) => {
+  const c = cats.find((x) => x.id === id);
+  return c?.parentId ?? c?.id ?? null;
+};
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -20,104 +76,119 @@ export default function HomeScreen() {
   const contentWidth = Math.min(width, 720) - gutter * 2;
 
   const { data, error, loading, reload } = useAsync(async () => {
-    const [config, categories, featured, latest] = await Promise.all([
-      api.storeConfig(),
-      api.categories(),
-      api.products({ featured: true }),
-      api.products({ sort: "newest" }),
-    ]);
-    return { config, categories, featured, latest: latest.slice(0, 6) };
+    const [config, categories, products] = await Promise.all([api.storeConfig(), api.categories(), api.products({ sort: "newest" })]);
+    return { config, categories, products };
   });
 
   if (loading && !data) return <Loading />;
   if (error && !data) return <ErrorView message={error} onRetry={reload} />;
   if (!data) return null;
 
-  const movePromo = data.config.promotions.find((p) => p.cryptoAsset === "MOVE");
-  const headOffice = data.config.branches[0];
-  const half = (contentWidth - space.md) / 2;
+  const { config, categories, products } = data;
+  const tops = categories.filter((c) => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
+  const deals = products.filter((p) => discountPercent(p.minPrice, p.compareAtPrice) > 0 || p.isFeatured);
+  const bubbleSize = Math.floor((contentWidth - space.lg * 2 - space.md * 2) / 3);
+  const support = config.support;
+  const headOffice = config.branches[0];
+  const shop = (params: Record<string, string>) => router.push({ pathname: "/shop", params } as Href);
 
   return (
     <ScrollView
       style={ui.screen}
-      contentContainerStyle={{ paddingTop: insets.top + space.sm, paddingBottom: space.xxl * 2 }}
+      contentContainerStyle={{ paddingTop: insets.top + space.sm, paddingBottom: space.xxl * 2, gap: space.xxl }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.brand} />}
       showsVerticalScrollIndicator={false}
     >
-      {/* Top bar */}
-      <View style={[ui.between, { paddingHorizontal: gutter }]}>
-        <Image source={require("../../../assets/brand/light-logo-small.png")} style={{ width: 112, height: 48 }} contentFit="contain" contentPosition="left" />
-        <View style={ui.row}>
+      {/* Header, search and call-to-order */}
+      <View style={{ paddingHorizontal: gutter, gap: space.md }}>
+        <View style={ui.between}>
+          <View style={[ui.row, { gap: space.md }]}>
+            <MenuButton />
+            <Image source={require("../../../assets/brand/light-logo-small.png")} style={{ width: 100, height: 42 }} contentFit="contain" contentPosition="left" />
+          </View>
+          <View style={ui.row}>
+            <IconButton icon="person-outline" onPress={() => router.push("/account")} />
+            <IconButton icon="bag-handle-outline" badge={count} onPress={() => router.push("/cart")} />
+          </View>
+        </View>
+        <Pressable
+          onPress={() => shop({ focus: "1" })}
+          style={{ height: 50, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18 }}
+        >
+          <Ionicons name="search" size={18} color={colors.ink2} />
+          <Txt variant="body" color={colors.faint}>Search products, brands and categories</Txt>
+        </Pressable>
+        <View style={ui.between}>
+          <Pressable onPress={() => support.phone && Linking.openURL(`tel:${support.phone.replace(/[^\d+]/g, "")}`)} style={ui.row}>
+            <Ionicons name="call" size={14} color={colors.brandPressed} />
+            <Txt variant="label" style={{ fontSize: 13 }}>
+              CALL TO ORDER: <Txt variant="label" color={colors.brandPressed} style={{ fontSize: 13 }}>{support.phone ?? "coming soon"}</Txt>
+            </Txt>
+          </Pressable>
           {DEMO_MODE && <Pill label="Demo data" tone="warning" />}
-          <IconButton icon="bag-handle-outline" badge={count} onPress={() => router.push("/cart")} />
         </View>
       </View>
 
-      {/* Search */}
-      <Pressable
-        onPress={() => router.push({ pathname: "/shop", params: { focus: "1" } })}
-        style={{ marginHorizontal: gutter, marginTop: space.md, height: 50, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18 }}
-      >
-        <Ionicons name="search" size={18} color={colors.ink2} />
-        <Txt variant="body" color={colors.faint}>Search phones, TVs, generators…</Txt>
-      </Pressable>
+      <HeroCarousel width={contentWidth} />
 
-      {/* Banners */}
-      <View style={{ marginTop: space.lg }}>
-        <HeroCarousel width={contentWidth} />
-      </View>
+      {/* Quick tiles */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
+        <QuickTile title="Call to order" icon="call" bg={colors.brandSoft} fg={colors.ink} iconBg={colors.brand} onPress={() => support.phone && Linking.openURL(`tel:${support.phone.replace(/[^\d+]/g, "")}`)} />
+        <QuickTile title="Pay with $MOVE" icon="flash" bg={colors.ink} fg={colors.white} iconBg={colors.brandYellow} onPress={() => shop({})} />
+        <QuickTile title="Pick up today" icon="storefront" bg={colors.successSoft} fg={colors.ink} iconBg={colors.success} onPress={() => shop({})} />
+        <QuickTile title="WhatsApp us" icon="logo-whatsapp" bg="#E3F6EA" fg={colors.ink} iconBg="#25A366" onPress={() => support.whatsapp && Linking.openURL(`https://wa.me/${support.whatsapp.replace(/[^\d]/g, "")}`)} />
+        <QuickTile title="Track my order" icon="receipt" bg={colors.surfaceAlt} fg={colors.ink} iconBg={colors.ink2} onPress={() => router.push("/orders")} />
+      </ScrollView>
+
+      {/* Deals of the day */}
+      {deals.length > 0 && (
+        <View style={{ marginHorizontal: gutter, backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, borderWidth: 1, borderColor: colors.line }}>
+          <View style={[ui.between, { marginBottom: space.lg }]}>
+            <View>
+              <Txt variant="title" style={{ fontFamily: fonts.displayHeavy }}>Deals of the day</Txt>
+              <Txt variant="small">While stock lasts</Txt>
+            </View>
+            <Pressable onPress={() => shop({ featured: "1" })} style={{ height: 34, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: colors.ink, justifyContent: "center" }}>
+              <Ionicons name="arrow-forward" size={18} color={colors.white} />
+            </Pressable>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.md, rowGap: space.lg }}>
+            {deals.slice(0, 6).map((p) => (
+              <DealBubble key={p.id} product={p} size={bubbleSize} />
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Categories */}
-      <View style={{ marginTop: space.xl }}>
-        <View style={{ paddingHorizontal: gutter }}>
-          <SectionHeader title="Shop by category" action="All" onAction={() => router.push("/shop")} />
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
-          {data.categories.map((c) => (
-            <Pressable key={c.id} onPress={() => router.push({ pathname: "/shop", params: { category: c.slug } })} style={{ width: 92, gap: 8 }}>
-              <View style={{ width: 92, height: 92, borderRadius: radius.lg, overflow: "hidden", backgroundColor: colors.surfaceAlt }}>
-                {c.imageUrl ? <Image source={{ uri: c.imageUrl }} style={{ flex: 1 }} contentFit="cover" /> : null}
-              </View>
-              <Txt variant="caption" color={colors.ink2} numberOfLines={2} style={{ textAlign: "center" }}>
-                {c.name}
-              </Txt>
-            </Pressable>
+      <View style={{ paddingHorizontal: gutter }}>
+        <SectionHeader title="Everything for your home & office" />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: space.lg, marginHorizontal: -2 }}>
+          {tops.map((c) => (
+            <CircleLink key={c.id} label={c.name} image={c.imageUrl} icon={productIcon(c.name)} onPress={() => shop({ category: c.slug })} />
           ))}
-        </ScrollView>
+          <CircleLink label="Deals" icon="pricetag" dark onPress={() => shop({ featured: "1" })} />
+          <CircleLink label="New in" icon="sparkles" onPress={() => shop({ sort: "newest" })} />
+          <CircleLink label="Stores" icon="location" onPress={() => headOffice && Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${headOffice.address}, ${headOffice.city}, Nigeria`)}`)} />
+        </View>
       </View>
 
-      {/* $MOVE offer */}
-      {movePromo && (
-        <View style={{ marginHorizontal: gutter, marginTop: space.xl, borderRadius: radius.xl, backgroundColor: colors.ink, padding: space.xl, flexDirection: "row", alignItems: "center", gap: space.lg, overflow: "hidden" }}>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Txt variant="overline" color={colors.brandYellow}>Crypto checkout</Txt>
-            <Txt variant="heading" color={colors.white}>Pay with $MOVE and save on eligible orders</Txt>
-            <Txt variant="small" color="#BDB3A8">Bank transfer and online payment also available.</Txt>
-          </View>
-          <View style={{ alignItems: "center" }}>
-            <Txt variant="overline" color={colors.white}>Up to</Txt>
-            <Txt variant="display" color={colors.brandYellow} style={{ fontSize: 40, lineHeight: 44 }}>10%</Txt>
-            <Txt variant="overline" color={colors.white}>off</Txt>
-          </View>
-        </View>
-      )}
+      <ProductRail title="Top deals" subtitle="Save on selected items" products={deals} dark onSeeAll={() => shop({ featured: "1" })} />
 
-      {/* Featured */}
-      {data.featured.length > 0 && (
-        <View style={{ marginTop: space.xxl }}>
-          <View style={{ paddingHorizontal: gutter }}>
-            <SectionHeader title="Featured deals" action="See all" onAction={() => router.push("/shop")} />
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
-            {data.featured.map((p) => (
-              <ProductCard key={p.id} product={p} width={158} />
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      {/* One rail per top-level category; every other one on a dark panel */}
+      {tops.map((c, i) => (
+        <ProductRail
+          key={c.id}
+          title={c.name}
+          products={products.filter((p) => topOf(categories, p.categoryId) === c.id)}
+          dark={i % 3 === 2}
+          subtitle={i % 3 === 2 ? "Trusted brands, with warranty" : undefined}
+          onSeeAll={() => shop({ category: c.slug })}
+        />
+      ))}
 
       {/* Brands */}
-      <View style={{ paddingHorizontal: gutter, marginTop: space.xxl }}>
+      <View style={{ paddingHorizontal: gutter }}>
         <SectionHeader title="Brands we stock" />
         <View style={[ui.row, { gap: space.md }]}>
           {demoMedia.brands.map((src, i) => (
@@ -128,19 +199,24 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* New arrivals */}
-      <View style={{ paddingHorizontal: gutter, marginTop: space.xxl }}>
-        <SectionHeader title="New arrivals" action="See all" onAction={() => router.push({ pathname: "/shop", params: { sort: "newest" } })} />
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.md, rowGap: space.xl }}>
-          {data.latest.map((p) => (
-            <ProductCard key={p.id} product={p} width={half} />
-          ))}
+      {/* Can't find it */}
+      <Pressable
+        onPress={() => (support.whatsapp ? Linking.openURL(`https://wa.me/${support.whatsapp.replace(/[^\d]/g, "")}`) : router.push("/support"))}
+        style={{ marginHorizontal: gutter, flexDirection: "row", alignItems: "center", gap: space.lg, padding: space.lg, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }}
+      >
+        <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="chatbubbles-outline" size={24} color={colors.brandPressed} />
         </View>
-      </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt variant="label">Can&apos;t find what you need?</Txt>
+          <Txt variant="small">Tell us the product and we&apos;ll source it for you.</Txt>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+      </Pressable>
 
       {/* Store */}
       {headOffice && (
-        <View style={{ marginHorizontal: gutter, marginTop: space.xxl, borderRadius: radius.xl, overflow: "hidden", height: Math.round(contentWidth * 0.72) }}>
+        <View style={{ marginHorizontal: gutter, borderRadius: radius.xl, overflow: "hidden", height: Math.round(contentWidth * 0.72) }}>
           <Image source={demoMedia.storeFront} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" />
           <LinearGradient colors={["transparent", "rgba(23,18,14,0.88)"]} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "70%" }} />
           <View style={{ flex: 1, justifyContent: "flex-end", padding: space.xl, gap: 6 }}>
@@ -160,7 +236,7 @@ export default function HomeScreen() {
       )}
 
       {/* Promise strip */}
-      <View style={[ui.row, { marginHorizontal: gutter, marginTop: space.xxl, justifyContent: "space-between" }]}>
+      <View style={[ui.row, { marginHorizontal: gutter, justifyContent: "space-between" }]}>
         {[
           { icon: "storefront-outline" as const, label: "Pick up\nin store" },
           { icon: "bicycle-outline" as const, label: "Fast local\ndelivery" },

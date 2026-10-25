@@ -23,6 +23,12 @@ const images = {
   computers: uri(require("../../assets/demo/cat-computers.jpg")),
   home: uri(require("../../assets/demo/cat-home.jpg")),
   tv: uri(require("../../assets/demo/cat-tv.jpg")),
+  power: uri(require("../../assets/demo/cat-power.jpg")),
+  appliances: uri(require("../../assets/demo/banner-appliances.jpg")),
+  storeInside: uri(require("../../assets/demo/store-inside.jpg")),
+  fridge: uri(require("../../assets/demo/item-fridge.png")),
+  microwave: uri(require("../../assets/demo/item-microwave.png")),
+  ac: uri(require("../../assets/demo/item-ac.png")),
 };
 
 const branches: Branch[] = [
@@ -30,11 +36,30 @@ const branches: Branch[] = [
   { id: "b2", name: "Branch 2", code: "BR-02", address: "Address to be added", city: "Benin City", state: "Edo", phone: null, openingHours: "Mon–Sat 9am–6pm", isActive: true },
 ];
 
+const top = (id: string, name: string, slug: string, imageUrl: string, sortOrder: number): Category => ({ id, name, slug, parentId: null, imageUrl, sortOrder, isActive: true });
+const sub = (id: string, parentId: string, name: string, slug: string, sortOrder: number): Category => ({ id, name, slug, parentId, imageUrl: null, sortOrder, isActive: true });
+
 const categories: Category[] = [
-  { id: "c1", name: "Phones & Accessories", slug: "phones-accessories", parentId: null, imageUrl: images.phones, sortOrder: 1, isActive: true },
-  { id: "c2", name: "Computers & Gadgets", slug: "computers-gadgets", parentId: null, imageUrl: images.computers, sortOrder: 2, isActive: true },
-  { id: "c3", name: "Home Appliances", slug: "home-appliances", parentId: null, imageUrl: images.home, sortOrder: 3, isActive: true },
-  { id: "c4", name: "TV & Audio", slug: "tv-audio", parentId: null, imageUrl: images.tv, sortOrder: 4, isActive: true },
+  top("c1", "Phones & Tablets", "phones-tablets", images.phones, 1),
+  sub("c1a", "c1", "Smartphones", "smartphones", 1),
+  sub("c1b", "c1", "Chargers & Power Banks", "chargers-power-banks", 2),
+  sub("c1c", "c1", "Phone Accessories", "phone-accessories", 3),
+  top("c2", "Computers", "computers", images.computers, 2),
+  sub("c2a", "c2", "Laptops", "laptops", 1),
+  sub("c2b", "c2", "Computer Accessories", "computer-accessories", 2),
+  top("c4", "TVs & Audio", "tvs-audio", images.tv, 3),
+  sub("c4a", "c4", "Smart TVs", "smart-tvs", 1),
+  sub("c4b", "c4", "Sound Bars", "sound-bars", 2),
+  sub("c4c", "c4", "Speakers", "speakers", 3),
+  top("c3", "Home Appliances", "home-appliances", images.home, 4),
+  sub("c3a", "c3", "Cookers & Microwaves", "cookers-microwaves", 1),
+  sub("c3b", "c3", "Fans & Cooling", "fans-cooling", 2),
+  sub("c3c", "c3", "Water Dispensers", "water-dispensers", 3),
+  sub("c3d", "c3", "Small Appliances", "small-appliances", 4),
+  sub("c3e", "c3", "Refrigerators & Freezers", "refrigerators-freezers", 5),
+  top("c5", "Power Solutions", "power-solutions", images.power, 5),
+  sub("c5a", "c5", "Generators", "generators", 1),
+  sub("c5b", "c5", "Stabilizers & Inverters", "stabilizers-inverters", 2),
 ];
 
 interface Seed {
@@ -47,22 +72,27 @@ interface Seed {
   featured?: boolean;
   variants?: string[];
   specs?: Record<string, string>;
+  /** Demo photos (stand-ins until real product photos are uploaded) */
+  imgs?: (keyof typeof images)[];
 }
 
 const seeds: Seed[] = [
-  { name: "Spark 20 Smartphone 128GB", brand: "Tecno", cat: "c1", price: 250000, was: 275000, stock: [6, 2], featured: true, variants: ["128GB · Black", "128GB · Blue"], specs: { Storage: "128GB", RAM: "6GB", Battery: "5000mAh" } },
-  { name: "Fast Charger 25W", brand: "Oraimo", cat: "c1", price: 12000, stock: [40, 15] },
-  { name: "Power Bank 20,000mAh", brand: "Oraimo", cat: "c1", price: 28000, stock: [12, 8], featured: true },
-  { name: "14\" Laptop 8GB / 256GB", brand: "HP", cat: "c2", price: 620000, stock: [3, 1], featured: true, specs: { RAM: "8GB", Storage: "256GB SSD", Screen: "14-inch" } },
-  { name: "Wireless Mouse", brand: "Logitech", cat: "c2", price: 9500, stock: [25, 0] },
-  { name: "4-Burner Gas Cooker", brand: "Maxi", cat: "c3", price: 285000, was: 310000, stock: [4, 2], featured: true },
-  { name: "Standing Fan 18\"", brand: "Maxi", cat: "c3", price: 48000, stock: [10, 6] },
-  { name: "Water Dispenser", brand: "Maxi", cat: "c3", price: 135000, stock: [2, 0] },
-  { name: "3.5kVA Generator", brand: "Firman", cat: "c3", price: 480000, stock: [0, 0] },
-  { name: "Electric Kettle 1.7L", brand: "Polystar", cat: "c3", price: 21000, stock: [10, 4] },
-  { name: "43\" Smart TV", brand: "Hisense", cat: "c4", price: 390000, was: 420000, stock: [2, 1], featured: true, specs: { Screen: "43-inch", Resolution: "Full HD", Smart: "Yes" } },
-  { name: "Sound Bar", brand: "Hisense", cat: "c4", price: 120000, stock: [5, 3] },
-  { name: "Bluetooth Speaker", brand: "Oraimo", cat: "c4", price: 35000, stock: [9, 5] },
+  { name: "Spark 20 Smartphone 128GB", brand: "Tecno", cat: "c1a", price: 250000, was: 275000, stock: [6, 2], featured: true, variants: ["128GB · Black", "128GB · Blue"], specs: { Storage: "128GB", RAM: "6GB", Battery: "5000mAh" } },
+  { name: "Fast Charger 25W", brand: "Oraimo", cat: "c1b", price: 12000, stock: [40, 15] },
+  { name: "Power Bank 20,000mAh", brand: "Oraimo", cat: "c1b", price: 28000, stock: [12, 8], featured: true },
+  { name: "14\" Laptop 8GB / 256GB", brand: "HP", cat: "c2a", price: 620000, stock: [3, 1], featured: true, specs: { RAM: "8GB", Storage: "256GB SSD", Screen: "14-inch" } },
+  { name: "Wireless Mouse", brand: "Logitech", cat: "c2b", price: 9500, stock: [25, 0] },
+  { name: "4-Burner Gas Cooker", brand: "Maxi", cat: "c3a", price: 285000, was: 310000, stock: [4, 2], featured: true },
+  { name: "Double Door Refrigerator 350L", brand: "Hisense", cat: "c3e", imgs: ["fridge", "home", "storeInside"], price: 545000, was: 599000, stock: [3, 2], featured: true, specs: { Capacity: "350 litres", Type: "Double door", Energy: "A+" } },
+  { name: "Microwave Oven 20L", brand: "Polystar", cat: "c3a", imgs: ["microwave"], price: 78000, was: 89000, stock: [7, 4], featured: true },
+  { name: "Split Air Conditioner 1.5HP", brand: "Hisense", cat: "c3b", imgs: ["ac"], price: 410000, stock: [5, 1], specs: { Capacity: "1.5HP", Type: "Split", Inverter: "Yes" } },
+  { name: "Standing Fan 18\"", brand: "Maxi", cat: "c3b", price: 48000, stock: [10, 6] },
+  { name: "Water Dispenser", brand: "Maxi", cat: "c3c", price: 135000, stock: [2, 0] },
+  { name: "3.5kVA Generator", brand: "Firman", cat: "c5a", imgs: ["power", "storeInside"], price: 480000, stock: [0, 0] },
+  { name: "Electric Kettle 1.7L", brand: "Polystar", cat: "c3d", price: 21000, stock: [10, 4] },
+  { name: "43\" Smart TV", brand: "Hisense", cat: "c4a", imgs: ["tv", "appliances", "storeInside", "home"], price: 390000, was: 420000, stock: [2, 1], featured: true, specs: { Screen: "43-inch", Resolution: "Full HD", Smart: "Yes" } },
+  { name: "Sound Bar", brand: "Hisense", cat: "c4b", imgs: ["tv"], price: 120000, stock: [5, 3] },
+  { name: "Bluetooth Speaker", brand: "Oraimo", cat: "c4c", price: 35000, stock: [9, 5] },
 ];
 
 const products: ProductDetail[] = seeds.map((s, i) => {
@@ -86,7 +116,7 @@ const products: ProductDetail[] = seeds.map((s, i) => {
     model: `DM-${100 + i}`,
     description: "Demo product used while the design is being built. Real products, prices and photos will come from the admin dashboard.",
     specifications: s.specs ?? {},
-    images: [],
+    images: (s.imgs ?? []).map((k) => images[k]),
     condition: "new",
     warrantyMonths: 12,
     returnPolicy: "7-day return for unused items in original packaging (placeholder).",
@@ -228,7 +258,12 @@ export const mockApi: ApiClient = {
   products: async ({ q, category, sort, featured } = {}) => {
     let list = products.map(toCatalog);
     if (q) list = list.filter((p) => `${p.name} ${p.brand} ${p.model}`.toLowerCase().includes(q.toLowerCase()));
-    if (category) list = list.filter((p) => categories.find((c) => c.id === p.categoryId)?.slug === category);
+    if (category) {
+      // A parent category includes its sub-categories
+      const match = categories.find((c) => c.slug === category);
+      const ids = new Set(categories.filter((c) => c.id === match?.id || c.parentId === match?.id).map((c) => c.id));
+      list = list.filter((p) => p.categoryId && ids.has(p.categoryId));
+    }
     if (featured) list = list.filter((p) => p.isFeatured);
     if (sort === "price_asc") list.sort((a, b) => a.minPrice - b.minPrice);
     else if (sort === "price_desc") list.sort((a, b) => b.minPrice - a.minPrice);
@@ -275,6 +310,8 @@ export const demoMedia = {
   flyerWalkIn: require("../../assets/demo/banner-walkin.jpg"),
   flyerMaxi: require("../../assets/demo/banner-maxi.jpg"),
   appliances: require("../../assets/demo/banner-appliances.jpg"),
+  cutoutHome: require("../../assets/demo/cutout-home.png"),
+  power: require("../../assets/demo/cat-power.jpg"),
   storeFront: require("../../assets/demo/store-front.jpg"),
   storeInside: require("../../assets/demo/store-inside.jpg"),
   brands: [require("../../assets/demo/brand-hisense.png"), require("../../assets/demo/brand-firman.jpg")],

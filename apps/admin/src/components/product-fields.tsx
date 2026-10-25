@@ -12,9 +12,12 @@ export function ProductFields({ categories, product }: { categories: Category[];
       <Field label="Category">
         <select name="categoryId" defaultValue={product?.categoryId ?? ""} className={inputClass}>
           <option value="">—</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
+          {categories.map((c) => {
+            const parent = categories.find((p) => p.id === c.parentId);
+            return (
+              <option key={c.id} value={c.id}>{parent ? `${parent.name} › ${c.name}` : c.name}</option>
+            );
+          })}
         </select>
       </Field>
       <Field label="Brand">

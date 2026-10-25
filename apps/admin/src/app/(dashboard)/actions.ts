@@ -126,7 +126,13 @@ export async function updateVariant(_: Prev, f: FormData) {
 
 export async function createCategory(_: Prev, f: FormData) {
   return run(
-    () => api.post("/admin/categories", { name: str(f, "name"), sortOrder: num(f, "sortOrder") ?? 0, imageUrl: str(f, "imageUrl") ?? null }),
+    () =>
+      api.post("/admin/categories", {
+        name: str(f, "name"),
+        parentId: str(f, "parentId") ?? null,
+        sortOrder: num(f, "sortOrder") ?? 0,
+        imageUrl: str(f, "imageUrl") ?? null,
+      }),
     ["/categories"],
     "Category added",
   );

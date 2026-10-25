@@ -1,10 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { ScrollView, Share, StyleSheet, useWindowDimensions, View } from "react-native";
+import { useRef, useState, type ComponentRef } from "react";
+import { Linking, Pressable, ScrollView, Share, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatNaira } from "@sotechy/shared";
+import { formatNaira, type CatalogProduct } from "@sotechy/shared";
+import { ProductCard } from "@/components/product-card";
 import { useToast } from "@/components/toast";
 import {
   BottomBar,
@@ -20,6 +21,7 @@ import {
   Price,
   productIcon,
   QtyStepper,
+  SectionHeader,
   tap,
   Txt,
   ui,
@@ -51,9 +53,24 @@ export default function ProductScreen() {
   const [variantId, setVariantId] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
   const [saved, setSaved] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
+  const galleryRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const cart = useCart();
   const { user } = useAuth();
   const toast = useToast();
+  const config = useAsync(() => api.storeConfig());
+  const heroHeight = Math.round(Math.min(width, 720) * 0.95);
+
+  // Related = other products in the same top-level category.
+  const related = useAsync(async () => {
+    if (!product) return { slug: null as string | null, items: [] as CatalogProduct[] };
+    const cats = await api.categories();
+    const own = cats.find((c) => c.id === product.categoryId);
+    const group = own?.parentId ? cats.find((c) => c.id === own.parentId) : own;
+    if (!group) return { slug: null, items: [] };
+    const items = await api.products({ category: group.slug });
+    return { slug: group.slug, items: items.filter((p) => p.id !== product.id).slice(0, 10) };
+  }, [product?.id]);
 
   if (loading && !product) return <Loading />;
   if (error || !product) return <ErrorView message={error ?? "Product not found"} onRetry={reload} />;
@@ -93,9 +110,28 @@ export default function ProductScreen() {
   return (
     <View style={ui.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
-        {/* Hero image */}
-        <View style={{ height: Math.min(width, 720) * 0.95, backgroundColor: colors.surfaceAlt }}>
-          {product.images[0] ? <Image source={{ uri: product.images[0] }} style={{ flex: 1 }} contentFit="cover" /> : <ImagePlaceholder style={{ flex: 1 }} icon={productIcon(product.name)} size={72} />}
+        {/* Photo gallery: swipe, or tap a thumbnail below */}
+        <View style={{ height: heroHeight, backgroundColor: colors.surface }}>
+          {product.images.length > 0 ? (
+            <ScrollView
+              ref={galleryRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) => setImageIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+            >
+              {product.images.map((src, i) => (
+                <Image key={i} source={{ uri: src }} style={{ width, height: heroHeight - radius.xl }} contentFit="contain" transition={150} />
+              ))}
+            </ScrollView>
+          ) : (
+            <ImagePlaceholder style={{ flex: 1 }} icon={productIcon(product.name)} size={72} />
+          )}
+          {product.images.length > 1 && (
+            <View style={{ position: "absolute", right: gutter, bottom: radius.xl + space.md, backgroundColor: "rgba(23,18,14,0.7)", borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <Txt variant="caption" color={colors.white}>{imageIndex + 1} / {product.images.length}</Txt>
+            </View>
+          )}
           <View style={[ui.between, { position: "absolute", top: insets.top + space.sm, left: gutter, right: gutter }]}>
             <IconButton icon="chevron-back" tone="glass" onPress={() => router.back()} />
             <View style={ui.row}>
@@ -107,6 +143,23 @@ export default function ProductScreen() {
 
         {/* Details sheet */}
         <View style={{ marginTop: -radius.xl, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, backgroundColor: colors.bg, paddingHorizontal: gutter, paddingTop: space.xl, gap: space.lg }}>
+          {product.images.length > 1 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
+              {product.images.map((src, i) => (
+                <Pressable
+                  key={i}
+                  onPress={() => {
+                    setImageIndex(i);
+                    galleryRef.current?.scrollTo({ x: i * width, animated: true });
+                  }}
+                  style={{ width: 64, height: 64, borderRadius: radius.md, overflow: "hidden", borderWidth: 2, borderColor: i === imageIndex ? colors.ink : "transparent", padding: 2 }}
+                >
+                  <Image source={{ uri: src }} style={{ flex: 1, borderRadius: radius.sm, backgroundColor: colors.surface }} contentFit="contain" />
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+
           <View style={{ gap: 6 }}>
             {product.brand ? <Txt variant="overline">{product.brand}{product.model ? ` · ${product.model}` : ""}</Txt> : null}
             <Txt variant="title">{product.name}</Txt>
@@ -147,6 +200,28 @@ export default function ProductScreen() {
             {product.allowDelivery && <InfoRow icon="bicycle-outline" title="Delivery in Benin City" subtitle="Fee and timing shown at checkout" />}
             <InfoRow icon="shield-checkmark-outline" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "Warranty details on request"} subtitle={product.returnPolicy ?? undefined} />
             <InfoRow icon="wallet-outline" title="Pay your way" subtitle="Bank transfer, online payment or $MOVE" />
+          </View>
+
+          <View style={[ui.card, { gap: space.md }]}>
+            <View style={[ui.row, { gap: space.md }]}>
+              <Image source={require("../../../assets/brand/sotechylogo.png")} style={{ width: 40, height: 40 }} contentFit="contain" />
+              <View style={{ flex: 1 }}>
+                <Txt variant="overline">Sold by</Txt>
+                <Txt variant="label">Sotechy Shop · Benin City</Txt>
+              </View>
+              <Pill label="Official store" tone="brand" icon="checkmark-circle" />
+            </View>
+            <Divider />
+            {[
+              ["shield-checkmark-outline", "Genuine products with warranty"],
+              ["storefront-outline", "Inspect and pick up in store"],
+              ["chatbubbles-outline", "Real people on call and WhatsApp"],
+            ].map(([icon, text]) => (
+              <View key={text} style={[ui.row, { gap: space.sm }]}>
+                <Ionicons name={icon as IconName} size={16} color={colors.success} />
+                <Txt variant="small" color={colors.ink2}>{text}</Txt>
+              </View>
+            ))}
           </View>
 
           {stock.length > 0 && (
@@ -193,9 +268,27 @@ export default function ProductScreen() {
             </View>
           )}
         </View>
+
+        {related.data && related.data.items.length > 0 && (
+          <View style={{ marginTop: space.xxl }}>
+            <View style={{ paddingHorizontal: gutter }}>
+              <SectionHeader title="Related products" action="See all" onAction={() => router.push({ pathname: "/shop", params: { category: related.data?.slug ?? "" } })} />
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
+              {related.data.items.map((p) => (
+                <ProductCard key={p.id} product={p} width={150} />
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </ScrollView>
 
       <BottomBar>
+        <IconButton
+          icon="call-outline"
+          size={48}
+          onPress={() => config.data?.support.phone && Linking.openURL(`tel:${config.data.support.phone.replace(/[^\d+]/g, "")}`)}
+        />
         <QtyStepper value={qty} onChange={setQty} max={Math.max(1, available)} />
         <Button title={available > 0 ? `Add · ${formatNaira((variant?.price ?? 0) * qty)}` : "Out of stock"} icon="bag-add-outline" onPress={addToCart} disabled={available <= 0} style={{ flex: 1 }} />
       </BottomBar>
