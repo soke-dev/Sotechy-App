@@ -1,107 +1,164 @@
-import { useLocalSearchParams } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import * as Clipboard from "expo-clipboard";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { formatDate, formatNaira, ORDER_FLOW, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS } from "@sotechy/shared";
-import { Button, Card, ErrorView, Loading, styles } from "@/components/ui";
+import { useToast } from "@/components/toast";
+import { Button, Divider, ErrorView, Loading, StatusPill, SummaryRow, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
-import { colors } from "@/lib/theme";
+import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+
+function CopyRow({ label, value, onCopy }: { label: string; value: string | null | undefined; onCopy: (v: string) => void }) {
+  return (
+    <View style={[ui.between, { paddingVertical: space.sm, gap: space.md }]}>
+      <Txt variant="small">{label}</Txt>
+      <View style={[ui.row, { flexShrink: 1 }]}>
+        <Txt variant="label" selectable numberOfLines={1} style={{ flexShrink: 1 }}>{value ?? "To be provided"}</Txt>
+        {value ? (
+          <Pressable onPress={() => onCopy(value)} hitSlop={8}>
+            <Ionicons name="copy-outline" size={16} color={colors.brandPressed} />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
 
 export default function OrderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: order, error, loading, reload } = useAsync(() => api.order(id), [id]);
   const [cancelling, setCancelling] = useState(false);
+  const toast = useToast();
 
   if (loading && !order) return <Loading />;
   if (error || !order) return <ErrorView message={error ?? "Order not found"} onRetry={reload} />;
 
   const pi = order.paymentInstructions;
   const flow = ORDER_FLOW.filter((s) => (order.fulfilmentType === "pickup" ? s !== "dispatched" : s !== "ready_for_pickup"));
-  const currentIndex = flow.indexOf(order.status);
+  const current = flow.indexOf(order.status);
+  const headline =
+    order.status === "pending_payment" ? "Waiting for your payment" : order.status === "delivered" ? (order.fulfilmentType === "pickup" ? "Collected" : "Delivered") : ORDER_STATUS_LABELS[order.status];
+
+  async function copy(value: string) {
+    await Clipboard.setStringAsync(value);
+    tap();
+    toast("Copied", { icon: "copy" });
+  }
 
   async function cancel() {
     setCancelling(true);
     try {
       await api.cancelOrder(order!.id);
       await reload();
+      toast("Order cancelled", { icon: "close-circle" });
     } catch (err) {
-      Alert.alert("Could not cancel", err instanceof Error ? err.message : "");
+      toast(err instanceof Error ? err.message : "Could not cancel", { icon: "alert-circle" });
     } finally {
       setCancelling(false);
     }
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} />}>
-      <Card>
-        <Text style={{ fontSize: 18, fontWeight: "700" }}>{order.orderNumber}</Text>
-        <Text style={styles.muted}>{formatDate(order.createdAt)}</Text>
-        <Text style={{ fontWeight: "600", marginTop: 4 }}>{ORDER_STATUS_LABELS[order.status]}</Text>
-        {currentIndex >= 0 && (
-          <View style={{ gap: 4, marginTop: 8 }}>
-            {flow.map((s, i) => (
-              <Text key={s} style={{ color: i <= currentIndex ? colors.success : colors.muted }}>
-                {i <= currentIndex ? "●" : "○"} {ORDER_STATUS_LABELS[s]}
-              </Text>
-            ))}
-          </View>
-        )}
-      </Card>
+    <ScrollView style={ui.screen} contentContainerStyle={{ padding: gutter, gap: space.lg, paddingBottom: space.xxl * 2 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.brand} />}>
+      <Stack.Screen options={{ title: order.orderNumber }} />
+
+      <View style={{ gap: 6 }}>
+        <StatusPill status={order.status} />
+        <Txt variant="title">{headline}</Txt>
+        <Txt variant="small">Placed {formatDate(order.createdAt)} · {order.fulfilmentType === "pickup" ? "Store pickup" : "Delivery"}</Txt>
+      </View>
+
+      {current >= 0 && (
+        <View style={ui.card}>
+          {flow.map((s, i) => {
+            const done = i <= current;
+            const last = i === flow.length - 1;
+            return (
+              <View key={s} style={{ flexDirection: "row", gap: space.md }}>
+                <View style={{ alignItems: "center", width: 20 }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: done ? colors.ink : colors.surface, borderWidth: done ? 0 : 1.5, borderColor: colors.line, alignItems: "center", justifyContent: "center" }}>
+                    {done ? <Ionicons name="checkmark" size={13} color={colors.white} /> : null}
+                  </View>
+                  {!last && <View style={{ width: 2, flex: 1, minHeight: 18, backgroundColor: i < current ? colors.ink : colors.line }} />}
+                </View>
+                <Txt variant={i === current ? "label" : "small"} color={done ? colors.ink : colors.muted} style={{ paddingBottom: last ? 0 : space.lg }}>
+                  {ORDER_STATUS_LABELS[s]}
+                </Txt>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {pi && (
-        <Card style={{ borderColor: colors.warning }}>
-          <Text style={{ fontWeight: "700" }}>How to pay — {PAYMENT_METHOD_LABELS[pi.method]}</Text>
-          <Text style={styles.price}>Amount: {formatNaira(order.total)}</Text>
+        <View style={[ui.card, { borderColor: colors.brand, borderWidth: 1.5, gap: space.xs }]}>
+          <View style={ui.between}>
+            <Txt variant="overline" color={colors.brandPressed}>{PAYMENT_METHOD_LABELS[pi.method]}</Txt>
+            {order.reservationExpiresAt ? (
+              <View style={ui.row}>
+                <Ionicons name="time-outline" size={14} color={colors.warning} />
+                <Txt variant="caption" color={colors.warning}>Held until {formatDate(order.reservationExpiresAt).split(", ").pop()}</Txt>
+              </View>
+            ) : null}
+          </View>
+          <Txt variant="display" style={{ marginVertical: space.sm }}>{formatNaira(order.total)}</Txt>
           {pi.method === "bank_transfer" && (
             <>
-              <Text>Bank: {pi.bankName ?? "to be provided"}</Text>
-              <Text>Account name: {pi.accountName ?? "to be provided"}</Text>
-              <Text>Account number: {pi.accountNumber ?? "to be provided"}</Text>
-              <Text>Narration: {order.orderNumber}</Text>
+              <CopyRow label="Bank" value={pi.bankName} onCopy={copy} />
+              <Divider />
+              <CopyRow label="Account name" value={pi.accountName} onCopy={copy} />
+              <Divider />
+              <CopyRow label="Account number" value={pi.accountNumber} onCopy={copy} />
+              <Divider />
+              <CopyRow label="Narration" value={order.orderNumber} onCopy={copy} />
             </>
           )}
           {pi.method === "crypto" && (
             <>
-              <Text>Asset: {pi.cryptoAsset}</Text>
-              <Text>Network: {pi.cryptoNetwork}</Text>
-              <Text selectable>Address: {pi.receivingAddress ?? "to be provided"}</Text>
+              <CopyRow label="Asset" value={pi.cryptoAsset} onCopy={copy} />
+              <Divider />
+              <CopyRow label="Network" value={pi.cryptoNetwork} onCopy={copy} />
+              <Divider />
+              <CopyRow label="Address" value={pi.receivingAddress} onCopy={copy} />
             </>
           )}
-          {pi.text && <Text style={styles.muted}>{pi.text}</Text>}
-          <Text style={[styles.muted, { fontSize: 12 }]}>
-            Your order is confirmed once we verify the payment. Items are held for you until{" "}
-            {order.reservationExpiresAt ? formatDate(order.reservationExpiresAt) : "the payment window closes"}.
-          </Text>
-        </Card>
+          {pi.text ? <Txt variant="small" style={{ marginTop: space.sm }}>{pi.text}</Txt> : null}
+          <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.md, padding: space.md, marginTop: space.sm, flexDirection: "row", gap: space.sm }}>
+            <Ionicons name="information-circle-outline" size={18} color={colors.ink2} />
+            <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>
+              We confirm your order as soon as the payment is verified. Your items are reserved until then.
+            </Txt>
+          </View>
+        </View>
       )}
 
-      <Card>
-        <Text style={{ fontWeight: "600" }}>Items</Text>
+      <View style={ui.card}>
+        <Txt variant="heading" style={{ marginBottom: space.sm }}>Items</Txt>
         {order.items.map((i) => (
-          <View key={i.id} style={[styles.row, { justifyContent: "space-between" }]}>
-            <Text style={{ flex: 1 }}>
-              {i.quantity} × {i.productName} ({i.variantName})
-            </Text>
-            <Text>{formatNaira(i.lineTotal)}</Text>
-          </View>
+          <SummaryRow key={i.id} label={`${i.quantity} × ${i.productName}${i.variantName !== "Standard" ? ` (${i.variantName})` : ""}`} value={formatNaira(i.lineTotal)} />
         ))}
-        <View style={[styles.row, { justifyContent: "space-between" }]}><Text>Subtotal</Text><Text>{formatNaira(order.subtotal)}</Text></View>
-        {order.discountTotal > 0 && <View style={[styles.row, { justifyContent: "space-between" }]}><Text>Discount</Text><Text>-{formatNaira(order.discountTotal)}</Text></View>}
-        <View style={[styles.row, { justifyContent: "space-between" }]}><Text>Delivery</Text><Text>{formatNaira(order.deliveryFee)}</Text></View>
-        <View style={[styles.row, { justifyContent: "space-between" }]}><Text style={{ fontWeight: "700" }}>Total</Text><Text style={styles.price}>{formatNaira(order.total)}</Text></View>
-      </Card>
+        <Divider style={{ marginVertical: space.sm }} />
+        <SummaryRow label="Subtotal" value={formatNaira(order.subtotal)} />
+        {order.discountTotal > 0 && <SummaryRow label="Discount" value={`-${formatNaira(order.discountTotal)}`} tone={colors.success} />}
+        <SummaryRow label="Delivery" value={order.deliveryFee ? formatNaira(order.deliveryFee) : "Free"} />
+        <SummaryRow label="Total" value={formatNaira(order.total)} strong />
+      </View>
 
-      <Card>
-        <Text style={{ fontWeight: "600" }}>{order.fulfilmentType === "pickup" ? "Pickup" : "Delivery"}</Text>
-        {order.branch && <Text style={styles.muted}>{order.branch.name}, {order.branch.address}, {order.branch.city}</Text>}
-        {order.deliveryAddress && (
-          <Text style={styles.muted}>
-            {order.deliveryAddress.recipientName} · {order.deliveryAddress.line1}, {order.deliveryAddress.city}
-          </Text>
-        )}
-      </Card>
+      <View style={[ui.card, { flexDirection: "row", gap: space.md }]}>
+        <Ionicons name={order.fulfilmentType === "pickup" ? "storefront-outline" : "bicycle-outline"} size={22} color={colors.ink2} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt variant="label">{order.fulfilmentType === "pickup" ? `Pick up at ${order.branch?.name ?? "the store"}` : `Deliver to ${order.deliveryAddress?.recipientName ?? ""}`}</Txt>
+          <Txt variant="small">
+            {order.fulfilmentType === "pickup"
+              ? `${order.branch?.address ?? ""}, ${order.branch?.city ?? ""}`
+              : `${order.deliveryAddress?.line1 ?? ""}, ${order.deliveryAddress?.city ?? ""} · ${order.deliveryAddress?.phone ?? ""}`}
+          </Txt>
+        </View>
+      </View>
 
-      {order.status === "pending_payment" && <Button title="Cancel order" variant="secondary" onPress={cancel} loading={cancelling} />}
+      {order.status === "pending_payment" && <Button title="Cancel order" variant="danger" onPress={cancel} loading={cancelling} />}
     </ScrollView>
   );
 }

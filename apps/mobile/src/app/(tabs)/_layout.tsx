@@ -1,25 +1,33 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router/js-tabs";
-import type { ComponentProps } from "react";
-import type { ColorValue } from "react-native";
+import { StyleSheet } from "react-native";
+import type { IconName } from "@/components/ui";
 import { useCart } from "@/lib/cart";
-import { colors } from "@/lib/theme";
+import { colors, fonts } from "@/lib/theme";
 
-type IconName = ComponentProps<typeof Ionicons>["name"];
-const icon = (name: IconName) =>
-  function TabIcon({ color, size }: { color: ColorValue; size: number }) {
-    return <Ionicons name={name} color={color as string} size={size} />;
+const icon = (outline: IconName, filled: IconName) =>
+  function TabIcon({ focused, color }: { focused: boolean; color: unknown }) {
+    return <Ionicons name={focused ? filled : outline} size={23} color={color as string} />;
   };
 
 export default function TabsLayout() {
   const { count } = useCart();
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: colors.primary }}>
-      <Tabs.Screen name="index" options={{ title: "Home", headerTitle: "Sotechy Shop", tabBarIcon: icon("home-outline") }} />
-      <Tabs.Screen name="shop" options={{ title: "Shop", tabBarIcon: icon("grid-outline") }} />
-      <Tabs.Screen name="cart" options={{ title: "Cart", tabBarIcon: icon("cart-outline"), tabBarBadge: count > 0 ? count : undefined }} />
-      <Tabs.Screen name="orders" options={{ title: "Orders", tabBarIcon: icon("receipt-outline") }} />
-      <Tabs.Screen name="account" options={{ title: "Account", tabBarIcon: icon("person-outline") }} />
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.ink,
+        tabBarInactiveTintColor: colors.faint,
+        tabBarLabelStyle: { fontFamily: fonts.semibold, fontSize: 11 },
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth },
+        tabBarBadgeStyle: { backgroundColor: colors.brand, fontFamily: fonts.bold, fontSize: 10 },
+      }}
+    >
+      <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: icon("home-outline", "home") }} />
+      <Tabs.Screen name="shop" options={{ title: "Shop", tabBarIcon: icon("search-outline", "search") }} />
+      <Tabs.Screen name="cart" options={{ title: "Cart", tabBarIcon: icon("bag-handle-outline", "bag-handle"), tabBarBadge: count > 0 ? count : undefined }} />
+      <Tabs.Screen name="orders" options={{ title: "Orders", tabBarIcon: icon("receipt-outline", "receipt") }} />
+      <Tabs.Screen name="account" options={{ title: "Account", tabBarIcon: icon("person-outline", "person") }} />
     </Tabs>
   );
 }

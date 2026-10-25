@@ -1,16 +1,55 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { useState, type ReactNode } from "react";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { formatNaira, PAYMENT_METHOD_LABELS, type FulfilmentType, type PaymentMethodCode } from "@sotechy/shared";
-import { Button, Card, Chip, ErrorView, Input, Loading, SectionTitle, styles } from "@/components/ui";
+import { BottomBar, Button, Chip, Divider, ErrorView, Input, Loading, OptionRow, Pill, SummaryRow, tap, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
-import { colors } from "@/lib/theme";
+import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 
 const newKey = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+
+const methodIcon: Record<PaymentMethodCode, IconName> = {
+  bank_transfer: "business-outline",
+  online: "card-outline",
+  crypto: "logo-bitcoin",
+  cash: "cash-outline",
+  pos_terminal: "card-outline",
+};
+
+function Section({ step, title, children }: { step: number; title: string; children: ReactNode }) {
+  return (
+    <View style={{ gap: space.md }}>
+      <View style={ui.row}>
+        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" }}>
+          <Txt variant="caption" color={colors.white}>{step}</Txt>
+        </View>
+        <Txt variant="heading">{title}</Txt>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+function FulfilmentCard({ icon, title, subtitle, active, onPress }: { icon: IconName; title: string; subtitle: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={() => {
+        tap();
+        onPress();
+      }}
+      style={{ flex: 1, padding: space.lg, borderRadius: radius.lg, borderWidth: active ? 1.5 : 1, borderColor: active ? colors.ink : colors.line, backgroundColor: active ? colors.surface : colors.bg, gap: 6 }}
+    >
+      <Ionicons name={icon} size={22} color={active ? colors.brandPressed : colors.ink2} />
+      <Txt variant="label">{title}</Txt>
+      <Txt variant="caption">{subtitle}</Txt>
+    </Pressable>
+  );
+}
 
 export default function CheckoutScreen() {
   const cart = useCart();
@@ -23,7 +62,7 @@ export default function CheckoutScreen() {
   const [method, setMethod] = useState<PaymentMethodCode | null>(null);
   const [cryptoAsset, setCryptoAsset] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
-  const [address, setAddress] = useState({ recipientName: user?.fullName ?? "", phone: user?.phone ?? "", line1: "", line2: "", city: "", state: "" });
+  const [address, setAddress] = useState({ recipientName: user?.fullName ?? "", phone: user?.phone ?? "", line1: "", line2: "", city: "Benin City", state: "Edo" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,8 +73,16 @@ export default function CheckoutScreen() {
   const methods = cfg.paymentMethods.filter((m) => m.isEnabled && m.online);
   const selectedBranch = branchId ?? cfg.branches[0]?.id ?? null;
   const selectedMethod = method ?? methods[0]?.code ?? null;
-  const deliveryEstimate =
-    fulfilment === "delivery" && !(cfg.delivery.freeOver != null && cart.subtotal >= cfg.delivery.freeOver) ? cfg.delivery.flatFee : 0;
+  const selectedAsset = cryptoAsset ?? cfg.cryptoAssets[0]?.symbol ?? null;
+  const freeDelivery = cfg.delivery.freeOver != null && cart.subtotal >= cfg.delivery.freeOver;
+  const deliveryFee = fulfilment === "delivery" && !freeDelivery ? cfg.delivery.flatFee : 0;
+  const movePromo = cfg.promotions.find((p) => p.cryptoAsset === "MOVE" && p.paymentMethod === "crypto");
+  const estDiscount =
+    movePromo && selectedMethod === "crypto" && selectedAsset === "MOVE"
+      ? Math.min(movePromo.maxDiscountAmount ?? Infinity, Math.round((cart.subtotal * movePromo.value) / 100))
+      : 0;
+  const total = cart.subtotal + deliveryFee - estDiscount;
+  const addressOk = fulfilment === "pickup" || (address.recipientName && address.phone && address.line1 && address.city);
 
   async function placeOrder() {
     if (!selectedBranch || !selectedMethod) return;
@@ -48,14 +95,18 @@ export default function CheckoutScreen() {
         branchId: selectedBranch,
         deliveryAddress: fulfilment === "delivery" ? address : undefined,
         paymentMethod: selectedMethod,
-        cryptoAsset: selectedMethod === "crypto" ? (cryptoAsset ?? cfg.cryptoAssets[0]?.symbol) : undefined,
+        cryptoAsset: selectedMethod === "crypto" ? (selectedAsset ?? undefined) : undefined,
         promoCode: promoCode.trim() || undefined,
         idempotencyKey,
       });
       cart.clear();
       if (selectedMethod === "online") {
-        const { checkoutUrl } = await api.startOnlinePayment(order.id);
-        await WebBrowser.openBrowserAsync(checkoutUrl);
+        try {
+          const { checkoutUrl } = await api.startOnlinePayment(order.id);
+          await WebBrowser.openBrowserAsync(checkoutUrl);
+        } catch {
+          // The order exists; payment can be retried from the order screen.
+        }
       }
       router.replace({ pathname: "/order/[id]", params: { id: order.id } });
     } catch (err) {
@@ -66,70 +117,97 @@ export default function CheckoutScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <SectionTitle>How do you want it?</SectionTitle>
-      <View style={styles.row}>
-        <Chip label="Store pickup" active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />
-        <Chip label="Delivery" active={fulfilment === "delivery"} onPress={() => setFulfilment("delivery")} />
-      </View>
-
-      <Card>
-        <Text style={{ fontWeight: "600" }}>{fulfilment === "pickup" ? "Pickup branch" : "Ships from"}</Text>
-        {cfg.branches.map((b) => (
-          <Chip key={b.id} label={`${b.name} — ${b.city}`} active={selectedBranch === b.id} onPress={() => setBranchId(b.id)} />
-        ))}
-      </Card>
-
-      {fulfilment === "delivery" && (
-        <Card>
-          <Text style={{ fontWeight: "600" }}>Delivery address</Text>
-          <Input label="Recipient name" value={address.recipientName} onChangeText={(v) => setAddress({ ...address, recipientName: v })} />
-          <Input label="Phone" keyboardType="phone-pad" value={address.phone} onChangeText={(v) => setAddress({ ...address, phone: v })} />
-          <Input label="Address" value={address.line1} onChangeText={(v) => setAddress({ ...address, line1: v })} />
-          <Input label="Address line 2" value={address.line2} onChangeText={(v) => setAddress({ ...address, line2: v })} />
-          <Input label="City" value={address.city} onChangeText={(v) => setAddress({ ...address, city: v })} />
-          <Input label="State" value={address.state} onChangeText={(v) => setAddress({ ...address, state: v })} />
-          {cfg.delivery.note && <Text style={styles.muted}>{cfg.delivery.note}</Text>}
-        </Card>
-      )}
-
-      <SectionTitle>Payment</SectionTitle>
-      <View style={[styles.row, { flexWrap: "wrap" }]}>
-        {methods.map((m) => (
-          <Chip key={m.code} label={PAYMENT_METHOD_LABELS[m.code]} active={selectedMethod === m.code} onPress={() => setMethod(m.code)} />
-        ))}
-      </View>
-      {selectedMethod === "crypto" && (
-        <View style={[styles.row, { flexWrap: "wrap" }]}>
-          {cfg.cryptoAssets.map((a) => (
-            <Chip key={a.id} label={`${a.symbol} (${a.network})`} active={(cryptoAsset ?? cfg.cryptoAssets[0]?.symbol) === a.symbol} onPress={() => setCryptoAsset(a.symbol)} />
-          ))}
-        </View>
-      )}
-      <Input placeholder="Promo code (optional)" autoCapitalize="characters" value={promoCode} onChangeText={setPromoCode} />
-
-      <Card>
-        {cart.lines.map((l) => (
-          <View key={l.variantId} style={[styles.row, { justifyContent: "space-between" }]}>
-            <Text style={{ flex: 1 }} numberOfLines={1}>
-              {l.quantity} × {l.productName}
-            </Text>
-            <Text>{formatNaira(l.unitPrice * l.quantity)}</Text>
+    <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90}>
+      <ScrollView contentContainerStyle={{ padding: gutter, gap: space.xxl, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
+        <Section step={1} title="How do you want it?">
+          <View style={[ui.row, { gap: space.md, alignItems: "stretch" }]}>
+            <FulfilmentCard icon="storefront-outline" title="Store pickup" subtitle="Free · usually same day" active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />
+            <FulfilmentCard
+              icon="bicycle-outline"
+              title="Delivery"
+              subtitle={freeDelivery ? "Free for this order" : `${formatNaira(cfg.delivery.flatFee)} · 1–2 days`}
+              active={fulfilment === "delivery"}
+              onPress={() => setFulfilment("delivery")}
+            />
           </View>
-        ))}
-        <View style={[styles.row, { justifyContent: "space-between" }]}>
-          <Text>Delivery</Text>
-          <Text>{formatNaira(deliveryEstimate)}</Text>
-        </View>
-        <View style={[styles.row, { justifyContent: "space-between" }]}>
-          <Text style={{ fontWeight: "700" }}>Estimated total</Text>
-          <Text style={styles.price}>{formatNaira(cart.subtotal + deliveryEstimate)}</Text>
-        </View>
-        <Text style={[styles.muted, { fontSize: 12 }]}>Final total, including eligible discounts, is confirmed on the next screen.</Text>
-      </Card>
+        </Section>
 
-      {error && <Text style={{ color: colors.danger }}>{error}</Text>}
-      <Button title="Place order" onPress={placeOrder} loading={submitting} disabled={!selectedMethod || !selectedBranch || cart.lines.length === 0} />
-    </ScrollView>
+        <Section step={2} title={fulfilment === "pickup" ? "Pickup store" : "Delivery details"}>
+          {fulfilment === "delivery" && (
+            <View style={{ gap: space.md }}>
+              <Input label="Full name" icon="person-outline" value={address.recipientName} onChangeText={(v) => setAddress({ ...address, recipientName: v })} />
+              <Input label="Phone number" icon="call-outline" keyboardType="phone-pad" value={address.phone} onChangeText={(v) => setAddress({ ...address, phone: v })} />
+              <Input label="Street address" icon="home-outline" value={address.line1} onChangeText={(v) => setAddress({ ...address, line1: v })} />
+              <Input label="Landmark or apartment (optional)" value={address.line2} onChangeText={(v) => setAddress({ ...address, line2: v })} />
+              <View style={[ui.row, { gap: space.md }]}>
+                <View style={{ flex: 1 }}>
+                  <Input label="City" value={address.city} onChangeText={(v) => setAddress({ ...address, city: v })} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Input label="State" value={address.state} onChangeText={(v) => setAddress({ ...address, state: v })} />
+                </View>
+              </View>
+              <Txt variant="label" style={{ marginTop: space.sm }}>Ships from</Txt>
+            </View>
+          )}
+          {cfg.branches.map((b) => (
+            <OptionRow key={b.id} icon="location-outline" title={b.name} subtitle={`${b.address}, ${b.city}`} selected={selectedBranch === b.id} onPress={() => setBranchId(b.id)} />
+          ))}
+        </Section>
+
+        <Section step={3} title="Payment">
+          {methods.map((m) => (
+            <OptionRow
+              key={m.code}
+              icon={methodIcon[m.code]}
+              title={PAYMENT_METHOD_LABELS[m.code]}
+              subtitle={m.code === "bank_transfer" ? "Pay into our account, we confirm it" : m.code === "online" ? "Card or bank via Money Moves" : "Pay with supported crypto"}
+              selected={selectedMethod === m.code}
+              onPress={() => setMethod(m.code)}
+              right={m.code === "crypto" && movePromo ? <Pill label={`-${movePromo.value}% $MOVE`} tone="brand" /> : undefined}
+            />
+          ))}
+          {selectedMethod === "crypto" && cfg.cryptoAssets.length > 0 && (
+            <View style={[ui.row, { flexWrap: "wrap" }]}>
+              {cfg.cryptoAssets.map((a) => (
+                <Chip key={a.id} label={`${a.symbol} · ${a.network}`} active={selectedAsset === a.symbol} onPress={() => setCryptoAsset(a.symbol)} />
+              ))}
+            </View>
+          )}
+          <Input icon="pricetag-outline" placeholder="Promo code (optional)" autoCapitalize="characters" value={promoCode} onChangeText={setPromoCode} />
+        </Section>
+
+        <View style={ui.card}>
+          <Txt variant="heading" style={{ marginBottom: space.sm }}>Order summary</Txt>
+          {cart.lines.map((l) => (
+            <SummaryRow key={l.variantId} label={`${l.quantity} × ${l.productName}`} value={formatNaira(l.unitPrice * l.quantity)} />
+          ))}
+          <Divider style={{ marginVertical: space.sm }} />
+          <SummaryRow label="Subtotal" value={formatNaira(cart.subtotal)} />
+          <SummaryRow label="Delivery" value={fulfilment === "pickup" ? "Free" : formatNaira(deliveryFee)} />
+          {estDiscount > 0 && <SummaryRow label="$MOVE discount" value={`-${formatNaira(estDiscount)}`} tone={colors.success} />}
+          <Divider style={{ marginVertical: space.sm }} />
+          <SummaryRow label="Total" value={formatNaira(total)} strong />
+          <Txt variant="caption" style={{ marginTop: space.sm }}>Final amount is confirmed by Sotechy when the order is placed.</Txt>
+        </View>
+
+        {error && (
+          <View style={{ backgroundColor: colors.dangerSoft, borderRadius: radius.md, padding: space.md, flexDirection: "row", gap: space.sm }}>
+            <Ionicons name="alert-circle" size={18} color={colors.danger} />
+            <Txt variant="small" color={colors.danger} style={{ flex: 1 }}>{error}</Txt>
+          </View>
+        )}
+      </ScrollView>
+      <BottomBar>
+        <Button
+          title={`Place order · ${formatNaira(total)}`}
+          variant="dark"
+          onPress={placeOrder}
+          loading={submitting}
+          disabled={!selectedMethod || !selectedBranch || cart.lines.length === 0 || !addressOk}
+          style={{ flex: 1 }}
+        />
+      </BottomBar>
+    </KeyboardAvoidingView>
   );
 }

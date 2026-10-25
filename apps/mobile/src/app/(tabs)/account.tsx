@@ -1,46 +1,76 @@
-import { router, type Href } from "expo-router";
-import { Pressable, ScrollView, Text } from "react-native";
+import { router } from "expo-router";
+import { ScrollView, View } from "react-native";
 import { BUSINESS } from "@sotechy/shared";
-import { Button, Card, styles } from "@/components/ui";
+import { Button, Divider, ListRow, Pill, ScreenHeader, Txt, ui } from "@/components/ui";
+import { DEMO_MODE } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
-function Row({ label, href }: { label: string; href: Href }) {
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Pressable onPress={() => router.push(href)} style={{ paddingVertical: 10 }}>
-      <Text style={{ fontSize: 15 }}>{label} ›</Text>
-    </Pressable>
+    <View style={{ gap: space.sm }}>
+      <Txt variant="overline" style={{ paddingHorizontal: 4 }}>{title}</Txt>
+      <View style={[ui.card, { padding: 0, overflow: "hidden" }]}>{children}</View>
+    </View>
   );
 }
 
 export default function AccountScreen() {
   const { user, signOut } = useAuth();
+  const initials = (user?.fullName ?? user?.email ?? "?")
+    .split(/[\s@]/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase())
+    .join("");
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Card>
+    <View style={ui.screen}>
+      <ScreenHeader title="Account" />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: space.xxl * 2, gap: space.xl }}>
         {user ? (
-          <>
-            <Text style={{ fontWeight: "700", fontSize: 16 }}>{user.fullName ?? user.email}</Text>
-            <Text style={styles.muted}>{user.email}</Text>
-          </>
+          <View style={[ui.card, ui.row, { gap: space.lg }]}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
+              <Txt variant="heading" color={colors.brandPressed} style={{ fontFamily: fonts.displayHeavy }}>{initials}</Txt>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Txt variant="heading" numberOfLines={1}>{user.fullName ?? "Sotechy customer"}</Txt>
+              <Txt variant="small" numberOfLines={1}>{user.email}</Txt>
+            </View>
+          </View>
         ) : (
-          <>
-            <Text style={{ fontWeight: "600" }}>Browse as a guest. Sign in when you&apos;re ready to order.</Text>
-            <Button title="Sign in or create account" onPress={() => router.push("/sign-in")} />
-          </>
+          <View style={{ backgroundColor: colors.ink, borderRadius: radius.xl, padding: space.xl, gap: space.md }}>
+            <Txt variant="title" color={colors.white}>Sign in for faster checkout</Txt>
+            <Txt variant="small" color="#BDB3A8">Track orders, save items and check out in seconds. You can keep browsing as a guest.</Txt>
+            <Button title="Sign in or create account" onPress={() => router.push("/sign-in")} style={{ marginTop: space.sm }} />
+          </View>
         )}
-      </Card>
-      <Card>
-        <Row label="My orders" href="/orders" />
-        <Row label="Wishlist" href="/wishlist" />
-        <Row label="Help & support" href="/support" />
-      </Card>
-      <Card>
-        <Text style={{ fontWeight: "600" }}>{BUSINESS.name}</Text>
-        <Text style={styles.muted}>{BUSINESS.tagline}</Text>
-        <Text style={styles.muted}>{BUSINESS.headOffice}</Text>
-        <Text style={styles.muted}>{BUSINESS.website}</Text>
-      </Card>
-      {user && <Button title="Sign out" variant="secondary" onPress={signOut} />}
-    </ScrollView>
+
+        <Group title="Shopping">
+          <ListRow icon="receipt-outline" title="My orders" onPress={() => router.push("/orders")} />
+          <Divider style={{ marginLeft: 62 }} />
+          <ListRow icon="heart-outline" title="Saved items" onPress={() => router.push("/wishlist")} />
+          <Divider style={{ marginLeft: 62 }} />
+          <ListRow icon="bag-handle-outline" title="Cart" onPress={() => router.push("/cart")} />
+        </Group>
+
+        <Group title="Help">
+          <ListRow icon="chatbubble-ellipses-outline" title="Help & support" subtitle="Call, WhatsApp or send a message" onPress={() => router.push("/support")} />
+          <Divider style={{ marginLeft: 62 }} />
+          <ListRow icon="document-text-outline" title="Delivery, returns & warranty" onPress={() => router.push("/support")} />
+        </Group>
+
+        {user && (
+          <View style={[ui.card, { padding: 0, overflow: "hidden" }]}>
+            <ListRow icon="log-out-outline" title="Sign out" tone="danger" onPress={signOut} />
+          </View>
+        )}
+
+        <View style={{ alignItems: "center", gap: 4 }}>
+          {DEMO_MODE && <Pill label="Demo mode · dummy data" tone="warning" />}
+          <Txt variant="caption">{BUSINESS.name} · {BUSINESS.headOffice}</Txt>
+        </View>
+      </ScrollView>
+    </View>
   );
 }

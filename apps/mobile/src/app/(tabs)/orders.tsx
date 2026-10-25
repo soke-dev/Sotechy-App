@@ -1,47 +1,73 @@
-import { Link, router } from "expo-router";
-import { FlatList, Pressable, Text, View } from "react-native";
-import { formatDate, formatNaira, ORDER_STATUS_LABELS } from "@sotechy/shared";
-import { Button, Empty, ErrorView, Loading, styles } from "@/components/ui";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback } from "react";
+import { FlatList, View } from "react-native";
+import { formatDate, formatNaira, PAYMENT_METHOD_LABELS } from "@sotechy/shared";
+import { Button, Card, EmptyState, ErrorView, Loading, ScreenHeader, StatusPill, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { spacing } from "@/lib/theme";
+import { colors, gutter, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 
 export default function OrdersScreen() {
   const { user } = useAuth();
   const orders = useAsync(async () => (user ? api.myOrders() : []), [user?.id]);
 
-  if (!user) {
-    return (
-      <Empty title="Sign in to see your orders">
-        <Button title="Sign in" onPress={() => router.push("/sign-in")} />
-      </Empty>
-    );
-  }
-  if (orders.loading && !orders.data) return <Loading />;
-  if (orders.error) return <ErrorView message={orders.error} onRetry={orders.reload} />;
+  // Tabs stay mounted, so refresh when the tab comes back into view (e.g. after checkout).
+  useFocusEffect(
+    useCallback(() => {
+      orders.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
 
   return (
-    <FlatList
-      style={styles.screen}
-      contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
-      data={orders.data}
-      keyExtractor={(o) => o.id}
-      onRefresh={orders.reload}
-      refreshing={orders.loading}
-      ListEmptyComponent={<Empty title="No orders yet" />}
-      renderItem={({ item }) => (
-        <Link href={{ pathname: "/order/[id]", params: { id: item.id } }} asChild>
-          <Pressable style={styles.card}>
-            <View style={[styles.row, { justifyContent: "space-between" }]}>
-              <Text style={{ fontWeight: "600" }}>{item.orderNumber}</Text>
-              <Text>{ORDER_STATUS_LABELS[item.status]}</Text>
-            </View>
-            <Text style={styles.muted}>{formatDate(item.createdAt)}</Text>
-            <Text style={styles.price}>{formatNaira(item.total)}</Text>
-          </Pressable>
-        </Link>
+    <View style={ui.screen}>
+      <ScreenHeader title="Orders" />
+      {!user ? (
+        <EmptyState
+          icon="receipt-outline"
+          title="Track your orders"
+          message="Sign in to see payment status, pickup details and delivery updates."
+          action={<Button title="Sign in" onPress={() => router.push("/sign-in")} />}
+        />
+      ) : orders.loading && !orders.data ? (
+        <Loading />
+      ) : orders.error ? (
+        <ErrorView message={orders.error} onRetry={orders.reload} />
+      ) : (
+        <FlatList
+          data={orders.data}
+          keyExtractor={(o) => o.id}
+          onRefresh={orders.reload}
+          refreshing={orders.loading}
+          contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: space.xxl, gap: space.md, flexGrow: 1 }}
+          ListEmptyComponent={
+            <EmptyState icon="receipt-outline" title="No orders yet" message="When you place an order it will appear here." action={<Button title="Browse products" variant="outline" onPress={() => router.push("/shop")} />} />
+          }
+          renderItem={({ item }) => (
+            <Card onPress={() => router.push({ pathname: "/order/[id]", params: { id: item.id } })} style={{ gap: space.md }}>
+              <View style={ui.between}>
+                <Txt variant="label">{item.orderNumber}</Txt>
+                <StatusPill status={item.status} />
+              </View>
+              <View style={ui.between}>
+                <View style={{ gap: 2 }}>
+                  <Txt variant="small">{formatDate(item.createdAt)}</Txt>
+                  <View style={ui.row}>
+                    <Ionicons name={item.fulfilmentType === "pickup" ? "storefront-outline" : "bicycle-outline"} size={14} color={colors.muted} />
+                    <Txt variant="caption">{item.fulfilmentType === "pickup" ? "Pickup" : "Delivery"} · {PAYMENT_METHOD_LABELS[item.paymentMethod]}</Txt>
+                  </View>
+                </View>
+                <View style={ui.row}>
+                  <Txt variant="price">{formatNaira(item.total)}</Txt>
+                  <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+                </View>
+              </View>
+            </Card>
+          )}
+        />
       )}
-    />
+    </View>
   );
 }

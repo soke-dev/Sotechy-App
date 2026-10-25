@@ -1,19 +1,39 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, ScrollView, Text } from "react-native";
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, View } from "react-native";
 import { BUSINESS } from "@sotechy/shared";
-import { Button, Card, Input, styles } from "@/components/ui";
+import { useToast } from "@/components/toast";
+import { Button, Divider, Input, ListRow, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+
+function ContactTile({ icon, label, onPress, disabled }: { icon: IconName; label: string; onPress: () => void; disabled?: boolean }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => ({ flex: 1, alignItems: "center", gap: 8, paddingVertical: space.lg, borderRadius: radius.lg, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line, opacity: disabled ? 0.4 : 1 })}
+    >
+      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
+        <Ionicons name={icon} size={20} color={colors.brandPressed} />
+      </View>
+      <Txt variant="label">{label}</Txt>
+    </Pressable>
+  );
+}
 
 export default function SupportScreen() {
   const { user } = useAuth();
+  const toast = useToast();
   const config = useAsync(() => api.storeConfig());
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const support = config.data?.support;
+  const digits = (n: string) => n.replace(/[^\d+]/g, "");
 
   async function send() {
     setSending(true);
@@ -21,39 +41,54 @@ export default function SupportScreen() {
       await api.createSupportTicket({ subject, message });
       setSubject("");
       setMessage("");
-      Alert.alert("Message sent", "Our team will get back to you.");
+      toast("Message sent. We'll get back to you soon");
     } catch (err) {
-      Alert.alert("Could not send", err instanceof Error ? err.message : "");
+      toast(err instanceof Error ? err.message : "Could not send", { icon: "alert-circle" });
     } finally {
       setSending(false);
     }
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Card>
-        <Text style={{ fontWeight: "600" }}>Contact us</Text>
-        <Text style={styles.muted}>Phone: {support?.phone ?? "to be added"}</Text>
-        <Text style={styles.muted}>WhatsApp: {support?.whatsapp ?? "to be added"}</Text>
-        <Text style={styles.muted}>Email: {support?.email ?? "to be added"}</Text>
-        <Text style={styles.muted}>{BUSINESS.headOffice}</Text>
-      </Card>
-      <Card>
-        <Text style={{ fontWeight: "600" }}>Policies</Text>
-        <Text style={styles.muted}>Delivery, pickup, warranty and return policies will be published here.</Text>
-      </Card>
-      <Card>
-        <Text style={{ fontWeight: "600" }}>Send us a message</Text>
-        {user ? (
-          <>
-            <Input label="Subject" value={subject} onChangeText={setSubject} />
-            <Input label="Message" value={message} onChangeText={setMessage} multiline numberOfLines={4} style={{ minHeight: 100, textAlignVertical: "top" }} />
-            <Button title="Send" onPress={send} loading={sending} disabled={subject.length < 3 || message.length < 5} />
-          </>
-        ) : (
-          <Button title="Sign in to message us" onPress={() => router.push("/sign-in")} />
-        )}
-      </Card>
-    </ScrollView>
+    <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90}>
+      <ScrollView contentContainerStyle={{ padding: gutter, gap: space.xl, paddingBottom: space.xxl * 2 }} keyboardShouldPersistTaps="handled">
+        <View style={{ gap: 4 }}>
+          <Txt variant="title">How can we help?</Txt>
+          <Txt variant="small">Our team is in the store Monday to Saturday.</Txt>
+        </View>
+
+        <View style={[ui.row, { gap: space.md }]}>
+          <ContactTile icon="call" label="Call" disabled={!support?.phone} onPress={() => Linking.openURL(`tel:${digits(support!.phone!)}`)} />
+          <ContactTile icon="logo-whatsapp" label="WhatsApp" disabled={!support?.whatsapp} onPress={() => Linking.openURL(`https://wa.me/${digits(support!.whatsapp!).replace("+", "")}`)} />
+          <ContactTile icon="mail" label="Email" disabled={!support?.email} onPress={() => Linking.openURL(`mailto:${support!.email}`)} />
+        </View>
+
+        <View style={[ui.card, { gap: space.md }]}>
+          <Txt variant="heading">Send us a message</Txt>
+          {user ? (
+            <>
+              <Input label="Subject" placeholder="e.g. Question about my order" value={subject} onChangeText={setSubject} />
+              <Input label="Message" placeholder="Tell us what you need" value={message} onChangeText={setMessage} multiline style={{ minHeight: 110, textAlignVertical: "top" }} />
+              <Button title="Send message" variant="dark" onPress={send} loading={sending} disabled={subject.length < 3 || message.length < 5} />
+            </>
+          ) : (
+            <Button title="Sign in to send a message" variant="outline" onPress={() => router.push("/sign-in")} />
+          )}
+        </View>
+
+        <View style={{ gap: space.sm }}>
+          <Txt variant="overline" style={{ paddingHorizontal: 4 }}>Policies</Txt>
+          <View style={[ui.card, { padding: 0, overflow: "hidden" }]}>
+            <ListRow icon="bicycle-outline" title="Delivery & pickup" subtitle="To be published" />
+            <Divider style={{ marginLeft: 62 }} />
+            <ListRow icon="return-down-back-outline" title="Returns" subtitle="To be published" />
+            <Divider style={{ marginLeft: 62 }} />
+            <ListRow icon="shield-checkmark-outline" title="Warranty" subtitle="To be published" />
+          </View>
+        </View>
+
+        <Txt variant="caption" style={{ textAlign: "center" }}>{BUSINESS.name} · {BUSINESS.headOffice}</Txt>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
