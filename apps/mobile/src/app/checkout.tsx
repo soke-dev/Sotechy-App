@@ -53,9 +53,9 @@ export default function CheckoutScreen() {
         idempotencyKey,
       });
       cart.clear();
-      if (selectedMethod === "card") {
-        const { authorizationUrl } = await api.startCardPayment(order.id);
-        await WebBrowser.openBrowserAsync(authorizationUrl);
+      if (selectedMethod === "online") {
+        const { checkoutUrl } = await api.startOnlinePayment(order.id);
+        await WebBrowser.openBrowserAsync(checkoutUrl);
       }
       router.replace({ pathname: "/order/[id]", params: { id: order.id } });
     } catch (err) {

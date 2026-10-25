@@ -2,7 +2,7 @@ CREATE TYPE "public"."discount_type" AS ENUM('percentage', 'fixed');--> statemen
 CREATE TYPE "public"."fulfilment_type" AS ENUM('delivery', 'pickup');--> statement-breakpoint
 CREATE TYPE "public"."merchant_status" AS ENUM('pending', 'approved', 'suspended');--> statement-breakpoint
 CREATE TYPE "public"."order_status" AS ENUM('pending_payment', 'paid', 'processing', 'ready_for_pickup', 'dispatched', 'delivered', 'cancelled', 'payment_failed', 'refunded');--> statement-breakpoint
-CREATE TYPE "public"."payment_method" AS ENUM('bank_transfer', 'card', 'crypto', 'cash', 'pos_terminal');--> statement-breakpoint
+CREATE TYPE "public"."payment_method" AS ENUM('bank_transfer', 'online', 'crypto', 'cash', 'pos_terminal');--> statement-breakpoint
 CREATE TYPE "public"."payment_status" AS ENUM('pending', 'confirmed', 'failed', 'expired', 'refunded');--> statement-breakpoint
 CREATE TYPE "public"."product_condition" AS ENUM('new', 'used', 'refurbished');--> statement-breakpoint
 CREATE TYPE "public"."purchase_order_status" AS ENUM('draft', 'ordered', 'received', 'cancelled');--> statement-breakpoint

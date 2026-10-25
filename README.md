@@ -47,7 +47,7 @@ Leave out `--demo` when seeding production. Demo products are clearly labelled `
 Expo app (Android / iOS / web) ─┐
 Admin dashboard (Next.js) ──────┼──► API (Hono, Railway) ──► Postgres (Railway)
 Landing page (Next.js) ─────────┘         ▲
-                                           └── Paystack webhook (card payments)
+                                           └── Money Moves webhook (online payments)
 ```
 
 ### Rules the API enforces (from the business blueprint)
@@ -55,7 +55,7 @@ Landing page (Next.js) ─────────┘         ▲
 - **Server-side totals.** Prices, discounts and delivery fees are computed in `apps/api/src/services/orders.ts`, and the client only sends variant IDs and quantities.
 - **No overselling.** Stock rows are locked (`SELECT … FOR UPDATE`) inside transactions. Unpaid orders *reserve* stock, payment *commits* it, and expired holds are released automatically every minute.
 - **Paid only when verified.** An order becomes paid only through one of three paths:
-  1. a signed Paystack webhook, re-checked against the Paystack API;
+  1. a signed Money Moves webhook, re-checked against the Money Moves API (the adapter still has to be written);
   2. a manager confirming a bank transfer or crypto transfer in Admin → Orders, with the reference recorded;
   3. cash or POS-terminal payment confirmed at the till by staff.
   Screenshots and customer-submitted hashes never mark an order paid.
@@ -72,13 +72,38 @@ Create one Railway project, then add a **Postgres** service and these services f
 
 | Service | Config file | Variables |
 | --- | --- | --- |
-| api | `apps/api/railway.json` | `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `CORS_ORIGINS`, `PAYSTACK_*` |
+| api | `apps/api/railway.json` | `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `CORS_ORIGINS`, `MONEYMOVES_*` |
 | admin | `apps/admin/railway.json` | `API_URL` (the API's URL) |
 | web | `apps/web/railway.json` | `NEXT_PUBLIC_SHOP_URL` |
 
 The API runs migrations as its pre-deploy step. Seed once with `railway run --service api pnpm --filter @sotechy/api db:seed` (with `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` set).
 
 **Customer app.** Build Android and iOS with EAS: `cd apps/mobile && npx eas-cli@latest build`. Deploy the web version with `npx expo export -p web`, then host `dist/` (EAS Hosting via `eas deploy`, or any static host). `EXPO_PUBLIC_API_URL` is baked in at build time.
+
+## iOS development build (testing designs and updates)
+
+The customer app uses an Expo **development build**: your own installable app containing every native package we need, so day-to-day design changes load straight from your computer with no rebuild. Rebuild only when you add a package with native code.
+
+One-time setup (in your own terminal: Apple asks for your Apple ID and 2-factor code):
+
+```bash
+cd apps/mobile
+npx eas-cli@latest login                  # Expo account
+npx eas-cli@latest device:create          # register your iPhone (open the link on the phone)
+pnpm build:ios:dev                        # signs with your Apple Developer account and builds in the cloud
+```
+
+Install the build on the iPhone from the link or QR code EAS gives you (on iOS 16+, also turn on Settings → Privacy & Security → Developer Mode). Then every day:
+
+```bash
+pnpm dev:mobile                           # scan the QR code with the iPhone camera, and it opens in the Sotechy dev app
+```
+
+The phone and computer must be on the same Wi-Fi (or run `npx expo start --tunnel`). Set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env` to your computer LAN IP or the Railway API URL.
+
+**Sharing updates without a cable or rebuild:** `pnpm --filter @sotechy/mobile update:dev` publishes the current JavaScript to the `development` channel (EAS Update). Testers open it from the dev app.
+
+Native packages already included: camera and barcode/QR scanning, image picker, location, push notifications, Face ID, haptics, clipboard, sharing and printing (receipts), file system, WebView (payment pages), network status, Reanimated and Gesture Handler, SVG, FlashList, gradients and blur, keyboard controller, localization, store review and OTA updates.
 
 ## Brand assets
 
@@ -88,7 +113,7 @@ Put the logo and images in `brand-assets/`, run `pnpm assets:sync`, and commit. 
 
 | Item | Status |
 | --- | --- |
-| **Paystack** (card / online bank) | Implemented. Needs `PAYSTACK_SECRET_KEY` and the webhook URL `https://<api>/payments/webhooks/paystack` in the Paystack dashboard. Then enable "Card" in Admin → Settings. |
+| **Money Moves** (online payments) | **Adapter not written yet.** Checkout and webhook routes, server-side amounts and order confirmation are ready. Fill in the three TODOs in `apps/api/src/services/moneymoves.ts` from Money Moves API docs, set the `MONEYMOVES_*` variables, register the webhook `https://<api>/payments/webhooks/moneymoves`, then enable "Pay online (Money Moves)" in Admin → Settings. |
 | **Crypto / $MOVE verification** | **Not implemented.** `POST /payments/crypto/verify` returns 501. Integrate Sotechy's crypto payment provider or a Movement chain verifier in `apps/api/src/routes/payments.ts`, then enable Crypto and the MOVE asset. Until then, in-store crypto can be verified manually by a manager. |
 | **$MOVE discount** | The promotion exists but is **off**. Turn it on, and set the cap, dates and limits, in Admin → Promotions. |
 | Bank account details, delivery fees, support contacts | Admin → Settings |

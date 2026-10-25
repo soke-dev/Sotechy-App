@@ -222,7 +222,7 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
     ),
     async (c) => {
       const input = c.req.valid("json");
-      if (input.paymentMethod === "card") throw badRequest("Use POS terminal for card payments in store");
+      if (input.paymentMethod === "online") throw badRequest("Online payment is for the app and website. Use POS terminal, transfer or cash in store");
       return c.json(await recordWalkInSale(c.get("user"), input), 201);
     },
   );

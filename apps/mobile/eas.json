@@ -1,17 +1,32 @@
 {
   "cli": {
+    "version": ">= 16.0.0",
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "node": "24.11.0",
+      "pnpm": "10.32.1"
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "channel": "development"
+    },
+    "development-simulator": {
+      "extends": "development",
+      "ios": { "simulator": true }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
+      "channel": "preview",
       "android": { "buildType": "apk" }
     },
     "production": {
+      "extends": "base",
+      "channel": "production",
       "autoIncrement": true
     }
   },

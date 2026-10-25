@@ -42,7 +42,7 @@ export const orderStatusEnum = pgEnum("order_status", [
 ]);
 export const fulfilmentTypeEnum = pgEnum("fulfilment_type", ["delivery", "pickup"]);
 export const salesChannelEnum = pgEnum("sales_channel", ["online", "in_store"]);
-export const paymentMethodEnum = pgEnum("payment_method", ["bank_transfer", "card", "crypto", "cash", "pos_terminal"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["bank_transfer", "online", "crypto", "cash", "pos_terminal"]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "confirmed", "failed", "expired", "refunded"]);
 export const refundStatusEnum = pgEnum("refund_status", ["requested", "approved", "rejected", "processed"]);
 export const productConditionEnum = pgEnum("product_condition", ["new", "used", "refurbished"]);

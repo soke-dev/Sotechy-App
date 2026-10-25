@@ -1,5 +1,5 @@
 {
-  "id": "7eac4b0b-9e90-497d-8552-5bd636f0f437",
+  "id": "eb0ea5ff-ba50-48d2-8d57-2b87f08477cd",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -2709,7 +2709,7 @@
       "schema": "public",
       "values": [
         "bank_transfer",
-        "card",
+        "online",
         "crypto",
         "cash",
         "pos_terminal"

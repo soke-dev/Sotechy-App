@@ -6,8 +6,10 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   CORS_ORIGINS: z.string().default("http://localhost:3000,http://localhost:3001,http://localhost:8081"),
-  PAYSTACK_SECRET_KEY: z.string().optional(),
-  PAYSTACK_CALLBACK_URL: z.string().optional(),
+  MONEYMOVES_API_URL: z.string().optional(),
+  MONEYMOVES_SECRET_KEY: z.string().optional(),
+  MONEYMOVES_WEBHOOK_SECRET: z.string().optional(),
+  MONEYMOVES_CALLBACK_URL: z.string().optional(),
 });
 
 export const env = schema.parse(process.env);

@@ -21,7 +21,7 @@ export default async function SettingsPage() {
       <div className="flex flex-col gap-4">
         <Card title="Payment methods">
           <p className="mb-3 text-xs text-neutral-500">
-            Enable card only after PAYSTACK_SECRET_KEY is set on the API. Enable crypto only after a verifier is integrated (see README).
+            Enable "Pay online (Money Moves)" only after the Money Moves integration is finished and its keys are set on the API. Enable crypto only after a verifier is integrated (see README).
           </p>
           <div className="flex flex-col gap-3">
             {data.paymentMethods.map((m) => (

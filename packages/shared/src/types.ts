@@ -15,7 +15,7 @@ export type OrderStatus =
 
 export type FulfilmentType = "delivery" | "pickup";
 export type SalesChannel = "online" | "in_store";
-export type PaymentMethodCode = "bank_transfer" | "card" | "crypto" | "cash" | "pos_terminal";
+export type PaymentMethodCode = "bank_transfer" | "online" | "crypto" | "cash" | "pos_terminal";
 export type PaymentStatus = "pending" | "confirmed" | "failed" | "expired" | "refunded";
 export type RefundStatus = "requested" | "approved" | "rejected" | "processed";
 export type ProductCondition = "new" | "used" | "refurbished";

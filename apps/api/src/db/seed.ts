@@ -10,7 +10,7 @@ await db
   .insert(s.paymentMethods)
   .values([
     { code: "bank_transfer", label: "Bank transfer", isEnabled: true, online: true, inStore: true, instructions: "Transfer the exact order total and use your order number as the narration." },
-    { code: "card", label: "Card / bank (online)", isEnabled: false, online: true, inStore: false, instructions: "Enable after Paystack credentials are configured." },
+    { code: "online", label: "Pay online (Money Moves)", isEnabled: false, online: true, inStore: false, instructions: "Enable after the Money Moves integration is completed." },
     { code: "crypto", label: "Crypto", isEnabled: false, online: true, inStore: true, instructions: "Enable after crypto payment verification is configured." },
     { code: "cash", label: "Cash", isEnabled: true, online: false, inStore: true },
     { code: "pos_terminal", label: "POS terminal", isEnabled: true, online: false, inStore: true },

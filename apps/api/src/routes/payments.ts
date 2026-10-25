@@ -1,7 +1,7 @@
-// Payment provider integrations.
-// - Paystack (card / online bank): real integration, needs PAYSTACK_SECRET_KEY.
+// Payment provider routes.
+// - Money Moves (online payments): routes are ready; the API calls live in services/moneymoves.ts
+//   and still need Money Moves' documentation and credentials.
 // - Crypto (MOVE etc.): NOT implemented yet — needs the chosen provider or a Movement chain verifier.
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
@@ -9,25 +9,13 @@ import { z } from "zod";
 import { db, schema } from "../db/client";
 import { env } from "../env";
 import { requireAuth, type AppEnv } from "../lib/auth";
-import { badRequest, HttpError, notFound } from "../lib/errors";
+import { badRequest, notFound } from "../lib/errors";
+import { createCheckout, fetchTransaction, moneyMovesConfigured, verifyWebhookSignature } from "../services/moneymoves";
 import { confirmPayment } from "../services/orders";
 
-const PAYSTACK_API = "https://api.paystack.co";
-
-async function paystack<T>(path: string, init: RequestInit = {}): Promise<T> {
-  if (!env.PAYSTACK_SECRET_KEY) throw new HttpError(503, "Card payments are not configured yet");
-  const res = await fetch(`${PAYSTACK_API}${path}`, {
-    ...init,
-    headers: { Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json", ...init.headers },
-  });
-  const body = (await res.json()) as { status: boolean; message: string; data: T };
-  if (!res.ok || !body.status) throw new HttpError(502, `Paystack: ${body.message}`);
-  return body.data;
-}
-
 export const paymentRoutes = new Hono<AppEnv>()
-  /** Starts a Paystack checkout for one of the customer's unpaid card orders. */
-  .post("/card/initialize", requireAuth, zValidator("json", z.object({ orderId: z.uuid() })), async (c) => {
+  /** Starts a Money Moves checkout for one of the customer's unpaid online-payment orders. */
+  .post("/online/initialize", requireAuth, zValidator("json", z.object({ orderId: z.uuid() })), async (c) => {
     const user = c.get("user");
     const { orderId } = c.req.valid("json");
     const [order] = await db
@@ -35,7 +23,9 @@ export const paymentRoutes = new Hono<AppEnv>()
       .from(schema.orders)
       .where(and(eq(schema.orders.id, orderId), eq(schema.orders.customerId, user.id)));
     if (!order) throw notFound("Order not found");
-    if (order.status !== "pending_payment" || order.paymentMethod !== "card") throw badRequest("This order is not awaiting card payment");
+    if (order.status !== "pending_payment" || order.paymentMethod !== "online") {
+      throw badRequest("This order is not awaiting online payment");
+    }
 
     const [payment] = await db
       .select()
@@ -43,44 +33,37 @@ export const paymentRoutes = new Hono<AppEnv>()
       .where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.status, "pending")));
     if (!payment) throw badRequest("No pending payment for this order");
 
-    // Amount comes from the database, never from the client. Paystack expects kobo.
-    const data = await paystack<{ authorization_url: string; reference: string }>("/transaction/initialize", {
-      method: "POST",
-      body: JSON.stringify({
-        email: user.email,
-        amount: Math.round(payment.amount * 100),
-        currency: "NGN",
-        reference: payment.id,
-        callback_url: env.PAYSTACK_CALLBACK_URL || undefined,
-        metadata: { orderId, orderNumber: order.orderNumber },
-      }),
+    // Amount comes from the database, never from the client.
+    const { checkoutUrl } = await createCheckout({
+      reference: payment.id,
+      amount: payment.amount,
+      currency: "NGN",
+      email: user.email,
+      callbackUrl: env.MONEYMOVES_CALLBACK_URL,
+      metadata: { orderId, orderNumber: order.orderNumber },
     });
-    await db.update(schema.payments).set({ provider: "paystack" }).where(eq(schema.payments.id, payment.id));
-    return c.json({ authorizationUrl: data.authorization_url });
+    await db.update(schema.payments).set({ provider: "moneymoves" }).where(eq(schema.payments.id, payment.id));
+    return c.json({ checkoutUrl });
   })
 
-  /** Paystack webhook: signature-verified, then re-verified against the Paystack API before confirming. */
-  .post("/webhooks/paystack", async (c) => {
-    if (!env.PAYSTACK_SECRET_KEY) return c.json({ error: "Not configured" }, 503);
+  /** Money Moves webhook: signature-verified, then re-checked against Money Moves before confirming. */
+  .post("/webhooks/moneymoves", async (c) => {
+    if (!moneyMovesConfigured()) return c.json({ error: "Not configured" }, 503);
     const raw = await c.req.text();
-    const signature = c.req.header("x-paystack-signature") ?? "";
-    const expected = createHmac("sha512", env.PAYSTACK_SECRET_KEY).update(raw).digest("hex");
-    const valid = signature.length === expected.length && timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-    if (!valid) return c.json({ error: "Invalid signature" }, 401);
+    if (!verifyWebhookSignature(raw, c.req.raw.headers)) return c.json({ error: "Invalid signature" }, 401);
 
-    const event = JSON.parse(raw) as { event: string; data: { reference: string } };
-    if (event.event !== "charge.success") return c.json({ received: true });
+    // TODO(Money Moves): adjust to the real webhook payload shape.
+    const event = JSON.parse(raw) as { reference?: string };
+    if (!event.reference) return c.json({ received: true });
 
-    const tx = await paystack<{ status: string; amount: number; currency: string; reference: string; id: number }>(
-      `/transaction/verify/${encodeURIComponent(event.data.reference)}`,
-    );
+    const tx = await fetchTransaction(event.reference);
     if (tx.status !== "success" || tx.currency !== "NGN") return c.json({ received: true });
 
     await confirmPayment(tx.reference, {
-      amountPaid: tx.amount / 100,
-      providerReference: String(tx.id),
-      provider: "paystack",
-      raw: tx,
+      amountPaid: tx.amount,
+      providerReference: tx.providerId,
+      provider: "moneymoves",
+      raw: tx.raw,
       verifiedBy: null,
     });
     return c.json({ received: true });

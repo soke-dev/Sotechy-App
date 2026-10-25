@@ -33,7 +33,7 @@ export const ORDER_FLOW: OrderStatus[] = [
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethodCode, string> = {
   bank_transfer: "Bank transfer",
-  card: "Card / bank (online)",
+  online: "Pay online (Money Moves)",
   crypto: "Crypto",
   cash: "Cash (in store)",
   pos_terminal: "POS terminal (in store)",
