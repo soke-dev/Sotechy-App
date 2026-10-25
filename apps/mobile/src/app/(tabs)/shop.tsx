@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FlatList, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { MenuButton } from "@/components/menu";
 import { ProductCard } from "@/components/product-card";
+import { SupportChat } from "@/components/support-chat";
 import { Chip, EmptyState, ErrorView, Input, Loading, ScreenHeader, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
@@ -126,6 +127,7 @@ export default function ShopScreen() {
           keyboardDismissMode="on-drag"
         />
       )}
+      <SupportChat />
     </View>
   );
 }

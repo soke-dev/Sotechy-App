@@ -8,12 +8,14 @@ import { formatNaira, type CatalogProduct, type Category } from "@sotechy/shared
 import { HeroCarousel } from "@/components/hero-carousel";
 import { MenuButton } from "@/components/menu";
 import { ProductRail } from "@/components/product-rail";
-import { Button, discountPercent, ErrorView, IconButton, Loading, Pill, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
-import { api, DEMO_MODE } from "@/lib/api";
+import { SupportChat } from "@/components/support-chat";
+import { Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
+import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { demoMedia } from "@/lib/mock-api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+import { openWhatsApp, ORDER_MESSAGE } from "@/lib/whatsapp";
 
 function CircleLink({ label, onPress, image, icon, dark }: { label: string; onPress: () => void; image?: string | null; icon?: IconName; dark?: boolean }) {
   return (
@@ -80,13 +82,14 @@ export default function HomeScreen() {
   const shop = (params: Record<string, string>) => router.push({ pathname: "/shop", params } as Href);
 
   return (
+    <View style={ui.screen}>
     <ScrollView
       style={ui.screen}
       contentContainerStyle={{ paddingTop: insets.top + space.sm, paddingBottom: space.xxl * 2, gap: space.xxl }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.brand} />}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header, search and call-to-order */}
+      {/* Header, search and WhatsApp ordering */}
       <View style={{ paddingHorizontal: gutter, gap: space.md }}>
         <View style={ui.between}>
           <View style={[ui.row, { gap: space.md }]}>
@@ -105,14 +108,42 @@ export default function HomeScreen() {
           <Ionicons name="search" size={18} color={colors.ink2} />
           <Txt variant="body" color={colors.faint}>Search products, brands and categories</Txt>
         </Pressable>
-        <View style={ui.between}>
-          <Pressable onPress={() => support.phone && Linking.openURL(`tel:${support.phone.replace(/[^\d+]/g, "")}`)} style={ui.row}>
-            <Ionicons name="call" size={14} color={colors.brandPressed} />
-            <Txt variant="label" style={{ fontSize: 13 }}>
-              CALL TO ORDER: <Txt variant="label" color={colors.brandPressed} style={{ fontSize: 13 }}>{support.phone ?? "coming soon"}</Txt>
-            </Txt>
+        <View style={[ui.row, { gap: space.sm }]}>
+          <Pressable
+            onPress={() => openWhatsApp(support.whatsapp, ORDER_MESSAGE)}
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              flex: 1,
+              height: 44,
+              borderRadius: radius.pill,
+              backgroundColor: pressed ? colors.ink2 : colors.ink,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              paddingHorizontal: 14,
+            })}
+          >
+            <Ionicons name="logo-whatsapp" size={19} color={colors.brand} />
+            <Txt variant="label" color={colors.white} numberOfLines={1} style={{ fontSize: 14 }}>Order on WhatsApp</Txt>
           </Pressable>
-          {DEMO_MODE && <Pill label="Demo data" tone="warning" />}
+          {[
+            { icon: "pricetag" as const, label: "Deals", onPress: () => shop({ featured: "1" }) },
+            {
+              icon: "location" as const,
+              label: "Stores",
+              onPress: () => headOffice && Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${headOffice.address}, ${headOffice.city}, Nigeria`)}`),
+            },
+          ].map((b) => (
+            <Pressable
+              key={b.label}
+              onPress={b.onPress}
+              style={({ pressed }) => ({ height: 44, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line, flexDirection: "row", alignItems: "center", gap: 6 })}
+            >
+              <Ionicons name={b.icon} size={15} color={colors.brandPressed} />
+              <Txt variant="label" style={{ fontSize: 13.5 }}>{b.label}</Txt>
+            </Pressable>
+          ))}
         </View>
       </View>
 
@@ -179,7 +210,9 @@ export default function HomeScreen() {
 
       {/* Can't find it */}
       <Pressable
-        onPress={() => (support.whatsapp ? Linking.openURL(`https://wa.me/${support.whatsapp.replace(/[^\d]/g, "")}`) : router.push("/support"))}
+        onPress={async () => {
+          if (!(await openWhatsApp(support.whatsapp, "Hello Sotechy, I'm looking for: "))) router.push("/support");
+        }}
         style={{ marginHorizontal: gutter, flexDirection: "row", alignItems: "center", gap: space.lg, padding: space.lg, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }}
       >
         <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
@@ -228,5 +261,7 @@ export default function HomeScreen() {
         ))}
       </View>
     </ScrollView>
+    <SupportChat teaser />
+    </View>
   );
 }

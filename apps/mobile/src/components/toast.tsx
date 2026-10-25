@@ -38,7 +38,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           position: "absolute",
           left: 16,
           right: 16,
-          bottom: 100,
+          bottom: 128,
           alignItems: "center",
           opacity: anim,
           transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],

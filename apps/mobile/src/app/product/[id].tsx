@@ -32,6 +32,7 @@ import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+import { openWhatsApp } from "@/lib/whatsapp";
 
 function InfoRow({ icon, title, subtitle }: { icon: IconName; title: string; subtitle?: string }) {
   return (
@@ -177,6 +178,19 @@ export default function ProductScreen() {
               <Pill icon="close-circle" tone="danger" label="Out of stock" />
             )}
           </View>
+
+          <Pressable
+            onPress={() =>
+              openWhatsApp(
+                config.data?.support.whatsapp,
+                `Hello Sotechy, I'd like to order: ${product.name}${product.variants.length > 1 && variant ? ` (${variant.name})` : ""} – ${formatNaira(variant?.price)}`,
+              )
+            }
+            style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, height: 48, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line })}
+          >
+            <Ionicons name="logo-whatsapp" size={20} color={colors.brandPressed} />
+            <Txt variant="label">Order this on WhatsApp</Txt>
+          </Pressable>
 
           {product.variants.length > 1 && (
             <View style={{ gap: space.sm }}>
