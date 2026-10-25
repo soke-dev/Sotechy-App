@@ -68,15 +68,18 @@ Landing page (Next.js) ─────────┘         ▲
 
 ## Deploying to Railway
 
-One Railway project with a **Postgres** database and two services from this GitHub repo (plus the landing page if you want it). Keep each service's root directory at the repo root, because pnpm workspaces need it, and set its *config file path*:
+The Railway project (**Sotechy Shop**: Postgres, `api`, `admin`) is defined in [`.railway/railway.ts`](.railway/railway.ts) using Railway's Infrastructure as Code. It sets the build and start commands, health check, watch patterns and variables for each service. Preview and apply changes from the repo root:
 
-| Service | Config file | Variables |
-| --- | --- | --- |
-| **api** | `apps/api/railway.json` | `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `JWT_SECRET`, `CORS_ORIGINS` (the admin's URL), `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO_PRODUCTS`, `MONEYMOVES_SECRET_KEY`, `MONEYMOVES_WEBHOOK_SECRET`, `GOOGLE_CLIENT_IDS` |
-| **admin** | `apps/admin/railway.json` | `API_URL=https://${{api.RAILWAY_PUBLIC_DOMAIN}}` |
-| web (optional) | `apps/web/railway.json` | `NEXT_PUBLIC_SHOP_URL` |
+```bash
+railway config plan     # what would change on Railway
+railway config apply    # apply it
+railway up --service api --detach      # upload and deploy the API
+railway up --service admin --detach    # upload and deploy the admin
+```
 
-Give **api** and **admin** a public domain (Settings → Networking → Generate domain). Every API deploy runs the database migrations and then the seed, which only adds what's missing: payment methods, the head office, base categories, and the first admin from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`. Set `SEED_DEMO_PRODUCTS=true` for a few `[DEMO]` products to test with. Every variable is explained in [`apps/api/.env.example`](apps/api/.env.example).
+Every API deploy runs the migrations and then the seed, which only adds what's missing: payment methods, the head office, base categories, and the first admin (`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`). `SEED_DEMO_PRODUCTS=true` adds a few `[DEMO]` products to test with.
+
+Secrets aren't in the repo. They use `preserve()` in `railway.ts`, so set them once with `railway variable set NAME --stdin --service api` or in the dashboard: `JWT_SECRET`, `SEED_ADMIN_PASSWORD`, `MONEYMOVES_SECRET_KEY`, `MONEYMOVES_WEBHOOK_SECRET`, `GOOGLE_CLIENT_IDS`. Every variable is explained in [`apps/api/.env.example`](apps/api/.env.example).
 
 **Money Moves.** In the Money Moves dashboard, create an API key (`sk_test_…` while testing) and add a webhook endpoint `https://<api-domain>/payments/webhooks/moneymoves`. Put the key and the webhook's `whsec_…` secret in the api service. Admin → Settings shows whether the connection works and the exact webhook URL. Switch to the `sk_live_…` key and the live webhook secret when you go live.
 
