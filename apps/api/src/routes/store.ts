@@ -1,8 +1,9 @@
 // Public storefront routes: no auth, published products only, never exposes cost prices.
-import { and, asc, desc, eq, getTableColumns, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db/client";
 import { notFound } from "../lib/errors";
+import { getUsdRate } from "../services/moneymoves";
 import { getSetting, type DeliverySettings } from "../services/settings";
 
 const { products, productVariants, inventory, categories, branches } = schema;
@@ -64,7 +65,7 @@ export async function loadReviews(productId: string) {
   };
 }
 
-export function catalogQuery(where: SQL | undefined) {
+export function catalogQuery(where: SQL | undefined, having?: SQL) {
   return db
     .select(catalogColumns)
     .from(products)
@@ -72,8 +73,32 @@ export function catalogQuery(where: SQL | undefined) {
     .leftJoin(productVariants, and(eq(productVariants.productId, products.id), eq(productVariants.isActive, true)))
     .leftJoin(inventory, eq(inventory.variantId, productVariants.id))
     .where(where)
-    .groupBy(products.id, categories.name);
+    .groupBy(products.id, categories.name)
+    .having(having);
 }
+
+const averageRating = sql`(select avg(r.rating) from product_reviews r where r.product_id = ${products.id} and r.is_published)`;
+
+/** Published store products matching the search text and category (a parent category includes its sub-categories). */
+function baseFilters({ q, category }: { q?: string; category?: string }) {
+  const filters: (SQL | undefined)[] = [eq(products.isPublished, true), isNull(products.merchantId)];
+  if (q) {
+    const term = `%${q}%`;
+    filters.push(or(ilike(products.name, term), ilike(products.brand, term), ilike(products.model, term)));
+  }
+  if (category) {
+    filters.push(sql`${products.categoryId} in (
+      select c.id from categories c
+      where c.slug = ${category} or c.id::text = ${category}
+         or c.parent_id in (select p.id from categories p where p.slug = ${category} or p.id::text = ${category}))`);
+  }
+  return filters;
+}
+
+const positive = (v: string | undefined) => {
+  const n = Number(v);
+  return v && Number.isFinite(n) && n >= 0 ? n : undefined;
+};
 
 const { costPrice: _cost, ...publicVariantColumns } = getTableColumns(productVariants);
 
@@ -96,33 +121,53 @@ export const storeRoutes = new Hono()
       support: support ?? { phone: null, email: null, whatsapp: null },
     });
   })
+  .get("/fx", async (c) => {
+    const { rate, source, updatedAt } = await getUsdRate();
+    return c.json({ base: "USD", quote: "NGN", rate, source, updatedAt });
+  })
   .get("/categories", async (c) => {
     return c.json(await db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder)));
   })
   .get("/products", async (c) => {
-    const { q, category, sort, featured } = c.req.query();
-    const filters: (SQL | undefined)[] = [eq(products.isPublished, true), isNull(products.merchantId)];
-    if (q) {
-      const term = `%${q}%`;
-      filters.push(or(ilike(products.name, term), ilike(products.brand, term), ilike(products.model, term)));
-    }
-    if (category) {
-      // A parent category includes its sub-categories (slug or id accepted)
-      filters.push(sql`${products.categoryId} in (
-        select c.id from categories c
-        where c.slug = ${category} or c.id::text = ${category}
-           or c.parent_id in (select p.id from categories p where p.slug = ${category} or p.id::text = ${category}))`);
-    }
-    if (featured === "true") filters.push(eq(products.isFeatured, true));
+    const query = c.req.query();
+    // All filters combine (AND); several brands match any of them.
+    const filters = baseFilters(query);
+    const having: SQL[] = [];
+    if (query.featured === "true") filters.push(eq(products.isFeatured, true));
+    const brands = (query.brand ?? "").split(",").map((b) => b.trim()).filter(Boolean);
+    if (brands.length) filters.push(inArray(products.brand, brands));
+    const minRating = positive(query.minRating);
+    if (minRating) filters.push(sql`${averageRating} >= ${minRating}`);
+    const minPrice = positive(query.minPrice);
+    const maxPrice = positive(query.maxPrice);
+    if (minPrice !== undefined) having.push(sql`${catalogColumns.minPrice} >= ${minPrice}`);
+    if (maxPrice !== undefined) having.push(sql`${catalogColumns.minPrice} <= ${maxPrice}`);
+    if (query.inStock === "true") having.push(sql`${catalogColumns.totalAvailable} > 0`);
+    // Deals = discounted variants or Sotechy picks
+    if (query.deals === "true") having.push(sql`(${products.isFeatured} or coalesce(bool_or(${productVariants.compareAtPrice} > ${productVariants.price}), false))`);
 
     const order =
-      sort === "price_asc"
-        ? asc(catalogColumns.minPrice)
-        : sort === "price_desc"
-          ? desc(catalogColumns.minPrice)
-          : desc(products.createdAt); // "newest" (popularity sort needs sales data — add later)
+      query.sort === "price_asc"
+        ? [asc(catalogColumns.minPrice)]
+        : query.sort === "price_desc"
+          ? [desc(catalogColumns.minPrice)]
+          : query.sort === "rating"
+            ? [sql`coalesce(${averageRating}, 0) desc`, desc(catalogColumns.ratingCount)]
+            : [desc(products.createdAt)]; // "newest" (popularity sort needs sales data — add later)
 
-    return c.json(await catalogQuery(and(...filters)).orderBy(order).limit(100));
+    return c.json(await catalogQuery(and(...filters), having.length ? and(...having) : undefined).orderBy(...order, desc(products.createdAt)).limit(100));
+  })
+  .get("/facets", async (c) => {
+    // Brands and price range for the current search / category, to build the filter sheet.
+    const rows = await catalogQuery(and(...baseFilters(c.req.query())));
+    const brands = new Map<string, number>();
+    for (const r of rows) if (r.brand) brands.set(r.brand, (brands.get(r.brand) ?? 0) + 1);
+    const prices = rows.map((r) => r.minPrice).filter((p) => p > 0);
+    return c.json({
+      total: rows.length,
+      brands: [...brands].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+      price: { min: prices.length ? Math.min(...prices) : 0, max: prices.length ? Math.max(...prices) : 0 },
+    });
   })
   .get("/products/:idOrSlug", async (c) => {
     const key = c.req.param("idOrSlug");

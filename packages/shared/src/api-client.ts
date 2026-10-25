@@ -4,11 +4,14 @@ import type {
   AuthResponse,
   CatalogProduct,
   Category,
+  ExchangeRate,
   Order,
   OrderDetail,
   OrderSummary,
   PlaceOrderInput,
   ProductDetail,
+  ProductFacets,
+  ProductQuery,
   ProductReviews,
   StoreConfig,
   User,
@@ -74,11 +77,18 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
 
     // Storefront
     storeConfig: () => get<StoreConfig>("/store/config"),
+    exchangeRate: () => get<ExchangeRate>("/store/fx"),
     categories: () => get<Category[]>("/store/categories"),
-    products: (params: { q?: string; category?: string; sort?: string; featured?: boolean } = {}) => {
+    products: ({ brands, ...params }: ProductQuery = {}) => {
       const qs = new URLSearchParams();
-      for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") qs.set(k, String(v));
+      for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "" && v !== false) qs.set(k, String(v));
+      if (brands?.length) qs.set("brand", brands.join(","));
       return get<CatalogProduct[]>(`/store/products${qs.size ? `?${qs}` : ""}`);
+    },
+    productFacets: (params: { q?: string; category?: string } = {}) => {
+      const qs = new URLSearchParams();
+      for (const [k, v] of Object.entries(params)) if (v) qs.set(k, v);
+      return get<ProductFacets>(`/store/facets${qs.size ? `?${qs}` : ""}`);
     },
     product: (idOrSlug: string) => get<ProductDetail>(`/store/products/${encodeURIComponent(idOrSlug)}`),
     productReviews: (idOrSlug: string) => get<ProductReviews>(`/store/products/${encodeURIComponent(idOrSlug)}/reviews`),

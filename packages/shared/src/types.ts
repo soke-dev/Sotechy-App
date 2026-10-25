@@ -143,6 +143,40 @@ export interface ProductReviews {
   reviews: Review[];
 }
 
+/** Dollar exchange rate from Money Moves: `rate` naira = 1 US dollar. */
+export interface ExchangeRate {
+  base: "USD";
+  quote: "NGN";
+  rate: number;
+  /** "placeholder" until the live Money Moves rate is connected */
+  source: "moneymoves" | "placeholder";
+  updatedAt: string;
+}
+
+export type ProductSort ="newest" | "price_asc" | "price_desc" | "rating";
+
+/** Storefront product filters. Every filter combines with the others; brands match any of the list. */
+export interface ProductQuery {
+  q?: string;
+  category?: string;
+  sort?: ProductSort | string;
+  featured?: boolean;
+  /** Discounted items or Sotechy picks */
+  deals?: boolean;
+  brands?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+  inStock?: boolean;
+}
+
+/** Filter options available for a search / category. */
+export interface ProductFacets {
+  total: number;
+  brands: { name: string; count: number }[];
+  price: { min: number; max: number };
+}
+
 export interface DeliveryAddress {
   recipientName: string;
   phone: string;

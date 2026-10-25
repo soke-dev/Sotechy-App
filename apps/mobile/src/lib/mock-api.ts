@@ -208,6 +208,18 @@ const toCatalog = (p: ProductDetail): CatalogProduct => ({
   ratingCount: reviewSummary(p.id).count,
 });
 
+/** Catalogue matching the search text and category (a parent category includes its sub-categories). */
+function baseList(q?: string, category?: string) {
+  let list = products.map(toCatalog);
+  if (q) list = list.filter((p) => `${p.name} ${p.brand} ${p.model}`.toLowerCase().includes(q.toLowerCase()));
+  if (category) {
+    const match = categories.find((c) => c.slug === category);
+    const ids = new Set(categories.filter((c) => c.id === match?.id || c.parentId === match?.id).map((c) => c.id));
+    list = list.filter((p) => p.categoryId && ids.has(p.categoryId));
+  }
+  return list;
+}
+
 const config: StoreConfig = {
   branches,
   paymentMethods: [
@@ -378,21 +390,35 @@ export const mockApi: ApiClient = {
   },
 
   storeConfig: async () => wait(config),
+  // Placeholder until the Money Moves rate is connected (same value as the API)
+  exchangeRate: async () => wait({ base: "USD" as const, quote: "NGN" as const, rate: 1550, source: "placeholder" as const, updatedAt: now() }),
   categories: async () => wait(categories),
-  products: async ({ q, category, sort, featured } = {}) => {
-    let list = products.map(toCatalog);
-    if (q) list = list.filter((p) => `${p.name} ${p.brand} ${p.model}`.toLowerCase().includes(q.toLowerCase()));
-    if (category) {
-      // A parent category includes its sub-categories
-      const match = categories.find((c) => c.slug === category);
-      const ids = new Set(categories.filter((c) => c.id === match?.id || c.parentId === match?.id).map((c) => c.id));
-      list = list.filter((p) => p.categoryId && ids.has(p.categoryId));
-    }
+  products: async ({ q, category, sort, featured, deals, brands, minPrice, maxPrice, minRating, inStock } = {}) => {
+    // Same rules as the API: every filter combines, several brands match any of them.
+    let list = baseList(q, category);
     if (featured) list = list.filter((p) => p.isFeatured);
+    if (deals) list = list.filter((p) => p.isFeatured || (p.compareAtPrice ?? 0) > p.minPrice);
+    if (brands?.length) list = list.filter((p) => !!p.brand && brands.includes(p.brand));
+    if (minPrice !== undefined) list = list.filter((p) => p.minPrice >= minPrice);
+    if (maxPrice !== undefined) list = list.filter((p) => p.minPrice <= maxPrice);
+    if (minRating) list = list.filter((p) => (p.ratingAverage ?? 0) >= minRating);
+    if (inStock) list = list.filter((p) => p.totalAvailable > 0);
+    list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     if (sort === "price_asc") list.sort((a, b) => a.minPrice - b.minPrice);
     else if (sort === "price_desc") list.sort((a, b) => b.minPrice - a.minPrice);
-    else list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    else if (sort === "rating") list.sort((a, b) => (b.ratingAverage ?? 0) - (a.ratingAverage ?? 0) || (b.ratingCount ?? 0) - (a.ratingCount ?? 0));
     return wait(list);
+  },
+  productFacets: async ({ q, category } = {}) => {
+    const list = baseList(q, category);
+    const brands = new Map<string, number>();
+    for (const p of list) if (p.brand) brands.set(p.brand, (brands.get(p.brand) ?? 0) + 1);
+    const prices = list.map((p) => p.minPrice).filter((p) => p > 0);
+    return wait({
+      total: list.length,
+      brands: [...brands].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+      price: { min: prices.length ? Math.min(...prices) : 0, max: prices.length ? Math.max(...prices) : 0 },
+    });
   },
   product: async (idOrSlug) => {
     const p = products.find((x) => x.id === idOrSlug || x.slug === idOrSlug);

@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState, type ComponentRef } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatNaira, type CatalogProduct, type ProductDetail, type ProductReviews, type Review } from "@sotechy/shared";
+import { formatNaira, formatUsd, type CatalogProduct, type ProductDetail, type ProductReviews, type Review } from "@sotechy/shared";
 import { useCartFeedback } from "@/components/cart-feedback";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { ProductCard } from "@/components/product-card";
@@ -340,6 +340,7 @@ export default function ProductScreen() {
   const { user } = useAuth();
   const toast = useToast();
   const config = useAsync(() => api.storeConfig());
+  const fx = useAsync(() => api.exchangeRate());
   const heroHeight = Math.round(Math.min(width, 720) * 0.95);
 
   // Related = other products in the same top-level category.
@@ -471,16 +472,18 @@ export default function ProductScreen() {
           <View style={{ gap: 6 }}>
             {product.brand ? <Txt variant="overline">{product.brand}{product.model ? ` · ${product.model}` : ""}</Txt> : null}
             <Txt variant="title">{product.name}</Txt>
-            <Pressable onPress={() => setTab("reviews")} hitSlop={6} style={[ui.row, { gap: 6, alignSelf: "flex-start" }]}>
-              <Stars value={rating} size={14} />
-              <Txt variant="small" color={colors.ink2}>
-                {ratingCount ? `${rating.toFixed(1)} · ${ratingCount} review${ratingCount === 1 ? "" : "s"}` : "No reviews yet"}
-              </Txt>
-            </Pressable>
             <View style={[ui.row, { marginTop: 4 }]}>
               <Price amount={variant?.price ?? 0} compareAt={variant?.compareAtPrice} size="lg" />
               {off > 0 && <Pill label={`Save ${off}%`} tone="brand" />}
             </View>
+            {fx.data && variant ? (
+              <View style={[ui.row, { gap: 6 }]}>
+                <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Txt variant="label" color={colors.ink2} style={{ fontSize: 13 }}>≈ {formatUsd(variant.price, fx.data.rate)}</Txt>
+                </View>
+                <Txt variant="caption">at {formatNaira(fx.data.rate)} / $1</Txt>
+              </View>
+            ) : null}
             {available > 0 ? (
               <Pill
                 icon="checkmark-circle"

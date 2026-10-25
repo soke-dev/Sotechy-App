@@ -297,7 +297,7 @@ export function IconButton({
   );
 }
 
-export function Chip({ label, active, onPress, icon }: { label: string; active?: boolean; onPress?: () => void; icon?: IconName }) {
+export function Chip({ label, active, onPress, icon, trailingIcon }: { label: string; active?: boolean; onPress?: () => void; icon?: IconName; trailingIcon?: IconName }) {
   return (
     <Pressable
       onPress={onPress}
@@ -315,6 +315,7 @@ export function Chip({ label, active, onPress, icon }: { label: string; active?:
     >
       {icon ? <Ionicons name={icon} size={14} color={active ? colors.onInverse : colors.ink2} /> : null}
       <Text style={{ fontFamily: fonts.medium, fontSize: 13, color: active ? colors.onInverse : colors.ink2 }}>{label}</Text>
+      {trailingIcon ? <Ionicons name={trailingIcon} size={13} color={active ? colors.onInverse : colors.muted} /> : null}
     </Pressable>
   );
 }

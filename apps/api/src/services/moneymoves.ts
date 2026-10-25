@@ -56,3 +56,16 @@ export async function fetchTransaction(_reference: string): Promise<ProviderTran
   // TODO(Money Moves): fetch the transaction by our reference and map it to ProviderTransaction.
   throw notImplemented();
 }
+
+/** Placeholder naira-per-dollar rate, used until the Money Moves rate endpoint is connected. */
+const PLACEHOLDER_USD_NGN = 1550;
+const RATE_TTL_MS = 10 * 60 * 1000;
+let rateCache: { rate: number; source: "moneymoves" | "placeholder"; updatedAt: string; at: number } | null = null;
+
+/** Naira per 1 US dollar (cached for 10 minutes). Shown next to prices as a dollar estimate. */
+export async function getUsdRate() {
+  if (rateCache && Date.now() - rateCache.at < RATE_TTL_MS) return rateCache;
+  // TODO(Money Moves): fetch the live USD→NGN rate here and set source: "moneymoves".
+  rateCache = { rate: PLACEHOLDER_USD_NGN, source: "placeholder", updatedAt: new Date().toISOString(), at: Date.now() };
+  return rateCache;
+}

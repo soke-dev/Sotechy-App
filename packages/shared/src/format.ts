@@ -9,6 +9,13 @@ export function formatNaira(amount: number | null | undefined): string {
   return nairaFormatter.format(amount);
 }
 
+/** Dollar estimate of a naira amount; `rate` is naira per dollar. Whole dollars from $100 up. */
+export function formatUsd(naira: number | null | undefined, rate: number): string {
+  if (naira == null || Number.isNaN(naira) || !rate) return "—";
+  const usd = naira / rate;
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: usd >= 100 ? 0 : 2 }).format(usd);
+}
+
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("en-NG", {
