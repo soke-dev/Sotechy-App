@@ -87,7 +87,8 @@ export default function HomeScreen() {
   const { config, categories, products } = data;
   const tops = categories.filter((c) => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
   const deals = products.filter((p) => discountPercent(p.minPrice, p.compareAtPrice) > 0 || p.isFeatured);
-  const bubbleSize = Math.floor((contentWidth - space.lg * 2 - space.md * 2) / 3);
+  // Three circles in one row: card padding (2 × lg), card border (2 × 1px) and two gaps.
+  const bubbleSize = Math.floor((contentWidth - space.lg * 2 - 2 - space.md * 2) / 3);
   const support = config.support;
   const headOffice = config.branches[0];
   const shop = (params: Record<string, string>) => router.push({ pathname: "/shop", params } as Href);
@@ -152,8 +153,8 @@ export default function HomeScreen() {
               <Ionicons name="arrow-forward" size={18} color={colors.white} />
             </Pressable>
           </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.md, rowGap: space.lg }}>
-            {deals.slice(0, 6).map((p) => (
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            {deals.slice(0, 3).map((p) => (
               <DealBubble key={p.id} product={p} size={bubbleSize} />
             ))}
           </View>
