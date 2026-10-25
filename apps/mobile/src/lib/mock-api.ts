@@ -55,7 +55,6 @@ const images = {
 
 const branches: Branch[] = [
   { id: "b1", name: "Head Office — Etete Road", code: "BEN-01", address: "No. 20 Etete Road", city: "Benin City", state: "Edo", phone: "+234 000 000 0000", openingHours: "Mon–Sat 9am–6pm", isActive: true },
-  { id: "b2", name: "Branch 2", code: "BR-02", address: "Address to be added", city: "Benin City", state: "Edo", phone: null, openingHours: "Mon–Sat 9am–6pm", isActive: true },
 ];
 
 const top = (id: string, name: string, slug: string, imageUrl: string, sortOrder: number): Category => ({ id, name, slug, parentId: null, imageUrl, sortOrder, isActive: true });
@@ -238,7 +237,19 @@ const config: StoreConfig = {
 const demoUser: User = { id: "u1", email: "demo@sotechy.shop", fullName: "Demo Customer", phone: null, role: "customer", branchId: null, createdAt: now() };
 let signedIn = false;
 const wishlist = new Set<string>(["p4"]);
+// Promo codes customers can type at checkout (codeless offers live in config.promotions)
+const promoCodes = [{ code: "WELCOME5", name: "Welcome: 5% off", percent: 5, max: 20_000, minOrder: 10_000 }];
+
+function promoDiscount(code: string | undefined, subtotal: number) {
+  if (!code) return null;
+  const promo = promoCodes.find((p) => p.code === code.trim().toUpperCase());
+  if (!promo || subtotal < promo.minOrder) return null;
+  return { promo, discount: Math.min(promo.max, Math.round((subtotal * promo.percent) / 100)) };
+}
+
 const orders: OrderDetail[] = [];
+/** Demo mode has no Money Moves page; checkout links starting with this open a stand-in window in the app. */
+export const DEMO_CHECKOUT_URL = "demo://moneymoves/checkout";
 const ordersByKey = new Map<string, OrderDetail>();
 const addresses: Address[] = [
   { id: "a1", label: "Home", recipientName: "Demo Customer", phone: "0800 000 0000", line1: "12 Airport Road", line2: "Opposite the filling station", city: "Benin City", state: "Edo", isDefault: true },
@@ -280,7 +291,7 @@ function makeOrder(input: PlaceOrderInput, status: Order["status"] = "pending_pa
   });
   const subtotal = items.reduce((n, i) => n + i.lineTotal, 0);
   const deliveryFee = input.fulfilmentType === "delivery" && subtotal < (config.delivery.freeOver ?? Infinity) ? config.delivery.flatFee : 0;
-  const discount = input.paymentMethod === "crypto" && input.cryptoAsset === "MOVE" ? Math.round(subtotal * 0.1) : 0;
+  const discount = input.paymentMethod === "crypto" && input.cryptoAsset === "MOVE" ? Math.round(subtotal * 0.1) : (promoDiscount(input.promoCode, subtotal)?.discount ?? 0);
   const branch = branches.find((b) => b.id === input.branchId) ?? null;
   const asset = config.cryptoAssets[0];
   return {
@@ -312,7 +323,7 @@ function makeOrder(input: PlaceOrderInput, status: Order["status"] = "pending_pa
           ? { method: "bank_transfer", text: config.paymentMethods[0].instructions, bankName: "Demo Bank", accountName: "Sotechy Shop Ltd", accountNumber: "0000000000" }
           : input.paymentMethod === "crypto"
             ? { method: "crypto", text: config.paymentMethods[2].instructions, cryptoAsset: asset.symbol, cryptoNetwork: asset.network, receivingAddress: asset.receivingAddress }
-            : { method: input.paymentMethod, text: "Online payment page opens here once Money Moves is connected." },
+            : { method: input.paymentMethod, text: "Pay securely with Money Moves: bank transfer, crypto or the Money Moves app." },
   };
 }
 
@@ -324,11 +335,11 @@ const daysAgo = (d: number, h = 10) => {
   return t;
 };
 const demoAddress = { recipientName: "Demo Customer", phone: "0800 000 0000", line1: "12 Airport Road", city: "Benin City", state: "Edo" };
-orders.push(makeOrder({ items: [{ variantId: "p2-v1", quantity: 2 }, { variantId: "p3-v1", quantity: 1 }], fulfilmentType: "delivery", branchId: "b1", paymentMethod: "bank_transfer", idempotencyKey: "seed1", deliveryAddress: demoAddress }, "pending_payment", new Date(Date.now() - 6 * 60_000)));
+orders.push(makeOrder({ items: [{ variantId: "p2-v1", quantity: 2 }, { variantId: "p3-v1", quantity: 1 }], fulfilmentType: "delivery", branchId: "b1", paymentMethod: "online", idempotencyKey: "seed1", deliveryAddress: demoAddress }, "pending_payment", new Date(Date.now() - 6 * 60_000)));
 orders.push(makeOrder({ items: [{ variantId: "p8-v1", quantity: 1 }, { variantId: "p13-v1", quantity: 1 }], fulfilmentType: "pickup", branchId: "b1", paymentMethod: "bank_transfer", idempotencyKey: "seed2" }, "ready_for_pickup", daysAgo(1, 11)));
 orders.push(makeOrder({ items: [{ variantId: "p7-v1", quantity: 1 }], fulfilmentType: "delivery", branchId: "b1", paymentMethod: "crypto", cryptoAsset: "MOVE", idempotencyKey: "seed3", deliveryAddress: demoAddress }, "dispatched", daysAgo(2, 9)));
 orders.push(makeOrder({ items: [{ variantId: "p14-v1", quantity: 1 }], fulfilmentType: "pickup", branchId: "b1", paymentMethod: "bank_transfer", idempotencyKey: "seed4" }, "delivered", daysAgo(7, 14)));
-orders.push(makeOrder({ items: [{ variantId: "p16-v1", quantity: 1 }], fulfilmentType: "pickup", branchId: "b2", paymentMethod: "bank_transfer", idempotencyKey: "seed5" }, "cancelled", daysAgo(12, 16)));
+orders.push(makeOrder({ items: [{ variantId: "p16-v1", quantity: 1 }], fulfilmentType: "pickup", branchId: "b1", paymentMethod: "bank_transfer", idempotencyKey: "seed5" }, "cancelled", daysAgo(12, 16)));
 
 const unsupported = () => Promise.reject(new Error("Not available in demo mode"));
 const summary = (o: OrderDetail): Order => {
@@ -451,7 +462,13 @@ export const mockApi: ApiClient = {
     return wait({ id: review.id });
   },
 
+  checkPromo: async ({ code, subtotal }) => {
+    const found = promoDiscount(code, subtotal);
+    if (!found) return Promise.reject(new Error("Promo code is not valid for this order"));
+    return wait({ code: found.promo.code, name: found.promo.name, discount: found.discount });
+  },
   placeOrder: async (input) => {
+    if (input.promoCode && !promoDiscount(input.promoCode, 1e12)) return Promise.reject(new Error("Promo code is not valid for this order"));
     const existing = ordersByKey.get(input.idempotencyKey);
     if (existing) return wait(summary(existing));
     const order = makeOrder(input);
@@ -472,7 +489,11 @@ export const mockApi: ApiClient = {
     o.paymentInstructions = null;
     return wait(summary(o));
   },
-  startOnlinePayment: async () => Promise.reject(new Error("Online payment (Money Moves) isn't connected yet — this is demo mode.")),
+  startOnlinePayment: async (orderId) => {
+    const o = orders.find((x) => x.id === orderId);
+    if (!o || o.status !== "pending_payment") return Promise.reject(new Error("This order is not awaiting payment"));
+    return wait({ checkoutUrl: `${DEMO_CHECKOUT_URL}?order=${orderId}` });
+  },
   wishlist: async () => wait(products.filter((p) => wishlist.has(p.id)).map(toCatalog)),
   toggleWishlist: async (productId) => {
     const saved = !wishlist.delete(productId);
@@ -481,6 +502,17 @@ export const mockApi: ApiClient = {
   },
   createSupportTicket: async () => wait({ id: `t${Date.now()}` }),
 };
+
+/** Demo only: does what the Money Moves webhook does when a payment succeeds. */
+export async function completeDemoPayment(orderId: string, via: string) {
+  const o = orders.find((x) => x.id === orderId);
+  if (!o || o.status !== "pending_payment") return;
+  o.history.push({ id: `${orderId}-h${o.history.length + 1}`, fromStatus: o.status, toStatus: "paid", note: `Paid with Money Moves (${via})`, createdAt: now() });
+  o.status = "paid";
+  o.paymentInstructions = null;
+  o.reservationExpiresAt = null;
+  await wait(null, 900);
+}
 
 export const demoMedia = {
   cutoutHome: require("../../assets/demo/cutout-home.png"),

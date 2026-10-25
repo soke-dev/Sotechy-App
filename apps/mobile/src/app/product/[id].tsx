@@ -472,18 +472,15 @@ export default function ProductScreen() {
           <View style={{ gap: 6 }}>
             {product.brand ? <Txt variant="overline">{product.brand}{product.model ? ` · ${product.model}` : ""}</Txt> : null}
             <Txt variant="title">{product.name}</Txt>
-            <View style={[ui.row, { marginTop: 4 }]}>
+            <View style={[ui.row, { marginTop: 4, flexWrap: "wrap" }]}>
               <Price amount={variant?.price ?? 0} compareAt={variant?.compareAtPrice} size="lg" />
-              {off > 0 && <Pill label={`Save ${off}%`} tone="brand" />}
-            </View>
-            {fx.data && variant ? (
-              <View style={[ui.row, { gap: 6 }]}>
+              {fx.data && variant ? (
                 <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 }}>
                   <Txt variant="label" color={colors.ink2} style={{ fontSize: 13 }}>≈ {formatUsd(variant.price, fx.data.rate)}</Txt>
                 </View>
-                <Txt variant="caption">at {formatNaira(fx.data.rate)} / $1</Txt>
-              </View>
-            ) : null}
+              ) : null}
+              {off > 0 && <Pill label={`Save ${off}%`} tone="brand" />}
+            </View>
             {available > 0 ? (
               <Pill
                 icon="checkmark-circle"

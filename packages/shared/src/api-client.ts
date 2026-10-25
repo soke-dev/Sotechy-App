@@ -13,6 +13,7 @@ import type {
   ProductFacets,
   ProductQuery,
   ProductReviews,
+  PromoCheck,
   StoreConfig,
   User,
 } from "./types";
@@ -78,6 +79,7 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
     // Storefront
     storeConfig: () => get<StoreConfig>("/store/config"),
     exchangeRate: () => get<ExchangeRate>("/store/fx"),
+    checkPromo: (input: { code: string; subtotal: number }) => send<PromoCheck>("POST", "/store/promo/check", input),
     categories: () => get<Category[]>("/store/categories"),
     products: ({ brands, ...params }: ProductQuery = {}) => {
       const qs = new URLSearchParams();

@@ -1,9 +1,12 @@
 // Public storefront routes: no auth, published products only, never exposes cost prices.
 import { and, asc, desc, eq, getTableColumns, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
+import { z } from "zod";
 import { db, schema } from "../db/client";
 import { notFound } from "../lib/errors";
 import { getUsdRate } from "../services/moneymoves";
+import { findPromotion } from "../services/promotions";
 import { getSetting, type DeliverySettings } from "../services/settings";
 
 const { products, productVariants, inventory, categories, branches } = schema;
@@ -120,6 +123,12 @@ export const storeRoutes = new Hono()
       delivery: delivery ?? { flatFee: 0, freeOver: null, note: null },
       support: support ?? { phone: null, email: null, whatsapp: null },
     });
+  })
+  .post("/promo/check", zValidator("json", z.object({ code: z.string().trim().min(1).max(40), subtotal: z.number().nonnegative() })), async (c) => {
+    // Preview only: the discount is worked out again from real prices when the order is placed.
+    const { code, subtotal } = c.req.valid("json");
+    const { promotion, discount } = await db.transaction((tx) => findPromotion(tx, { subtotal, paymentMethod: "online", code }));
+    return c.json({ code: promotion!.code ?? code.toUpperCase(), name: promotion!.name, discount });
   })
   .get("/fx", async (c) => {
     const { rate, source, updatedAt } = await getUsdRate();

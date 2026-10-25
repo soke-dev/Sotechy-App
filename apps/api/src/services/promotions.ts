@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
+import { and, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import type { PaymentMethodCode } from "@sotechy/shared";
 import { schema, type Tx } from "../db/client";
 import { badRequest } from "../lib/errors";
@@ -18,7 +18,8 @@ export async function findPromotion(
     .where(
       and(
         eq(p.isActive, true),
-        opts.code ? eq(p.code, opts.code) : isNull(p.code),
+        // Codes are matched ignoring case and surrounding spaces
+        opts.code ? eq(sql`upper(${p.code})`, opts.code.trim().toUpperCase()) : isNull(p.code),
         or(isNull(p.startsAt), lte(p.startsAt, now)),
         or(isNull(p.endsAt), gt(p.endsAt, now)),
       ),

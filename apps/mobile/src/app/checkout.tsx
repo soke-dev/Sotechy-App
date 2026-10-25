@@ -1,27 +1,20 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { useCallback, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, View } from "react-native";
-import { formatNaira, PAYMENT_METHOD_LABELS, type FulfilmentType, type PaymentMethodCode } from "@sotechy/shared";
-import { BottomBar, Button, Chip, Divider, ErrorView, Input, Loading, OptionRow, Pill, SummaryRow, tap, Txt, ui, type IconName } from "@/components/ui";
+import { formatNaira, formatUsd, type FulfilmentType, type PromoCheck } from "@sotechy/shared";
 import { AddressCard } from "@/components/address-card";
+import { Illo, type IlloName } from "@/components/illustrations";
+import { PayOptionsLine, useMoneyMoves } from "@/components/money-moves";
+import { useToast } from "@/components/toast";
+import { BottomBar, Button, Divider, ErrorView, Input, Loading, OptionRow, SummaryRow, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
-import { Illo, type IlloName } from "@/components/illustrations";
 
 const newKey = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-
-const methodIllo: Record<PaymentMethodCode, IlloName> = {
-  bank_transfer: "bank",
-  online: "card",
-  crypto: "coin",
-  cash: "wallet",
-  pos_terminal: "card",
-};
 
 function Section({ step, title, children }: { step: number; title: string; children: ReactNode }) {
   return (
@@ -56,14 +49,18 @@ function FulfilmentCard({ illo, title, subtitle, active, onPress }: { illo: Illo
 export default function CheckoutScreen() {
   const cart = useCart();
   const { user } = useAuth();
+  const toast = useToast();
+  const moneyMoves = useMoneyMoves();
   const config = useAsync(() => api.storeConfig());
+  const fx = useAsync(() => api.exchangeRate());
   // One key per checkout attempt so a double tap or retry can't create two orders.
   const [idempotencyKey] = useState(newKey);
   const [fulfilment, setFulfilment] = useState<FulfilmentType>("pickup");
   const [branchId, setBranchId] = useState<string | null>(null);
-  const [method, setMethod] = useState<PaymentMethodCode | null>(null);
-  const [cryptoAsset, setCryptoAsset] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
+  const [promo, setPromo] = useState<PromoCheck | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [checkingPromo, setCheckingPromo] = useState(false);
   const [address, setAddress] = useState({ recipientName: user?.fullName ?? "", phone: user?.phone ?? "", line1: "", line2: "", city: "Benin City", state: "Edo" });
   const [submitting, setSubmitting] = useState(false);
   const saved = useAsync(async () => (user ? api.addresses() : []), [user?.id]);
@@ -83,27 +80,50 @@ export default function CheckoutScreen() {
   if (config.error || !config.data) return <ErrorView message={config.error ?? "Could not load checkout"} onRetry={config.reload} />;
 
   const cfg = config.data;
-  const methods = cfg.paymentMethods.filter((m) => m.isEnabled && m.online);
-  const selectedBranch = branchId ?? cfg.branches[0]?.id ?? null;
-  const selectedMethod = method ?? methods[0]?.code ?? null;
-  const selectedAsset = cryptoAsset ?? cfg.cryptoAssets[0]?.symbol ?? null;
+  // Deliveries go out from the main store; pickup lets the customer choose.
+  const selectedBranch = (fulfilment === "pickup" ? branchId : null) ?? cfg.branches[0]?.id ?? null;
   const freeDelivery = cfg.delivery.freeOver != null && cart.subtotal >= cfg.delivery.freeOver;
   const deliveryFee = fulfilment === "delivery" && !freeDelivery ? cfg.delivery.flatFee : 0;
-  const movePromo = cfg.promotions.find((p) => p.cryptoAsset === "MOVE" && p.paymentMethod === "crypto");
-  const estDiscount =
-    movePromo && selectedMethod === "crypto" && selectedAsset === "MOVE"
-      ? Math.min(movePromo.maxDiscountAmount ?? Infinity, Math.round((cart.subtotal * movePromo.value) / 100))
-      : 0;
-  const total = cart.subtotal + deliveryFee - estDiscount;
+  const discount = promo?.discount ?? 0;
+  const total = Math.max(0, cart.subtotal + deliveryFee - discount);
   const savedList = saved.data ?? [];
   const chosenId = addressId ?? savedList.find((a) => a.isDefault)?.id ?? savedList[0]?.id ?? "new";
   const chosen = savedList.find((a) => a.id === chosenId);
   const addressOk = fulfilment === "pickup" || !!chosen || !!(address.recipientName && address.phone && address.line1 && address.city);
 
-  async function placeOrder() {
-    if (!selectedBranch || !selectedMethod) return;
-    setSubmitting(true);
+  /** Checks the typed code; the order checks it again with real prices. */
+  async function checkPromo(): Promise<PromoCheck | null> {
+    const code = promoCode.trim();
+    if (!code) return null;
+    setCheckingPromo(true);
+    setPromoError(null);
+    try {
+      const result = await api.checkPromo({ code, subtotal: cart.subtotal });
+      setPromo(result);
+      tap();
+      return result;
+    } catch (err) {
+      setPromo(null);
+      setPromoError(err instanceof Error ? err.message : "Promo code is not valid");
+      throw err;
+    } finally {
+      setCheckingPromo(false);
+    }
+  }
+
+  async function proceedToPayment() {
+    if (!selectedBranch) return;
     setError(null);
+    // A typed but unapplied code is checked first so it can't fail after payment opens.
+    let applied = promo;
+    if (!applied && promoCode.trim()) {
+      try {
+        applied = await checkPromo();
+      } catch {
+        return;
+      }
+    }
+    setSubmitting(true);
     try {
       const order = await api.placeOrder({
         items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
@@ -115,9 +135,9 @@ export default function CheckoutScreen() {
             : chosen
               ? { recipientName: chosen.recipientName, phone: chosen.phone, line1: chosen.line1, line2: chosen.line2 ?? undefined, city: chosen.city, state: chosen.state }
               : address,
-        paymentMethod: selectedMethod,
-        cryptoAsset: selectedMethod === "crypto" ? (selectedAsset ?? undefined) : undefined,
-        promoCode: promoCode.trim() || undefined,
+        // Money Moves handles every method (bank transfer, crypto, its app) in its own window.
+        paymentMethod: "online",
+        promoCode: applied?.code,
         idempotencyKey,
       });
       cart.clear();
@@ -125,15 +145,14 @@ export default function CheckoutScreen() {
         // Remember the new address for next time; the order already succeeded, so ignore failures.
         api.addAddress({ ...address, label: savedList.length ? "Other" : "Home", line2: address.line2 || null }).catch(() => {});
       }
-      if (selectedMethod === "online") {
-        try {
-          const { checkoutUrl } = await api.startOnlinePayment(order.id);
-          await WebBrowser.openBrowserAsync(checkoutUrl);
-        } catch {
-          // The order exists; payment can be retried from the order screen.
-        }
+      let paid = false;
+      try {
+        paid = await moneyMoves.pay({ id: order.id, orderNumber: order.orderNumber, total: order.total });
+      } catch {
+        toast("Payment didn't open. You can pay from your order.", { icon: "alert-circle" });
       }
       router.replace({ pathname: "/order/[id]", params: { id: order.id } });
+      if (paid) toast("Payment received", { icon: "checkmark-circle" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not place order");
     } finally {
@@ -158,6 +177,10 @@ export default function CheckoutScreen() {
         </Section>
 
         <Section step={2} title={fulfilment === "pickup" ? "Pickup store" : "Delivery details"}>
+          {fulfilment === "pickup" &&
+            cfg.branches.map((b) => (
+              <OptionRow key={b.id} illo="store" title={b.name} subtitle={`${b.address}, ${b.city}`} selected={selectedBranch === b.id} onPress={() => setBranchId(b.id)} />
+            ))}
           {fulfilment === "delivery" && (
             <View style={{ gap: space.md }}>
               {savedList.map((a) => (
@@ -196,34 +219,60 @@ export default function CheckoutScreen() {
                   <Txt variant="label" color={colors.brandPressed}>Manage saved addresses</Txt>
                 </Pressable>
               )}
-              <Txt variant="label" style={{ marginTop: space.sm }}>Ships from</Txt>
             </View>
           )}
-          {cfg.branches.map((b) => (
-            <OptionRow key={b.id} illo="store" title={b.name} subtitle={`${b.address}, ${b.city}`} selected={selectedBranch === b.id} onPress={() => setBranchId(b.id)} />
-          ))}
         </Section>
 
         <Section step={3} title="Payment">
-          {methods.map((m) => (
-            <OptionRow
-              key={m.code}
-              illo={methodIllo[m.code]}
-              title={PAYMENT_METHOD_LABELS[m.code]}
-              subtitle={m.code === "bank_transfer" ? "Pay into our account, we confirm it" : m.code === "online" ? "Card or bank via Money Moves" : "Pay with supported crypto"}
-              selected={selectedMethod === m.code}
-              onPress={() => setMethod(m.code)}
-              right={m.code === "crypto" && movePromo ? <Pill label={`-${movePromo.value}% $MOVE`} tone="brand" /> : undefined}
-            />
-          ))}
-          {selectedMethod === "crypto" && cfg.cryptoAssets.length > 0 && (
-            <View style={[ui.row, { flexWrap: "wrap" }]}>
-              {cfg.cryptoAssets.map((a) => (
-                <Chip key={a.id} label={`${a.symbol} · ${a.network}`} active={selectedAsset === a.symbol} onPress={() => setCryptoAsset(a.symbol)} />
-              ))}
+          <View style={[ui.card, { flexDirection: "row", gap: space.md, alignItems: "center" }]}>
+            <Illo name="wallet" size={38} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt variant="label">Secure payment with Money Moves</Txt>
+              <Txt variant="small">The Money Moves window opens when you tap Proceed to payment. Nothing is charged until you confirm there.</Txt>
+            </View>
+            <Ionicons name="lock-closed" size={18} color={colors.success} />
+          </View>
+
+          {promo ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.successSoft, borderRadius: radius.md, padding: space.md }}>
+              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+              <View style={{ flex: 1 }}>
+                <Txt variant="label" color={colors.success}>{promo.code} applied</Txt>
+                <Txt variant="small" color={colors.ink2}>{promo.name} · you save {formatNaira(promo.discount)}</Txt>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setPromo(null);
+                  setPromoCode("");
+                }}
+                hitSlop={8}
+              >
+                <Txt variant="label" color={colors.ink2}>Remove</Txt>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={{ gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    icon="pricetag-outline"
+                    placeholder="Promo code (optional)"
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    value={promoCode}
+                    onChangeText={(t) => {
+                      setPromoCode(t);
+                      setPromoError(null);
+                    }}
+                    onSubmitEditing={() => checkPromo().catch(() => {})}
+                    returnKeyType="done"
+                  />
+                </View>
+                <Button title="Apply" variant="outline" onPress={() => checkPromo().catch(() => {})} loading={checkingPromo} disabled={!promoCode.trim()} />
+              </View>
+              {promoError && <Txt variant="small" color={colors.danger}>{promoError}</Txt>}
             </View>
           )}
-          <Input icon="pricetag-outline" placeholder="Promo code (optional)" autoCapitalize="characters" value={promoCode} onChangeText={setPromoCode} />
         </Section>
 
         <View style={ui.card}>
@@ -234,9 +283,15 @@ export default function CheckoutScreen() {
           <Divider style={{ marginVertical: space.sm }} />
           <SummaryRow label="Subtotal" value={formatNaira(cart.subtotal)} />
           <SummaryRow label="Delivery" value={fulfilment === "pickup" ? "Free" : formatNaira(deliveryFee)} />
-          {estDiscount > 0 && <SummaryRow label="$MOVE discount" value={`-${formatNaira(estDiscount)}`} tone={colors.success} />}
+          {discount > 0 && <SummaryRow label={`Promo (${promo?.code})`} value={`-${formatNaira(discount)}`} tone={colors.success} />}
           <Divider style={{ marginVertical: space.sm }} />
-          <SummaryRow label="Total" value={formatNaira(total)} strong />
+          <View style={[ui.between, { paddingVertical: 4 }]}>
+            <Txt variant="label">Total</Txt>
+            <View style={[ui.row, { gap: space.sm }]}>
+              {fx.data ? <Txt variant="small">≈ {formatUsd(total, fx.data.rate)}</Txt> : null}
+              <Txt variant="price">{formatNaira(total)}</Txt>
+            </View>
+          </View>
           <Txt variant="caption" style={{ marginTop: space.sm }}>Final amount is confirmed by Sotechy when the order is placed.</Txt>
         </View>
 
@@ -248,15 +303,19 @@ export default function CheckoutScreen() {
         )}
       </ScrollView>
       <BottomBar>
-        <Button
-          title={`Place order · ${formatNaira(total)}`}
-          variant="dark"
-          onPress={placeOrder}
-          loading={submitting}
-          disabled={!selectedMethod || !selectedBranch || cart.lines.length === 0 || !addressOk}
-          style={{ flex: 1 }}
-        />
+        <View style={{ flex: 1, gap: space.sm }}>
+          <Button
+            title={`Proceed to payment · ${formatNaira(total)}`}
+            icon="lock-closed"
+            variant="dark"
+            onPress={proceedToPayment}
+            loading={submitting || checkingPromo}
+            disabled={!selectedBranch || cart.lines.length === 0 || !addressOk}
+          />
+          <PayOptionsLine />
+        </View>
       </BottomBar>
+      {moneyMoves.sheet}
     </KeyboardAvoidingView>
   );
 }

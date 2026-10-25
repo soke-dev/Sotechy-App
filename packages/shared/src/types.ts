@@ -153,7 +153,14 @@ export interface ExchangeRate {
   updatedAt: string;
 }
 
-export type ProductSort ="newest" | "price_asc" | "price_desc" | "rating";
+/** Result of checking a promo code at checkout (the order re-checks it). */
+export interface PromoCheck {
+  code: string;
+  name: string;
+  discount: number;
+}
+
+export type ProductSort = "newest" | "price_asc" | "price_desc" | "rating";
 
 /** Storefront product filters. Every filter combines with the others; brands match any of the list. */
 export interface ProductQuery {

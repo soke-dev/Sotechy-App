@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderDetail } from "@sotechy/shared";
 import { useDialog } from "@/components/dialog";
+import { PayOptionsLine, useMoneyMoves } from "@/components/money-moves";
 import { useToast } from "@/components/toast";
 import { Button, Divider, ErrorView, Loading, SummaryRow, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -129,6 +130,8 @@ export default function OrderScreen() {
   const { data: order, error, loading, reload } = useAsync(() => api.order(id), [id]);
   const config = useAsync(() => api.storeConfig());
   const [cancelling, setCancelling] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const moneyMoves = useMoneyMoves();
   const toast = useToast();
   const dialog = useDialog();
   const cart = useCart();
@@ -168,6 +171,19 @@ export default function OrderScreen() {
       toast(err instanceof Error ? err.message : "Could not cancel", { icon: "alert-circle" });
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function payNow() {
+    setPaying(true);
+    try {
+      const paid = await moneyMoves.pay({ id: order!.id, orderNumber: order!.orderNumber, total: order!.total });
+      await reload();
+      if (paid) toast("Payment received", { icon: "checkmark-circle" });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Payment didn't open", { icon: "alert-circle" });
+    } finally {
+      setPaying(false);
     }
   }
 
@@ -214,13 +230,22 @@ export default function OrderScreen() {
             )}
             {pi.method === "online" && <Txt variant="small">{pi.text}</Txt>}
           </View>
-          <Button
-            title="I've paid: send proof on WhatsApp"
-            variant="outline"
-            icon="logo-whatsapp"
-            onPress={() => openWhatsApp(support?.whatsapp, `Hello Sotechy, I've paid ${formatNaira(order.total)} for order ${order.orderNumber}. Here is my proof of payment:`)}
-          />
-          <Txt variant="caption">We confirm payments against our bank or wallet records. Screenshots alone don&apos;t confirm an order.</Txt>
+          {pi.method === "online" ? (
+            <>
+              <Button title="Proceed to payment" icon="lock-closed" variant="dark" loading={paying} onPress={payNow} />
+              <PayOptionsLine />
+            </>
+          ) : (
+            <>
+              <Button
+                title="I've paid: send proof on WhatsApp"
+                variant="outline"
+                icon="logo-whatsapp"
+                onPress={() => openWhatsApp(support?.whatsapp, `Hello Sotechy, I've paid ${formatNaira(order.total)} for order ${order.orderNumber}. Here is my proof of payment:`)}
+              />
+              <Txt variant="caption">We confirm payments against our bank or wallet records. Screenshots alone don&apos;t confirm an order.</Txt>
+            </>
+          )}
         </Section>
       )}
 
@@ -311,6 +336,7 @@ export default function OrderScreen() {
       </View>
 
       {order.status === "pending_payment" && <Button title="Cancel order" variant="danger" icon="close-circle-outline" onPress={cancel} loading={cancelling} />}
+      {moneyMoves.sheet}
     </ScrollView>
   );
 }
