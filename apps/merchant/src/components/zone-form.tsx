@@ -56,7 +56,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
           {zone ? "Changing the state or cities sends this area back to Sotechy for approval." : "Sotechy checks you can really deliver here before customers see it. Usually within a day."}
         </p>
       )}
-      <Field label="State">
+      <Field required label="State">
         <select value={state} onChange={(e) => setState(e.target.value)} className={inputClass}>
           {NIGERIAN_STATES.map((s) => <option key={s}>{s}</option>)}
         </select>
@@ -71,7 +71,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
       </div>
 
       {!whole && (
-        <Field label="Cities or areas" hint="Press Enter after each one.">
+        <Field required label="Cities or areas" hint="Press Enter after each one.">
           <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface p-2">
             {areas.map((a) => (
               <span key={a} className="inline-flex items-center gap-1 rounded-full bg-brand-soft py-1 pl-3 pr-1.5 text-sm font-semibold">
@@ -101,10 +101,10 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
       <div className="rounded-3xl border border-line p-4">
         <p className="mb-3 flex items-center gap-2 text-sm font-semibold"><Home size={16} className="text-brand-strong" /> Home delivery</p>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Price (₦)">
+          <Field required label="Price (₦)">
             <input type="number" inputMode="numeric" min={0} value={homeFee || ""} onChange={(e) => setHomeFee(Number(e.target.value))} className={inputClass} placeholder="0 = free" />
           </Field>
-          <Field label="Takes">
+          <Field required label="Takes">
             <select value={days} onChange={(e) => setDays(e.target.value)} className={inputClass}>
               {TIMES.map((t) => <option key={t}>{t}</option>)}
             </select>
@@ -120,10 +120,10 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
         <p className="mt-1 text-xs text-muted">Customers collect from a park, courier office or your shop. Usually cheaper than home delivery.</p>
         {hasPickup && (
           <div className="mt-3 flex flex-col gap-3">
-            <Field label="Pickup price (₦)">
+            <Field required label="Pickup price (₦)">
               <input type="number" inputMode="numeric" min={0} value={pickupFee || ""} onChange={(e) => setPickupFee(Number(e.target.value))} className={inputClass} placeholder="0 = free" />
             </Field>
-            <Field label="Pickup point">
+            <Field required label="Pickup point">
               <input value={point} onChange={(e) => setPoint(e.target.value)} className={inputClass} placeholder="e.g. GIG Logistics hub, Ekpoma" />
             </Field>
             {cheaper && <p className="text-xs text-warn">Pickup usually costs less than home delivery ({formatNaira(homeFee)}).</p>}

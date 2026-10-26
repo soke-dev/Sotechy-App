@@ -21,13 +21,13 @@ export function PageHeader({ title, description, actions, illo }: { title: strin
   );
 }
 
-export function Card({ title, description, actions, children, className = "", padded = true }: { title?: string; description?: string; actions?: ReactNode; children: ReactNode; className?: string; padded?: boolean }) {
+export function Card({ title, description, actions, children, className = "", padded = true, required }: { title?: string; description?: string; actions?: ReactNode; children: ReactNode; className?: string; padded?: boolean; required?: boolean }) {
   return (
     <section className={`min-w-0 rounded-3xl border border-line bg-surface ${className}`}>
       {(title || actions) && (
         <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
           <div className="min-w-0">
-            {title && <h2 className="text-lg font-bold">{title}</h2>}
+            {title && <h2 className="text-lg font-bold">{title}{required && <Req />}</h2>}
             {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
           </div>
           {actions}
@@ -38,15 +38,16 @@ export function Card({ title, description, actions, children, className = "", pa
   );
 }
 
-export function StatCard({ illo, label, value, hint, accent }: { illo: IlloName; label: string; value: ReactNode; hint?: ReactNode; accent?: boolean }) {
+/** `wide`: laid out in a row even on a phone, for a card that spans the full width */
+export function StatCard({ illo, label, value, hint, accent, wide }: { illo: IlloName; label: string; value: ReactNode; hint?: ReactNode; accent?: boolean; wide?: boolean }) {
   return (
-    <div className={`flex min-w-0 flex-col items-start gap-3 rounded-3xl border p-4 sm:flex-row sm:items-center sm:gap-4 ${accent ? "border-transparent bg-panel text-white" : "border-line bg-surface"}`}>
-      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl sm:h-14 sm:w-14 ${accent ? "bg-white/10" : "bg-brand-soft"}`}>
-        <Illo name={illo} size={32} />
+    <div className={`flex min-w-0 rounded-3xl border p-3.5 sm:flex-row sm:items-center sm:gap-4 sm:p-4 ${wide ? "flex-row items-center gap-3" : "flex-col items-start gap-2"} ${accent ? "border-transparent bg-panel text-white" : "border-line bg-surface"}`}>
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-14 sm:w-14 sm:rounded-2xl ${accent ? "bg-white/10" : "bg-brand-soft"}`}>
+        <Illo name={illo} size={24} />
       </span>
       <div className="min-w-0">
         <p className={`text-xs font-medium ${accent ? "text-white/60" : "text-muted"}`}>{label}</p>
-        <p className="font-display truncate text-xl font-bold sm:text-2xl">{value}</p>
+        <p className="font-display truncate text-lg font-bold sm:text-2xl">{value}</p>
         {hint && <p className={`text-xs ${accent ? "text-white/60" : "text-muted"}`}>{hint}</p>}
       </div>
     </div>
@@ -96,10 +97,57 @@ export function EmptyState({ illo, title, message, action }: { illo: IlloName; t
   );
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export interface TabItem<T extends string> {
+  id: T;
+  label: string;
+  count?: number;
+  /** Highlight the count, e.g. things waiting for the merchant */
+  urgent?: boolean;
+}
+
+export function Tabs<T extends string>({ tabs, value, onChange, className = "" }: { tabs: TabItem<T>[]; value: T; onChange: (id: T) => void; className?: string }) {
+  return (
+    <div role="tablist" className={`no-scrollbar -mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible ${className}`}>
+      {tabs.map((t) => {
+        const on = t.id === value;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            // Keep the selected tab visible when the row scrolls sideways on a phone
+            ref={on ? (el) => el?.scrollIntoView({ block: "nearest", inline: "nearest" }) : undefined}
+            onClick={() => onChange(t.id)}
+            className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${on ? "border-panel bg-panel text-white" : "border-line bg-surface text-ink-2 hover:bg-surface-alt"}`}
+          >
+            {t.label}
+            {t.count !== undefined && (
+              <span className={`rounded-full px-1.5 text-xs ${on ? "bg-white/15" : t.urgent && t.count ? "bg-brand text-white" : "bg-surface-alt"}`}>{t.count}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Red asterisk for something that must be filled in */
+export function Req() {
+  return (
+    <span className="ml-0.5 text-bad" aria-label="required">
+      *
+    </span>
+  );
+}
+
+export function Field({ label, hint, children, required }: { label: string; hint?: string; children: ReactNode; required?: boolean }) {
   return (
     <label className="flex min-w-0 flex-col gap-1.5">
-      <span className="text-sm font-semibold text-ink-2">{label}</span>
+      <span className="text-sm font-semibold text-ink-2">
+        {label}
+        {required && <Req />}
+      </span>
       {children}
       {hint && <span className="text-xs text-muted">{hint}</span>}
     </label>

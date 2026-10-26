@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Illo } from "@/components/illustrations";
-import { btn, Card, PageHeader, Pill, StatCard } from "@/components/ui";
-import { RelTime } from "@/components/rel-time";
+import { btn, Card, PageHeader, StatCard } from "@/components/ui";
+import { PayoutHistory } from "@/components/payout-history";
 import { formatNaira } from "@/lib/money";
 import { bank, orderMoney, orders, PAYOUT_MATCH_LABEL, payoutNameMatch, payouts } from "@/lib/mock";
 
@@ -14,32 +14,14 @@ export default function PayoutsPage() {
     <>
       <PageHeader illo="bank" title="Payouts" description="Sent automatically to your bank: 50% when you accept an order, 50% when the customer confirms delivery. Sotechy's 2% fee is taken first." />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <StatCard accent illo="wallet" label="Paid to you, last 30 days" value={formatNaira(paid)} hint={`${payouts.length} payouts`} />
         <StatCard illo="bike" label="Second halves on the way" value={formatNaira(onTheWay)} hint="Paid when customers confirm" />
-        <StatCard illo="doc" label="To pay back" value={formatNaira(payback)} hint={payback ? "For orders you couldn't ship" : "Nothing owed"} />
+        <StatCard wide illo="doc" label="To pay back" value={formatNaira(payback)} hint={payback ? "For orders you couldn't ship" : "Nothing owed"} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-        <Card title="Payout history" padded={false}>
-          <ul className="flex flex-col divide-y divide-line">
-            {payouts.map((p) => (
-              <li key={p.id} className="flex items-center gap-4 px-5 py-4">
-                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${p.half === "First 50%" ? "bg-brand-soft" : "bg-good-soft"}`}>
-                  <Illo name={p.half === "First 50%" ? "box" : "sparkle"} size={26} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{p.half} · {p.orderNumber}</p>
-                  <p className="text-sm text-muted">{p.half === "First 50%" ? "On accept" : "On delivery"} · <RelTime iso={p.at} /></p>
-                </div>
-                <div className="text-right">
-                  <p className="font-display text-lg font-bold">{formatNaira(p.amount)}</p>
-                  <Pill tone="good">Paid</Pill>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <PayoutHistory payouts={payouts} />
 
         <div className="flex flex-col gap-6">
           <Card title="Paid into">
@@ -53,7 +35,7 @@ export default function PayoutsPage() {
             <p className="mt-3 flex items-center gap-2 text-sm text-good">
               <span className="h-2 w-2 rounded-full bg-good" /> {PAYOUT_MATCH_LABEL[payoutNameMatch(bank.accountName) ?? "business"]}
             </p>
-            <Link href="/settings#payout" className={`${btn.outline} mt-4 w-full`}>Change payout account</Link>
+            <Link href="/settings?tab=payout" className={`${btn.outline} mt-4 w-full`}>Change payout account</Link>
           </Card>
 
           <Card title="How you're paid">
