@@ -52,3 +52,11 @@
     display: none;
   }
 }
+
+/* Horizontal chip rows scroll without showing a scrollbar */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

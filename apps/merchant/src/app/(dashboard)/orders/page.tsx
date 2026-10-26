@@ -29,7 +29,7 @@ export default function OrdersPage() {
       <PageHeader illo="box" title="Orders" description="Accept new orders within 24 hours. You're paid 50% when you accept and 50% when the customer confirms delivery." />
 
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-1">
+        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-1">
           {TABS.map((t) => {
             const n = orders.filter(t.match).length;
             const on = t.id === tab;

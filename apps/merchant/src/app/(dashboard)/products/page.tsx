@@ -35,7 +35,7 @@ export default function ProductsPage() {
       />
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-1">
+        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-1">
           {FILTERS.map((x) => (
             <button
               key={x.id}
@@ -55,22 +55,22 @@ export default function ProductsPage() {
       {list.length === 0 ? (
         <EmptyState illo="bag" title="No products here" message="Add your first product and it goes live on your storefront." action={<Link href="/products/new" className={`${btn.primary} mt-2`}>Add product</Link>} />
       ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {list.map((p) => (
             <li key={p.id}>
               <Link href={`/products/${p.id}`} className="group flex h-full flex-col overflow-hidden rounded-3xl border border-line bg-surface transition hover:shadow-[0_10px_28px_rgba(23,18,14,0.08)]">
                 <div className="relative">
-                  <ProductThumb src={p.image} size={400} rounded="rounded-none" />
+                  <ProductThumb src={p.image} size="fluid" rounded="rounded-none" />
                   <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
                     {p.status !== "live" && <Pill tone="dark">{p.status === "draft" ? "Draft" : "Hidden"}</Pill>}
                     {p.stock === 0 ? <Pill tone="bad">Sold out</Pill> : p.stock <= 3 ? <Pill tone="warn">{p.stock} left</Pill> : null}
                   </div>
                 </div>
-                <div className="flex flex-1 flex-col gap-1 p-3.5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">{p.category}</p>
+                <div className="flex flex-1 flex-col gap-0.5 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">{p.category}</p>
                   <p className="line-clamp-2 text-sm font-semibold leading-snug">{p.name}</p>
                   <div className="mt-auto flex items-baseline gap-2 pt-1">
-                    <span className="font-display text-lg font-bold">{formatNaira(p.price)}</span>
+                    <span className="font-display font-bold sm:text-lg">{formatNaira(p.price)}</span>
                     {p.compareAt && <span className="text-xs text-faint line-through">{formatNaira(p.compareAt)}</span>}
                   </div>
                   <p className="text-xs text-muted">{p.stock} in stock · {p.sold} sold</p>

@@ -132,7 +132,7 @@ function TabBar({ store, onMore }: { store: ShellStore; onMore: () => void }) {
     { href: "/token", label: `$${store.ticker}`, illo: "coin" },
   ];
   return (
-    <nav className="fixed inset-x-3 bottom-3 z-30 flex items-stretch rounded-3xl border border-line bg-surface px-1 py-1.5 shadow-[0_12px_32px_rgba(23,18,14,0.14)] lg:hidden">
+    <nav className="fixed inset-x-3 bottom-3 z-30 flex items-stretch rounded-3xl border border-line bg-surface px-1 py-1.5 shadow-[0_12px_32px_rgba(23,18,14,0.14)] [transform:translateZ(0)] [will-change:transform] lg:hidden">
       {tabs.map((t) => {
         const active = isActive(t.href, path);
         return (

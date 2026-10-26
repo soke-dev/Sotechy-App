@@ -50,7 +50,7 @@ export function ProductForm({ product }: { product?: Product }) {
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
               {photos.map((src, i) => (
                 <div key={src} className="group relative">
-                  <ProductThumb src={src} size={200} rounded="rounded-2xl" />
+                  <ProductThumb src={src} size="fluid" rounded="rounded-2xl" />
                   {i === 0 && <span className="absolute left-2 top-2 rounded-full bg-panel px-2 py-0.5 text-[10px] font-bold text-white">Main</span>}
                   <button type="button" onClick={() => setPhotos((p) => p.filter((x) => x !== src))} aria-label="Remove photo" className="absolute right-2 top-2 hidden h-8 w-8 items-center justify-center rounded-full bg-surface text-bad shadow group-hover:flex">
                     <Trash2 size={15} />
@@ -190,7 +190,7 @@ export function ProductForm({ product }: { product?: Product }) {
         <div className="flex flex-col gap-6 lg:sticky lg:top-8 lg:self-start">
           <Card title="Preview" description="How it looks in the Sotechy app">
             <div className="mx-auto w-48 overflow-hidden rounded-3xl border border-line bg-surface">
-              <ProductThumb src={photos[0] ?? "/demo/item-phone.png"} size={192} rounded="rounded-none" />
+              <ProductThumb src={photos[0] ?? "/demo/item-phone.png"} size="fluid" rounded="rounded-none" />
               <div className="p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">{store.name}</p>
                 <p className="line-clamp-2 text-sm font-semibold">{name || "Product name"}</p>

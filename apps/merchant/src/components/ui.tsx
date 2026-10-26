@@ -73,10 +73,11 @@ export function Pill({ children, tone = "neutral", dot = true }: { children: Rea
   );
 }
 
-/** Product picture on Sotechy orange, like the customer app. */
-export function ProductThumb({ src, size = 56, rounded = "rounded-2xl" }: { src: string; size?: number; rounded?: string }) {
+/** Product picture on Sotechy orange, like the customer app. `size="fluid"` fills the width as a square. */
+export function ProductThumb({ src, size = 56, rounded = "rounded-2xl" }: { src: string; size?: number | "fluid"; rounded?: string }) {
+  const box = size === "fluid" ? { className: "aspect-square w-full", style: undefined } : { className: "shrink-0", style: { width: size, height: size } };
   return (
-    <span className={`relative flex shrink-0 items-center justify-center overflow-hidden bg-brand ${rounded}`} style={{ width: size, height: size }}>
+    <span className={`relative flex items-center justify-center overflow-hidden bg-brand ${box.className} ${rounded}`} style={box.style}>
       <span className="absolute inset-[18%] rounded-full bg-white/25" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt="" className="relative h-[78%] w-[78%] object-contain" />
