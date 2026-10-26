@@ -37,7 +37,7 @@ export default function OrdersPage() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${on ? "border-panel bg-panel text-white" : "border-line bg-surface text-ink-2 hover:bg-surface-alt"}`}
+                className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${on ? "border-inverse bg-inverse text-on-inverse" : "border-line bg-surface text-ink-2 hover:bg-surface-alt"}`}
               >
                 {t.label}
                 <span className={`rounded-full px-1.5 text-xs ${on ? "bg-white/15" : t.id === "new" && n ? "bg-brand text-white" : "bg-surface-alt"}`}>{n}</span>

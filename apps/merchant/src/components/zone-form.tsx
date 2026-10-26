@@ -11,7 +11,7 @@ const TIMES = ["Same day", "Same day – 1 day", "1–2 days", "2–3 days", "3�
 export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 sm:items-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={onClose}>
       <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] bg-surface p-6 sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold">{title}</h2>
@@ -76,7 +76,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
             {areas.map((a) => (
               <span key={a} className="inline-flex items-center gap-1 rounded-full bg-brand-soft py-1 pl-3 pr-1.5 text-sm font-semibold">
                 {a}
-                <button type="button" onClick={() => setAreas(areas.filter((x) => x !== a))} aria-label={`Remove ${a}`} className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-white">
+                <button type="button" onClick={() => setAreas(areas.filter((x) => x !== a))} aria-label={`Remove ${a}`} className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-surface">
                   <X size={12} />
                 </button>
               </span>

@@ -39,7 +39,7 @@ function PillSelect({ value, onChange, options, active }: { value: string; onCha
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`min-h-11 w-full appearance-none truncate rounded-full border py-2 pl-4 pr-9 text-sm font-semibold outline-none ${active ? "border-panel bg-panel text-white" : "border-line bg-surface text-ink-2"}`}
+        className={`min-h-11 w-full appearance-none truncate rounded-full border py-2 pl-4 pr-9 text-sm font-semibold outline-none ${active ? "border-inverse bg-inverse text-on-inverse" : "border-line bg-surface text-ink-2"}`}
       >
         {options.map((o) => (
           <option key={o.id} value={o.id}>{o.label}</option>
@@ -85,7 +85,7 @@ export default function ProductsPage() {
             <button
               key={x.id}
               onClick={() => setFilter(x.id)}
-              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${filter === x.id ? "border-panel bg-panel text-white" : "border-line bg-surface text-ink-2 hover:bg-surface-alt"}`}
+              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${filter === x.id ? "border-inverse bg-inverse text-on-inverse" : "border-line bg-surface text-ink-2 hover:bg-surface-alt"}`}
             >
               {x.label} <span className="opacity-60">{products.filter(x.match).length}</span>
             </button>

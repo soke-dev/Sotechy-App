@@ -119,7 +119,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, className = "" }
             // Keep the selected tab visible when the row scrolls sideways on a phone
             ref={on ? (el) => el?.scrollIntoView({ block: "nearest", inline: "nearest" }) : undefined}
             onClick={() => onChange(t.id)}
-            className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${on ? "border-panel bg-panel text-white" : "border-line bg-surface text-ink-2 hover:bg-surface-alt"}`}
+            className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${on ? "border-inverse bg-inverse text-on-inverse" : "border-line bg-surface text-ink-2 hover:bg-surface-alt"}`}
           >
             {t.label}
             {t.count !== undefined && (
@@ -158,7 +158,7 @@ export const inputClass =
   "min-h-12 w-full rounded-2xl border border-line bg-surface px-4 py-2.5 text-[15px] text-ink outline-none transition placeholder:text-faint focus:border-ink focus:ring-4 focus:ring-brand/15";
 export const btn = {
   primary: "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white transition hover:bg-brand-strong disabled:opacity-50",
-  dark: "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-panel px-5 text-sm font-semibold text-white transition hover:bg-ink-2 disabled:opacity-50",
+  dark: "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-inverse px-5 text-sm font-semibold text-on-inverse transition hover:opacity-90 disabled:opacity-50",
   outline: "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-ink transition hover:bg-surface-alt disabled:opacity-50",
   ghost: "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold text-ink-2 transition hover:bg-surface-alt",
   danger: "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-bad transition hover:bg-bad-soft",

@@ -50,14 +50,14 @@ export function StorefrontView({ look, products, compact = false }: { look: Stor
             <div className="min-w-0 pb-1">
               <p className={`font-display font-extrabold leading-tight ${compact ? "text-xl" : "text-4xl"}`}>{look.name}</p>
               <p className={`flex items-center gap-1.5 opacity-80 ${compact ? "text-[11px]" : "text-sm"}`}>
-                <Star size={compact ? 11 : 14} fill="currentColor" /> {look.rating} · {look.followers.toLocaleString()} followers
+                <Star size={compact ? 11 : 14} fill="currentColor" /> {look.rating} · {look.followers.toLocaleString()} subscribers
               </p>
             </div>
           </div>
           {look.tagline && <p className={`mt-3 max-w-xl opacity-90 ${compact ? "text-xs" : "text-base"}`}>{look.tagline}</p>}
           <div className={`mt-3 flex flex-wrap gap-2 ${compact ? "" : "mt-5"}`}>
             <span className={`rounded-full font-semibold ${compact ? "px-3 py-1.5 text-xs" : "px-5 py-2.5 text-sm"}`} style={{ background: t.accent, color: t.onAccent }}>
-              Follow store
+              Get their updates
             </span>
             <span className={`rounded-full font-semibold ${compact ? "px-3 py-1.5 text-xs" : "px-5 py-2.5 text-sm"}`} style={{ background: "rgba(255,255,255,0.16)" }}>
               Earn ${look.ticker} on every order

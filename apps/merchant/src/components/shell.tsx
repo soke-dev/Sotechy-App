@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Illo, type IlloName } from "./illustrations";
+import { ThemeToggle } from "./theme-toggle";
 
 interface NavItem {
   href: string;
@@ -25,6 +26,7 @@ const items = (s: ShellStore): NavItem[][] => [
   [
     { href: "/", label: "Home", illo: "home" },
     { href: "/orders", label: "Orders", illo: "box", badge: s.newOrders },
+    { href: "/customers", label: "Customers", illo: "user" },
     { href: "/products", label: "Products", illo: "bag" },
     { href: "/storefront", label: "Storefront", illo: "store" },
     { href: "/delivery", label: "Delivery", illo: "bike" },
@@ -34,6 +36,7 @@ const items = (s: ShellStore): NavItem[][] => [
     { href: "/walk-in", label: "Walk-in sale", illo: "receipt" },
     { href: "/payouts", label: "Payouts", illo: "bank" },
     { href: "/reviews", label: "Reviews", illo: "heart" },
+    { href: "/notifications", label: "Notifications", illo: "chat" },
   ],
   [
     { href: "/team", label: "Team", illo: "user" },
@@ -76,7 +79,7 @@ function NavList({ store, onNavigate }: { store: ShellStore; onNavigate?: () => 
                 onClick={onNavigate}
                 className={`flex items-center gap-3 rounded-2xl px-3 py-2 text-[15px] transition ${active ? "bg-brand-soft font-semibold text-ink" : "text-ink-2 hover:bg-surface-alt"}`}
               >
-                <span className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${active ? "bg-white shadow-sm" : ""}`}>
+                <span className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${active ? "bg-surface shadow-sm" : ""}`}>
                   <Illo name={item.illo} size={26} />
                 </span>
                 <span className="flex-1 truncate">{item.label}</span>
@@ -114,6 +117,7 @@ function Sidebar({ store, user, onNavigate }: { store: ShellStore; user: { name:
             <p className="truncate text-sm font-semibold">{user.name}</p>
             <p className="text-xs text-muted">{user.role}</p>
           </div>
+          <ThemeToggle />
           <Link href="/login" aria-label="Sign out" className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-surface-alt">
             <LogOut size={17} />
           </Link>
@@ -173,7 +177,7 @@ export function MerchantShell({ store, user, children }: { store: ShellStore; us
       </aside>
 
       <div className={`fixed inset-0 z-40 lg:hidden ${open ? "" : "pointer-events-none"}`}>
-        <div className={`absolute inset-0 bg-ink/40 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={() => setOpen(false)} />
+        <div className={`absolute inset-0 bg-black/50 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={() => setOpen(false)} />
         <aside className={`absolute inset-y-0 left-0 w-[min(19rem,88vw)] bg-surface shadow-2xl transition-transform duration-200 ${open ? "translate-x-0" : "-translate-x-full"}`}>
           <button onClick={() => setOpen(false)} aria-label="Close menu" className="absolute right-3 top-5 flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-surface-alt">
             <X size={18} />

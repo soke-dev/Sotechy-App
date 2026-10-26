@@ -41,7 +41,7 @@ export default function TokenPage() {
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
             <span className="rounded-full bg-white/10 px-3 py-1.5 font-mono">{token.contract}</span>
-            <a href={token.explorer} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-white/15">
+            <a href={token.explorer} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-surface/15">
               View on Monad explorer <ExternalLink size={14} />
             </a>
           </div>

@@ -57,7 +57,7 @@ export function CategoryPicker({ value, onChange, yours = [] }: { value: string;
             <p className="text-sm text-muted">Customers will see this as a category on your storefront. Keep it short and clear.</p>
             <div className="flex gap-2">
               <button type="button" onClick={() => setTyping(false)} className="min-h-12 flex-1 rounded-full border border-line font-semibold">Back</button>
-              <button disabled={!custom.trim()} className="min-h-12 flex-1 rounded-full bg-ink font-semibold text-white disabled:opacity-40">Use this category</button>
+              <button disabled={!custom.trim()} className="min-h-12 flex-1 rounded-full bg-inverse font-semibold text-on-inverse disabled:opacity-40">Use this category</button>
             </div>
           </form>
         ) : (
@@ -77,7 +77,7 @@ export function CategoryPicker({ value, onChange, yours = [] }: { value: string;
                         key={c}
                         type="button"
                         onClick={() => pick(c)}
-                        className={`inline-flex items-center gap-1 rounded-full border px-3.5 py-2 text-sm font-semibold transition ${value === c ? "border-ink bg-ink text-white" : "border-line hover:border-ink"}`}
+                        className={`inline-flex items-center gap-1 rounded-full border px-3.5 py-2 text-sm font-semibold transition ${value === c ? "border-inverse bg-inverse text-on-inverse" : "border-line hover:border-ink"}`}
                       >
                         {value === c && <Check size={14} />} {c}
                       </button>

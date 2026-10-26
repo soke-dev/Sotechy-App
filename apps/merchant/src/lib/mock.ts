@@ -275,3 +275,20 @@ export const zoneLive = (z: DeliveryZone) => z.review === "approved" && z.active
 export const pickup = { enabled: true, address: "No. 20 Etete Road, Benin City", hours: "Mon–Sat, 9am – 6pm" };
 
 export const zoneLabel = (z: Pick<DeliveryZone, "state" | "areas">) => (z.areas.length ? `${z.areas.join(", ")} (${z.state})` : `All of ${z.state}`);
+
+/** What we know about each customer beyond their orders (sample) */
+export const customerExtras: Record<string, { tokens: number; subscribed: boolean; reviews: number; since: string }> = {
+  chidi: { tokens: 95_000, subscribed: true, reviews: 2, since: ago(60 * 24 * 40) },
+  "amaka.n": { tokens: 41_200, subscribed: true, reviews: 1, since: ago(60 * 24 * 30) },
+  tunde: { tokens: 18_500, subscribed: false, reviews: 1, since: ago(60 * 24 * 21) },
+  blessed: { tokens: 0, subscribed: true, reviews: 0, since: ago(60 * 24 * 12) },
+  ife: { tokens: 3_400, subscribed: false, reviews: 0, since: ago(60 * 24 * 6) },
+};
+
+/** Messages this store has sent to its subscribers (sample) */
+export const sentNotices = [
+  { id: "s1", title: "Weekend sale: 10% off phones", body: "Every smartphone is 10% off until Sunday, and you still earn $XENA on the full price.", at: ago(25), sentTo: 1_284, opened: 512, link: "Phones" },
+  { id: "s2", title: "Back in stock: 25W fast chargers", body: "The fast charger is back. Only 40 left.", at: ago(60 * 52), sentTo: 1_271, opened: 640, link: "Fast Charger 25W" },
+  { id: "s3", title: "We now deliver to Asaba and Warri", body: "Order today and get it in 2–3 days. Pickup at GUO Motors park, Asaba.", at: ago(60 * 24 * 9), sentTo: 1_190, opened: 702, link: "" },
+];
+

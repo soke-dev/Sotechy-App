@@ -15,7 +15,7 @@ const DECLINE_REASONS = ["Out of stock", "Can't deliver to this location", "Pric
 function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-t-[28px] bg-surface p-6 sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-bold">{title}</h2>
@@ -91,7 +91,7 @@ export default function OrderPage() {
             <p className="mt-1 text-sm text-white/70">Accept and {formatNaira(m.first)} (the first 50%) is sent to your bank straight away.</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setDialog("decline")} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/10 px-5 font-semibold hover:bg-white/15">
+            <button onClick={() => setDialog("decline")} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/10 px-5 font-semibold hover:bg-surface/15">
               <X size={17} /> Decline
             </button>
             <button onClick={() => setDialog("accept")} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-6 font-semibold hover:bg-brand-strong">

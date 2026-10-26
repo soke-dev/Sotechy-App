@@ -1,26 +1,82 @@
 @import "tailwindcss";
 
-/* Sotechy palette, shared with the customer app and admin: warm cream, Sotechy orange, ink. */
+/* Sotechy palette, shared with the customer app and admin: warm cream, Sotechy orange, ink.
+   Each colour is a variable so dark mode can swap the whole set (html[data-theme="dark"]). */
+:root {
+  --c-canvas: #faf7f3;
+  --c-surface: #ffffff;
+  --c-surface-alt: #f2ede6;
+  --c-line: #e9e2d9;
+  --c-ink: #17120e;
+  --c-ink-2: #3a322c;
+  --c-muted: #7f756c;
+  --c-faint: #b3a99f;
+  --c-brand: #f7931e;
+  --c-brand-strong: #e07f0c;
+  --c-brand-soft: #fff1df;
+  --c-sun: #fdb913;
+  /* Dark cards (greeting band, token card) stay dark in both modes */
+  --c-panel: #17120e;
+  /* Highest-contrast fill for dark buttons, active tabs and checked boxes; flips in dark mode */
+  --c-inverse: #17120e;
+  --c-on-inverse: #ffffff;
+  --c-good: #1c8a4c;
+  --c-good-soft: #e4f3e9;
+  --c-warn: #a86a12;
+  --c-warn-soft: #fff3d9;
+  --c-bad: #c9372a;
+  --c-bad-soft: #fbe7e4;
+  color-scheme: light;
+}
+
+/* Same dark palette as the customer app */
+:root[data-theme="dark"] {
+  --c-canvas: #121010;
+  --c-surface: #1c1816;
+  --c-surface-alt: #272220;
+  --c-line: #332c28;
+  --c-ink: #f6f0e9;
+  --c-ink-2: #d8cec4;
+  --c-muted: #a79c90;
+  --c-faint: #6e655d;
+  --c-brand: #f7931e;
+  --c-brand-strong: #ffab52;
+  --c-brand-soft: #3a2914;
+  --c-sun: #fdb913;
+  --c-panel: #2a2420;
+  --c-inverse: #f6f0e9;
+  --c-on-inverse: #17120e;
+  --c-good: #4cc985;
+  --c-good-soft: #15301f;
+  --c-warn: #f2b54f;
+  --c-warn-soft: #33281a;
+  --c-bad: #ff7a6b;
+  --c-bad-soft: #3b1e1a;
+  color-scheme: dark;
+}
+
 @theme inline {
-  --color-canvas: #faf7f3;
-  --color-surface: #ffffff;
-  --color-surface-alt: #f2ede6;
-  --color-line: #e9e2d9;
-  --color-ink: #17120e;
-  --color-ink-2: #3a322c;
-  --color-muted: #7f756c;
-  --color-faint: #b3a99f;
-  --color-brand: #f7931e;
-  --color-brand-strong: #e07f0c;
-  --color-brand-soft: #fff1df;
-  --color-sun: #fdb913;
-  --color-panel: #17120e;
-  --color-good: #1c8a4c;
-  --color-good-soft: #e4f3e9;
-  --color-warn: #a86a12;
-  --color-warn-soft: #fff3d9;
-  --color-bad: #c9372a;
-  --color-bad-soft: #fbe7e4;
+  --color-canvas: var(--c-canvas);
+  --color-surface: var(--c-surface);
+  --color-surface-alt: var(--c-surface-alt);
+  --color-line: var(--c-line);
+  --color-ink: var(--c-ink);
+  --color-ink-2: var(--c-ink-2);
+  --color-muted: var(--c-muted);
+  --color-faint: var(--c-faint);
+  --color-brand: var(--c-brand);
+  --color-brand-strong: var(--c-brand-strong);
+  --color-brand-soft: var(--c-brand-soft);
+  --color-sun: var(--c-sun);
+  --color-panel: var(--c-panel);
+  --color-inverse: var(--c-inverse);
+  --color-on-inverse: var(--c-on-inverse);
+  --color-good: var(--c-good);
+  --color-good-soft: var(--c-good-soft);
+  --color-warn: var(--c-warn);
+  --color-warn-soft: var(--c-warn-soft);
+  --color-bad: var(--c-bad);
+  --color-bad-soft: var(--c-bad-soft);
   --font-sans: var(--font-body);
   --font-display: var(--font-heading);
 }

@@ -40,7 +40,7 @@ export default function HomePage() {
             <Link href="/orders" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong">
               Review orders <ArrowRight size={16} />
             </Link>
-            <Link href="/products/new" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-5 text-sm font-semibold text-white hover:bg-white/15">
+            <Link href="/products/new" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-5 text-sm font-semibold text-white hover:bg-surface/15">
               Add a product
             </Link>
           </div>
@@ -63,7 +63,7 @@ export default function HomePage() {
                   <p className="truncate text-sm text-ink-2">
                     {o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
                   </p>
-                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-brand-strong">
+                  <p className="mt-1 flex flex-wrap items-center gap-x-1 text-xs font-semibold text-brand-strong">
                     <Clock size={13} /> <RelTime iso={o.acceptBy!} left /> to accept · @{o.customer.username}
                   </p>
                 </div>
@@ -78,7 +78,7 @@ export default function HomePage() {
         <StatCard accent illo="wallet" label="Sales, last 14 days" value={formatNaira(sales14)} hint={`${orders.filter((o) => o.status === "completed").length} completed orders`} />
         <StatCard illo="bank" label="Second halves on the way" value={formatNaira(owedSecondHalf)} hint={`${active.length} orders in progress`} />
         <StatCard illo="coin" label={`$${store.ticker} with customers`} value={formatTokens(token.circulating)} hint={`${token.holders} holders`} />
-        <StatCard illo="heart" label="Store rating" value={`${store.rating} ★`} hint={`${store.followers.toLocaleString()} followers`} />
+        <StatCard illo="heart" label="Store rating" value={`${store.rating} ★`} hint={`${store.followers.toLocaleString()} subscribers`} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">

@@ -146,7 +146,7 @@ export function ProductForm({ product }: { product?: Product }) {
             {picked !== null && photos[picked] && (
               <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl bg-surface-alt p-2">
                 <span className="px-2 text-sm font-semibold">{picked === 0 ? "Main photo" : `Photo ${picked + 1}`}</span>
-                <button type="button" disabled={picked === 0} onClick={() => movePhoto(picked, 0)} className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-ink px-4 text-sm font-semibold text-white disabled:opacity-30">
+                <button type="button" disabled={picked === 0} onClick={() => movePhoto(picked, 0)} className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-inverse px-4 text-sm font-semibold text-on-inverse disabled:opacity-30">
                   <Star size={14} /> Make main
                 </button>
                 <button type="button" disabled={picked === 0} onClick={() => movePhoto(picked, picked - 1)} aria-label="Move left" className="flex h-10 w-10 items-center justify-center rounded-full bg-surface disabled:opacity-30">
@@ -350,7 +350,7 @@ export function ProductForm({ product }: { product?: Product }) {
                       }}
                       className={`flex min-w-0 flex-1 items-center gap-3 py-2.5 pl-3 text-left ${on ? "" : "opacity-70"}`}
                     >
-                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? "border-ink bg-ink text-white" : "border-faint"}`}>{on && <Check size={13} />}</span>
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? "border-inverse bg-inverse text-on-inverse" : "border-faint"}`}>{on && <Check size={13} />}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold">{zoneLabel(z)}</span>
                         <ZonePrices zone={z} />

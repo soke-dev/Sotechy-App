@@ -111,7 +111,7 @@ export default function OnboardingPage() {
             return (
               <li key={s}>
                 <button onClick={() => setStep(s)} className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition ${on ? "bg-brand-soft" : "hover:bg-surface-alt"}`}>
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${isDone ? "bg-good text-white" : on ? "bg-white shadow-sm" : "bg-surface-alt"}`}>
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${isDone ? "bg-good text-white" : on ? "bg-surface shadow-sm" : "bg-surface-alt"}`}>
                     {isDone ? <Check size={16} /> : <Illo name={STEP_INFO[s].illo} size={24} />}
                   </span>
                   <span className={`flex-1 text-[15px] ${on ? "font-semibold" : "text-ink-2"}`}>{STEP_INFO[s].title}</span>
