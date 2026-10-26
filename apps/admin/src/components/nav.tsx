@@ -125,14 +125,13 @@ export function Nav({ onNavigate }: { onNavigate?: () => void }) {
                   href={href}
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
-                  className={`group relative flex items-center gap-3 rounded-2xl px-2.5 py-1.5 transition-colors ${active ? "bg-white/10 font-semibold text-white" : "text-white/65 hover:bg-white/5 hover:text-white"}`}
+                  className={`group relative flex items-center gap-3 rounded-2xl px-2.5 py-1.5 transition-colors ${active ? "bg-brand font-semibold text-white shadow-[0_6px_16px_rgba(247,147,30,0.35)]" : "text-white/65 hover:bg-white/5 hover:text-white"}`}
                 >
-                  {active && <span className="absolute inset-y-2 -left-3 w-1 rounded-r-full bg-brand" />}
-                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition ${active ? "bg-brand-soft" : "bg-white/5 opacity-75 group-hover:opacity-100"}`}>
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition ${active ? "bg-white" : "bg-white/5 opacity-75 group-hover:opacity-100"}`}>
                     <Illo name={illo} size={22} />
                   </span>
                   <span className="truncate">{label}</span>
-                  {count ? <span className="ml-auto rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">{count}</span> : null}
+                  {count ? <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold ${active ? "bg-white text-brand-strong" : "bg-brand text-white"}`}>{count}</span> : null}
                 </Link>
               );
             })}

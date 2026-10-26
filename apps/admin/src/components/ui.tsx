@@ -70,7 +70,8 @@ export function PageHeader({
   const picture = illo ?? (Icon ? ILLO_FOR_ICON.get(Icon) : undefined);
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div className="flex min-w-0 items-center gap-4">
+      {/* Grows from zero so the actions stay on the same line on wide screens */}
+      <div className="flex min-w-[min(100%,18rem)] flex-1 basis-0 items-center gap-4">
         {picture ? (
           <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-soft sm:flex">
             <Illo name={picture} size={38} />
@@ -90,7 +91,7 @@ export function PageHeader({
           {description && <p className="mt-1 max-w-3xl text-sm text-muted sm:text-[15px]">{description}</p>}
         </div>
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }

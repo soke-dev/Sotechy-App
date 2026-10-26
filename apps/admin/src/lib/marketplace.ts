@@ -10,6 +10,25 @@ export const FEE = { rate: 0.02, reserveShare: 0.5, maxReviewBonus: 0.1, crossBo
 export const TOKEN_VALUE = (FEE.rate * FEE.reserveShare) / (1 + FEE.maxReviewBonus);
 
 export type MerchantStatus = "review" | "info" | "verified" | "suspended" | "rejected";
+export type DocStatus = "accepted" | "rejected" | "unchecked";
+export type DocKind = "id" | "address" | "cac" | "photos";
+
+export interface MerchantDoc {
+  id: string;
+  kind: DocKind;
+  label: string;
+  file: "JPG" | "PDF" | "PNG";
+  status: DocStatus;
+  uploadedAt: string;
+  /** What the reviewer should look at, or why it was turned down */
+  note?: string;
+}
+
+export interface MerchantEvent {
+  at: string;
+  text: string;
+  tone: "good" | "warn" | "bad" | "neutral";
+}
 
 export interface Merchant {
   id: string;
@@ -19,17 +38,20 @@ export interface Merchant {
   email: string;
   phone: string;
   city: string;
+  address: string;
   ticker: string;
-  logo: string;
+  regNumber?: string;
   status: MerchantStatus;
   appliedAt: string;
   products: number;
   sales30d: number;
   rating?: number;
-  docs: { label: string; ok: boolean | null; note?: string }[];
-  idCheck: { ok: boolean; note: string };
-  payout: { bank: string; accountName: string; matches: "business" | "owner" | null };
+  docs: MerchantDoc[];
+  idCheck: { ok: boolean | null; note: string };
+  payout: { bank: string; accountName: string; last4: string; matches: "business" | "owner" | null };
   states: string[];
+  history: MerchantEvent[];
+  teamNotes?: string;
   note?: string;
 }
 
@@ -41,50 +63,100 @@ export const MERCHANT_STATUS: Record<MerchantStatus, { label: string; tone: "war
   rejected: { label: "Rejected", tone: "neutral" },
 };
 
+const doc = (id: string, kind: DocKind, label: string, file: MerchantDoc["file"], status: DocStatus, mins: number, note?: string): MerchantDoc => ({ id, kind, label, file, status, uploadedAt: ago(mins), note });
+const allAccepted = (mins: number, business: boolean): MerchantDoc[] =>
+  business
+    ? [doc("cac", "cac", "CAC certificate", "PDF", "accepted", mins), doc("addr", "address", "Proof of address", "PDF", "accepted", mins), doc("id", "id", "Director's ID", "JPG", "accepted", mins)]
+    : [doc("id", "id", "Government ID", "JPG", "accepted", mins), doc("addr", "address", "Proof of address", "PDF", "accepted", mins), doc("photos", "photos", "Work or shop photos", "JPG", "accepted", mins)];
+
 export const merchants: Merchant[] = [
   {
-    id: "m1", name: "Sotechy", kind: "Registered business", owner: "Sotechy Tech", email: "hello@sotechy.shop", phone: "0803 000 1111", city: "Benin City",
-    ticker: "SOTECHY", logo: "/brand/sotechy-icon-512.png", status: "verified", appliedAt: ago(60 * 24 * 120), products: 48, sales30d: 18_420_000, rating: 4.8,
-    docs: [{ label: "CAC certificate (RC 1874422)", ok: true }, { label: "Proof of address", ok: true }], idCheck: { ok: true, note: "Director's NIN matched" },
-    payout: { bank: "Access Bank", accountName: "SOTECHY TECH LTD", matches: "business" }, states: ["Edo", "Delta", "Lagos", "FCT Abuja"],
+    id: "m1", name: "Sotechy", kind: "Registered business", owner: "Sotechy Tech", email: "hello@sotechy.shop", phone: "0803 000 1111", city: "Benin City", address: "No. 20 Etete Road, Benin City",
+    ticker: "SOTECHY", regNumber: "RC 1874422", status: "verified", appliedAt: ago(60 * 24 * 120), products: 48, sales30d: 18_420_000, rating: 4.8,
+    docs: allAccepted(60 * 24 * 120, true), idCheck: { ok: true, note: "Director's NIN matched" },
+    payout: { bank: "Access Bank", accountName: "SOTECHY TECH LTD", last4: "2201", matches: "business" }, states: ["Edo", "Delta", "Lagos", "FCT Abuja"],
+    history: [{ at: ago(60 * 24 * 119), text: "Approved and went live", tone: "good" }],
   },
   {
-    id: "m2", name: "Xena Gadgets", kind: "Registered business", owner: "Ada Okafor", email: "ada@xenagadgets.ng", phone: "0803 000 0000", city: "Benin City",
-    ticker: "XENA", logo: "/demo/item-phone.png", status: "verified", appliedAt: ago(60 * 24 * 40), products: 11, sales30d: 2_740_000, rating: 4.7,
-    docs: [{ label: "CAC certificate (RC 2201941)", ok: true }, { label: "Proof of address", ok: true }], idCheck: { ok: true, note: "NIN and selfie matched" },
-    payout: { bank: "GTBank", accountName: "XENA GADGETS LTD", matches: "business" }, states: ["Edo", "Delta"],
+    id: "m2", name: "Xena Gadgets", kind: "Registered business", owner: "Ada Okafor", email: "ada@xenagadgets.ng", phone: "0803 000 0000", city: "Benin City", address: "14 Akpakpava Road, Benin City",
+    ticker: "XENA", regNumber: "RC 2201941", status: "verified", appliedAt: ago(60 * 24 * 40), products: 11, sales30d: 2_740_000, rating: 4.7,
+    docs: allAccepted(60 * 24 * 40, true), idCheck: { ok: true, note: "NIN and selfie matched" },
+    payout: { bank: "GTBank", accountName: "XENA GADGETS LTD", last4: "6789", matches: "business" }, states: ["Edo", "Delta"],
+    history: [
+      { at: ago(60 * 24 * 39), text: "Approved and went live", tone: "good" },
+      { at: ago(60 * 24 * 40), text: "Applied and sent 3 documents", tone: "neutral" },
+    ],
   },
   {
-    id: "m3", name: "Glow by Tee", kind: "Freelancer", owner: "Temitope Bello", email: "tee@glowbytee.com", phone: "0812 334 9081", city: "Lagos",
-    ticker: "GLOW", logo: "/demo/item-airfryer.png", status: "review", appliedAt: ago(60 * 5), products: 0, sales30d: 0,
-    docs: [{ label: "Business name (BN 3390127)", ok: true }, { label: "Proof of address", ok: null, note: "Utility bill uploaded, check the name" }],
-    idCheck: { ok: true, note: "NIN and selfie matched" }, payout: { bank: "Opay", accountName: "TEMITOPE BELLO", matches: "owner" }, states: ["Lagos"],
+    id: "m3", name: "Glow by Tee", kind: "Freelancer", owner: "Temitope Bello", email: "tee@glowbytee.com", phone: "0812 334 9081", city: "Lagos", address: "8 Adeola Odeku Street, Victoria Island, Lagos",
+    ticker: "GLOW", regNumber: "BN 3390127", status: "review", appliedAt: ago(60 * 5), products: 0, sales30d: 0,
+    docs: [
+      doc("id", "id", "Government ID", "JPG", "accepted", 60 * 5, "Name on the ID matches the owner."),
+      doc("addr", "address", "Proof of address", "PDF", "unchecked", 60 * 5, "Utility bill. Check the name and the address match."),
+      doc("photos", "photos", "Work or shop photos", "JPG", "unchecked", 60 * 5, "Shows where the products are kept."),
+    ],
+    idCheck: { ok: true, note: "NIN and selfie matched" },
+    payout: { bank: "Opay", accountName: "TEMITOPE BELLO", last4: "4471", matches: "owner" }, states: ["Lagos", "Ogun"],
+    history: [
+      { at: ago(60), text: "You accepted the Government ID", tone: "good" },
+      { at: ago(60 * 5 - 2), text: "Identity and payout account matched", tone: "good" },
+      { at: ago(60 * 5), text: "Applied and sent 3 documents", tone: "neutral" },
+    ],
   },
   {
-    id: "m4", name: "Kola Solar & Power", kind: "Registered business", owner: "Kolawole Adeyemi", email: "kola@kolasolar.ng", phone: "0703 221 7765", city: "Ibadan",
-    ticker: "KOLA", logo: "/demo/item-generator.png", status: "review", appliedAt: ago(60 * 26), products: 0, sales30d: 0,
-    docs: [{ label: "CAC certificate (RC 1650302)", ok: true }, { label: "Proof of address", ok: false, note: "Address doesn't match CAC record" }],
-    idCheck: { ok: true, note: "Director's NIN matched" }, payout: { bank: "Zenith Bank", accountName: "KOLA SOLAR AND POWER LTD", matches: "business" }, states: ["Oyo", "Ogun"],
+    id: "m4", name: "Kola Solar & Power", kind: "Registered business", owner: "Kolawole Adeyemi", email: "kola@kolasolar.ng", phone: "0703 221 7765", city: "Ibadan", address: "52 Ring Road, Ibadan",
+    ticker: "KOLA", regNumber: "RC 1650302", status: "review", appliedAt: ago(60 * 26), products: 0, sales30d: 0,
+    docs: [
+      doc("cac", "cac", "CAC certificate", "PDF", "accepted", 60 * 26),
+      doc("addr", "address", "Proof of address", "PDF", "rejected", 60 * 26, "Address on the bill doesn't match the CAC record."),
+      doc("id", "id", "Director's ID", "JPG", "unchecked", 60 * 26),
+    ],
+    idCheck: { ok: true, note: "Director's NIN matched" },
+    payout: { bank: "Zenith Bank", accountName: "KOLA SOLAR AND POWER LTD", last4: "0932", matches: "business" }, states: ["Oyo", "Ogun"],
+    history: [
+      { at: ago(60 * 3), text: "Proof of address marked not acceptable", tone: "bad" },
+      { at: ago(60 * 25), text: "CAC certificate accepted", tone: "good" },
+      { at: ago(60 * 26), text: "Applied and sent 3 documents", tone: "neutral" },
+    ],
   },
   {
-    id: "m5", name: "Hairven Wigs", kind: "Freelancer", owner: "Blessing Eze", email: "blessing@hairven.ng", phone: "0905 118 4420", city: "Port Harcourt",
-    ticker: "HAIRVEN", logo: "/demo/item-kettle.png", status: "info", appliedAt: ago(60 * 24 * 2), products: 0, sales30d: 0,
-    docs: [{ label: "ID document", ok: true }, { label: "Proof of address", ok: null }], idCheck: { ok: false, note: "Selfie was blurry, asked for a new one" },
-    payout: { bank: "Moniepoint", accountName: "BLESSING EZE", matches: "owner" }, states: ["Rivers"], note: "Asked for a clearer selfie 2 days ago",
+    id: "m5", name: "Hairven Wigs", kind: "Freelancer", owner: "Blessing Eze", email: "blessing@hairven.ng", phone: "0905 118 4420", city: "Port Harcourt", address: "17 Aba Road, Port Harcourt",
+    ticker: "HAIRVEN", status: "info", appliedAt: ago(60 * 24 * 2), products: 0, sales30d: 0,
+    docs: [
+      doc("id", "id", "Government ID", "JPG", "accepted", 60 * 24 * 2),
+      doc("addr", "address", "Proof of address", "PDF", "unchecked", 60 * 24 * 2),
+      doc("photos", "photos", "Work or shop photos", "JPG", "unchecked", 60 * 24 * 2),
+    ],
+    idCheck: { ok: false, note: "Selfie was blurry, asked for a new one" },
+    payout: { bank: "Moniepoint", accountName: "BLESSING EZE", last4: "5518", matches: "owner" }, states: ["Rivers"],
+    history: [
+      { at: ago(60 * 24 * 2 - 30), text: "Asked for a clearer selfie", tone: "warn" },
+      { at: ago(60 * 24 * 2), text: "Applied and sent 3 documents", tone: "neutral" },
+    ],
+    note: "Asked for a clearer selfie 2 days ago",
   },
   {
-    id: "m6", name: "BrightHome Appliances", kind: "Registered business", owner: "Chuka Obi", email: "sales@brighthome.ng", phone: "0806 441 2290", city: "Enugu",
-    ticker: "BRIGHT", logo: "/demo/item-fridge.png", status: "verified", appliedAt: ago(60 * 24 * 75), products: 34, sales30d: 6_910_000, rating: 4.5,
-    docs: [{ label: "CAC certificate (RC 998120)", ok: true }, { label: "Proof of address", ok: true }], idCheck: { ok: true, note: "Director's NIN matched" },
-    payout: { bank: "UBA", accountName: "BRIGHTHOME APPLIANCES LTD", matches: "business" }, states: ["Enugu", "Anambra", "Imo"],
+    id: "m6", name: "BrightHome Appliances", kind: "Registered business", owner: "Chuka Obi", email: "sales@brighthome.ng", phone: "0806 441 2290", city: "Enugu", address: "3 Ogui Road, Enugu",
+    ticker: "BRIGHT", regNumber: "RC 998120", status: "verified", appliedAt: ago(60 * 24 * 75), products: 34, sales30d: 6_910_000, rating: 4.5,
+    docs: allAccepted(60 * 24 * 75, true), idCheck: { ok: true, note: "Director's NIN matched" },
+    payout: { bank: "UBA", accountName: "BRIGHTHOME APPLIANCES LTD", last4: "4410", matches: "business" }, states: ["Enugu", "Anambra", "Imo"],
+    history: [{ at: ago(60 * 24 * 74), text: "Approved and went live", tone: "good" }],
   },
   {
-    id: "m7", name: "QuickFix Phones", kind: "Freelancer", owner: "Musa Ibrahim", email: "musa@quickfix.ng", phone: "0817 552 0091", city: "Kano",
-    ticker: "QFIX", logo: "/demo/item-charger.png", status: "suspended", appliedAt: ago(60 * 24 * 60), products: 9, sales30d: 120_000, rating: 3.1,
-    docs: [{ label: "ID document", ok: true }, { label: "Proof of address", ok: true }], idCheck: { ok: true, note: "NIN matched" },
-    payout: { bank: "Kuda", accountName: "MUSA IBRAHIM", matches: "owner" }, states: ["Kano"], note: "Suspended: 3 orders accepted but never shipped. ₦86,400 to pay back.",
+    id: "m7", name: "QuickFix Phones", kind: "Freelancer", owner: "Musa Ibrahim", email: "musa@quickfix.ng", phone: "0817 552 0091", city: "Kano", address: "Farm Centre, Kano",
+    ticker: "QFIX", status: "suspended", appliedAt: ago(60 * 24 * 60), products: 9, sales30d: 120_000, rating: 3.1,
+    docs: allAccepted(60 * 24 * 60, false), idCheck: { ok: true, note: "NIN matched" },
+    payout: { bank: "Kuda", accountName: "MUSA IBRAHIM", last4: "7720", matches: "owner" }, states: ["Kano"],
+    history: [
+      { at: ago(60 * 24 * 2), text: "Suspended: 3 orders accepted but never shipped", tone: "bad" },
+      { at: ago(60 * 24 * 59), text: "Approved and went live", tone: "good" },
+    ],
+    note: "Suspended: 3 orders accepted but never shipped. ₦86,400 to pay back.",
   },
 ];
+
+/** How many of a merchant's documents have been looked at */
+export const docsChecked = (m: Pick<Merchant, "docs">) => m.docs.filter((d) => d.status !== "unchecked").length;
 
 export type ZoneReview = "pending" | "approved" | "declined";
 
