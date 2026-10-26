@@ -36,6 +36,8 @@ export interface StoreProduct {
   image: Img;
   /** Products from Sotechy's own catalogue open the real product page */
   slug?: string;
+  /** The store takes offers; an agreed price is held this many hours (never more than 24) */
+  negotiable?: { hours: 6 | 12 | 24 };
 }
 
 export interface MarketStore {
@@ -84,6 +86,8 @@ const img = {
 };
 
 const p = (id: string, name: string, price: number, image: Img, compareAt?: number): StoreProduct => ({ id, name, price, image, compareAt });
+// Products whose price can be negotiated, with how long an agreed price is held
+const NEGOTIABLE: Record<string, 6 | 12 | 24> = { x1: 12, x4: 6, x6: 12, x8: 24, b1: 24, b2: 12, k1: 24 };
 
 export const stores: MarketStore[] = [
   {
@@ -187,7 +191,16 @@ export const stores: MarketStore[] = [
   },
 ];
 
+for (const store of stores) for (const item of store.products) if (NEGOTIABLE[item.id]) item.negotiable = { hours: NEGOTIABLE[item.id] };
+
 export const storeBySlug = (slug: string) => stores.find((s) => s.slug === slug);
+export const findProduct = (storeSlug: string, productId: string) => storeBySlug(storeSlug)?.products.find((x) => x.id === productId);
+
+/** "11h 40m left" */
+export const timeLeft = (iso: string) => {
+  const mins = Math.max(0, Math.round((new Date(iso).getTime() - Date.now()) / 60_000));
+  return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m left` : `${mins}m left`;
+};
 export const storeByTicker = (ticker: string) => stores.find((s) => s.ticker === ticker);
 
 export const STORE_KINDS = ["Phones & gadgets", "Home appliances", "Power & solar"] as const;

@@ -12,10 +12,12 @@ import { CartButton } from "@/components/cart-button";
 import { Illo } from "@/components/illustrations";
 import { heldTokens, StoreLogo, useStoreProducts } from "@/components/store-bits";
 import { useToast } from "@/components/toast";
-import { EmptyState, IconButton, Loading, tap } from "@/components/ui";
+import { Sheet } from "@/components/shop-filters";
+import { Button, EmptyState, IconButton, Loading, tap } from "@/components/ui";
 import { CROSS_BONUS, formatTokens, storeBySlug, tokenNaira, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { useOffers } from "@/lib/offers";
 import { useStoreNotifications } from "@/lib/store-notifications";
-import { fonts, gutter, radius, space } from "@/lib/theme";
+import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
 type Tab = "products" | "about" | "reviews";
 
@@ -33,21 +35,26 @@ function T({ children, color, size = 15, weight = fonts.body, style, lines }: { 
   );
 }
 
-function ProductTile({ p, store, width }: { p: StoreProduct; store: MarketStore; width: number }) {
+function ProductTile({ p, store, width, onOpen }: { p: StoreProduct; store: MarketStore; width: number; onOpen: (p: StoreProduct) => void }) {
   const t = store.theme;
-  const toast = useToast();
   return (
     <Pressable
       onPress={() => {
         tap();
         if (p.slug) router.push({ pathname: "/product/[id]", params: { id: p.slug } });
-        else toast("Sample store: buying opens when the marketplace goes live");
+        else onOpen(p);
       }}
       style={({ pressed }) => ({ width, borderRadius: radius.lg, backgroundColor: t.surface, overflow: "hidden", opacity: pressed ? 0.9 : 1 })}
     >
       <View style={{ aspectRatio: 1, backgroundColor: t.accent, alignItems: "center", justifyContent: "center" }}>
         <View style={{ position: "absolute", width: "64%", height: "64%", borderRadius: 999, backgroundColor: "rgba(255,255,255,0.22)" }} />
         <Image source={p.image} style={{ width: "74%", height: "74%" }} contentFit="contain" />
+        {p.negotiable ? (
+          <View style={{ position: "absolute", top: 8, right: 8, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: t.hero, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
+            <Ionicons name="pricetag" size={10} color={t.onHero} />
+            <T color={t.onHero} size={10.5} weight={fonts.bold}>Make an offer</T>
+          </View>
+        ) : null}
         {p.compareAt && p.compareAt > p.price ? (
           <View style={{ position: "absolute", top: 8, left: 8, backgroundColor: t.surface, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
             <T color={t.text} size={11} weight={fonts.bold}>-{Math.round(((p.compareAt - p.price) / p.compareAt) * 100)}%</T>
@@ -63,6 +70,28 @@ function ProductTile({ p, store, width }: { p: StoreProduct; store: MarketStore;
   );
 }
 
+function OfferPanel({ store, product, onGo }: { store: MarketStore; product: StoreProduct; onGo: () => void }) {
+  const offers = useOffers();
+  const open = offers.forProduct(store.slug, product.id);
+  return (
+    <View style={{ gap: space.sm, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.brandSoft }}>
+      <Text style={{ fontFamily: fonts.bold, fontSize: 14.5, color: colors.ink }}>{open ? "You're negotiating this" : "The price is negotiable"}</Text>
+      <Text style={{ fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.ink2 }}>
+        Offer {store.name} a price. If they agree, it&apos;s held for you only, for up to {product.negotiable?.hours ?? 12} hours.
+      </Text>
+      <Button
+        title={open ? "See your offer" : "Make an offer"}
+        icon="pricetag"
+        variant="dark"
+        onPress={() => {
+          onGo();
+          router.push(open ? { pathname: "/offer/[id]", params: { id: open.id } } : { pathname: "/offer/[id]", params: { id: "new", store: store.slug, product: product.id } });
+        }}
+      />
+    </View>
+  );
+}
+
 export default function StoreScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const store = storeBySlug(slug ?? "");
@@ -71,6 +100,8 @@ export default function StoreScreen() {
   const [tab, setTab] = useState<Tab>("products");
   const subs = useStoreNotifications();
   const products = useStoreProducts(store);
+  const toast = useToast();
+  const [picked, setPicked] = useState<StoreProduct | null>(null);
 
   if (!store) return <EmptyState illo="store" title="Store not found" message="It may have closed or changed its link." />;
 
@@ -193,7 +224,7 @@ export default function StoreScreen() {
             ) : (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.md }}>
                 {(products.data ?? []).map((p) => (
-                  <ProductTile key={p.id} p={p} store={store} width={tileWidth} />
+                  <ProductTile key={p.id} p={p} store={store} width={tileWidth} onOpen={setPicked} />
                 ))}
               </View>
             ))}
@@ -234,6 +265,26 @@ export default function StoreScreen() {
           )}
         </View>
       </ScrollView>
+      {/* A sample store's product: details and making an offer */}
+      <Sheet visible={picked !== null} title={picked?.name ?? ""} onClose={() => setPicked(null)}>
+        {picked && (
+          <View style={{ gap: space.md }}>
+            <View style={{ aspectRatio: 1.4, borderRadius: radius.xl, backgroundColor: t.accent, alignItems: "center", justifyContent: "center" }}>
+              <Image source={picked.image} style={{ width: "62%", height: "80%" }} contentFit="contain" />
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+              <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 28, color: colors.ink }}>{formatNaira(picked.price)}</Text>
+              {picked.compareAt && picked.compareAt > picked.price ? <Text style={{ fontFamily: fonts.medium, fontSize: 14, color: colors.faint, textDecorationLine: "line-through" }}>{formatNaira(picked.compareAt)}</Text> : null}
+            </View>
+            <Text style={{ fontFamily: fonts.semibold, fontSize: 13.5, color: colors.brandPressed }}>
+              Earn {formatTokens(picked.price)} ${store.ticker}
+              {store.isSotechy ? "" : ` + ${formatTokens(Math.round(picked.price * CROSS_BONUS))} $SOTECHY`}
+            </Text>
+            {picked.negotiable ? <OfferPanel store={store} product={picked} onGo={() => setPicked(null)} /> : null}
+            <Button title="Add to cart" variant="outline" icon="bag-add-outline" onPress={() => toast("Sample store: buying opens when the marketplace goes live")} />
+          </View>
+        )}
+      </Sheet>
     </View>
   );
 }

@@ -157,6 +157,7 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
             <QuickLink illo="coin" label="Wallet" onPress={() => go("/wallet")} />
             <QuickLink illo="chat" label="Store news" onPress={() => go("/notifications")} />
             <QuickLink illo="cart" label="Cart" onPress={() => go("/cart")} />
+            <QuickLink illo="tag" label="My offers" onPress={() => go("/offers")} />
           </View>
 
           {/* Guests only: sign-in prompt */}
