@@ -1,15 +1,18 @@
 "use client";
 
-import { ArrowLeft, Check, ImagePlus, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { CategoryPicker } from "./category-picker";
 import { Illo } from "./illustrations";
 import { btn, Card, Field, inputClass, ProductThumb } from "./ui";
 import { Sheet, ZoneForm, ZonePrices } from "./zone-form";
 import { formatNaira, formatTokens, SOTECHY_CROSS_BONUS } from "@/lib/money";
-import { deliveryZones, pickup as storePickup, store, zoneLabel, type DeliveryZone, type Product } from "@/lib/mock";
+import { isStandardCategory } from "@/lib/categories";
+import { deliveryZones, pickup as storePickup, products, store, zoneLabel, type DeliveryZone, type Product } from "@/lib/mock";
 
-const CATEGORIES = ["Phones", "Accessories", "Computers", "TV & Audio", "Cooling", "Kitchen", "Fashion", "Beauty", "Groceries", "Other"];
+// Categories this store made up itself under "Other", offered first next time
+const OWN_CATEGORIES = [...new Set(products.map((p) => p.category).filter((c) => !isStandardCategory(c)))];
 
 interface Option {
   name: string;
@@ -19,6 +22,7 @@ interface Option {
 
 export function ProductForm({ product }: { product?: Product }) {
   const [name, setName] = useState(product?.name ?? "");
+  const [category, setCategory] = useState(product?.category ?? "");
   const [price, setPrice] = useState(product?.price ?? 0);
   const [compareAt, setCompareAt] = useState(product?.compareAt ?? 0);
   const [photos, setPhotos] = useState<string[]>(product ? [product.image] : []);
@@ -31,7 +35,7 @@ export function ProductForm({ product }: { product?: Product }) {
   const [zones, setZones] = useState<DeliveryZone[]>(deliveryZones.filter((z) => z.active && z.review !== "declined"));
   const [ticked, setTicked] = useState<Set<string>>(new Set(deliveryZones.filter((z) => z.active && z.review !== "declined").map((z) => z.id)));
   const [pickup, setPickup] = useState(storePickup.enabled);
-  const [adding, setAdding] = useState(false);
+  const [editingZone, setEditingZone] = useState<DeliveryZone | "new" | null>(null);
 
   const totalStock = options.length ? options.reduce((n, o) => n + o.stock, 0) : stock;
   const tokens = price;
@@ -79,10 +83,7 @@ export function ProductForm({ product }: { product?: Product }) {
                 </Field>
               </div>
               <Field label="Category">
-                <select defaultValue={product?.category ?? ""} className={inputClass}>
-                  <option value="" disabled>Choose…</option>
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                </select>
+                <CategoryPicker value={category} onChange={setCategory} yours={OWN_CATEGORIES} />
               </Field>
               <Field label="Brand">
                 <input className={inputClass} placeholder="e.g. Tecno" />
@@ -204,32 +205,36 @@ export function ProductForm({ product }: { product?: Product }) {
             </div>
           </Card>
 
-          <Card title="Delivery" description="Where customers can get this product.">
+          <Card title="Delivery" description="Tick where customers can get this product. Tap the pencil to change an area's place or prices.">
             <div className="flex flex-col gap-2">
               {zones.map((z) => {
                 const on = ticked.has(z.id);
                 return (
-                  <button
-                    key={z.id}
-                    type="button"
-                    onClick={() => {
-                      const next = new Set(ticked);
-                      if (on) next.delete(z.id);
-                      else next.add(z.id);
-                      setTicked(next);
-                    }}
-                    className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${on ? "border-ink bg-surface" : "border-line opacity-70"}`}
-                  >
-                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? "border-ink bg-ink text-white" : "border-faint"}`}>{on && <Check size={13} />}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">{zoneLabel(z)}</span>
-                      <ZonePrices zone={z} />
-                      {z.review === "pending" && <span className="mt-0.5 block text-xs font-semibold text-warn">Waiting for approval · goes live once Sotechy approves</span>}
-                    </span>
-                  </button>
+                  <div key={z.id} className={`flex items-stretch rounded-2xl border transition ${on ? "border-ink bg-surface" : "border-line"}`}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = new Set(ticked);
+                        if (on) next.delete(z.id);
+                        else next.add(z.id);
+                        setTicked(next);
+                      }}
+                      className={`flex min-w-0 flex-1 items-center gap-3 py-2.5 pl-3 text-left ${on ? "" : "opacity-70"}`}
+                    >
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? "border-ink bg-ink text-white" : "border-faint"}`}>{on && <Check size={13} />}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">{zoneLabel(z)}</span>
+                        <ZonePrices zone={z} />
+                        {z.review === "pending" && <span className="mt-0.5 block text-xs font-semibold text-warn">Waiting for approval · goes live once Sotechy approves</span>}
+                      </span>
+                    </button>
+                    <button type="button" onClick={() => setEditingZone(z)} aria-label={`Edit ${zoneLabel(z)}`} className="flex w-12 shrink-0 items-center justify-center rounded-r-2xl text-muted hover:bg-surface-alt hover:text-ink">
+                      <Pencil size={16} />
+                    </button>
+                  </div>
                 );
               })}
-              <button type="button" onClick={() => setAdding(true)} className={`${btn.ghost} justify-start`}>
+              <button type="button" onClick={() => setEditingZone("new")} className={`${btn.ghost} justify-start`}>
                 <Plus size={16} /> Add a new delivery area
               </button>
               <label className="mt-1 flex items-center justify-between gap-3 border-t border-line pt-3 text-sm">
@@ -264,15 +269,25 @@ export function ProductForm({ product }: { product?: Product }) {
         </div>
       </div>
 
-      <Sheet open={adding} onClose={() => setAdding(false)} title="Add delivery area">
-        <ZoneForm
-          onSave={(z) => {
-            // Saved to the store's delivery areas and ticked for this product
-            setZones([...zones, z]);
-            setTicked(new Set(ticked).add(z.id));
-            setAdding(false);
-          }}
-        />
+      <Sheet open={editingZone !== null} onClose={() => setEditingZone(null)} title={editingZone === "new" ? "Add delivery area" : "Edit delivery area"}>
+        {editingZone !== null && (
+          <>
+            {editingZone !== "new" && <p className="mb-4 rounded-2xl bg-surface-alt px-3 py-2.5 text-sm text-ink-2">Changes apply to every product that uses this area.</p>}
+            <ZoneForm
+              key={editingZone === "new" ? "new" : editingZone.id}
+              zone={editingZone === "new" ? undefined : editingZone}
+              onSave={(z) => {
+                // Saved to the store's delivery areas; a new one is ticked for this product
+                if (zones.some((x) => x.id === z.id)) setZones(zones.map((x) => (x.id === z.id ? z : x)));
+                else {
+                  setZones([...zones, z]);
+                  setTicked(new Set(ticked).add(z.id));
+                }
+                setEditingZone(null);
+              }}
+            />
+          </>
+        )}
       </Sheet>
     </>
   );

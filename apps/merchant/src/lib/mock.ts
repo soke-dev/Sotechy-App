@@ -145,16 +145,18 @@ export interface Product {
 }
 
 export const products: Product[] = [
-  { id: "p1", name: "Spark 20 Smartphone 128GB", image: "/demo/item-phone.png", category: "Phones", price: 250_000, compareAt: 275_000, stock: 8, status: "live", sold: 42, options: ["Black", "Blue"] },
-  { id: "p2", name: "Fast Charger 25W", image: "/demo/item-charger.png", category: "Accessories", price: 12_000, stock: 55, status: "live", sold: 130 },
-  { id: "p3", name: "Power Bank 20,000mAh", image: "/demo/item-powerbank.png", category: "Accessories", price: 28_000, stock: 2, status: "live", sold: 64 },
-  { id: "p4", name: '43" Smart TV', image: "/demo/item-tv.png", category: "TV & Audio", price: 390_000, compareAt: 420_000, stock: 3, status: "live", sold: 11 },
-  { id: "p5", name: "Bluetooth Speaker", image: "/demo/item-speaker.png", category: "TV & Audio", price: 35_000, stock: 14, status: "live", sold: 27 },
-  { id: "p6", name: "Sound Bar", image: "/demo/item-soundbar.png", category: "TV & Audio", price: 120_000, stock: 0, status: "live", sold: 9 },
-  { id: "p7", name: "Split Air Conditioner 1.5HP", image: "/demo/item-ac.png", category: "Cooling", price: 410_000, stock: 5, status: "live", sold: 6 },
-  { id: "p8", name: "Wireless Mouse", image: "/demo/item-mouse.png", category: "Accessories", price: 9_500, stock: 25, status: "draft", sold: 0 },
-  { id: "p9", name: "14\" Laptop 8GB / 256GB", image: "/demo/item-laptop.png", category: "Computers", price: 620_000, stock: 4, status: "live", sold: 5 },
-  { id: "p10", name: "Digital Air Fryer 4.5L", image: "/demo/item-airfryer.png", category: "Kitchen", price: 95_000, compareAt: 110_000, stock: 7, status: "hidden", sold: 18 },
+  { id: "p1", name: "Spark 20 Smartphone 128GB", image: "/demo/item-phone.png", category: "Smartphones", price: 250_000, compareAt: 275_000, stock: 8, status: "live", sold: 42, options: ["Black", "Blue"] },
+  { id: "p2", name: "Fast Charger 25W", image: "/demo/item-charger.png", category: "Chargers & cables", price: 12_000, stock: 55, status: "live", sold: 130 },
+  { id: "p3", name: "Power Bank 20,000mAh", image: "/demo/item-powerbank.png", category: "Power banks", price: 28_000, stock: 2, status: "live", sold: 64 },
+  { id: "p4", name: '43" Smart TV', image: "/demo/item-tv.png", category: "Televisions", price: 390_000, compareAt: 420_000, stock: 3, status: "live", sold: 11 },
+  { id: "p5", name: "Bluetooth Speaker", image: "/demo/item-speaker.png", category: "Bluetooth speakers", price: 35_000, stock: 14, status: "live", sold: 27 },
+  { id: "p6", name: "Sound Bar", image: "/demo/item-soundbar.png", category: "Sound bars", price: 120_000, stock: 0, status: "live", sold: 9 },
+  { id: "p7", name: "Split Air Conditioner 1.5HP", image: "/demo/item-ac.png", category: "Air conditioners", price: 410_000, stock: 5, status: "live", sold: 6 },
+  { id: "p8", name: "Wireless Mouse", image: "/demo/item-mouse.png", category: "Keyboards & mice", price: 9_500, stock: 25, status: "draft", sold: 0 },
+  { id: "p9", name: "14\" Laptop 8GB / 256GB", image: "/demo/item-laptop.png", category: "Laptops", price: 620_000, stock: 4, status: "live", sold: 5 },
+  { id: "p10", name: "Digital Air Fryer 4.5L", image: "/demo/item-airfryer.png", category: "Air fryers", price: 95_000, compareAt: 110_000, stock: 7, status: "hidden", sold: 18 },
+  // A category the merchant named themselves under "Other"
+  { id: "p11", name: "UK-used Smartphone 64GB", image: "/demo/item-phone.png", category: "UK-used phones", price: 165_000, stock: 3, status: "live", sold: 14 },
 ];
 
 /** Sales per day for the last 14 days (₦) */
@@ -174,6 +176,17 @@ export const payouts = [
 ];
 
 export const bank = { bankName: "GTBank", accountName: "XENA GADGETS LTD", accountNumber: "0123456789" };
+
+/** A payout account can be in the business's name or the owner's own name. */
+export function payoutNameMatch(accountName: string): "business" | "owner" | null {
+  const clean = (s: string) => s.toUpperCase().replace(/\b(LTD|LIMITED|ENTERPRISES?|VENTURES?|NIG|NIGERIA)\b|[^A-Z ]/g, "").replace(/\s+/g, " ").trim();
+  const name = clean(accountName);
+  if (name === clean(store.name)) return "business";
+  const owner = clean(me.name).split(" ");
+  if (owner.every((part) => name.split(" ").includes(part))) return "owner";
+  return null;
+}
+export const PAYOUT_MATCH_LABEL = { business: "Matches your business name", owner: "Matches your own name" } as const;
 
 export const token = {
   ticker: store.ticker,

@@ -79,8 +79,8 @@ export default function ProductsPage() {
         }
       />
 
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-1">
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start">
+        <div className="no-scrollbar -mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible lg:flex-1">
           {FILTERS.map((x) => (
             <button
               key={x.id}
@@ -91,7 +91,7 @@ export default function ProductsPage() {
             </button>
           ))}
         </div>
-        <div className="relative lg:w-72">
+        <div className="relative lg:w-72 lg:shrink-0">
           <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-faint" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products" className={`${inputClass} pl-11`} />
         </div>

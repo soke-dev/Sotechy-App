@@ -28,8 +28,8 @@ export default function OrdersPage() {
     <>
       <PageHeader illo="box" title="Orders" description="Accept new orders within 24 hours. You're paid 50% when you accept and 50% when the customer confirms delivery." />
 
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-1">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start">
+        <div className="no-scrollbar -mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible lg:flex-1">
           {TABS.map((t) => {
             const n = orders.filter(t.match).length;
             const on = t.id === tab;
@@ -45,7 +45,7 @@ export default function OrdersPage() {
             );
           })}
         </div>
-        <div className="relative lg:w-72">
+        <div className="relative lg:w-72 lg:shrink-0">
           <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-faint" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search orders" className={`${inputClass} pl-11`} />
         </div>

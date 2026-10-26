@@ -293,7 +293,7 @@ export default function OnboardingPage() {
 
             {step === "payout" && (
               <div className="flex flex-col gap-4">
-                <p className="text-sm text-muted">Your 50% payouts go here. The account name must match {kind === "registered" ? "your registered business" : "the name on your ID"}.</p>
+                <p className="text-sm text-muted">Both halves of every order are paid here: 50% when you accept, the rest when delivery is confirmed. The account can be in {kind === "registered" ? "your registered business name" : "your business name"} or your own name (as on your ID).</p>
                 <Field label="Bank">
                   <select className={inputClass}>
                     {["GTBank", "Access Bank", "First Bank", "UBA", "Zenith Bank", "Opay", "Moniepoint", "Kuda", "PalmPay"].map((b) => <option key={b}>{b}</option>)}
@@ -305,7 +305,7 @@ export default function OnboardingPage() {
                 {account.length === 10 && (
                   <div className="flex items-center gap-3 rounded-2xl bg-good-soft px-4 py-3 text-sm">
                     <Check size={18} className="text-good" />
-                    <span><b>XENA GADGETS LTD</b><br /><span className="text-good">Name matches your business</span></span>
+                    <span><b>XENA GADGETS LTD</b><br /><span className="text-good">Matches your business name</span></span>
                   </div>
                 )}
               </div>

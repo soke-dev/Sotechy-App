@@ -3,7 +3,7 @@
 import { Check } from "lucide-react";
 import { useState } from "react";
 import { btn, Card, Field, inputClass, PageHeader } from "@/components/ui";
-import { bank, me, store } from "@/lib/mock";
+import { bank, me, PAYOUT_MATCH_LABEL, payoutNameMatch, store } from "@/lib/mock";
 
 const BANKS = ["Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank", "Opay", "Moniepoint", "Kuda", "PalmPay", "Wema Bank"];
 
@@ -48,7 +48,7 @@ export default function SettingsPage() {
           </div>
         </Card>
 
-        <Card title="Payout account" description="Where your 50% payouts go. The account name must match your business.">
+        <Card title="Payout account" description="Both halves of every order are paid here: 50% when you accept, the rest when delivery is confirmed. The account can be in your business name or your own name.">
           <div id="payout" className="flex flex-col gap-4">
             <Field label="Bank">
               <select defaultValue={bank.bankName} className={inputClass}>
@@ -61,7 +61,7 @@ export default function SettingsPage() {
             {resolved && (
               <div className="flex items-center gap-3 rounded-2xl bg-good-soft px-4 py-3 text-sm">
                 <Check size={18} className="text-good" />
-                <span><b>{bank.accountName}</b><br /><span className="text-good">Name matches your business</span></span>
+                <span><b>{bank.accountName}</b><br /><span className="text-good">{PAYOUT_MATCH_LABEL[payoutNameMatch(bank.accountName) ?? "business"]}</span></span>
               </div>
             )}
             <button disabled={!resolved} className={btn.dark}>Save payout account</button>

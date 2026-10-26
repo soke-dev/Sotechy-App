@@ -3,7 +3,7 @@ import { Illo } from "@/components/illustrations";
 import { btn, Card, PageHeader, Pill, StatCard } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatNaira } from "@/lib/money";
-import { bank, orderMoney, orders, payouts } from "@/lib/mock";
+import { bank, orderMoney, orders, PAYOUT_MATCH_LABEL, payoutNameMatch, payouts } from "@/lib/mock";
 
 export default function PayoutsPage() {
   const paid = payouts.filter((p) => p.status === "paid").reduce((n, p) => n + p.amount, 0);
@@ -51,7 +51,7 @@ export default function PayoutsPage() {
               </div>
             </div>
             <p className="mt-3 flex items-center gap-2 text-sm text-good">
-              <span className="h-2 w-2 rounded-full bg-good" /> Name matches your business
+              <span className="h-2 w-2 rounded-full bg-good" /> {PAYOUT_MATCH_LABEL[payoutNameMatch(bank.accountName) ?? "business"]}
             </p>
             <Link href="/settings#payout" className={`${btn.outline} mt-4 w-full`}>Change payout account</Link>
           </Card>
