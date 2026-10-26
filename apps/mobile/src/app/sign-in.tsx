@@ -9,7 +9,7 @@ import { useFeatures } from "@/lib/store-config";
 import { Illo } from "@/components/illustrations";
 import { Burst } from "@/components/tab-icons";
 import { Button, Input, Txt, ui } from "@/components/ui";
-import { DEMO_MODE } from "@/lib/api";
+import { API_URL, DEMO_MODE } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
@@ -25,22 +25,35 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState<"email" | "google" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const done = () => (router.canGoBack() ? router.back() : router.replace("/"));
+  // New accounts pick a username (and optionally numbers) first
+  const welcome = () => router.replace("/welcome");
+
+  /** Turns "Network request failed" into something a person can act on */
+  const explain = (err: unknown, fallback: string) => {
+    const msg = err instanceof Error ? err.message : fallback;
+    if (/network request failed|failed to fetch|load failed|networkerror/i.test(msg))
+      return `Can't reach Sotechy right now${API_URL ? ` (${API_URL})` : ""}. Check your internet, or that this phone is on the same Wi-Fi as the computer running the server.`;
+    return msg;
+  };
 
   async function submit() {
     setLoading("email");
     setError(null);
     try {
-      if (mode === "signin") await signIn(email.trim(), password);
-      else await signUp({ email: email.trim(), password, fullName: fullName || undefined, phone: phone || undefined });
-      done();
+      if (mode === "signin") {
+        await signIn(email.trim(), password);
+        done();
+      } else {
+        await signUp({ email: email.trim(), password, fullName: fullName || undefined });
+        welcome();
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(explain(err, "Something went wrong"));
     } finally {
       setLoading(null);
     }
@@ -51,10 +64,11 @@ export default function SignInScreen() {
       setLoading("google");
       setError(null);
       try {
-        await signInWithGoogle(idToken);
-        done();
+        const firstTime = await signInWithGoogle(idToken);
+        if (firstTime) welcome();
+        else done();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Google sign-in failed");
+        setError(explain(err, "Google sign-in failed"));
       } finally {
         setLoading(null);
       }
@@ -119,7 +133,6 @@ export default function SignInScreen() {
           {mode === "signup" && (
             <>
               <Input label="Full name" icon="person-outline" value={fullName} onChangeText={setFullName} autoComplete="name" placeholder="e.g. Ada Okafor" />
-              <Input label="Phone number" icon="call-outline" keyboardType="phone-pad" value={phone} onChangeText={setPhone} autoComplete="tel" placeholder="080…" />
             </>
           )}
           <Input label="Email" icon="mail-outline" autoCapitalize="none" keyboardType="email-address" autoComplete="email" value={email} onChangeText={setEmail} placeholder="you@example.com" />

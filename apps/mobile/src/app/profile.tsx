@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, View } from "react-native";
 import { formatDate } from "@sotechy/shared";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { Burst } from "@/components/tab-icons";
@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { useToast } from "@/components/toast";
 import { BottomBar, Button, EmptyState, Input, ListRow, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
+import { useAccountExtras, usernameProblem } from "@/lib/account-extras";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
@@ -17,7 +18,11 @@ export default function ProfileScreen() {
   const { user, updateProfile } = useAuth();
   const toast = useToast();
   const [fullName, setFullName] = useState(user?.fullName ?? "");
-  const [phone, setPhone] = useState(user?.phone ?? "");
+  const { extras, save: saveExtras } = useAccountExtras();
+  const [phone, setPhone] = useState(extras.callNumber || user?.phone || "");
+  const [username, setUsername] = useState(extras.username);
+  const [whatsapp, setWhatsapp] = useState(extras.whatsappNumber);
+  const [same, setSame] = useState(extras.sameNumber);
   const [saving, setSaving] = useState(false);
   const [picking, setPicking] = useState(false);
   const addresses = useAsync(async () => (user ? api.addresses() : []), [user?.id]);
@@ -33,7 +38,14 @@ export default function ProfileScreen() {
     return <EmptyState illo="user" title="Your profile" message="Sign in to see and edit your details." action={<Button title="Sign in" onPress={() => router.push("/sign-in")} />} />;
   }
 
-  const changed = fullName.trim() !== (user.fullName ?? "") || phone.trim() !== (user.phone ?? "");
+  const cleanUsername = username.trim().toLowerCase().replace(/^@/, "");
+  const usernameError = cleanUsername !== extras.username ? usernameProblem(cleanUsername) : null;
+  const changed =
+    fullName.trim() !== (user.fullName ?? "") ||
+    phone.trim() !== (extras.callNumber || user.phone || "") ||
+    cleanUsername !== extras.username ||
+    same !== extras.sameNumber ||
+    (!same && whatsapp.trim() !== extras.whatsappNumber);
   const saved = addresses.data?.length ?? 0;
   const defaultAddress = addresses.data?.find((a) => a.isDefault);
 
@@ -41,6 +53,7 @@ export default function ProfileScreen() {
     setSaving(true);
     try {
       await updateProfile({ fullName: fullName.trim(), phone: phone.trim() });
+      await saveExtras({ username: cleanUsername, callNumber: phone.trim(), whatsappNumber: same ? phone.trim() : whatsapp.trim(), sameNumber: same, setupDone: true });
       toast("Profile updated");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Could not save", { icon: "alert-circle" });
@@ -65,6 +78,7 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
           <Txt variant="title">{user.fullName || "Your name"}</Txt>
+          {extras.username ? <Txt variant="label" color={colors.brandPressed}>@{extras.username}</Txt> : null}
           <Txt variant="small">Member since {formatDate(user.createdAt).split(",")[0]}</Txt>
           <Button title="Change avatar" icon="happy-outline" variant="outline" size="sm" onPress={() => setPicking(true)} style={{ marginTop: space.xs }} />
         </View>
@@ -73,7 +87,23 @@ export default function ProfileScreen() {
           <Txt variant="overline" style={{ paddingHorizontal: 4 }}>Personal details</Txt>
           <View style={[ui.card, { gap: space.md }]}>
             <Input label="Full name" icon="person-outline" value={fullName} onChangeText={setFullName} autoComplete="name" placeholder="Your full name" />
-            <Input label="Phone number" icon="call-outline" value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" placeholder="080…" />
+            <View style={{ gap: 4 }}>
+              <Input label="Username" icon="at-outline" value={username} onChangeText={(t) => setUsername(t.replace(/\s/g, "").toLowerCase())} autoCapitalize="none" autoCorrect={false} placeholder="yourname" />
+              {usernameError ? <Txt variant="caption" color={colors.danger}>{usernameError}</Txt> : <Txt variant="caption">How people send you tokens</Txt>}
+            </View>
+          </View>
+        </View>
+
+        <View style={{ gap: space.sm }}>
+          <Txt variant="overline" style={{ paddingHorizontal: 4 }}>Contact numbers</Txt>
+          <View style={[ui.card, { gap: space.md }]}>
+            <Pressable onPress={() => setSame(!same)} style={[ui.between, { gap: space.md }]}>
+              <Txt variant="label" style={{ flex: 1 }}>One number for calls and WhatsApp</Txt>
+              <Switch value={same} onValueChange={setSame} trackColor={{ true: colors.brand, false: colors.line }} thumbColor={colors.white} {...({ activeThumbColor: colors.white } as object)} />
+            </Pressable>
+            <Input label={same ? "Phone number" : "Number for calls"} icon="call-outline" value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" placeholder="080…" />
+            {!same && <Input label="WhatsApp number" icon="logo-whatsapp" value={whatsapp} onChangeText={setWhatsapp} keyboardType="phone-pad" placeholder="080…" />}
+            <Txt variant="caption">Optional. Stores use these for delivery calls and order updates.</Txt>
             <View style={{ gap: 6 }}>
               <Txt variant="label" color={colors.ink2}>Email</Txt>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 50, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, paddingHorizontal: 14 }}>
@@ -117,7 +147,7 @@ export default function ProfileScreen() {
         }}
       />
       <BottomBar>
-        <Button title={changed ? "Save changes" : "Saved"} variant="dark" icon={changed ? "checkmark" : undefined} onPress={save} loading={saving} disabled={!changed} style={{ flex: 1 }} />
+        <Button title={changed ? "Save changes" : "Saved"} variant="dark" icon={changed ? "checkmark" : undefined} onPress={save} loading={saving} disabled={!changed || !!usernameError} style={{ flex: 1 }} />
       </BottomBar>
     </KeyboardAvoidingView>
   );

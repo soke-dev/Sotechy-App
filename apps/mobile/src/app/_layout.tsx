@@ -20,6 +20,7 @@ import { ToastProvider } from "@/components/toast";
 import { AuthProvider } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
 import { StoreConfigProvider, useFeatures } from "@/lib/store-config";
+import { AccountExtrasProvider } from "@/lib/account-extras";
 import { OffersProvider } from "@/lib/offers";
 import { StoreNotificationsProvider } from "@/lib/store-notifications";
 import { colors, fonts } from "@/lib/theme";
@@ -72,6 +73,7 @@ function ThemedNavigator() {
         <Stack.Screen name="checkout" options={{ title: "Checkout" }} />
         <Stack.Screen name="order/[id]" options={{ title: "Track order" }} />
         <Stack.Screen name="sign-in" options={{ headerShown: false, presentation: "modal" }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="wishlist" options={{ title: "Saved items" }} />
         <Stack.Screen name="support" options={{ title: "Help & support" }} />
         <Stack.Screen name="profile" options={{ title: "My profile" }} />
@@ -118,7 +120,9 @@ export default function RootLayout() {
                       <MenuProvider>
                         <StoreNotificationsProvider>
                           <OffersProvider>
-                            <ThemedNavigator />
+                            <AccountExtrasProvider>
+                              <ThemedNavigator />
+                            </AccountExtrasProvider>
                           </OffersProvider>
                         </StoreNotificationsProvider>
                       </MenuProvider>
