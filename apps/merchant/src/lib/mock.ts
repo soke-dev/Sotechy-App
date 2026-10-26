@@ -221,3 +221,32 @@ export const team = [
   { name: "Grace Idowu", email: "grace@xenagadgets.ng", role: "Catalogue", status: "active" as const },
   { name: "sam@xenagadgets.ng", email: "sam@xenagadgets.ng", role: "Finance", status: "invited" as const },
 ];
+
+export const NIGERIAN_STATES = [
+  "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu",
+  "FCT Abuja", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos", "Nasarawa", "Niger", "Ogun", "Ondo",
+  "Osun", "Oyo", "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara",
+];
+
+/** A saved delivery area: set up once, then ticked on any product. */
+export interface DeliveryZone {
+  id: string;
+  state: string;
+  /** Empty = the whole state */
+  areas: string[];
+  fee: number;
+  days: string;
+  freeOver?: number;
+  active: boolean;
+}
+
+export const deliveryZones: DeliveryZone[] = [
+  { id: "z1", state: "Edo", areas: ["Benin City"], fee: 2_000, days: "Same day – 1 day", freeOver: 100_000, active: true },
+  { id: "z2", state: "Edo", areas: ["Ekpoma", "Auchi"], fee: 4_000, days: "1–2 days", active: true },
+  { id: "z3", state: "Delta", areas: ["Asaba", "Warri"], fee: 5_500, days: "2–3 days", active: true },
+  { id: "z4", state: "Lagos", areas: [], fee: 7_500, days: "3–5 days", active: false },
+];
+
+export const pickup = { enabled: true, address: "No. 20 Etete Road, Benin City", hours: "Mon–Sat, 9am – 6pm" };
+
+export const zoneLabel = (z: Pick<DeliveryZone, "state" | "areas">) => (z.areas.length ? `${z.areas.join(", ")} (${z.state})` : `All of ${z.state}`);

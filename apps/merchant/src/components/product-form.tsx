@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowLeft, ImagePlus, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ImagePlus, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Illo } from "./illustrations";
 import { btn, Card, Field, inputClass, ProductThumb } from "./ui";
+import { Sheet, ZoneForm } from "./zone-form";
 import { formatNaira, formatTokens, SOTECHY_CROSS_BONUS } from "@/lib/money";
-import { store, type Product } from "@/lib/mock";
+import { deliveryZones, pickup as storePickup, store, zoneLabel, type DeliveryZone, type Product } from "@/lib/mock";
 
 const CATEGORIES = ["Phones", "Accessories", "Computers", "TV & Audio", "Cooling", "Kitchen", "Fashion", "Beauty", "Groceries", "Other"];
 
@@ -26,8 +27,11 @@ export function ProductForm({ product }: { product?: Product }) {
   const [features, setFeatures] = useState<string[]>(["", ""]);
   const [specs, setSpecs] = useState<[string, string][]>([["", ""]]);
   const [status, setStatus] = useState<Product["status"]>(product?.status ?? "live");
-  const [delivery, setDelivery] = useState(true);
-  const [pickup, setPickup] = useState(true);
+  // Delivery: tick saved areas (all of them by default) or add a new one here
+  const [zones, setZones] = useState<DeliveryZone[]>(deliveryZones.filter((z) => z.active));
+  const [ticked, setTicked] = useState<Set<string>>(new Set(deliveryZones.filter((z) => z.active).map((z) => z.id)));
+  const [pickup, setPickup] = useState(storePickup.enabled);
+  const [adding, setAdding] = useState(false);
 
   const totalStock = options.length ? options.reduce((n, o) => n + o.stock, 0) : stock;
   const tokens = price;
@@ -200,11 +204,48 @@ export function ProductForm({ product }: { product?: Product }) {
             </div>
           </Card>
 
+          <Card title="Delivery" description="Where customers can get this product.">
+            <div className="flex flex-col gap-2">
+              {zones.map((z) => {
+                const on = ticked.has(z.id);
+                return (
+                  <button
+                    key={z.id}
+                    type="button"
+                    onClick={() => {
+                      const next = new Set(ticked);
+                      if (on) next.delete(z.id);
+                      else next.add(z.id);
+                      setTicked(next);
+                    }}
+                    className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${on ? "border-ink bg-surface" : "border-line opacity-70"}`}
+                  >
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? "border-ink bg-ink text-white" : "border-faint"}`}>{on && <Check size={13} />}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{zoneLabel(z)}</span>
+                      <span className="text-xs text-muted">{z.fee ? formatNaira(z.fee) : "Free"} · {z.days}</span>
+                    </span>
+                  </button>
+                );
+              })}
+              <button type="button" onClick={() => setAdding(true)} className={`${btn.ghost} justify-start`}>
+                <Plus size={16} /> Add a new delivery area
+              </button>
+              <label className="mt-1 flex items-center justify-between gap-3 border-t border-line pt-3 text-sm">
+                <span>
+                  <span className="block font-semibold">Store pickup</span>
+                  <span className="text-xs text-muted">{storePickup.address}</span>
+                </span>
+                <input type="checkbox" checked={pickup} onChange={(e) => setPickup(e.target.checked)} />
+              </label>
+              {ticked.size === 0 && !pickup && <p className="rounded-2xl bg-warn-soft px-3 py-2 text-xs text-warn">Tick at least one delivery area or allow pickup, or customers can&apos;t buy this.</p>}
+              {ticked.size === 0 && pickup && <p className="text-xs text-muted">Pickup only: good for big or fragile items.</p>}
+            </div>
+          </Card>
+
           <Card title="Selling">
             <div className="flex flex-col gap-3 text-sm">
-              <label className="flex items-center justify-between gap-3"><span>Delivery</span><input type="checkbox" checked={delivery} onChange={(e) => setDelivery(e.target.checked)} /></label>
-              <label className="flex items-center justify-between gap-3"><span>Store pickup</span><input type="checkbox" checked={pickup} onChange={(e) => setPickup(e.target.checked)} /></label>
-              <div className="mt-2 flex rounded-full bg-surface-alt p-1">
+              <div className="flex rounded-full bg-surface-alt p-1">
                 {(["live", "draft", "hidden"] as const).map((s) => (
                   <button key={s} type="button" onClick={() => setStatus(s)} className={`flex-1 rounded-full py-2 text-sm font-semibold capitalize ${status === s ? "bg-surface shadow-sm" : "text-muted"}`}>
                     {s}
@@ -221,6 +262,17 @@ export function ProductForm({ product }: { product?: Product }) {
           </div>
         </div>
       </div>
+
+      <Sheet open={adding} onClose={() => setAdding(false)} title="Add delivery area">
+        <ZoneForm
+          onSave={(z) => {
+            // Saved to the store's delivery areas and ticked for this product
+            setZones([...zones, z]);
+            setTicked(new Set(ticked).add(z.id));
+            setAdding(false);
+          }}
+        />
+      </Sheet>
     </>
   );
 }

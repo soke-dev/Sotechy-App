@@ -27,6 +27,7 @@ const items = (s: ShellStore): NavItem[][] => [
     { href: "/orders", label: "Orders", illo: "box", badge: s.newOrders },
     { href: "/products", label: "Products", illo: "bag" },
     { href: "/storefront", label: "Storefront", illo: "store" },
+    { href: "/delivery", label: "Delivery", illo: "bike" },
   ],
   [
     { href: "/token", label: `$${s.ticker} token`, illo: "coin" },
