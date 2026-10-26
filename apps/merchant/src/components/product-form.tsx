@@ -3,7 +3,7 @@
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, ImagePlus, Lightbulb, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { CategoryPicker } from "./category-picker";
 import { Illo } from "./illustrations";
 import { btn, Card, Field, inputClass, ProductThumb, Req } from "./ui";
@@ -22,6 +22,16 @@ interface Option {
   price?: number;
 }
 
+/** One block of the review sheet */
+function Review({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-1.5 border-t border-line pt-3">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted">{title}</p>
+      {children}
+    </section>
+  );
+}
+
 export function ProductForm({ product }: { product?: Product }) {
   const [name, setName] = useState(product?.name ?? "");
   const [category, setCategory] = useState(product?.category ?? "");
@@ -35,7 +45,13 @@ export function ProductForm({ product }: { product?: Product }) {
   const router = useRouter();
   const [options, setOptions] = useState<Option[]>(product?.options?.map((o) => ({ name: o, stock: Math.ceil(product.stock / product.options!.length) })) ?? []);
   const [stock, setStock] = useState(product?.stock ?? 0);
+  const [brand, setBrand] = useState("");
+  const [condition, setCondition] = useState("New");
+  const [warranty, setWarranty] = useState("No warranty");
+  const [inBox, setInBox] = useState("");
   const [about, setAbout] = useState("");
+  // Review sheet shown before the product is saved
+  const [confirming, setConfirming] = useState(false);
   const [features, setFeatures] = useState<string[]>(["", ""]);
   const [specs, setSpecs] = useState<[string, string][]>([["", ""]]);
   const [status, setStatus] = useState<Product["status"]>(product?.status ?? "live");
@@ -165,17 +181,17 @@ export function ProductForm({ product }: { product?: Product }) {
                 <CategoryPicker value={category} onChange={setCategory} yours={OWN_CATEGORIES} />
               </Field>
               <Field label="Brand">
-                <input className={inputClass} placeholder="e.g. Tecno" />
+                <input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputClass} placeholder="e.g. Tecno" />
               </Field>
               <Field required label="Condition">
-                <select className={inputClass}>
+                <select value={condition} onChange={(e) => setCondition(e.target.value)} className={inputClass}>
                   <option>New</option>
                   <option>Used, like new</option>
                   <option>Refurbished</option>
                 </select>
               </Field>
               <Field label="Warranty">
-                <select className={inputClass}>
+                <select value={warranty} onChange={(e) => setWarranty(e.target.value)} className={inputClass}>
                   <option>No warranty</option>
                   <option>3 months</option>
                   <option>6 months</option>
@@ -267,7 +283,7 @@ export function ProductForm({ product }: { product?: Product }) {
                 </div>
               </Field>
               <Field label="What's in the box" hint="Separate items with commas.">
-                <input className={inputClass} placeholder={`e.g. ${hints.inBox}`} />
+                <input value={inBox} onChange={(e) => setInBox(e.target.value)} className={inputClass} placeholder={`e.g. ${hints.inBox}`} />
               </Field>
               <Field required label="Specifications" hint="At least one, with its value.">
                 <div className="flex flex-col gap-2">
@@ -386,7 +402,7 @@ export function ProductForm({ product }: { product?: Product }) {
               type="button"
               onClick={() => {
                 setTried(true);
-                if (!missing.length) router.push("/products");
+                if (!missing.length) setConfirming(true);
               }}
               className={`${btn.primary} flex-1`}
             >
@@ -395,6 +411,87 @@ export function ProductForm({ product }: { product?: Product }) {
           </div>
         </div>
       </div>
+
+      <Sheet open={confirming} onClose={() => setConfirming(false)} title={product ? "Check your changes" : "Check your product"}>
+        <div className="flex flex-col gap-4 text-sm">
+          <div className="flex items-center gap-3">
+            {photos[0] && <ProductThumb src={photos[0]} size={72} />}
+            <div className="min-w-0">
+              <p className="font-display text-lg font-bold leading-snug">{name}</p>
+              <p className="text-muted">
+                {category} · {condition}
+                {brand.trim() && ` · ${brand.trim()}`}
+              </p>
+              <p className="text-xs text-muted">
+                {photos.length} photo{photos.length === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+
+          <Review title="Price">
+            <p>
+              <b className="font-display text-lg">{formatNaira(price)}</b>
+              {compareAt > price && <span className="ml-2 text-faint line-through">{formatNaira(compareAt)}</span>}
+            </p>
+            <p className="text-muted">
+              You receive {formatNaira(price * 0.98)} after Sotechy&apos;s 2% fee. Buyers earn {formatTokens(tokens)} ${store.ticker} + {formatTokens(Math.round(price * SOTECHY_CROSS_BONUS))} $SOTECHY.
+            </p>
+          </Review>
+
+          <Review title="Stock">
+            <p>
+              {totalStock} in stock
+              {options.length > 0 && `: ${options.map((o) => `${o.name} (${o.stock})`).join(", ")}`}
+            </p>
+            {warranty !== "No warranty" && <p className="text-muted">{warranty} warranty</p>}
+          </Review>
+
+          <Review title="Delivery">
+            {zones
+              .filter((z) => ticked.has(z.id))
+              .map((z) => (
+                <div key={z.id}>
+                  <p className="font-semibold">{zoneLabel(z)}</p>
+                  <ZonePrices zone={z} />
+                  {z.review === "pending" && <p className="text-xs font-semibold text-warn">Waiting for approval</p>}
+                </div>
+              ))}
+            {pickup && <p>Pickup at your shop: free</p>}
+          </Review>
+
+          <Review title="Details">
+            <p className="line-clamp-3 whitespace-pre-line">{about}</p>
+            <ul className="list-disc pl-5">
+              {features.filter((f) => f.trim()).map((f) => <li key={f}>{f}</li>)}
+            </ul>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+              {specs
+                .filter(([k, v]) => k.trim() && v.trim())
+                .map(([k, v]) => (
+                  <Fragment key={k}>
+                    <dt className="text-muted">{k}</dt>
+                    <dd className="font-semibold">{v}</dd>
+                  </Fragment>
+                ))}
+            </dl>
+            {inBox.trim() && <p className="text-muted">In the box: {inBox.trim()}</p>}
+          </Review>
+
+          <p className="rounded-2xl bg-surface-alt px-3 py-2.5">
+            {status === "live" ? "It goes on sale straight away on your storefront and in Sotechy Shop." : status === "draft" ? "Saved as a draft. Only you can see it." : "Saved but hidden from customers."}
+          </p>
+
+          {/* Stays at the bottom of the sheet while the summary scrolls */}
+          <div className="sticky -bottom-6 -mx-6 -mb-6 flex gap-2 border-t border-line bg-surface px-6 pb-6 pt-3">
+            <button type="button" onClick={() => setConfirming(false)} className={`${btn.outline} flex-1`}>
+              Edit
+            </button>
+            <button type="button" onClick={() => router.push("/products")} className={`${btn.primary} flex-1`}>
+              {product ? "Save changes" : status === "live" ? "Add product" : "Save product"}
+            </button>
+          </div>
+        </div>
+      </Sheet>
 
       <Sheet open={editingZone !== null} onClose={() => setEditingZone(null)} title={editingZone === "new" ? "Add delivery area" : "Edit delivery area"}>
         {editingZone !== null && (

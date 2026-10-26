@@ -44,7 +44,9 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
   // /settings?tab=payout opens straight on that section
   const { tab: asked } = use(searchParams);
   const [tab, setTab] = useState<Section>(SECTIONS.find((x) => x.id === asked)?.id ?? "store");
-  const [notify, setNotify] = useState({ newOrderSms: true, payouts: true, reviews: true, weekly: false });
+  const [notify, setNotify] = useState({ newOrderSms: true, whatsapp: true, payouts: true, reviews: true, weekly: false });
+  const [waNumber, setWaNumber] = useState("0803 000 0000");
+  const [waTest, setWaTest] = useState(false);
   const [accountNumber, setAccountNumber] = useState(bank.accountNumber);
   const resolved = accountNumber.length === 10;
 
@@ -124,6 +126,33 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
             <div className="flex flex-col divide-y divide-line">
               <Toggle locked on onChange={() => {}} label="New orders by email" hint="Always on. You have 24 hours to accept each order, so we never stop these emails." />
               <Toggle on={notify.newOrderSms} onChange={(v) => setNotify({ ...notify, newOrderSms: v })} label="New orders by SMS" />
+              <div>
+                <Toggle on={notify.whatsapp} onChange={(v) => setNotify({ ...notify, whatsapp: v })} label="New orders on WhatsApp" hint="From Sotechy's official WhatsApp, with the order and a link to accept it." />
+                {notify.whatsapp && (
+                  <div className="mb-3 flex flex-col gap-3 rounded-2xl bg-surface-alt p-3">
+                    <Field label="Your WhatsApp number">
+                      <input
+                        value={waNumber}
+                        onChange={(e) => {
+                          setWaNumber(e.target.value);
+                          setWaTest(false);
+                        }}
+                        inputMode="tel"
+                        className={inputClass}
+                      />
+                    </Field>
+                    {waTest ? (
+                      <p className="flex items-center gap-2 text-sm text-good">
+                        <Check size={16} /> Test message sent. Check WhatsApp and save Sotechy Shop as a contact.
+                      </p>
+                    ) : (
+                      <button type="button" onClick={() => setWaTest(true)} disabled={waNumber.replace(/\D/g, "").length < 10} className={`${btn.outline} self-start`}>
+                        Send a test message
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               <Toggle on={notify.payouts} onChange={(v) => setNotify({ ...notify, payouts: v })} label="Payouts sent" />
               <Toggle on={notify.reviews} onChange={(v) => setNotify({ ...notify, reviews: v })} label="New reviews" />
               <Toggle on={notify.weekly} onChange={(v) => setNotify({ ...notify, weekly: v })} label="Weekly summary" />

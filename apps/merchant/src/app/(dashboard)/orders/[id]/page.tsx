@@ -54,7 +54,10 @@ export default function OrderPage() {
   const secondPaid = s === "completed";
   const move = (next: OrderStatus, label: string, note?: string) => {
     setStatus(next);
-    setHistory((h) => [...h, { at: new Date().toISOString(), label, note }]);
+    // Steps the customer can see are sent to them on WhatsApp and email. A decline or payback
+    // isn't: they keep seeing "Processing" while Sotechy sorts it out.
+    const told = ["accepted", "shipped", "delivered"].includes(next) ? "Customer updated on WhatsApp and email" : undefined;
+    setHistory((h) => [...h, { at: new Date().toISOString(), label, note: [note, told].filter(Boolean).join(" · ") || undefined }]);
     setDialog(null);
   };
 
@@ -98,7 +101,7 @@ export default function OrderPage() {
         </section>
       )}
       {s === "accepted" && (
-        <NextStep illo={order.fulfilment === "pickup" ? "store" : "bike"} title={order.fulfilment === "pickup" ? "Get it ready for pickup" : "Ship the order"} body="Let the customer know it's on the way. They'll get a notification.">
+        <NextStep illo={order.fulfilment === "pickup" ? "store" : "bike"} title={order.fulfilment === "pickup" ? "Get it ready for pickup" : "Ship the order"} body="When you mark it, we update the customer on WhatsApp and email straight away.">
           <button onClick={() => setDialog("ship")} className={btn.dark}>
             {order.fulfilment === "pickup" ? <Store size={16} /> : <Truck size={16} />} {order.fulfilment === "pickup" ? "Ready for pickup" : "Mark as shipped"}
           </button>
