@@ -18,7 +18,8 @@ Sotechy becomes a multi-merchant marketplace. Every verified merchant has a stor
 
 ## 2. Tokens
 
-- Every merchant has its own token: Xena → **XENA**, Collins → **COLLINS**, Sotechy → **SOTECHY**. In the app they're shown together as the customer's balances **(name confirm: "shares" carries legal risk; "tokens" or "rewards" until a lawyer says otherwise)**.
+- Every merchant has its own token, called by its ticker: **$XENA**, **$COLLINS**, **$SOTECHY**. The app calls them **tokens** and shows all of a customer's balances together.
+- **Merchants choose their ticker during onboarding**, with a short explanation of what a store token is (earned by their customers, spent only at their store, not money or an investment). Rules: 3–8 letters/numbers, unique across Sotechy, no reserved or misleading names (SOTECHY, NGN, USD, USDT, MON, …), checked by admin at approval and fixed once the token is created.
 - **No fixed supply.** Tokens are minted when orders complete.
 - **Issue rate:** 1 token per ₦1 by default, adjustable per merchant.
 - **Spend only where issued:** XENA only at Xena; SOTECHY only at Sotechy stores.
@@ -138,12 +139,16 @@ Sotechy manages the reserve directly (no automatic pausing). Admin dashboards sh
 |---|---|
 | **TokenFactory / Registry** | Deploys one token per approved merchant; the official list of Sotechy tokens. |
 | **MerchantToken** (ERC-20) | Balances and transfers; rejects any sender or receiver not on the allowlist. No arbitrary minting. |
-| **Allowlist** | Only wallets Sotechy created (added at sign-up) and approved Sotechy contracts. Transfers to anything else are rejected. |
+| **WalletFactory** | Creates each customer's Sotechy Wallet; the record of which addresses are Sotechy wallets. |
+| **Allowlist** | Only Sotechy wallets (from the factory) and approved Sotechy contracts. Transfers to anything else are rejected. |
 | **OrderMinter** | Mints for a completed order, once per order id (no double minting); cross-store SOTECHY bonus; review bonus (from the pool first). |
 | **Checkout escrow / Redemption** | Holds tokens used at checkout; on completion splits 50/50 to recycling pool and Sotechy wallet; returns them on cancellation. |
 | **RecyclingPool** | Per-token pool; pays bonuses and promotions with existing tokens. |
 
-- **Wallets and gas:** a wallet is created for every customer at sign-up and linked to their @username; customers sign, Sotechy's relayer submits and pays the gas (customers never need MON) **(confirm the wallet provider: Dynamic, as Money Moves uses, or similar)**.
+- **Wallets, our own contract (no outside provider):** at sign-up Sotechy creates a **Sotechy Wallet** for each customer: a small smart-contract account made by Sotechy's **WalletFactory**, linked to their @username. Its address is known at sign-up and the contract is only deployed on first use, so idle accounts cost no gas.
+  - The wallet only does what the customer asks in the app (send, pay at checkout): the app confirms with the customer's PIN or fingerprint, Sotechy's server authorises the action, and Sotechy's relayer sends it and **pays the gas** (customers never need MON).
+  - Because every wallet comes from the factory, the token allowlist is simply "was this wallet made by Sotechy's factory?", which also makes outside wallets impossible to send to.
+  - In practice Sotechy holds the keys for customers (custodial), which is part of the legal review. Self-custody (customer passkeys) can be added to the same wallet later.
 - **Safety for a live mainnet launch:**
   - a single Sotechy admin key (no multisig, by choice), kept in a hardware wallet or a cloud key vault, never on a laptop or in code; separate keys for day-to-day jobs (the minting relayer) so the admin key is rarely used;
   - narrow pause switches;
@@ -156,16 +161,16 @@ Sotechy manages the reserve directly (no automatic pausing). Admin dashboards sh
 - DEX trading and liquidity pools: later, separately, after the core passes its tests.
 - Token cash-out: none. Tokens are store value only.
 
-## 9. Still to confirm
+## 9. Decided
 
-1. **Name in the app:** "shares" vs "tokens" / "rewards" (legal risk; see section 10).
-2. **Store value:** ₦0.00909 per token (keeps the 2% fee and funds the full 10% bonus). Alternatively ₦0.01 per token with a 1.1% reserve share.
-3. **Wallet provider** for sign-up wallets and gas sponsorship.
-4. **How the automatic 50% payouts are sent** (Money Moves payouts if available, otherwise a transfer provider such as Flutterwave).
+- Called **tokens**, shown by ticker ($XENA); merchants choose the ticker at onboarding.
+- **2% fee** kept, so store value is **₦0.00909 per token**.
+- **Own wallet contract** (WalletFactory), no wallet provider; Sotechy pays gas.
+- **Automatic payouts** to the merchant's bank account for both 50% halves. Sent through Money Moves (Sotechy's own provider) once it offers a payouts API; a bank-transfer provider such as Flutterwave is the fallback.
 
 ## 10. Questions for a Nigerian lawyer before launch
 
-- **SEC Nigeria:** are transferable merchant tokens "digital assets" or securities under the 2024 rules? Does calling them "shares" change that?
+- **SEC Nigeria:** are transferable merchant tokens "digital assets" or securities under the 2024 rules? Does the ticker naming ($XENA) or the custodial Sotechy Wallet change that?
 - **CBN:** does holding customer payments before paying merchants (escrow), and token-plus-naira checkout, need a licence or a licensed partner?
 - **FCCPC:** consumer terms for token value, expiry, refunds, disputes and the merchant review timers.
 - **NDPA:** storing customer IDs, usernames and merchant KYB documents; wallet data.
