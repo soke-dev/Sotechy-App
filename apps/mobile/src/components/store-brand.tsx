@@ -1,10 +1,23 @@
 // Each marketplace store's own brand mark and cover, drawn in its colours, so stores don't borrow
 // Sotechy's shop photos. Sotechy keeps its real logo and shop photo. Real stores upload theirs from
 // the merchant dashboard (Storefront → Branding).
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle, G, Path, Rect, Text as SvgText } from "react-native-svg";
-import type { MarketStore } from "@/lib/marketplace";
+import type { MarketStore, StoreProduct } from "@/lib/marketplace";
+
+/** A product's photo, or its drawn icon in the store's colour when it has no photo yet */
+export function ProductArt({ product, store, scale = 0.76 }: { product: StoreProduct; store: MarketStore; scale?: number }) {
+  if (product.image) return <Image source={product.image} style={{ width: `${scale * 100}%`, height: `${scale * 100}%` }} contentFit="contain" />;
+  return (
+    <View style={{ width: `${scale * 100}%`, height: `${scale * 100}%`, alignItems: "center", justifyContent: "center" }}>
+      <View style={{ aspectRatio: 1, height: "72%", borderRadius: 999, backgroundColor: store.theme.accent, alignItems: "center", justifyContent: "center" }}>
+        <Ionicons name={(product.icon ?? "pricetag") as "pricetag"} size={36} color="#FFFFFF" />
+      </View>
+    </View>
+  );
+}
 
 /** The store's logo mark, filling a square */
 export function BrandMark({ store, size }: { store: MarketStore; size: number }) {
@@ -39,18 +52,35 @@ export function BrandMark({ store, size }: { store: MarketStore; size: number })
         <Path d="M25 26 L19 36 H24 L22 43 L30 32 H25 Z" fill="#FFFFFF" />
       </Svg>
     );
-  // Sotechy and any store without drawn art: its uploaded logo on its colour
+  // An uploaded logo on the store's colour
+  if (store.logo)
+    return (
+      <View style={{ width: size, height: size, backgroundColor: t.accent, alignItems: "center", justifyContent: "center" }}>
+        <Image source={store.logo} style={{ width: "76%", height: "76%" }} contentFit="contain" />
+      </View>
+    );
+  // No logo yet: a monogram on the store's dark colour, with an accent bar
+  const letters = store.name
+    .split(/\s+/)
+    .filter((w) => /[a-z]/i.test(w) && !/^&$/.test(w))
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
   return (
-    <View style={{ width: size, height: size, backgroundColor: t.accent, alignItems: "center", justifyContent: "center" }}>
-      <Image source={store.logo} style={{ width: "76%", height: "76%" }} contentFit="contain" />
-    </View>
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Rect width={48} height={48} rx={14} fill={t.hero} />
+      <Rect x={10} y={35} width={28} height={4} rx={2} fill={t.accent} />
+      <SvgText x={24} y={29} fontSize={letters.length > 1 ? 18 : 22} fontWeight="800" fontFamily="BricolageGrotesque_800ExtraBold" fill="#FFFFFF" textAnchor="middle">
+        {letters}
+      </SvgText>
+    </Svg>
   );
 }
 
 /** A wide banner for the store: its colours, a pattern, its name and a few of its products */
 export function StoreCover({ store, style }: { store: MarketStore; style?: StyleProp<ViewStyle> }) {
   const t = store.theme;
-  if (store.isSotechy) return <Image source={store.cover} style={[{ backgroundColor: t.hero }, style as object]} contentFit="cover" />;
+  if (store.isSotechy && store.cover) return <Image source={store.cover} style={[{ backgroundColor: t.hero }, style as object]} contentFit="cover" />;
   const items = store.products.slice(0, 3);
   return (
     <View style={[{ backgroundColor: t.hero, overflow: "hidden" }, style]}>
@@ -69,14 +99,20 @@ export function StoreCover({ store, style }: { store: MarketStore; style?: Style
       </Svg>
       {/* the store's products, arranged on the colour */}
       <View style={{ position: "absolute", right: "4%", bottom: "6%", width: "58%", height: "82%", flexDirection: "row", alignItems: "flex-end", justifyContent: "flex-end" }}>
-        {items.map((it, i) => (
-          <Image
-            key={it.id}
-            source={it.image}
-            style={{ width: i === 1 ? "44%" : "34%", height: i === 1 ? "92%" : "70%", marginLeft: i ? "-6%" : 0, zIndex: i === 1 ? 2 : 1 }}
-            contentFit="contain"
-          />
-        ))}
+        {items.map((it, i) =>
+          it.image ? (
+            <Image
+              key={it.id}
+              source={it.image}
+              style={{ width: i === 1 ? "44%" : "34%", height: i === 1 ? "92%" : "70%", marginLeft: i ? "-6%" : 0, zIndex: i === 1 ? 2 : 1 }}
+              contentFit="contain"
+            />
+          ) : (
+            <View key={it.id} style={{ width: i === 1 ? "30%" : "24%", aspectRatio: 1, marginLeft: i ? "3%" : 0, marginBottom: i === 1 ? "14%" : "4%", borderRadius: 999, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name={(it.icon ?? "pricetag") as "pricetag"} size={i === 1 ? 34 : 26} color="#FFFFFF" />
+            </View>
+          ),
+        )}
       </View>
     </View>
   );

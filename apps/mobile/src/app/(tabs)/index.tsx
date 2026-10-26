@@ -106,7 +106,7 @@ export default function HomeScreen() {
   for (let i = 0; i < Math.max(deals.length, storeDeals.length); i++) {
     const sd = storeDeals[i];
     if (sd)
-      mixedDeals.push({ key: `${sd.store.slug}-${sd.product.id}`, name: sd.product.name, price: sd.product.price, compareAt: sd.product.compareAt ?? null, image: sd.product.image, seller: sd.store.name, tint: tileColor(sd.store.theme), onPress: () => openItem(sd.store.slug, sd.product.id) });
+      mixedDeals.push({ key: `${sd.store.slug}-${sd.product.id}`, name: sd.product.name, price: sd.product.price, compareAt: sd.product.compareAt ?? null, image: sd.product.image ?? null, seller: sd.store.name, tint: tileColor(sd.store.theme), onPress: () => openItem(sd.store.slug, sd.product.id) });
     const d = deals[i];
     if (d)
       mixedDeals.push({ key: d.id, name: d.name, price: d.minPrice, compareAt: d.compareAtPrice, image: d.imageUrl ? { uri: d.imageUrl } : null, seller: "Sotechy", tint: "#F1ECE5", onPress: () => router.push({ pathname: "/product/[id]", params: { id: d.slug } }) });

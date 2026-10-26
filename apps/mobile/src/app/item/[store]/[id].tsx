@@ -8,6 +8,7 @@ import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "re
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira } from "@sotechy/shared";
 import { MarketProductCard, openStore, StoreLogo } from "@/components/store-bits";
+import { ProductArt } from "@/components/store-brand";
 import { Stars } from "@/components/stars";
 import { useToast } from "@/components/toast";
 import { BottomBar, Button, Divider, EmptyState, IconButton, Pill, Price, QtyStepper, SectionHeader, tap, Txt, ui } from "@/components/ui";
@@ -103,7 +104,7 @@ export default function StoreItemScreen() {
         {/* Photo, in the store's colour */}
         <View style={{ height: heroHeight, backgroundColor: tileColor(store.theme), alignItems: "center", justifyContent: "center" }}>
           <View style={{ position: "absolute", width: heroHeight * 0.66, height: heroHeight * 0.66, borderRadius: heroHeight, backgroundColor: "rgba(255,255,255,0.55)" }} />
-          <Image source={product.image} style={{ width: "70%", height: "70%" }} contentFit="contain" />
+          <ProductArt product={product} store={store} scale={0.7} />
           <View style={[ui.between, { position: "absolute", top: insets.top + space.sm, left: gutter, right: gutter }]}>
             <IconButton icon="chevron-back" tone="glass" onPress={() => (router.canGoBack() ? router.back() : openStore(store.slug))} />
             <IconButton icon="bag-handle-outline" tone="glass" badge={cart.count} onPress={() => router.push("/cart")} />

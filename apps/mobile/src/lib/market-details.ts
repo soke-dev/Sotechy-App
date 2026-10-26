@@ -2,7 +2,7 @@
 // chosen by product type. Real stores fill these in from the merchant dashboard's product form.
 import type { MarketStore, StoreProduct } from "./marketplace";
 
-export type ProductGroup = "phones" | "computers" | "tv" | "home" | "power";
+export type ProductGroup = "phones" | "computers" | "tv" | "home" | "power" | "other";
 
 interface Details {
   group: ProductGroup;
@@ -37,13 +37,14 @@ const RULES: [RegExp, Omit<Details, "warranty"> & { warranty?: string }][] = [
 ];
 
 export function detailsFor(store: MarketStore, product: StoreProduct): Details {
-  const rule = RULES.find(([re]) => re.test(product.name))?.[1];
+  // Only electronics match these rules; other stores' products use their own text
+  const rule = store.highlights ? undefined : RULES.find(([re]) => re.test(product.name))?.[1];
   return {
-    group: rule?.group ?? "home",
+    group: rule?.group ?? "other",
     brand: rule?.brand ?? store.name,
-    about: rule?.about ?? `${product.name} from ${store.name}.`,
-    features: rule?.features ?? [],
-    specs: rule?.specs ?? [],
+    about: product.about ?? rule?.about ?? `${product.name} from ${store.name}. ${store.about}`,
+    features: rule?.features ?? store.highlights ?? [],
+    specs: rule?.specs ?? [["Sold by", store.name], ["Ships from", store.city], ["Delivers to", store.delivery.states.join(", ")]],
     inBox: rule?.inBox ?? [product.name],
     warranty: rule?.warranty ?? "6 months from the store",
   };

@@ -33,7 +33,10 @@ export interface StoreProduct {
   name: string;
   price: number;
   compareAt?: number;
-  image: Img;
+  /** A photo; products without one show `icon` (an Ionicons name) on the store's colour */
+  image?: Img;
+  icon?: string;
+  about?: string;
   /** Products from Sotechy's own catalogue open the real product page */
   slug?: string;
   /** The store takes offers; an agreed price is held this many hours (never more than 24) */
@@ -50,9 +53,12 @@ export interface MarketStore {
   rating: number;
   reviews: number;
   followers: number;
-  kind: "Phones & gadgets" | "Home appliances" | "Power & solar" | "Everything";
-  logo: Img;
-  cover: Img;
+  kind: string;
+  /** Uploaded logo and cover photo; stores without them get a drawn mark and cover */
+  logo?: Img;
+  cover?: Img;
+  /** Three things the store wants buyers to know, shown on its product pages */
+  highlights?: string[];
   theme: StoreTheme;
   delivery: { states: string[]; homeFrom: number; pickup?: string };
   announcement?: string;
@@ -89,7 +95,7 @@ const img = {
 
 const p = (id: string, name: string, price: number, image: Img, compareAt?: number): StoreProduct => ({ id, name, price, image, compareAt });
 // Products whose price can be negotiated, with how long an agreed price is held
-const NEGOTIABLE: Record<string, 6 | 12 | 24> = { x1: 12, x4: 6, x6: 12, x8: 24, b1: 24, b2: 12, k1: 24 };
+const NEGOTIABLE: Record<string, 6 | 12 | 24> = { x1: 12, x4: 6, x6: 12, x8: 24, b1: 24, b2: 12, k1: 24, ad1: 12, ad3: 12, hv1: 24, hv2: 24, ok1: 24, ok3: 24, fm1: 6, fz2: 12, kk1: 12 };
 
 export const stores: MarketStore[] = [
   {
@@ -196,6 +202,88 @@ export const stores: MarketStore[] = [
   },
 ];
 
+// More sample stores outside electronics. Their products use drawn icons until stores upload photos.
+const t = (accent: string, hero: string, onAccent = "#FFFFFF"): StoreTheme => ({ accent, onAccent, bg: "#FAF7F3", surface: "#FFFFFF", text: "#17120E", muted: "#7F756C", hero, onHero: "#FFFFFF" });
+const q = (id: string, name: string, price: number, icon: string, compareAt?: number, about?: string): StoreProduct => ({ id, name, price, icon, compareAt, about });
+
+const moreStores: MarketStore[] = [
+  {
+    slug: "adaeze", name: "Adaeze Fashion House", ticker: "ADAEZE", tagline: "Ankara, ready-to-wear and tailoring", city: "Lagos", rating: 4.8, reviews: 642, followers: 5_210, kind: "Fashion",
+    about: "Ankara dresses, shirts and two-pieces, made in our Yaba workshop. Custom sizes in 5 days.", theme: t("#B4235A", "#3B0A1F"),
+    delivery: { states: ["Lagos", "Ogun", "FCT Abuja"], homeFrom: 2_500, pickup: "12 Herbert Macaulay Way, Yaba" }, sinceMonths: 6,
+    highlights: ["Made to your size in 5 days", "Free alterations within 14 days", "Fabric chosen by hand"],
+    announcement: "New Ankara collection: 15% off this week",
+    promo: { overline: "Adaeze Fashion House", title: "New Ankara\ncollection", subtitle: "15% off this week, made in Lagos", productId: "ad1" },
+    products: [q("ad1", "Ankara Wrap Dress", 28_000, "shirt", 33_000, "A flowing wrap dress in bold Ankara print, lined and fully adjustable."), q("ad2", "Men's Ankara Shirt", 18_500, "shirt-outline"), q("ad3", "Ankara Two-Piece Set", 34_000, "shirt"), q("ad4", "Aso-Oke Gele", 12_000, "ribbon"), q("ad5", "Beaded Handbag", 15_500, "bag-handle"), q("ad6", "Leather Sandals", 21_000, "footsteps")],
+  },
+  {
+    slug: "glow", name: "Glow by Tee", ticker: "GLOW", tagline: "Makeup and skincare for every skin tone", city: "Lagos", rating: 4.9, reviews: 1_120, followers: 9_840, kind: "Beauty & hair",
+    about: "Foundations, lip colours and skincare picked for deep and medium skin tones. Every product is original.", theme: t("#C2185B", "#4A0D26"),
+    delivery: { states: ["Lagos", "Ogun", "Oyo"], homeFrom: 2_000 }, sinceMonths: 4,
+    highlights: ["Original products only", "Shades for deep and medium skin", "Free samples on orders over ₦30,000"],
+    products: [q("gl1", "Matte Foundation 30ml", 14_500, "color-palette", undefined, "Long-wear matte foundation in 24 shades, made for warm and deep skin."), q("gl2", "Lipstick Trio", 9_800, "brush"), q("gl3", "Eyeshadow Palette", 16_000, "color-palette", 19_000), q("gl4", "Vitamin C Serum", 12_500, "water"), q("gl5", "Makeup Brush Set", 11_000, "brush"), q("gl6", "Setting Powder", 8_500, "sparkles")],
+  },
+  {
+    slug: "hairven", name: "Hairven Wigs", ticker: "HAIRVEN", tagline: "Human hair wigs, bundles and frontals", city: "Port Harcourt", rating: 4.7, reviews: 388, followers: 3_400, kind: "Beauty & hair",
+    about: "Bone straight, body wave and curly human hair. Every wig is installed on a cap and ready to wear.", theme: t("#6D3B8F", "#26113A"),
+    delivery: { states: ["Rivers", "Bayelsa", "Lagos"], homeFrom: 3_000 }, sinceMonths: 3,
+    highlights: ["100% human hair", "Ready to wear, cap included", "Free styling on wigs over ₦150,000"],
+    products: [q("hv1", "Bone Straight Wig 20\"", 185_000, "woman", 210_000), q("hv2", "Body Wave Frontal Wig", 160_000, "woman"), q("hv3", "Curly Bob Wig", 95_000, "woman"), q("hv4", "Hair Bundles (3)", 120_000, "cut"), q("hv5", "Edge Control Gel", 4_500, "water")],
+  },
+  {
+    slug: "freshmart", name: "FreshMart Groceries", ticker: "FRESH", tagline: "Groceries delivered the same day", city: "Abuja", rating: 4.6, reviews: 2_310, followers: 11_200, kind: "Food & groceries",
+    about: "Rice, oil, provisions and fresh food from the market, delivered across Abuja the same day.", theme: t("#2E7D32", "#123B16"),
+    delivery: { states: ["FCT Abuja", "Nasarawa"], homeFrom: 1_500 }, sinceMonths: 8,
+    highlights: ["Same-day delivery in Abuja", "Fresh food checked before packing", "Bulk prices for big orders"],
+    announcement: "Free delivery on orders over ₦50,000 in Abuja",
+    products: [q("fm1", "Rice 50kg Bag", 78_000, "cart", 82_000), q("fm2", "Vegetable Oil 5L", 14_500, "water"), q("fm3", "Fresh Tomatoes Basket", 18_000, "nutrition"), q("fm4", "Eggs (Crate of 30)", 6_800, "egg"), q("fm5", "Frozen Chicken 2kg", 11_500, "restaurant"), q("fm6", "Bottled Water (12)", 3_600, "water")],
+  },
+  {
+    slug: "oakrattan", name: "Oak & Rattan", ticker: "OAK", tagline: "Furniture made in Nigeria", city: "Ibadan", rating: 4.7, reviews: 214, followers: 1_980, kind: "Home & living",
+    about: "Sofas, beds and dining sets from our Ibadan workshop, delivered and set up for you.", theme: t("#8D5A2B", "#3A2412"),
+    delivery: { states: ["Oyo", "Lagos", "Ogun", "Osun"], homeFrom: 8_000 }, sinceMonths: 5,
+    highlights: ["Made in our Ibadan workshop", "Delivered and set up", "2-year frame warranty"],
+    promo: { overline: "Oak & Rattan", title: "Furniture made\nin Nigeria", subtitle: "Delivered and set up for you", productId: "ok1" },
+    products: [q("ok1", "3-Seater Fabric Sofa", 420_000, "bed", 465_000), q("ok2", "Rattan Accent Chair", 95_000, "home"), q("ok3", "6-Seater Dining Set", 380_000, "restaurant"), q("ok4", "Queen Bed Frame", 260_000, "bed"), q("ok5", "Bookshelf", 68_000, "library")],
+  },
+  {
+    slug: "bookworm", name: "Bookworm Hub", ticker: "BOOKS", tagline: "Books for school, work and fun", city: "Enugu", rating: 4.8, reviews: 530, followers: 2_760, kind: "Books & kids",
+    about: "Nigerian and international titles, school texts and children's books. We ship nationwide.", theme: t("#1F5F8B", "#0E2C42"),
+    delivery: { states: ["Enugu", "Anambra", "Lagos", "FCT Abuja"], homeFrom: 1_800 }, sinceMonths: 9,
+    highlights: ["New and classic Nigerian titles", "School book lists filled", "Gift wrapping on request"],
+    products: [q("bk1", "Things Fall Apart", 6_500, "book"), q("bk2", "Half of a Yellow Sun", 9_000, "book"), q("bk3", "JSS1 Textbook Pack", 42_000, "library", 48_000), q("bk4", "Children's Story Bundle", 15_000, "happy"), q("bk5", "Notebooks (10)", 5_500, "pencil")],
+  },
+  {
+    slug: "littlesteps", name: "Little Steps", ticker: "STEPS", tagline: "Everything for babies and toddlers", city: "Benin City", rating: 4.7, reviews: 290, followers: 2_150, kind: "Books & kids",
+    about: "Clothes, feeding, diapers and toys for babies and toddlers, picked by mums.", theme: t("#E07A5F", "#4A2218"),
+    delivery: { states: ["Edo", "Delta"], homeFrom: 1_500, pickup: "8 Ugbowo Road, Benin City" }, sinceMonths: 2,
+    highlights: ["Picked by mums", "Soft, safe materials", "Free gift wrap for baby showers"],
+    products: [q("ls1", "Baby Diapers (Jumbo)", 16_500, "happy"), q("ls2", "Baby Romper Set (3)", 12_000, "shirt"), q("ls3", "Feeding Bottle Set", 9_500, "water"), q("ls4", "Baby Walker", 38_000, "walk", 42_000), q("ls5", "Soft Toy Bundle", 8_000, "balloon")],
+  },
+  {
+    slug: "fitzone", name: "FitZone Sports", ticker: "FITZ", tagline: "Gym, football and fitness gear", city: "Lagos", rating: 4.6, reviews: 410, followers: 3_050, kind: "Sports",
+    about: "Jerseys, boots, dumbbells and home gym equipment. Original brands and local sizes.", theme: t("#D84315", "#3A1408"),
+    delivery: { states: ["Lagos", "Ogun", "Oyo", "Rivers"], homeFrom: 2_500 }, sinceMonths: 7,
+    highlights: ["Original jerseys and boots", "Home gym set-up advice", "Exchange sizes within 7 days"],
+    products: [q("fz1", "Super Eagles Jersey", 25_000, "shirt"), q("fz2", "Football Boots", 45_000, "football", 52_000), q("fz3", "Dumbbell Set 20kg", 38_000, "barbell"), q("fz4", "Yoga Mat", 9_000, "body"), q("fz5", "Size 5 Football", 12_500, "football")],
+  },
+  {
+    slug: "spiceroute", name: "Spice Route Foods", ticker: "SPICE", tagline: "Spices, palm oil and soup mixes", city: "Onitsha", rating: 4.8, reviews: 760, followers: 4_420, kind: "Food & groceries",
+    about: "Ground pepper, crayfish, ogbono, egusi and red oil from Onitsha main market, cleaned and sealed.", theme: t("#C62828", "#3B0B0B"),
+    delivery: { states: ["Anambra", "Enugu", "Lagos", "FCT Abuja"], homeFrom: 2_000 }, sinceMonths: 10,
+    highlights: ["Cleaned and sealed", "Straight from Onitsha market", "Ships nationwide in 2–3 days"],
+    products: [q("sp1", "Ground Crayfish 1kg", 12_000, "fish"), q("sp2", "Egusi 2kg", 9_500, "nutrition"), q("sp3", "Red Palm Oil 4L", 11_000, "water", 12_500), q("sp4", "Ogbono 1kg", 8_000, "nutrition"), q("sp5", "Pepper Soup Spice", 3_500, "flame")],
+  },
+  {
+    slug: "kicks", name: "Kicks & Soles", ticker: "KICKS", tagline: "Sneakers, loafers and slides", city: "Abuja", rating: 4.5, reviews: 330, followers: 2_640, kind: "Fashion",
+    about: "Sneakers and shoes for men and women. Every pair is checked before it's sent.", theme: t("#37474F", "#121A1E"),
+    delivery: { states: ["FCT Abuja", "Kaduna", "Kano", "Lagos"], homeFrom: 2_500 }, sinceMonths: 4,
+    highlights: ["Every pair checked", "Swap sizes within 7 days", "Free shoe bag"],
+    products: [q("kk1", "White Sneakers", 32_000, "footsteps", 38_000), q("kk2", "Leather Loafers", 40_000, "footsteps"), q("kk3", "Slides", 9_500, "footsteps"), q("kk4", "Running Shoes", 36_000, "walk"), q("kk5", "Shoe Care Kit", 6_500, "brush")],
+  },
+];
+stores.push(...moreStores);
+
 for (const store of stores) for (const item of store.products) if (NEGOTIABLE[item.id]) item.negotiable = { hours: NEGOTIABLE[item.id] };
 
 export const storeBySlug = (slug: string) => stores.find((s) => s.slug === slug);
@@ -218,7 +306,7 @@ export const timeLeft = (iso: string) => {
 };
 export const storeByTicker = (ticker: string) => stores.find((s) => s.ticker === ticker);
 
-export const STORE_KINDS = ["Phones & gadgets", "Home appliances", "Power & solar"] as const;
+export const STORE_KINDS = ["Phones & gadgets", "Home appliances", "Power & solar", "Fashion", "Beauty & hair", "Food & groceries", "Home & living", "Books & kids", "Sports"] as const;
 
 /** The signed-in customer's Sotechy wallet (sample) */
 export const wallet = {

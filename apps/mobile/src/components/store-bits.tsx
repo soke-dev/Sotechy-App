@@ -8,7 +8,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { api } from "@/lib/api";
 import { formatTokens, tileColor, wallet, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { Illo } from "./illustrations";
-import { BrandMark, StoreCover } from "./store-brand";
+import { BrandMark, ProductArt, StoreCover } from "./store-brand";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { Txt } from "./ui";
@@ -142,7 +142,7 @@ export function MarketProductCard({ store, product, width = 150, onDark }: { sto
     <Pressable onPress={() => openItem(store.slug, product.id)} style={({ pressed }) => ({ width, opacity: pressed ? 0.88 : 1 })}>
       <View style={{ aspectRatio: 1, borderRadius: radius.lg, backgroundColor: tileColor(store.theme), alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         <View style={{ position: "absolute", width: "66%", height: "66%", borderRadius: 999, backgroundColor: "rgba(255,255,255,0.55)" }} />
-        <Image source={product.image} style={{ width: "76%", height: "76%" }} contentFit="contain" />
+        <ProductArt product={product} store={store} />
         {off > 0 ? (
           <View style={{ position: "absolute", top: 8, left: 8, backgroundColor: colors.inverse, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
             <Text style={{ fontFamily: fonts.bold, fontSize: 11, color: colors.onInverse }}>-{off}%</Text>

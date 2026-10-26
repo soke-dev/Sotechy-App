@@ -13,7 +13,7 @@ import { Illo } from "@/components/illustrations";
 import { heldTokens, openItem, StoreLogo, useStoreProducts } from "@/components/store-bits";
 import { EmptyState, IconButton, Loading, tap } from "@/components/ui";
 import { CROSS_BONUS, formatTokens, storeBySlug, tileColor, tokenNaira, type MarketStore, type StoreProduct } from "@/lib/marketplace";
-import { StoreCover } from "@/components/store-brand";
+import { ProductArt, StoreCover } from "@/components/store-brand";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { fonts, gutter, radius, space } from "@/lib/theme";
 
@@ -46,7 +46,7 @@ function ProductTile({ p, store, width }: { p: StoreProduct; store: MarketStore;
     >
       <View style={{ aspectRatio: 1, backgroundColor: tileColor(t, true), alignItems: "center", justifyContent: "center" }}>
         <View style={{ position: "absolute", width: "64%", height: "64%", borderRadius: 999, backgroundColor: t.dark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.55)" }} />
-        <Image source={p.image} style={{ width: "74%", height: "74%" }} contentFit="contain" />
+        <ProductArt product={p} store={store} scale={0.74} />
         {p.negotiable ? (
           <View style={{ position: "absolute", top: 8, right: 8, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: t.hero, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
             <Ionicons name="pricetag" size={10} color={t.onHero} />

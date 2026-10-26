@@ -200,7 +200,8 @@ const storeSlides: Slide[] = stores
       cta: "Visit store",
       circle: st.theme.accent,
       action: { pathname: "/store/[slug]", params: { slug: st.slug } },
-      art: item ? [{ source: item.image as ImageSource, w: 0.42, h: 0.62, right: 0.03, bottom: 0.18 }] : undefined,
+      art: item?.image ? [{ source: item.image as ImageSource, w: 0.42, h: 0.62, right: 0.03, bottom: 0.18 }] : undefined,
+      badge: item?.image ? undefined : st.ticker.slice(0, 1),
     };
   });
 

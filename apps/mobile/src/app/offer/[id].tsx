@@ -8,6 +8,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput,
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira } from "@sotechy/shared";
 import { StoreLogo } from "@/components/store-bits";
+import { ProductArt } from "@/components/store-brand";
 import { useToast } from "@/components/toast";
 import { Button, EmptyState, Pill, Txt, ui } from "@/components/ui";
 import { findProduct, formatTokens, storeBySlug, tileColor, timeLeft, type MarketStore, type StoreProduct } from "@/lib/marketplace";
@@ -103,7 +104,7 @@ export default function OfferScreen() {
         {/* What's being negotiated */}
         <View style={[ui.card, { flexDirection: "row", alignItems: "center", gap: space.md }]}>
           <View style={{ width: 64, height: 64, borderRadius: radius.lg, backgroundColor: tileColor(store.theme), alignItems: "center", justifyContent: "center" }}>
-            <Image source={product.image} style={{ width: "78%", height: "78%" }} contentFit="contain" />
+            <ProductArt product={product} store={store} scale={0.78} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <Txt variant="label" numberOfLines={2}>{product.name}</Txt>

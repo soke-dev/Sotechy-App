@@ -1,9 +1,9 @@
 // Every price the customer is negotiating, and deals they can still buy at.
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import { router } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 import { formatNaira } from "@sotechy/shared";
+import { ProductArt } from "@/components/store-brand";
 import { EmptyState, Pill, Txt, ui } from "@/components/ui";
 import { findProduct, storeBySlug, tileColor, timeLeft } from "@/lib/marketplace";
 import { statusOf, useOffers } from "@/lib/offers";
@@ -33,7 +33,7 @@ export default function OffersScreen() {
           return (
             <Pressable key={t.id} onPress={() => router.push({ pathname: "/offer/[id]", params: { id: t.id } })} style={({ pressed }) => [ui.card, { flexDirection: "row", gap: space.md, alignItems: "center", opacity: pressed ? 0.85 : 1 }]}>
               <View style={{ width: 56, height: 56, borderRadius: radius.md, backgroundColor: tileColor(store.theme), alignItems: "center", justifyContent: "center" }}>
-                <Image source={product.image} style={{ width: "78%", height: "78%" }} contentFit="contain" />
+                <ProductArt product={product} store={store} scale={0.78} />
               </View>
               <View style={{ flex: 1, gap: 3 }}>
                 <Txt variant="label" numberOfLines={1}>{product.name}</Txt>
