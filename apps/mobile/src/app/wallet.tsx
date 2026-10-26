@@ -7,7 +7,7 @@ import { formatNaira } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { Sheet } from "@/components/shop-filters";
 import { openStore, StoreLogo } from "@/components/store-bits";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useToast } from "@/components/toast";
 import { Button, Chip, Divider, Txt, ui, type IconName } from "@/components/ui";
 import { ago, formatTokens, shortAddress, storeByTicker, tokenNaira, wallet, walletActivity, type WalletEventKind } from "@/lib/marketplace";
@@ -47,7 +47,7 @@ function ActionButton({ icon, label, onPress, primary }: { icon: IconName; label
 
 export default function WalletScreen() {
   const toast = useToast();
-  const [sheet, setSheet] = useState<"send" | "receive" | null>(null);
+  const [sheet, setSheet] = useState<"send" | "receive" | "help" | null>(null);
   const [to, setTo] = useState("");
   const [ticker, setTicker] = useState(wallet.balances[0].ticker);
   const [amount, setAmount] = useState("");
@@ -65,6 +65,15 @@ export default function WalletScreen() {
 
   return (
     <View style={ui.screen}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable onPress={() => setSheet("help")} hitSlop={8} accessibilityLabel="What are tokens?" style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="help" size={19} color={colors.ink} />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentContainerStyle={{ padding: gutter, paddingBottom: space.xxl * 2, gap: space.lg }}>
         {/* Balance */}
         <View style={{ gap: 2, paddingTop: space.sm }}>
@@ -210,6 +219,45 @@ export default function WalletScreen() {
           <Txt variant="caption" color={value > balance ? colors.danger : colors.muted}>
             {value > balance ? "More than you have" : `≈ ${formatNaira(Math.round(tokenNaira(value)))} · you have ${formatTokens(balance)} $${ticker}`}
           </Txt>
+        </View>
+      </Sheet>
+
+      <Sheet visible={sheet === "help"} title="What are tokens?" onClose={() => setSheet(null)}>
+        <View style={{ gap: space.lg }}>
+          <Txt variant="body" color={colors.ink2}>
+            Tokens are store credit you earn when you shop on Sotechy. Each store has its own, like $XENA from Xena Gadgets, and Sotechy&apos;s is $SOTECHY.
+          </Txt>
+          {[
+            {
+              title: "How you get them",
+              icon: "add-circle-outline" as IconName,
+              tone: colors.success,
+              items: ["1 token for every ₦1 you spend at a store", "10% extra in $SOTECHY when you buy from other stores", "Up to 10% more for reviewing what you bought (with a photo for the full 10%)", "Released when your order is delivered"],
+            },
+            {
+              title: "What you can do with them",
+              icon: "checkmark-circle-outline" as IconName,
+              tone: colors.success,
+              items: ["Pay at the store that gave them, like cash", "Mix tokens and money in one payment", "Spend $SOTECHY at any Sotechy store", "Send them to other Sotechy users by @username"],
+            },
+            {
+              title: "What they are not",
+              icon: "close-circle-outline" as IconName,
+              tone: colors.danger,
+              items: ["Not money: you can't withdraw them to a bank", "Not crypto to trade or sell", "Can't be sent to wallets outside Sotechy", "Not an investment: their value doesn't go up", "Only spendable at the store that issued them ($SOTECHY at Sotechy stores)"],
+            },
+          ].map((g) => (
+            <View key={g.title} style={{ gap: space.sm }}>
+              <Txt variant="label">{g.title}</Txt>
+              {g.items.map((it) => (
+                <View key={it} style={{ flexDirection: "row", gap: space.sm, alignItems: "flex-start" }}>
+                  <Ionicons name={g.icon} size={17} color={g.tone} style={{ marginTop: 1 }} />
+                  <Txt variant="small" color={colors.ink2} style={{ flex: 1, fontSize: 14 }}>{it}</Txt>
+                </View>
+              ))}
+            </View>
+          ))}
+          <Txt variant="caption">About ₦{(Math.round(tokenNaira(1000) * 100) / 100).toFixed(2)} of spending per 1,000 tokens. Your tokens live in your Sotechy wallet on the Monad network, so every movement can be checked.</Txt>
         </View>
       </Sheet>
 
