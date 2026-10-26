@@ -17,7 +17,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { ArtButton, Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatTokens, stores, tokenNaira, wallet } from "@/lib/marketplace";
+import { stores } from "@/lib/marketplace";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { useFeatures } from "@/lib/store-config";
 import { demoMedia } from "@/lib/mock-api";
@@ -168,31 +168,6 @@ export default function HomeScreen() {
           ))}
         </View>
       </View>
-
-      {/* Store tokens: what the customer can spend */}
-      <Pressable
-        onPress={() => router.push("/wallet")}
-        style={({ pressed }) => ({ marginHorizontal: gutter, marginTop: -space.md, borderRadius: radius.xl, backgroundColor: pressed ? colors.panelPressed : colors.panel, padding: space.md, flexDirection: "row", alignItems: "center", gap: space.md, overflow: "hidden" })}
-      >
-        <View style={{ position: "absolute", right: -26, top: -34, width: 96, height: 96, borderRadius: 48, backgroundColor: colors.brand, opacity: 0.95 }} />
-        <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.1)", alignItems: "center", justifyContent: "center" }}>
-          <Illo name="coin" size={32} />
-        </View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Txt variant="caption" color="rgba(255,255,255,0.6)">Your store tokens · @{wallet.username}</Txt>
-          <Txt variant="label" color={colors.white} style={{ fontSize: 16 }}>
-            ≈ {formatNaira(Math.round(wallet.balances.reduce((n, b) => n + tokenNaira(b.amount), 0)))} to spend
-          </Txt>
-          <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-            {wallet.balances.map((b) => (
-              <View key={b.ticker} style={{ borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.1)", paddingHorizontal: 8, paddingVertical: 2 }}>
-                <Txt variant="caption" color={colors.brandYellow} style={{ fontSize: 11 }}>${b.ticker} {formatTokens(b.amount)}</Txt>
-              </View>
-            ))}
-          </View>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.white} />
-      </Pressable>
 
       <HeroCarousel width={contentWidth} />
 
