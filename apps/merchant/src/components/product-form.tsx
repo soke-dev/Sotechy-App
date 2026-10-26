@@ -35,6 +35,7 @@ export function ProductForm({ product }: { product?: Product }) {
   const router = useRouter();
   const [options, setOptions] = useState<Option[]>(product?.options?.map((o) => ({ name: o, stock: Math.ceil(product.stock / product.options!.length) })) ?? []);
   const [stock, setStock] = useState(product?.stock ?? 0);
+  const [about, setAbout] = useState("");
   const [features, setFeatures] = useState<string[]>(["", ""]);
   const [specs, setSpecs] = useState<[string, string][]>([["", ""]]);
   const [status, setStatus] = useState<Product["status"]>(product?.status ?? "live");
@@ -56,6 +57,9 @@ export function ProductForm({ product }: { product?: Product }) {
     !name.trim() && "the product name",
     !category && "a category",
     !(price > 0) && "the price",
+    !about.trim() && "a description (About this product)",
+    !features.some((f) => f.trim()) && "at least one key feature",
+    !specs.some(([k, v]) => k.trim() && v.trim()) && "at least one specification",
     options.some((o) => !o.name.trim()) && "a name for each option",
     !ticked.size && !pickup && "a delivery area or shop pickup",
   ].filter(Boolean) as string[];
@@ -232,7 +236,7 @@ export function ProductForm({ product }: { product?: Product }) {
             )}
           </Card>
 
-          <Card title="Details" description="What customers see on the product page.">
+          <Card required title="Details" description="What customers see on the product page.">
             <div className="flex flex-col gap-4">
               <p className="flex items-start gap-2 rounded-2xl bg-brand-soft px-3 py-2.5 text-sm text-ink-2">
                 <Lightbulb size={16} className="mt-0.5 shrink-0 text-brand-strong" />
@@ -242,10 +246,10 @@ export function ProductForm({ product }: { product?: Product }) {
                   <span>Pick a category above and we&apos;ll suggest what to fill in.</span>
                 )}
               </p>
-              <Field label="About this product">
-                <textarea rows={4} className={inputClass} placeholder="What it is, who it's for and why it's good." />
+              <Field required label="About this product">
+                <textarea rows={4} value={about} onChange={(e) => setAbout(e.target.value)} className={inputClass} placeholder="What it is, who it's for and why it's good." />
               </Field>
-              <Field label="Key features">
+              <Field required label="Key features" hint="At least one.">
                 <div className="flex flex-col gap-2">
                   {features.map((f, i) => (
                     <div key={i} className="flex gap-2">
@@ -265,7 +269,7 @@ export function ProductForm({ product }: { product?: Product }) {
               <Field label="What's in the box" hint="Separate items with commas.">
                 <input className={inputClass} placeholder={`e.g. ${hints.inBox}`} />
               </Field>
-              <Field label="Specifications">
+              <Field required label="Specifications" hint="At least one, with its value.">
                 <div className="flex flex-col gap-2">
                   {hints.specs.some(([label]) => !usedSpecs.has(label.toLowerCase())) && (
                     <div className="flex flex-wrap gap-1.5">
