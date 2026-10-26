@@ -17,7 +17,7 @@ const ACTIONS: Record<CaseKind, { label: string; outcome: string; style: "primar
     { label: "Move to another merchant", outcome: "Offered to another merchant that stocks it.", style: "dark" },
   ],
   not_confirmed: [
-    { label: "Confirm delivery", outcome: "Confirmed by Sotechy. Second 50% paid and the customer's tokens released.", style: "primary" },
+    { label: "Confirm delivery", outcome: "Confirmed by Sotechy. Last payment sent and the customer's tokens released.", style: "primary" },
     { label: "Message the customer again", outcome: "Customer messaged on WhatsApp and email.", style: "outline" },
   ],
   payback: [
@@ -26,8 +26,8 @@ const ACTIONS: Record<CaseKind, { label: string; outcome: string; style: "primar
     { label: "Refund from Sotechy now", outcome: "Sotechy refunded the customer and will collect from the merchant.", style: "outline" },
   ],
   dispute: [
-    { label: "Side with the customer: refund", outcome: "Customer refunded. Second 50% cancelled.", style: "danger" },
-    { label: "Side with the merchant: confirm", outcome: "Confirmed. Second 50% paid to the merchant.", style: "primary" },
+    { label: "Side with the customer: refund", outcome: "Customer refunded. Last payment cancelled.", style: "danger" },
+    { label: "Side with the merchant: confirm", outcome: "Confirmed. Last payment sent to the merchant.", style: "primary" },
     { label: "Ask both for more photos", outcome: "Asked both sides for more photos.", style: "outline" },
   ],
 };

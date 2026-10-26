@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, PackagePlus, ScanBarcode, ShoppingBag, Wallet } from "lucide-react";
-import { formatDate, formatNaira, type AppFeatures } from "@sotechy/shared";
+import { AlertTriangle, ArrowRight, PackagePlus, ScanBarcode } from "lucide-react";
+import { formatNaira, type AppFeatures } from "@sotechy/shared";
 import { Illo, type IlloName } from "@/components/illustrations";
-import { Card, DataTable, ErrorNote, Pill, SampleBadge, StatCard, StatusBadge } from "@/components/ui";
+import { Card, ErrorNote, Pill, SampleBadge, StatCard } from "@/components/ui";
+import { fromApiOrder, fromMerchantOrder, OrderList } from "@/components/order-list";
 import { getCurrentUser, load } from "@/lib/api";
-import { FEE, merchantPayouts, merchants, queue, reserve, reserveHealth } from "@/lib/marketplace";
+import { FEE, merchantOrders, merchantPayouts, merchants, queue, reserve, reserveHealth } from "@/lib/marketplace";
 import type { AdminOrderRow, SalesSummary } from "@/lib/types";
 
 function StatusDot({ on, label }: { on: boolean; label: string }) {
@@ -222,7 +223,7 @@ export default async function DashboardPage() {
 
       <Card
         title="Recent orders"
-        description="The latest 10 orders, online and in store"
+        description="The latest orders from Sotechy and every merchant"
         actions={
           <Link href="/orders" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-strong hover:underline">
             All orders <ArrowRight size={15} />
@@ -230,24 +231,9 @@ export default async function DashboardPage() {
         }
       >
         <ErrorNote error={orders.error} />
-        <DataTable
-          rows={(orders.data ?? []).slice(0, 10)}
+        <OrderList
+          rows={[...(orders.data ?? []).map(fromApiOrder), ...merchantOrders.map(fromMerchantOrder)].sort((x, y) => y.at.localeCompare(x.at)).slice(0, 8)}
           empty="No orders yet. They'll appear here as soon as customers check out."
-          columns={[
-            {
-              header: "Order",
-              cell: (o) => (
-                <Link className="inline-flex items-center gap-2 font-semibold hover:text-brand-strong" href={`/orders/${o.id}`}>
-                  {o.channel === "online" ? <ShoppingBag size={15} className="text-muted" /> : <Wallet size={15} className="text-muted" />}
-                  {o.orderNumber}
-                </Link>
-              ),
-            },
-            { header: "Status", cell: (o) => <StatusBadge status={o.status} /> },
-            { header: "Channel", cell: (o) => (o.channel === "online" ? "Online" : "In store") },
-            { header: "Total", cell: (o) => <span className="font-semibold">{formatNaira(o.total)}</span> },
-            { header: "Date", cell: (o) => <span className="text-muted">{formatDate(o.createdAt)}</span> },
-          ]}
         />
       </Card>
     </>

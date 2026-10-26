@@ -50,10 +50,10 @@ sequenceDiagram
   Note over C: Tokens earned: pending
   S->>M: New order (dashboard + email)
   alt Merchant accepts within 24h
-    S->>M: 50% of merchant share (after 2% fee)
+    S->>M: First payment (plan's share + delivery fee)
     M->>C: Ships, marks delivered
     C->>S: Confirms delivery (or Sotechy confirms after review)
-    S->>M: Remaining 50%
+    S->>M: Last payment (the rest)
     Note over C: 100% of tokens released
   else Merchant declines / no response
     Note over S: Sotechy reviews; refund handled manually
@@ -61,11 +61,12 @@ sequenceDiagram
 ```
 
 - **Fee:** 2% of the order, taken first, split **1% reserve + 1% Sotechy revenue**. Rate and split adjustable in admin.
-- **Merchant share:** the other 98%, paid **50% on accept** and **50% on completion** to the payout method the merchant set up (bank account). Merchants don't need a Money Moves account.
+- **Merchant share:** the other 98%, paid in two payments to the merchant's bank account: a **first payment on accept** and the **last payment on completion**. Merchants don't need a Money Moves account.
+- **Payout plans (set in admin):** one plan for everyone (default **50% first**) plus a plan per merchant where needed, e.g. **90% first** for a trusted store or **10% first** for a new one. Each plan also says **how the 2% fee is collected**: spread over both payments (default), all from the first payment, or all from the last payment (held back until delivery). Admin warns when a payment would be too small to carry the fee. Changes apply to orders placed after saving.
 - **Timers:**
   - Merchant has **24 hours** to accept. No response: Sotechy reviews manually.
   - After the merchant marks it delivered, the customer confirms. No response: Sotechy reviews and confirms.
-- **Merchant can't ship after taking the first 50%:** Sotechy asks the merchant to pay it back and refunds the customer. The customer sees **"Processing"** throughout.
+- **Merchant can't ship after taking the first payment:** Sotechy asks the merchant to pay it back and refunds the customer. The customer sees **"Processing"** throughout.
 - **No returns after the customer confirms delivery**, so released tokens are never clawed back.
 
 Worked example, ₦100,000 order from Xena:
@@ -83,7 +84,7 @@ Worked example, ₦100,000 order from Xena:
 
 - At checkout the customer can use the store's tokens for part or all of the order and pay the rest in naira: Xena with XENA + naira, Sotechy with SOTECHY + naira.
 - Tokens are held in escrow (on-chain) until the order completes; if it's cancelled they go back to the customer.
-- When the order completes, the redeemed tokens split **50% to the recycling pool** and **50% to Sotechy's reserve wallet**, and Sotechy pays the merchant the naira value from the reserve as part of the normal 50/50 payout.
+- When the order completes, the redeemed tokens split **50% to the recycling pool** and **50% to Sotechy's reserve wallet**, and Sotechy pays the merchant the naira value from the reserve as part of the normal two payments.
 - **Recycling pool:** existing tokens reused for review bonuses and promotions before anything new is minted.
 - **Sotechy reserve wallet:** controlled by Sotechy (not locked). Re-using those tokens creates new store obligations, so they're only re-issued against funding (for example, a promotion paid from revenue).
 
@@ -102,7 +103,7 @@ Worked example, ₦100,000 order from Xena:
   Admin then approves, rejects or asks for changes with a note.
 - **Selling:** merchants upload goods to their storefront from the dashboard: photos, price, options (size, colour, storage), stock, description, key features, what's in the box and specs, the same product page customers already see. Their products also appear in Shop and search; admin can hide listings that break the rules.
 - **Delivery areas:** merchants save delivery areas once (a state, optionally just some cities, with a delivery time and free-over amount) and tick which areas each product ships to, adding a new area from the product form if needed. Each area has **two prices the merchant sets: home delivery and pickup** (a cheaper collection point in that area, such as a park, courier office or their shop); the customer picks one at checkout. **Every new area, and any change to an area's state or cities, waits for Sotechy's approval** so we can confirm the merchant really delivers there; price and time changes go live straight away. Merchants can also offer free pickup at their own shop for anyone. Big items can be pickup-only. Customers only see approved areas that cover their address.
-- **Notifications:** merchants always get new orders by email (it can't be switched off, because of the 24-hour accept window), and can also get them by SMS and on WhatsApp from Sotechy's official WhatsApp Business number, with a link to accept. Customers get every order update (accepted, shipped or ready for pickup, delivered) on WhatsApp and by email. A decline or payback is not sent: the customer keeps seeing "Processing" while Sotechy sorts it out. The **2% fee is on goods only**, and the **delivery fee is paid to the merchant in full with the first 50%**.
+- **Notifications:** merchants always get new orders by email (it can't be switched off, because of the 24-hour accept window), and can also get them by SMS and on WhatsApp from Sotechy's official WhatsApp Business number, with a link to accept. Customers get every order update (accepted, shipped or ready for pickup, delivered) on WhatsApp and by email. A decline or payback is not sent: the customer keeps seeing "Processing" while Sotechy sorts it out. The **2% fee is on goods only**, and the **delivery fee is paid to the merchant in full with the first payment**.
 - **Test mode before approval;** live selling and payouts only once verified. Daily payout limits for new merchants.
 - **Team:** owner invites staff with roles (owner, admin, orders, catalogue, finance, viewer).
 - **Dashboard** in the customer app's look (cream, Sotechy orange, illustrated icons):
@@ -170,7 +171,7 @@ Sotechy manages the reserve directly (no automatic pausing). Admin dashboards sh
 - Called **tokens**, shown by ticker ($XENA); merchants choose the ticker at onboarding.
 - **2% fee** kept, so store value is **₦0.00909 per token**.
 - **Own wallet contract** (WalletFactory), no wallet provider; Sotechy pays gas.
-- **Automatic payouts** to the merchant's bank account for both 50% halves. Sent through Money Moves (Sotechy's own provider) once it offers a payouts API; a bank-transfer provider such as Flutterwave is the fallback.
+- **Automatic payouts** to the merchant's bank account for both payments. Sent through Money Moves (Sotechy's own provider) once it offers a payouts API; a bank-transfer provider such as Flutterwave is the fallback.
 
 ## 10. Questions for a Nigerian lawyer before launch
 
@@ -179,4 +180,4 @@ Sotechy manages the reserve directly (no automatic pausing). Admin dashboards sh
 - **FCCPC:** consumer terms for token value, expiry, refunds, disputes and the merchant review timers.
 - **NDPA:** storing customer IDs, usernames and merchant KYB documents; wallet data.
 - **Tax:** VAT on the 2% fee; accounting for tokens issued and redeemed; merchant withholding.
-- **Merchant agreement:** the 2% fee, the 50/50 payout terms and paying back the first 50% when an order isn't shipped.
+- **Merchant agreement:** the 2% fee, the payout plan (and that Sotechy can change it) and paying back the first payment when an order isn't shipped.

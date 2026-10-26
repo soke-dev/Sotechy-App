@@ -23,12 +23,12 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         <DataTable
           rows={payments.data ?? []}
           columns={[
-            { header: "Order", cell: (p) => <Link href={`/orders/${p.orderId}`} className="underline">{p.orderNumber}</Link> },
+            { header: "Order", cell: (p) => <Link href={`/orders/${p.orderId}`} className="font-semibold hover:text-brand-strong">{p.orderNumber}</Link> },
             { header: "Method", cell: (p) => PAYMENT_METHOD_LABELS[p.method] + (p.cryptoAsset ? ` (${p.cryptoAsset})` : "") },
             { header: "Amount", cell: (p) => formatNaira(p.amount) },
             { header: "Status", cell: (p) => <StatusBadge status={p.status} /> },
-            { header: "Provider", cell: (p) => p.provider ?? "—" },
-            { header: "Reference", cell: (p) => p.providerReference ?? p.txHash ?? "—" },
+            { header: "Provider", hideOnPhone: true, cell: (p) => p.provider ?? "—" },
+            { header: "Reference", hideOnPhone: true, cell: (p) => p.providerReference ?? p.txHash ?? "—" },
             { header: "Created", cell: (p) => formatDate(p.createdAt) },
           ]}
         />
@@ -38,7 +38,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         <DataTable
           rows={refunds.data ?? []}
           columns={[
-            { header: "Order", cell: (r) => <Link href={`/orders/${r.orderId}`} className="underline">{r.orderNumber}</Link> },
+            { header: "Order", cell: (r) => <Link href={`/orders/${r.orderId}`} className="font-semibold hover:text-brand-strong">{r.orderNumber}</Link> },
             { header: "Amount", cell: (r) => formatNaira(r.amount) },
             { header: "Reason", cell: (r) => r.reason ?? "—" },
             { header: "Status", cell: (r) => <StatusBadge status={r.status} /> },

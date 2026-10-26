@@ -1,15 +1,16 @@
 "use client";
 
-import { ArrowLeft, Check, Maximize2, RotateCw, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Check, Maximize2, Pencil, RotateCw, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { use, useState, type ReactNode } from "react";
 import { formatNaira } from "@sotechy/shared";
 import { DocArt } from "@/components/doc-art";
 import { CheckIcon, MerchantAvatar } from "@/components/merchant-bits";
+import { PlanEditor } from "@/components/payout-plan";
 import { RelTime } from "@/components/rel-time";
-import { buttonClass, Card, dangerButtonClass, inputClass, Pill, SampleBadge, Sheet } from "@/components/ui";
-import { docsChecked, MERCHANT_STATUS, merchants, type DocStatus, type Merchant, type MerchantEvent, type MerchantStatus } from "@/lib/marketplace";
+import { buttonClass, Card, dangerButtonClass, inputClass, Pill, primaryButtonClass, SampleBadge, secondaryButtonClass, Sheet } from "@/components/ui";
+import { describePlan, docsChecked, MERCHANT_STATUS, merchants, payoutPlans, planFor, type DocStatus, type Merchant, type MerchantEvent, type MerchantStatus, type PayoutPlan } from "@/lib/marketplace";
 
 type Decision = "info" | "reject" | "suspend";
 
@@ -55,6 +56,8 @@ function MerchantReview({ source }: { source: Merchant }) {
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState(source.teamNotes ?? "");
   const [notice, setNotice] = useState<string | null>(null);
+  const [plan, setPlan] = useState(() => planFor(source.id));
+  const [planDraft, setPlanDraft] = useState<PayoutPlan | null>(null);
 
   const doc = m.docs.find((d) => d.id === docId) ?? m.docs[0];
   const allAccepted = m.docs.every((d) => d.status === "accepted");
@@ -298,6 +301,16 @@ function MerchantReview({ source }: { source: Merchant }) {
               <CheckIcon ok={m.payout.matches !== null} />
               {m.payout.matches === "business" ? "Matches the business name" : m.payout.matches === "owner" ? "Matches the owner's own name" : "Doesn't match the business or the owner"}
             </p>
+            <div className="mt-4 flex items-center gap-3 border-t border-line pt-4">
+              <span className="font-display text-2xl font-extrabold">{plan.plan.firstPercent}%</span>
+              <span className="min-w-0 flex-1 text-sm">
+                <span className="block font-semibold">{plan.custom ? "Their own payout plan" : "Plan for everyone"}</span>
+                <span className="block text-xs text-muted">{describePlan(plan.plan)}</span>
+              </span>
+              <button onClick={() => setPlanDraft(plan.plan)} className={`${secondaryButtonClass} min-h-9 px-3`}>
+                <Pencil size={14} /> Edit
+              </button>
+            </div>
           </Card>
 
           <Card title="Wants to deliver to">
@@ -326,6 +339,40 @@ function MerchantReview({ source }: { source: Merchant }) {
           </section>
         </div>
       </div>
+
+      <Sheet open={planDraft !== null} onClose={() => setPlanDraft(null)} title={`${m.name}'s payout plan`}>
+        {planDraft && (
+          <div className="flex flex-col gap-4">
+            <PlanEditor plan={planDraft} onChange={setPlanDraft} />
+            <div className="flex gap-2">
+              {plan.custom && (
+                <button
+                  onClick={() => {
+                    delete payoutPlans.merchants[m.id];
+                    setPlan(planFor(m.id));
+                    save({}, { text: "Moved back to the plan for everyone", tone: "neutral" });
+                    setPlanDraft(null);
+                  }}
+                  className={secondaryButtonClass}
+                >
+                  Use the plan for everyone
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  payoutPlans.merchants[m.id] = planDraft;
+                  setPlan(planFor(m.id));
+                  save({}, { text: `Payout plan set: ${describePlan(planDraft)}`, tone: "neutral" });
+                  setPlanDraft(null);
+                }}
+                className={`${primaryButtonClass} flex-1`}
+              >
+                Save their plan
+              </button>
+            </div>
+          </div>
+        )}
+      </Sheet>
 
       <Sheet open={decision !== null} onClose={() => setDecision(null)} title={decision ? DECISION[decision].title : ""}>
         {decision && (

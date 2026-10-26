@@ -127,7 +127,7 @@ export function Card({
   );
 }
 
-type Tone = "neutral" | "brand" | "good" | "warn" | "bad" | "info";
+export type Tone = "neutral" | "brand" | "good" | "warn" | "bad" | "info";
 
 const tileTones: Record<Tone, string> = {
   neutral: "bg-surface-alt",
@@ -204,6 +204,9 @@ const statusTone: Partial<Record<string, Tone>> = {
   refunded: "bad",
 };
 
+/** The colour for an order or payment status */
+export const toneForStatus = (status: string): Tone => statusTone[status] ?? "neutral";
+
 export function StatusBadge({ status }: { status: string }) {
   const label = ORDER_STATUS_LABELS[status as OrderStatus] ?? status.replace(/_/g, " ");
   return (
@@ -217,6 +220,8 @@ export interface Column<T> {
   header: string;
   cell: (row: T) => ReactNode;
   className?: string;
+  /** Leave this column out of the compact phone card */
+  hideOnPhone?: boolean;
 }
 
 /** A table on wide screens; on phones each row becomes a card of label/value pairs. */
@@ -259,18 +264,27 @@ export function DataTable<T>({ rows, columns, empty = "Nothing here yet" }: { ro
           </tbody>
         </table>
       </div>
-      <ul className="flex flex-col gap-3 md:hidden">
+      {/* Phones: the first column as the title, the rest as small label/value pairs on a line or two */}
+      <ul className="flex flex-col gap-2 md:hidden">
         {rows.map((row, i) => (
-          <li key={i} className="rounded-2xl border border-line bg-surface p-4">
-            <div className="mb-2 font-semibold">{first.cell(row)}</div>
-            <dl className="grid grid-cols-1 gap-2 text-sm">
-              {rest.map((c, j) => (
-                <div key={c.header || j} className={c.header ? "grid grid-cols-[110px_1fr] items-start gap-3" : ""}>
-                  {c.header && <dt className="pt-0.5 text-xs text-muted">{c.header}</dt>}
-                  <dd className="min-w-0 break-words">{c.cell(row)}</dd>
-                </div>
+          <li key={i} className="rounded-2xl border border-line bg-surface px-3.5 py-3">
+            <div className="min-w-0 font-semibold">{first.cell(row)}</div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              {rest
+                .filter((c) => c.header && !c.hideOnPhone)
+                .map((c, j) => (
+                  <span key={c.header || j} className="inline-flex min-w-0 items-center gap-1">
+                    <span className="text-muted">{c.header}</span>
+                    <span className="min-w-0 break-words font-medium text-ink">{c.cell(row)}</span>
+                  </span>
+                ))}
+            </div>
+            {/* Columns without a header hold buttons or forms: give them their own line */}
+            {rest
+              .filter((c) => !c.header && !c.hideOnPhone)
+              .map((c, j) => (
+                <div key={j} className="mt-2">{c.cell(row)}</div>
               ))}
-            </dl>
           </li>
         ))}
       </ul>

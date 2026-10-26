@@ -71,9 +71,9 @@ export default function TokensPage() {
                 {
                   header: "Token",
                   cell: (t) => (
-                    <span>
-                      <span className="block font-display font-bold text-brand-strong">${t.ticker}</span>
-                      <span className="text-xs text-muted">{t.merchant}</span>
+                    <span className="flex flex-wrap items-baseline gap-x-2 md:block">
+                      <span className="font-display font-bold text-brand-strong md:block">${t.ticker}</span>
+                      <span className="text-xs font-normal text-muted">{t.merchant}</span>
                     </span>
                   ),
                 },
@@ -83,6 +83,7 @@ export default function TokensPage() {
                 { header: "Holders", cell: (t) => t.holders.toLocaleString() },
                 {
                   header: "Contract",
+                  hideOnPhone: true,
                   cell: (t) => (
                     <a href="#" className="inline-flex items-center gap-1 whitespace-nowrap font-mono text-xs text-muted hover:text-ink">
                       {t.contract} <ExternalLink size={12} />

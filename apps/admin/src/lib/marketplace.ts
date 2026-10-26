@@ -208,17 +208,17 @@ export const CASE_KIND: Record<CaseKind, { label: string; tone: "warn" | "info" 
 
 export const orderCases: OrderCase[] = [
   { id: "c1", kind: "not_accepted", order: "SOT-1039", merchant: "BrightHome Appliances", customer: "@ifeoma", total: 410_000, openedAt: ago(60 * 2), detail: "Placed 26 hours ago. Merchant hasn't answered email, SMS or WhatsApp.", money: "Nothing paid to the merchant yet. Customer sees \"Processing\"." },
-  { id: "c2", kind: "not_confirmed", order: "SOT-1027", merchant: "Xena Gadgets", customer: "@tunde", total: 95_000, openedAt: ago(60 * 30), detail: "Marked delivered 3 days ago with a photo of the handover. Customer hasn't confirmed.", money: "Confirming releases the second 50% (₦46,550) and the customer's tokens." },
-  { id: "c3", kind: "payback", order: "SOT-1016", merchant: "QuickFix Phones", customer: "@musa.k", total: 86_400, openedAt: ago(60 * 24 * 2), detail: "Merchant accepted, then said the item was out of stock.", money: "First 50% (₦42,336) was paid. Merchant owes it back before the customer is refunded." },
-  { id: "c4", kind: "dispute", order: "SOT-1031", merchant: "Xena Gadgets", customer: "@amaka.n", total: 205_000, openedAt: ago(60 * 5), detail: "\"The TV came with a cracked corner.\" Photo attached. No returns after confirmation, but this is before.", money: "Second 50% is on hold until this is settled." },
-  { id: "c5", kind: "not_confirmed", order: "SOT-1012", merchant: "BrightHome Appliances", customer: "@kelechi", total: 120_000, openedAt: ago(60 * 50), detail: "Marked delivered 2 days ago. Courier tracking shows delivered.", money: "Confirming releases the second 50% (₦58,800)." },
+  { id: "c2", kind: "not_confirmed", order: "SOT-1027", merchant: "Xena Gadgets", customer: "@tunde", total: 95_000, openedAt: ago(60 * 30), detail: "Marked delivered 3 days ago with a photo of the handover. Customer hasn't confirmed.", money: "Confirming releases the last payment (₦46,550) and the customer's tokens." },
+  { id: "c3", kind: "payback", order: "SOT-1016", merchant: "QuickFix Phones", customer: "@musa.k", total: 86_400, openedAt: ago(60 * 24 * 2), detail: "Merchant accepted, then said the item was out of stock.", money: "The first payment (₦42,336) was made. Merchant owes it back before the customer is refunded." },
+  { id: "c4", kind: "dispute", order: "SOT-1031", merchant: "Xena Gadgets", customer: "@amaka.n", total: 205_000, openedAt: ago(60 * 5), detail: "\"The TV came with a cracked corner.\" Photo attached. No returns after confirmation, but this is before.", money: "The last payment is on hold until this is settled." },
+  { id: "c5", kind: "not_confirmed", order: "SOT-1012", merchant: "BrightHome Appliances", customer: "@kelechi", total: 120_000, openedAt: ago(60 * 50), detail: "Marked delivered 2 days ago. Courier tracking shows delivered.", money: "Confirming releases the last payment (₦58,800)." },
 ];
 
 export interface MerchantPayout {
   id: string;
   merchant: string;
   order: string;
-  half: "First 50%" | "Second 50%";
+  half: "First payment" | "Last payment";
   amount: number;
   status: "paid" | "scheduled" | "held" | "failed";
   at: string;
@@ -226,13 +226,13 @@ export interface MerchantPayout {
 }
 
 export const merchantPayouts: MerchantPayout[] = [
-  { id: "p1", merchant: "Xena Gadgets", order: "SOT-1042", half: "First 50%", amount: 134_260, status: "paid", at: ago(30), bank: "GTBank ••6789" },
-  { id: "p2", merchant: "BrightHome Appliances", order: "SOT-1040", half: "First 50%", amount: 203_350, status: "paid", at: ago(60 * 3), bank: "UBA ••4410" },
-  { id: "p3", merchant: "Xena Gadgets", order: "SOT-1031", half: "Second 50%", amount: 100_450, status: "held", at: ago(60 * 5), bank: "GTBank ••6789" },
-  { id: "p4", merchant: "Sotechy", order: "SOT-1036", half: "Second 50%", amount: 61_250, status: "scheduled", at: ago(10), bank: "Access ••2201" },
-  { id: "p5", merchant: "BrightHome Appliances", order: "SOT-1028", half: "Second 50%", amount: 44_100, status: "failed", at: ago(60 * 20), bank: "UBA ••4410" },
-  { id: "p6", merchant: "Xena Gadgets", order: "SOT-1027", half: "First 50%", amount: 46_550, status: "paid", at: ago(60 * 24 * 4), bank: "GTBank ••6789" },
-  { id: "p7", merchant: "Sotechy", order: "SOT-1030", half: "First 50%", amount: 88_200, status: "paid", at: ago(60 * 24), bank: "Access ••2201" },
+  { id: "p1", merchant: "Xena Gadgets", order: "SOT-1042", half: "First payment", amount: 134_260, status: "paid", at: ago(30), bank: "GTBank ••6789" },
+  { id: "p2", merchant: "BrightHome Appliances", order: "SOT-1040", half: "First payment", amount: 203_350, status: "paid", at: ago(60 * 3), bank: "UBA ••4410" },
+  { id: "p3", merchant: "Xena Gadgets", order: "SOT-1031", half: "Last payment", amount: 100_450, status: "held", at: ago(60 * 5), bank: "GTBank ••6789" },
+  { id: "p4", merchant: "Sotechy", order: "SOT-1036", half: "Last payment", amount: 61_250, status: "scheduled", at: ago(10), bank: "Access ••2201" },
+  { id: "p5", merchant: "BrightHome Appliances", order: "SOT-1028", half: "Last payment", amount: 44_100, status: "failed", at: ago(60 * 20), bank: "UBA ••4410" },
+  { id: "p6", merchant: "Xena Gadgets", order: "SOT-1027", half: "First payment", amount: 46_550, status: "paid", at: ago(60 * 24 * 4), bank: "GTBank ••6789" },
+  { id: "p7", merchant: "Sotechy", order: "SOT-1030", half: "First payment", amount: 88_200, status: "paid", at: ago(60 * 24), bank: "Access ••2201" },
 ];
 
 export const PAYOUT_STATUS = {
@@ -294,6 +294,88 @@ export const TOKEN_EVENT = {
   bonus: { label: "Review bonus", tone: "brand" },
   pos: { label: "Walk-in mint", tone: "neutral" },
 } as const;
+
+export type MerchantOrderStatus = "new" | "accepted" | "shipped" | "delivered" | "completed" | "declined";
+
+export const MERCHANT_ORDER_STATUS: Record<MerchantOrderStatus, { label: string; tone: "warn" | "info" | "brand" | "good" | "bad" }> = {
+  new: { label: "Waiting for merchant", tone: "warn" },
+  accepted: { label: "Accepted", tone: "info" },
+  shipped: { label: "Shipped", tone: "brand" },
+  delivered: { label: "Delivered", tone: "good" },
+  completed: { label: "Completed", tone: "good" },
+  declined: { label: "Declined", tone: "bad" },
+};
+
+/** Orders placed with marketplace merchants (Sotechy's own orders come from the API) */
+export interface MerchantOrder {
+  id: string;
+  number: string;
+  merchantId: string;
+  customer: string;
+  status: MerchantOrderStatus;
+  fulfilment: "delivery" | "pickup";
+  total: number;
+  createdAt: string;
+  payout: string;
+}
+
+export const merchantOrders: MerchantOrder[] = [
+  { id: "mo1", number: "SOT-1042", merchantId: "m2", customer: "Chidi Okeke", status: "new", fulfilment: "delivery", total: 274_000, createdAt: ago(38), payout: "Nothing paid yet" },
+  { id: "mo2", number: "SOT-1041", merchantId: "m2", customer: "Amaka Nwosu", status: "new", fulfilment: "pickup", total: 28_000, createdAt: ago(60 * 3), payout: "Nothing paid yet" },
+  { id: "mo3", number: "SOT-1040", merchantId: "m6", customer: "Ifeoma Eze", status: "accepted", fulfilment: "delivery", total: 415_000, createdAt: ago(60 * 4), payout: "First payment sent" },
+  { id: "mo4", number: "SOT-1039", merchantId: "m6", customer: "Ifeoma Eze", status: "new", fulfilment: "delivery", total: 410_000, createdAt: ago(60 * 26), payout: "Nothing paid yet" },
+  { id: "mo5", number: "SOT-1036", merchantId: "m2", customer: "Kelechi Obi", status: "shipped", fulfilment: "delivery", total: 125_000, createdAt: ago(60 * 20), payout: "First payment sent" },
+  { id: "mo6", number: "SOT-1031", merchantId: "m2", customer: "Amaka Nwosu", status: "delivered", fulfilment: "delivery", total: 205_000, createdAt: ago(60 * 24 * 3), payout: "Last payment on hold" },
+  { id: "mo7", number: "SOT-1027", merchantId: "m2", customer: "Tunde Bakare", status: "delivered", fulfilment: "delivery", total: 95_000, createdAt: ago(60 * 24 * 4), payout: "First payment sent" },
+  { id: "mo8", number: "SOT-1016", merchantId: "m7", customer: "Musa Kabir", status: "declined", fulfilment: "delivery", total: 86_400, createdAt: ago(60 * 24 * 5), payout: "₦42,336 to pay back" },
+];
+
+/** How a merchant is paid: the share of the goods paid when they accept (the rest when delivery is
+ *  confirmed), and when Sotechy's fee comes out. The delivery fee is always paid with the first payment. */
+export type FeeTiming = "spread" | "first" | "last";
+export interface PayoutPlan {
+  firstPercent: number;
+  fee: FeeTiming;
+}
+
+export const FEE_TIMING: Record<FeeTiming, { label: string; hint: string }> = {
+  spread: { label: "Spread over both", hint: "Taken off the total before it's split, so each payment carries its share." },
+  first: { label: "From the first payment", hint: "All of it comes out of the payment made when they accept." },
+  last: { label: "From the last payment", hint: "Held back until delivery is confirmed. Good when you pay more up front." },
+};
+
+/** The default plan and the merchants with their own. Kept here for the session until the backend stores it. */
+export const payoutPlans: { standard: PayoutPlan; merchants: Record<string, PayoutPlan> } = {
+  standard: { firstPercent: 50, fee: "spread" },
+  merchants: {
+    m1: { firstPercent: 90, fee: "last" },
+    m7: { firstPercent: 10, fee: "first" },
+  },
+};
+
+export const planFor = (merchantId: string): { plan: PayoutPlan; custom: boolean } =>
+  payoutPlans.merchants[merchantId] ? { plan: payoutPlans.merchants[merchantId], custom: true } : { plan: payoutPlans.standard, custom: false };
+
+/** What a merchant receives at each step for an order, and whether a payment is too small to carry the fee */
+export function splitByPlan(goods: number, delivery: number, plan: PayoutPlan, rate = FEE.rate) {
+  const fee = Math.round(goods * rate);
+  const p = plan.firstPercent / 100;
+  let first: number;
+  let second: number;
+  if (plan.fee === "first") {
+    first = Math.round(goods * p) - fee;
+    second = goods - Math.round(goods * p);
+  } else if (plan.fee === "last") {
+    first = Math.round(goods * p);
+    second = goods - Math.round(goods * p) - fee;
+  } else {
+    first = Math.round((goods - fee) * p);
+    second = goods - fee - first;
+  }
+  return { fee, first: first + delivery, second, problem: first < 0 || second < 0 };
+}
+
+export const describePlan = (plan: PayoutPlan) => `${plan.firstPercent}% first · fee ${plan.fee === "spread" ? "spread over both" : plan.fee === "first" ? "from the first payment" : "from the last payment"}`;
 
 /** What the admin needs to look at, for the nav badges and the dashboard */
 export const queue = {
