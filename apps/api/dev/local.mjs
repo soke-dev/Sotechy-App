@@ -4,6 +4,8 @@
 //  - A local Money Moves stand-in with a test payment page (no real money)
 //  - The API with live reload, on your Wi-Fi address so a phone can reach it
 import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
 import { networkInterfaces } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,8 +34,13 @@ const mmServer = await startFakeMoneyMoves({
   ...fake,
 });
 
+// Google sign-in client IDs are the one setting taken from apps/api/.env (everything else here is local)
+const envFile = join(apiDir, ".env");
+const googleIds = existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")).GOOGLE_CLIENT_IDS : undefined;
+
 const env = {
   ...process.env,
+  ...(googleIds && { GOOGLE_CLIENT_IDS: googleIds }),
   NODE_ENV: "development",
   PORT: String(API_PORT),
   DATABASE_URL: `postgres://postgres:postgres@127.0.0.1:${DB_PORT}/postgres`,
