@@ -3,14 +3,18 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { formatNaira } from "@sotechy/shared";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { api } from "@/lib/api";
-import { formatTokens, wallet, type MarketStore, type StoreProduct } from "@/lib/marketplace";
-import { colors, fonts, radius, space } from "@/lib/theme";
+import { formatTokens, tileColor, wallet, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { BrandMark, StoreCover } from "./store-brand";
+import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { Txt } from "./ui";
 
 export const openStore = (slug: string) => router.push({ pathname: "/store/[slug]", params: { slug } });
+/** A marketplace store's product page */
+export const openItem = (store: string, id: string) => router.push({ pathname: "/item/[store]/[id]", params: { store, id } });
 
 /** How many of this store's tokens the customer holds */
 export const heldTokens = (ticker: string) => wallet.balances.find((b) => b.ticker === ticker)?.amount ?? 0;
@@ -22,15 +26,12 @@ export function StoreLogo({ store, size = 52, ring }: { store: MarketStore; size
         width: size,
         height: size,
         borderRadius: size * 0.3,
-        backgroundColor: store.theme.accent,
-        alignItems: "center",
-        justifyContent: "center",
         overflow: "hidden",
         borderWidth: ring ? 3 : 0,
         borderColor: ring,
       }}
     >
-      <Image source={store.logo} style={{ width: "76%", height: "76%" }} contentFit="contain" />
+      <BrandMark store={store} size={size - (ring ? 6 : 0)} />
     </View>
   );
 }
@@ -62,7 +63,7 @@ export function FeaturedStoreCard({ store, width }: { store: MarketStore; width:
   return (
     <Pressable onPress={() => openStore(store.slug)} style={({ pressed }) => ({ width, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, overflow: "hidden", opacity: pressed ? 0.9 : 1 })}>
       <View style={{ height: 112 }}>
-        <Image source={store.cover} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" />
+        <StoreCover store={store} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
         <LinearGradient colors={["transparent", "rgba(0,0,0,0.55)"]} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 70 }} />
         <View style={{ position: "absolute", top: 10, right: 10 }}>
           <TokenChip store={store} />
@@ -99,7 +100,7 @@ export function StoreRow({ store }: { store: MarketStore }) {
       style={({ pressed }) => ({ flexDirection: "row", gap: space.md, padding: space.md, borderRadius: radius.xl, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line })}
     >
       <View>
-        <Image source={store.cover} style={{ width: 92, height: 92, borderRadius: radius.lg }} contentFit="cover" />
+        <StoreCover store={store} style={{ width: 92, height: 92, borderRadius: radius.lg }} />
         <View style={{ position: "absolute", left: -6, bottom: -6 }}>
           <StoreLogo store={store} size={40} ring={colors.surface} />
         </View>
@@ -131,4 +132,62 @@ export function useStoreProducts(store: MarketStore | undefined) {
     const items = await api.products({ sort: "newest" });
     return items.map((p) => ({ id: p.id, name: p.name, price: p.minPrice, compareAt: p.compareAtPrice ?? undefined, image: p.imageUrl ? { uri: p.imageUrl } : store.logo, slug: p.slug }));
   }, [store?.slug]);
+}
+
+/** A product from a marketplace store, labelled with the store that sells it */
+export function MarketProductCard({ store, product, width = 150, onDark }: { store: MarketStore; product: StoreProduct; width?: number; onDark?: boolean }) {
+  const off = product.compareAt && product.compareAt > product.price ? Math.round(((product.compareAt - product.price) / product.compareAt) * 100) : 0;
+  return (
+    <Pressable onPress={() => openItem(store.slug, product.id)} style={({ pressed }) => ({ width, opacity: pressed ? 0.88 : 1 })}>
+      <View style={{ aspectRatio: 1, borderRadius: radius.lg, backgroundColor: tileColor(store.theme), alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+        <View style={{ position: "absolute", width: "66%", height: "66%", borderRadius: 999, backgroundColor: "rgba(255,255,255,0.55)" }} />
+        <Image source={product.image} style={{ width: "76%", height: "76%" }} contentFit="contain" />
+        {off > 0 ? (
+          <View style={{ position: "absolute", top: 8, left: 8, backgroundColor: colors.inverse, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
+            <Text style={{ fontFamily: fonts.bold, fontSize: 11, color: colors.onInverse }}>-{off}%</Text>
+          </View>
+        ) : null}
+        {product.negotiable ? (
+          <View style={{ position: "absolute", bottom: 8, left: 8, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: store.theme.hero, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
+            <Ionicons name="pricetag" size={10} color={store.theme.onHero} />
+            <Text style={{ fontFamily: fonts.bold, fontSize: 10.5, color: store.theme.onHero }}>Offers</Text>
+          </View>
+        ) : null}
+      </View>
+      <View style={{ paddingTop: space.sm, gap: 2 }}>
+        <Text numberOfLines={2} style={{ fontFamily: fonts.medium, fontSize: 13.5, lineHeight: 18, color: onDark ? colors.white : colors.ink }}>{product.name}</Text>
+        <Text style={{ fontFamily: fonts.bold, fontSize: 15, color: onDark ? colors.white : colors.ink }}>{formatNaira(product.price)}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
+          <StoreLogo store={store} size={16} />
+          <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.semibold, fontSize: 11.5, color: onDark ? "rgba(255,255,255,0.7)" : colors.muted }}>{store.name}</Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+/** A horizontal row of marketplace products, like the catalogue rows on Home */
+export function MarketRail({ title, subtitle, items, dark, onSeeAll }: { title: string; subtitle?: string; items: { store: MarketStore; product: StoreProduct }[]; dark?: boolean; onSeeAll?: () => void }) {
+  if (items.length === 0) return null;
+  const pad = dark ? space.lg : gutter;
+  return (
+    <View style={dark ? { marginHorizontal: gutter, backgroundColor: colors.panel, borderRadius: radius.xl, paddingVertical: space.lg } : undefined}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space.md, paddingHorizontal: pad }}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Txt variant="heading" color={dark ? colors.white : colors.ink} style={{ fontSize: 21 }}>{title}</Txt>
+          {subtitle ? <Txt variant="small" color={dark ? "rgba(255,255,255,0.65)" : colors.muted}>{subtitle}</Txt> : null}
+        </View>
+        {onSeeAll && (
+          <Pressable onPress={onSeeAll} accessibilityLabel={`See all ${title}`} style={{ height: 34, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: dark ? colors.white : colors.inverse, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="arrow-forward" size={18} color={dark ? colors.panel : colors.onInverse} />
+          </Pressable>
+        )}
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: pad, gap: space.md }}>
+        {items.map(({ store, product }) => (
+          <MarketProductCard key={`${store.slug}-${product.id}`} store={store} product={product} onDark={dark} />
+        ))}
+      </ScrollView>
+    </View>
+  );
 }

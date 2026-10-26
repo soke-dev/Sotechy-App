@@ -56,6 +56,8 @@ export interface MarketStore {
   theme: StoreTheme;
   delivery: { states: string[]; homeFrom: number; pickup?: string };
   announcement?: string;
+  /** The store's slide in the Home banner carousel */
+  promo?: { overline: string; title: string; subtitle: string; productId: string };
   sinceMonths: number;
   /** Sotechy's own store: its products come from the live catalogue */
   isSotechy?: boolean;
@@ -125,6 +127,7 @@ export const stores: MarketStore[] = [
     theme: THEMES.midnight,
     delivery: { states: ["Edo", "Delta"], homeFrom: 2_000, pickup: "14 Akpakpava Road, Benin City" },
     announcement: "Free delivery in Benin City on orders over ₦100,000",
+    promo: { overline: "Xena Gadgets · weekend sale", title: "10% off\nevery phone", subtitle: "And earn $XENA on the full price", productId: "x1" },
     sinceMonths: 2,
     products: [
       p("x1", "Spark 20 Smartphone 128GB", 250_000, img.phone, 275_000),
@@ -153,6 +156,7 @@ export const stores: MarketStore[] = [
     theme: THEMES.ocean,
     delivery: { states: ["Enugu", "Anambra", "Imo"], homeFrom: 3_500 },
     announcement: "Free installation on every air conditioner this month",
+    promo: { overline: "BrightHome · this month", title: "Free AC\ninstallation", subtitle: "Enugu, Anambra and Imo", productId: "b2" },
     sinceMonths: 3,
     products: [
       p("b1", "Double Door Fridge 200L", 385_000, img.fridge, 410_000),
@@ -180,6 +184,7 @@ export const stores: MarketStore[] = [
     cover: require("../../assets/demo/cat-power.jpg"),
     theme: THEMES.forest,
     delivery: { states: ["Oyo", "Ogun"], homeFrom: 3_000, pickup: "52 Ring Road, Ibadan" },
+    promo: { overline: "Kola Solar & Power", title: "Steady light,\nless fuel", subtitle: "3.5kVA generators from ₦485,000", productId: "k1" },
     sinceMonths: 1,
     products: [
       p("k1", "Petrol Generator 3.5kVA", 485_000, img.generator, 520_000),
@@ -194,6 +199,16 @@ export const stores: MarketStore[] = [
 for (const store of stores) for (const item of store.products) if (NEGOTIABLE[item.id]) item.negotiable = { hours: NEGOTIABLE[item.id] };
 
 export const storeBySlug = (slug: string) => stores.find((s) => s.slug === slug);
+
+/** Products from every marketplace store, taking turns so no one store fills the row */
+export function marketProducts(onlyDeals = false): { store: MarketStore; product: StoreProduct }[] {
+  const lists = stores
+    .filter((st) => !st.isSotechy)
+    .map((st) => st.products.filter((pr) => !onlyDeals || (pr.compareAt ?? 0) > pr.price).map((product) => ({ store: st, product })));
+  const out: { store: MarketStore; product: StoreProduct }[] = [];
+  for (let i = 0; lists.some((l) => i < l.length); i++) for (const l of lists) if (l[i]) out.push(l[i]);
+  return out;
+}
 export const findProduct = (storeSlug: string, productId: string) => storeBySlug(storeSlug)?.products.find((x) => x.id === productId);
 
 /** "11h 40m left" */
@@ -241,3 +256,15 @@ export const tokenNaira = (tokens: number) => tokens * TOKEN_VALUE;
 export const shortAddress = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 export const formatTokens = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M` : n.toLocaleString("en-NG"));
 export const ago = (mins: number) => (mins < 60 ? `${mins} min ago` : mins < 60 * 24 ? `${Math.round(mins / 60)}h ago` : `${Math.round(mins / 60 / 24)}d ago`);
+
+/** Mixes a colour with white (amount 0–1 of the colour), for soft backgrounds */
+export function tint(hex: string, amount: number) {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (c: number) => Math.round(255 - (255 - c) * amount);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(mix);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
+
+/** The soft tile colour behind a store's product photos */
+export const tileColor = (theme: StoreTheme, onDarkPage = false) => (theme.dark && onDarkPage ? "#2A3142" : tint(theme.accent, 0.16));
+

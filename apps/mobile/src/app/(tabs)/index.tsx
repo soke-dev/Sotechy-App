@@ -11,13 +11,13 @@ import { MenuButton } from "@/components/menu";
 import { ProductRail } from "@/components/product-rail";
 import { SupportChat } from "@/components/support-chat";
 import { useTabBarInset } from "@/components/tab-bar";
-import { FeaturedStoreCard } from "@/components/store-bits";
+import { FeaturedStoreCard, MarketRail, openItem, openStore } from "@/components/store-bits";
 import { AccountIcon } from "@/components/tab-icons";
 import { UserAvatar } from "@/components/user-avatar";
 import { ArtButton, Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { stores } from "@/lib/marketplace";
+import { marketProducts, stores, tileColor, type Img as MarketImg } from "@/lib/marketplace";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { useFeatures } from "@/lib/store-config";
 import { demoMedia } from "@/lib/mock-api";
@@ -37,16 +37,28 @@ function CircleLink({ label, onPress, image, icon, illo, dark }: { label: string
   );
 }
 
-function DealBubble({ product, size }: { product: CatalogProduct; size: number }) {
-  const off = discountPercent(product.minPrice, product.compareAtPrice);
+/** One deal in "Deals of the day": from Sotechy's catalogue or a marketplace store */
+interface Deal {
+  key: string;
+  name: string;
+  price: number;
+  compareAt: number | null;
+  image: MarketImg | null;
+  seller: string;
+  tint: string;
+  onPress: () => void;
+}
+
+function DealBubble({ deal, size }: { deal: Deal; size: number }) {
+  const off = discountPercent(deal.price, deal.compareAt);
   return (
-    <Pressable onPress={() => router.push({ pathname: "/product/[id]", params: { id: product.slug } })} style={{ width: size, alignItems: "center", gap: 6 }}>
+    <Pressable onPress={deal.onPress} style={{ width: size, alignItems: "center", gap: 4 }}>
       <View style={{ width: size, height: size }}>
-        <View style={{ flex: 1, borderRadius: size / 2, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-          {product.imageUrl ? (
-            <Image source={{ uri: product.imageUrl }} style={{ width: "74%", height: "74%" }} contentFit="contain" />
+        <View style={{ flex: 1, borderRadius: size / 2, backgroundColor: deal.tint, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+          {deal.image ? (
+            <Image source={deal.image} style={{ width: "74%", height: "74%" }} contentFit="contain" />
           ) : (
-            <Ionicons name={productIcon(product.name)} size={size * 0.4} color={colors.white} />
+            <Ionicons name={productIcon(deal.name)} size={size * 0.4} color={colors.faint} />
           )}
         </View>
         {off > 0 && (
@@ -55,7 +67,8 @@ function DealBubble({ product, size }: { product: CatalogProduct; size: number }
           </View>
         )}
       </View>
-      <Txt variant="price" style={{ fontSize: 14 }}>{formatNaira(product.minPrice)}</Txt>
+      <Txt variant="price" style={{ fontSize: 14 }}>{formatNaira(deal.price)}</Txt>
+      <Txt variant="caption" numberOfLines={1} style={{ fontSize: 11 }}>{deal.seller}</Txt>
     </Pressable>
   );
 }
@@ -87,6 +100,18 @@ export default function HomeScreen() {
   const { config, categories, products } = data;
   const tops = categories.filter((c) => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
   const deals = products.filter((p) => discountPercent(p.minPrice, p.compareAtPrice) > 0 || p.isFeatured);
+  // Deals from every store, taking turns with Sotechy's own
+  const storeDeals = marketProducts(true);
+  const mixedDeals: Deal[] = [];
+  for (let i = 0; i < Math.max(deals.length, storeDeals.length); i++) {
+    const sd = storeDeals[i];
+    if (sd)
+      mixedDeals.push({ key: `${sd.store.slug}-${sd.product.id}`, name: sd.product.name, price: sd.product.price, compareAt: sd.product.compareAt ?? null, image: sd.product.image, seller: sd.store.name, tint: tileColor(sd.store.theme), onPress: () => openItem(sd.store.slug, sd.product.id) });
+    const d = deals[i];
+    if (d)
+      mixedDeals.push({ key: d.id, name: d.name, price: d.minPrice, compareAt: d.compareAtPrice, image: d.imageUrl ? { uri: d.imageUrl } : null, seller: "Sotechy", tint: "#F1ECE5", onPress: () => router.push({ pathname: "/product/[id]", params: { id: d.slug } }) });
+  }
+  const marketStores = stores.filter((st) => !st.isSotechy);
   // Three circles in one row: card padding (2 × lg), card border (2 × 1px) and two gaps.
   const bubbleSize = Math.floor((contentWidth - space.lg * 2 - 2 - space.md * 2) / 3);
   const support = config.support;
@@ -130,7 +155,7 @@ export default function HomeScreen() {
           style={{ height: 50, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18 }}
         >
           <Ionicons name="search" size={18} color={colors.ink2} />
-          <Txt variant="body" color={colors.faint}>Search products, brands and categories</Txt>
+          <Txt variant="body" color={colors.faint}>Search products, stores and brands</Txt>
         </Pressable>
         <View style={[ui.row, { gap: space.sm }]}>
           {features.whatsapp && (
@@ -184,20 +209,20 @@ export default function HomeScreen() {
       </View>
 
       {/* Deals of the day */}
-      {deals.length > 0 && (
+      {mixedDeals.length > 0 && (
         <View style={{ marginHorizontal: gutter, backgroundColor: colors.surface, borderRadius: radius.xl, padding: space.lg, borderWidth: 1, borderColor: colors.line }}>
           <View style={[ui.between, { marginBottom: space.lg }]}>
             <View>
               <Txt variant="title" style={{ fontFamily: fonts.displayHeavy }}>Deals of the day</Txt>
-              <Txt variant="small">While stock lasts</Txt>
+              <Txt variant="small">From Sotechy and stores on Sotechy</Txt>
             </View>
             <Pressable onPress={() => shop({ featured: "1" })} style={{ height: 34, paddingHorizontal: 16, borderRadius: radius.pill, backgroundColor: colors.inverse, justifyContent: "center" }}>
               <Ionicons name="arrow-forward" size={18} color={colors.onInverse} />
             </Pressable>
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            {deals.slice(0, 3).map((p) => (
-              <DealBubble key={p.id} product={p} size={bubbleSize} />
+            {mixedDeals.slice(0, 3).map((d) => (
+              <DealBubble key={d.key} deal={d} size={bubbleSize} />
             ))}
           </View>
         </View>
@@ -235,23 +260,38 @@ export default function HomeScreen() {
           ))}
           <CircleLink label="Deals" illo="tag" onPress={() => shop({ featured: "1" })} />
           <CircleLink label="New in" illo="sparkle" onPress={() => shop({ sort: "newest" })} />
-          <CircleLink label="Stores" illo="pin" onPress={() => headOffice && Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${headOffice.address}, ${headOffice.city}, Nigeria`)}`)} />
+          <CircleLink label="Stores" illo="store" onPress={() => router.push("/stores")} />
         </View>
       </View>
 
-      <ProductRail title="Top deals" subtitle="Save on selected items" products={deals} dark onSeeAll={() => shop({ featured: "1" })} />
+      <MarketRail title="Fresh from stores on Sotechy" subtitle="Verified shops, each with its own token" items={marketProducts()} onSeeAll={() => router.push("/stores")} />
 
-      {/* One rail per top-level category; every other one on a dark panel */}
-      {tops.map((c, i) => (
-        <ProductRail
-          key={c.id}
-          title={c.name}
-          products={products.filter((p) => topOf(categories, p.categoryId) === c.id)}
-          dark={i % 3 === 2}
-          subtitle={i % 3 === 2 ? "Trusted brands, with warranty" : undefined}
-          onSeeAll={() => shop({ category: c.slug })}
-        />
-      ))}
+      <ProductRail title="Top deals" subtitle="Sold by Sotechy" products={deals} dark onSeeAll={() => shop({ featured: "1" })} />
+
+      {/* Sotechy's category rows take turns with a row from each marketplace store */}
+      {tops.map((c, i) => {
+        const st = marketStores[i];
+        return (
+          <View key={c.id} style={{ gap: space.xxl }}>
+            <ProductRail
+              title={c.name}
+              products={products.filter((p) => topOf(categories, p.categoryId) === c.id)}
+              dark={i % 3 === 2}
+              subtitle={i % 3 === 2 ? "Sold by Sotechy, with warranty" : "Sold by Sotechy"}
+              onSeeAll={() => shop({ category: c.slug })}
+            />
+            {st ? (
+              <MarketRail
+                title={`From ${st.name}`}
+                subtitle={`${st.city} · earn $${st.ticker}`}
+                items={st.products.map((product) => ({ store: st, product }))}
+                dark={i % 3 === 1}
+                onSeeAll={() => openStore(st.slug)}
+              />
+            ) : null}
+          </View>
+        );
+      })}
 
       {/* Brands */}
       <View style={{ paddingHorizontal: gutter }}>
@@ -288,7 +328,7 @@ export default function HomeScreen() {
           <Image source={demoMedia.storeFront} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" />
           <LinearGradient colors={["transparent", "rgba(23,18,14,0.88)"]} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "70%" }} />
           <View style={{ flex: 1, justifyContent: "flex-end", padding: space.xl, gap: 6 }}>
-            <Txt variant="overline" color={colors.brandYellow}>Visit the store</Txt>
+            <Txt variant="overline" color={colors.brandYellow}>Visit Sotechy&apos;s shop</Txt>
             <Txt variant="title" color={colors.white}>{headOffice.address}, {headOffice.city}</Txt>
             {headOffice.openingHours ? <Txt variant="small" color="#E2DAD1">{headOffice.openingHours} · Pick up online orders here</Txt> : null}
             <Button

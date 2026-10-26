@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 import { formatNaira } from "@sotechy/shared";
 import { EmptyState, Pill, Txt, ui } from "@/components/ui";
-import { findProduct, storeBySlug, timeLeft } from "@/lib/marketplace";
+import { findProduct, storeBySlug, tileColor, timeLeft } from "@/lib/marketplace";
 import { statusOf, useOffers } from "@/lib/offers";
 import { colors, gutter, radius, space } from "@/lib/theme";
 
@@ -32,7 +32,7 @@ export default function OffersScreen() {
           const last = [...t.messages].reverse().find((m) => m.amount)?.amount;
           return (
             <Pressable key={t.id} onPress={() => router.push({ pathname: "/offer/[id]", params: { id: t.id } })} style={({ pressed }) => [ui.card, { flexDirection: "row", gap: space.md, alignItems: "center", opacity: pressed ? 0.85 : 1 }]}>
-              <View style={{ width: 56, height: 56, borderRadius: radius.md, backgroundColor: store.theme.accent, alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 56, height: 56, borderRadius: radius.md, backgroundColor: tileColor(store.theme), alignItems: "center", justifyContent: "center" }}>
                 <Image source={product.image} style={{ width: "78%", height: "78%" }} contentFit="contain" />
               </View>
               <View style={{ flex: 1, gap: 3 }}>

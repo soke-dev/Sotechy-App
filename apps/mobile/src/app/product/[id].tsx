@@ -412,7 +412,7 @@ export default function ProductScreen() {
     <View style={ui.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
         {/* Photo gallery: swipe, or tap a thumbnail below */}
-        <View style={{ height: heroHeight, backgroundColor: lightPalette.brand }}>
+        <View style={{ height: heroHeight, backgroundColor: "#F1ECE5" }}>
           {product.images.length > 0 ? (
             <ScrollView
               ref={galleryRef}

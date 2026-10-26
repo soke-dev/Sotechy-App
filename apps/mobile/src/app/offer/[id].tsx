@@ -10,7 +10,7 @@ import { formatNaira } from "@sotechy/shared";
 import { StoreLogo } from "@/components/store-bits";
 import { useToast } from "@/components/toast";
 import { Button, EmptyState, Pill, Txt, ui } from "@/components/ui";
-import { findProduct, formatTokens, storeBySlug, timeLeft, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { findProduct, formatTokens, storeBySlug, tileColor, timeLeft, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { statusOf, useOffers, type OfferMessage, type OfferThread } from "@/lib/offers";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
@@ -102,7 +102,7 @@ export default function OfferScreen() {
       <ScrollView contentContainerStyle={{ padding: gutter, gap: space.md, paddingBottom: space.xl }} keyboardShouldPersistTaps="handled">
         {/* What's being negotiated */}
         <View style={[ui.card, { flexDirection: "row", alignItems: "center", gap: space.md }]}>
-          <View style={{ width: 64, height: 64, borderRadius: radius.lg, backgroundColor: store.theme.accent, alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 64, height: 64, borderRadius: radius.lg, backgroundColor: tileColor(store.theme), alignItems: "center", justifyContent: "center" }}>
             <Image source={product.image} style={{ width: "78%", height: "78%" }} contentFit="contain" />
           </View>
           <View style={{ flex: 1, gap: 2 }}>

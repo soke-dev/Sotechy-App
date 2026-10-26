@@ -24,7 +24,7 @@ export function ProductRail({
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: space.md, paddingHorizontal: dark ? space.lg : gutter }}>
       <View style={{ flex: 1, gap: 2 }}>
         <Txt variant="heading" color={dark ? colors.white : colors.ink} style={{ fontSize: 21 }}>{title}</Txt>
-        {subtitle ? <Txt variant="label" color={dark ? colors.brandYellow : colors.brandPressed}>{subtitle}</Txt> : null}
+        {subtitle ? <Txt variant="small" color={dark ? "rgba(255,255,255,0.65)" : colors.muted}>{subtitle}</Txt> : null}
       </View>
       {onSeeAll && (
         <Pressable

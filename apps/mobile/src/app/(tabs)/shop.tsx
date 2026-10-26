@@ -3,6 +3,10 @@ import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { CartButton } from "@/components/cart-button";
+import { MarketProductCard } from "@/components/store-bits";
+import { detailsFor, groupOfCategory } from "@/lib/market-details";
+import { marketProducts, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import type { CatalogProduct } from "@sotechy/shared";
 import { MenuButton } from "@/components/menu";
 import { ProductCard } from "@/components/product-card";
 import { brandLabel, countFilters, FilterSheet, NO_FILTERS, priceLabel, SORTS, SortSheet, toQuery, type ShopFilters } from "@/components/shop-filters";
@@ -33,8 +37,21 @@ function FiltersButton({ count, onPress }: { count: number; onPress: () => void 
   );
 }
 
+/** One tile in the grid: a Sotechy catalogue product or a marketplace store's product */
+type Row = { kind: "own"; key: string; p: CatalogProduct } | { kind: "store"; key: string; store: MarketStore; product: StoreProduct };
+
+/** Sotechy's products and the stores' taking turns, so neither fills the top of the grid */
+function interleave(a: Row[], b: Row[]) {
+  const out: Row[] = [];
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (a[i]) out.push(a[i]);
+    if (b[i]) out.push(b[i]);
+  }
+  return out;
+}
+
 export default function ShopScreen() {
-  const params = useLocalSearchParams<{ q?: string; category?: string; sort?: string; focus?: string; featured?: string }>();
+  const params = useLocalSearchParams<{ q?: string; category?: string; sort?: string; focus?: string; featured?: string; seller?: string }>();
   const { width } = useWindowDimensions();
   const tabInset = useTabBarInset();
   const [query, setQuery] = useState(params.q ?? "");
@@ -43,6 +60,8 @@ export default function ShopScreen() {
   const [sort, setSort] = useState(params.sort ?? "newest");
   const [filters, setFilters] = useState<ShopFilters>(params.featured === "1" ? { ...NO_FILTERS, deals: true } : NO_FILTERS);
   const [sheet, setSheet] = useState<"filters" | "sort" | null>(null);
+  // Whose products: Sotechy's own catalogue, the marketplace stores', or both
+  const [seller, setSeller] = useState<"all" | "sotechy" | "stores">(params.seller === "stores" ? "stores" : "all");
   const features = useFeatures();
 
   // The tab stays mounted, so follow new filters passed from other screens (home, menu).
@@ -85,15 +104,56 @@ export default function ShopScreen() {
   const selected = all.find((c) => c.slug === category);
   const group = selected?.parentId ? all.find((c) => c.id === selected.parentId) : selected;
   const subs = group ? all.filter((c) => c.parentId === group.id).sort((a, b) => a.sortOrder - b.sortOrder) : [];
-  const count = products.data?.length;
+  // Marketplace stores' products, filtered the same way as the catalogue
+  const wantGroup = groupOfCategory(selected?.name ?? group?.name);
+  const term = search.trim().toLowerCase();
+  const storeItems: Row[] =
+    seller === "sotechy" || filters.brands.length > 0 || (category && !wantGroup)
+      ? []
+      : marketProducts()
+          .filter(({ store, product }) => !term || `${product.name} ${store.name} ${store.ticker}`.toLowerCase().includes(term))
+          .filter(({ store, product }) => !wantGroup || detailsFor(store, product).group === wantGroup)
+          .filter(({ product }) => !filters.deals || (product.compareAt ?? 0) > product.price)
+          .filter(({ product }) => (filters.minPrice === undefined || product.price >= filters.minPrice) && (filters.maxPrice === undefined || product.price <= filters.maxPrice))
+          .filter(({ store }) => !filters.minRating || store.rating >= filters.minRating)
+          .map(({ store, product }) => ({ kind: "store" as const, key: `${store.slug}-${product.id}`, store, product }));
+  const ownItems: Row[] = seller === "stores" ? [] : (products.data ?? []).map((p) => ({ kind: "own" as const, key: p.id, p }));
+  const priceOf = (r: Row) => (r.kind === "own" ? r.p.minPrice : r.product.price);
+  const ratingOf = (r: Row) => (r.kind === "own" ? r.p.ratingAverage ?? 0 : r.store.rating);
+  const rows: Row[] =
+    sort === "price_asc"
+      ? [...ownItems, ...storeItems].sort((a, b) => priceOf(a) - priceOf(b))
+      : sort === "price_desc"
+        ? [...ownItems, ...storeItems].sort((a, b) => priceOf(b) - priceOf(a))
+        : sort === "rating"
+          ? [...ownItems, ...storeItems].sort((a, b) => ratingOf(b) - ratingOf(a))
+          : interleave(ownItems, storeItems);
+  const count = products.data ? rows.length : undefined;
 
   return (
     <View style={ui.screen}>
       <ScreenHeader title={group?.name ?? (filters.deals ? "Deals" : "Shop")} right={<View style={{ flexDirection: "row", gap: space.sm }}><CartButton /><MenuButton /></View>} />
+      {/* Whose products */}
+      <View style={{ paddingHorizontal: gutter, paddingBottom: space.sm }}>
+        <View style={{ flexDirection: "row", backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, padding: 3 }}>
+          {([["all", "All sellers"], ["sotechy", "Sotechy"], ["stores", "Other stores"]] as const).map(([k, label]) => (
+            <Pressable
+              key={k}
+              onPress={() => {
+                tap();
+                setSeller(k);
+              }}
+              style={{ flex: 1, height: 34, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", backgroundColor: seller === k ? colors.surface : "transparent" }}
+            >
+              <Txt variant="label" color={seller === k ? colors.ink : colors.muted} style={{ fontSize: 13 }}>{label}</Txt>
+            </Pressable>
+          ))}
+        </View>
+      </View>
       <View style={{ paddingHorizontal: gutter, paddingBottom: space.md }}>
         <Input
           icon="search"
-          placeholder="Search by name, brand or model"
+          placeholder="Search products, brands or stores"
           value={query}
           autoFocus={params.focus === "1"}
           onChangeText={(t) => {
@@ -156,12 +216,12 @@ export default function ShopScreen() {
         <ErrorView message={products.error} onRetry={products.reload} />
       ) : (
         <FlatList
-          data={products.data}
-          keyExtractor={(p) => p.id}
+          data={rows}
+          keyExtractor={(r) => r.key}
           numColumns={2}
           columnWrapperStyle={{ gap: space.md }}
           contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabInset + space.lg, gap: space.md }}
-          renderItem={({ item }) => <ProductCard product={item} width={cardWidth} />}
+          renderItem={({ item }) => (item.kind === "own" ? <ProductCard product={item.p} width={cardWidth} /> : <MarketProductCard store={item.store} product={item.product} width={cardWidth} />)}
           ListEmptyComponent={
             active ? (
               <EmptyState illo="search" title="No matches" message="Nothing fits all of these filters. Try removing one or two." action={<Button title="Clear filters" variant="outline" onPress={() => setFilters(NO_FILTERS)} />} />
