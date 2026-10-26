@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Illo } from "./illustrations";
-import { ALL_LINKS, isActive, Nav, useCurrentPage, type NavLink } from "./nav";
+import { ALL_LINKS, Nav, NAV, SectionTabs, useCurrentPage, type NavLink } from "./nav";
 import { queue } from "@/lib/marketplace";
 
 interface ShellUser {
@@ -135,17 +135,19 @@ function JumpTo({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 /** Phone tab bar, like the merchant dashboard and the customer app. */
 function TabBar({ onMore }: { onMore: () => void }) {
-  const path = usePathname();
-  const tabs = [
-    { href: "/", label: "Home", illo: "home" as const },
-    { href: "/orders", label: "Orders", illo: "receipt" as const },
-    { href: "/merchants", label: "Merchants", illo: "store" as const, badge: queue.merchants },
-    { href: "/order-reviews", label: "Reviews", illo: "shield" as const, badge: queue.cases },
-  ];
+  const current = useCurrentPage();
+  // The first four sections, each lit up for any of its pages
+  const tabs = NAV.slice(0, 4).map((g) => ({
+    href: g.pages[0].href,
+    label: g.label === "Dashboard" ? "Home" : g.label,
+    illo: g.illo,
+    badge: g.pages.reduce((n, p) => n + (p.count ?? 0), 0),
+    group: g,
+  }));
   return (
     <nav className="fixed inset-x-3 bottom-3 z-30 flex items-stretch rounded-3xl border border-white/10 bg-panel px-1 py-1.5 shadow-[0_12px_32px_rgba(23,18,14,0.3)] [transform:translateZ(0)] lg:hidden">
       {tabs.map((t) => {
-        const active = isActive(t.href, path);
+        const active = current?.group === t.group;
         return (
           <Link key={t.href} href={t.href} className="relative flex flex-1 flex-col items-center gap-0.5 py-1">
             <span className={`flex h-9 w-12 items-center justify-center rounded-2xl transition ${active ? "bg-brand-soft" : "opacity-60"}`}>
@@ -224,9 +226,13 @@ export function AdminShell({ user, signOut, children }: { user: ShellUser; signO
           </button>
           {page ? (
             <div className="flex min-w-0 items-center gap-2 text-sm">
-              <span className="hidden text-muted md:inline">{page.section}</span>
-              <ChevronRight size={14} className="hidden text-faint md:inline" />
-              <span className="truncate font-semibold">{page.label}</span>
+              {page.group.label !== page.page.label && (
+                <>
+                  <span className="hidden text-muted md:inline">{page.group.label}</span>
+                  <ChevronRight size={14} className="hidden text-faint md:inline" />
+                </>
+              )}
+              <span className="truncate font-semibold">{page.page.label}</span>
             </div>
           ) : (
             <span className="text-sm font-semibold">Sotechy Admin</span>
@@ -244,7 +250,10 @@ export function AdminShell({ user, signOut, children }: { user: ShellUser; signO
           </div>
           <Initials name={user.name} className="hidden sm:flex" />
         </header>
-        <main className="mx-auto w-full max-w-7xl px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-8">{children}</main>
+        <main className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 sm:px-6 lg:px-10 lg:pb-12 lg:pt-6">
+          <SectionTabs />
+          {children}
+        </main>
       </div>
 
       <TabBar onMore={() => setOpen(true)} />

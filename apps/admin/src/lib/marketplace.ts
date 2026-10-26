@@ -309,3 +309,6 @@ export function reserveHealth() {
 }
 
 export const formatTokens = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M` : n.toLocaleString("en-NG"));
+
+/** "₦28.1m", "₦940k": for big numbers in small cards */
+export const nairaShort = (n: number) => (n >= 1_000_000 ? `₦${(n / 1_000_000).toFixed(1)}m` : n >= 10_000 ? `₦${Math.round(n / 1_000)}k` : `₦${n.toLocaleString("en-NG")}`);

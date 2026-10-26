@@ -4,10 +4,9 @@ import { ArrowDownUp, ArrowRight, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { formatNaira } from "@sotechy/shared";
 import { CheckIcon, DocsBar, isWaiting, MerchantAvatar, waitedFor, waitedTooLong } from "@/components/merchant-bits";
 import { EmptyState, PageHeader, Pill, SampleBadge, StatCard, Tabs } from "@/components/ui";
-import { MERCHANT_STATUS, merchants, type Merchant, type MerchantStatus } from "@/lib/marketplace";
+import { MERCHANT_STATUS, merchants, nairaShort, type Merchant, type MerchantStatus } from "@/lib/marketplace";
 
 type Tab = "review" | "info" | "verified" | "suspended" | "all";
 
@@ -77,7 +76,7 @@ export default function MerchantsPage() {
           </div>
         </div>
         <StatCard illo="store" label="Live merchants" value={live.length} hint="Selling on Sotechy" />
-        <StatCard illo="wallet" label="Their sales, 30 days" value={formatNaira(live.reduce((n, m) => n + m.sales30d, 0))} hint={`Across ${live.length} merchants`} />
+        <StatCard illo="wallet" label="Their sales, 30 days" value={nairaShort(live.reduce((n, m) => n + m.sales30d, 0))} hint={`Across ${live.length} merchants`} />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

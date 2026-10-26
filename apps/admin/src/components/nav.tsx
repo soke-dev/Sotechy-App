@@ -41,103 +41,142 @@ export interface NavLink {
   count?: number;
 }
 
-export const NAV: { title: string; links: NavLink[] }[] = [
+/** A sidebar item. Its first page is where it opens; the others show as tabs at the top of the page. */
+export interface NavGroup {
+  label: string;
+  illo: IlloName;
+  pages: NavLink[];
+}
+
+export const NAV: NavGroup[] = [
+  { label: "Dashboard", illo: "home", pages: [{ href: "/", label: "Dashboard", icon: LayoutDashboard, illo: "home" }] },
   {
-    title: "Overview",
-    links: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard, illo: "home" },
-      { href: "/reports", label: "Reports", icon: BarChart3, illo: "wallet" },
+    label: "Orders",
+    illo: "receipt",
+    pages: [
+      { href: "/orders", label: "Orders", icon: ShoppingBag, illo: "receipt" },
+      { href: "/order-reviews", label: "Order reviews", icon: Gavel, illo: "shield", count: queue.cases },
+      { href: "/payments", label: "Payments & refunds", icon: CreditCard, illo: "card" },
+      { href: "/pos", label: "Walk-in sale", icon: ScanBarcode, illo: "cart" },
     ],
   },
   {
-    title: "Marketplace",
-    links: [
+    label: "Merchants",
+    illo: "store",
+    pages: [
       { href: "/merchants", label: "Merchants", icon: Store, illo: "store", count: queue.merchants },
       { href: "/delivery-areas", label: "Delivery areas", icon: MapPin, illo: "pin", count: queue.zones },
-      { href: "/order-reviews", label: "Order reviews", icon: Gavel, illo: "shield", count: queue.cases },
       { href: "/merchant-payouts", label: "Merchant payouts", icon: Banknote, illo: "bank" },
-      { href: "/tokens", label: "Tokens & reserve", icon: Coins, illo: "coin" },
     ],
   },
   {
-    title: "Sales",
-    links: [
-      { href: "/orders", label: "Orders", icon: ShoppingBag, illo: "receipt" },
-      { href: "/pos", label: "Walk-in sale (POS)", icon: ScanBarcode, illo: "cart" },
-      { href: "/payments", label: "Payments & refunds", icon: CreditCard, illo: "card" },
-      { href: "/customers", label: "Customers", icon: Users, illo: "user" },
-      { href: "/support", label: "Support", icon: LifeBuoy, illo: "chat" },
-    ],
-  },
-  {
-    title: "Catalogue",
-    links: [
+    label: "Products",
+    illo: "bag",
+    pages: [
       { href: "/products", label: "Products", icon: Package, illo: "bag" },
       { href: "/categories", label: "Categories", icon: FolderTree, illo: "tag" },
       { href: "/inventory", label: "Inventory", icon: Boxes, illo: "box" },
-      { href: "/suppliers", label: "Suppliers & purchasing", icon: Truck, illo: "bike" },
+      { href: "/suppliers", label: "Suppliers", icon: Truck, illo: "bike" },
       { href: "/promotions", label: "Promotions", icon: BadgePercent, illo: "sparkle" },
     ],
   },
   {
-    title: "App",
-    links: [
-      { href: "/switches", label: "App switches", icon: ToggleRight, illo: "phone" },
-      { href: "/banners", label: "Home banners", icon: Images, illo: "sparkle" },
+    label: "Customers",
+    illo: "user",
+    pages: [
+      { href: "/customers", label: "Customers", icon: Users, illo: "user" },
+      { href: "/support", label: "Support", icon: LifeBuoy, illo: "chat" },
       { href: "/reviews", label: "Reviews", icon: Star, illo: "heart" },
     ],
   },
+  { label: "Tokens", illo: "coin", pages: [{ href: "/tokens", label: "Tokens & reserve", icon: Coins, illo: "coin" }] },
   {
-    title: "Admin",
-    links: [
+    label: "Reports",
+    illo: "wallet",
+    pages: [
+      { href: "/reports", label: "Reports", icon: BarChart3, illo: "wallet" },
+      { href: "/audit-logs", label: "Audit log", icon: ScrollText, illo: "doc" },
+    ],
+  },
+  {
+    label: "Settings",
+    illo: "shield",
+    pages: [
+      { href: "/settings", label: "Settings", icon: Settings, illo: "shield" },
+      { href: "/switches", label: "App switches", icon: ToggleRight, illo: "phone" },
+      { href: "/banners", label: "Home banners", icon: Images, illo: "sparkle" },
       { href: "/branches", label: "Branches", icon: Building2, illo: "store" },
       { href: "/staff", label: "Staff & roles", icon: UserCog, illo: "user" },
-      { href: "/settings", label: "Settings", icon: Settings, illo: "shield" },
-      { href: "/audit-logs", label: "Audit log", icon: ScrollText, illo: "doc" },
     ],
   },
 ];
 
-export const ALL_LINKS = NAV.flatMap((s) => s.links.map((l) => ({ ...l, section: s.title })));
+/** Every page, for "Jump to" */
+export const ALL_LINKS = NAV.flatMap((g) => g.pages.map((p) => ({ ...p, section: g.label })));
 
 export const isActive = (href: string, pathname: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
-/** The page the user is on, for the top bar. */
+const groupCount = (g: NavGroup) => g.pages.reduce((n, p) => n + (p.count ?? 0), 0);
+
+/** The section and page the user is on */
 export function useCurrentPage() {
   const pathname = usePathname();
-  return ALL_LINKS.find((l) => isActive(l.href, pathname)) ?? null;
+  for (const group of NAV) {
+    const page = group.pages.find((p) => isActive(p.href, pathname));
+    if (page) return { group, page };
+  }
+  return null;
 }
 
 /** Sidebar navigation, drawn on the dark panel. */
 export function Nav({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
+  const current = useCurrentPage();
   return (
-    <nav className="flex flex-col gap-5 text-sm">
-      {NAV.map((s) => (
-        <div key={s.title}>
-          <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-white/35">{s.title}</p>
-          <div className="flex flex-col gap-0.5">
-            {s.links.map(({ href, label, illo, count }) => {
-              const active = isActive(href, pathname);
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={onNavigate}
-                  aria-current={active ? "page" : undefined}
-                  className={`group relative flex items-center gap-3 rounded-2xl px-2.5 py-1.5 transition-colors ${active ? "bg-brand font-semibold text-white shadow-[0_6px_16px_rgba(247,147,30,0.35)]" : "text-white/65 hover:bg-white/5 hover:text-white"}`}
-                >
-                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition ${active ? "bg-white" : "bg-white/5 opacity-75 group-hover:opacity-100"}`}>
-                    <Illo name={illo} size={22} />
-                  </span>
-                  <span className="truncate">{label}</span>
-                  {count ? <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold ${active ? "bg-white text-brand-strong" : "bg-brand text-white"}`}>{count}</span> : null}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+    <nav className="flex flex-col gap-1 text-[15px]">
+      {NAV.map((g) => {
+        const active = current?.group === g;
+        const count = groupCount(g);
+        return (
+          <Link
+            key={g.label}
+            href={g.pages[0].href}
+            onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
+            className={`group flex items-center gap-3 rounded-2xl px-2.5 py-2 transition-colors ${active ? "bg-brand font-semibold text-white shadow-[0_6px_16px_rgba(247,147,30,0.35)]" : "text-white/70 hover:bg-white/5 hover:text-white"}`}
+          >
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition ${active ? "bg-white" : "bg-white/5 opacity-80 group-hover:opacity-100"}`}>
+              <Illo name={g.illo} size={24} />
+            </span>
+            <span className="truncate">{g.label}</span>
+            {count ? <span className={`ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold ${active ? "bg-white text-brand-strong" : "bg-brand text-white"}`}>{count}</span> : null}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/** Tabs for the other pages in the current section, shown at the top of the page. */
+export function SectionTabs() {
+  const current = useCurrentPage();
+  if (!current || current.group.pages.length < 2) return null;
+  return (
+    <nav className="no-scrollbar -mx-1 mb-6 flex min-w-0 gap-1 overflow-x-auto border-b border-line px-1">
+      {current.group.pages.map((p) => {
+        const on = p === current.page;
+        return (
+          <Link
+            key={p.href}
+            href={p.href}
+            aria-current={on ? "page" : undefined}
+            className={`relative flex shrink-0 items-center gap-2 px-3 pb-3 pt-1 text-sm font-semibold transition ${on ? "text-ink" : "text-muted hover:text-ink"}`}
+          >
+            {p.label}
+            {p.count ? <span className="rounded-full bg-brand px-1.5 text-[11px] font-bold text-white">{p.count}</span> : null}
+            {on && <span className="absolute inset-x-2 -bottom-px h-[3px] rounded-full bg-brand" />}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
