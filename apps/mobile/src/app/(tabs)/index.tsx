@@ -23,7 +23,7 @@ import { useFeatures } from "@/lib/store-config";
 import { demoMedia } from "@/lib/mock-api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
-import { openWhatsApp, ORDER_MESSAGE } from "@/lib/whatsapp";
+import { openWhatsApp } from "@/lib/whatsapp";
 import { Illo, type IlloName } from "@/components/illustrations";
 
 function CircleLink({ label, onPress, image, icon, illo, dark }: { label: string; onPress: () => void; image?: string | null; icon?: IconName; illo?: IlloName; dark?: boolean }) {
@@ -158,9 +158,8 @@ export default function HomeScreen() {
           <Txt variant="body" color={colors.faint}>Search products, stores and brands</Txt>
         </Pressable>
         <View style={[ui.row, { gap: space.sm }]}>
-          {features.whatsapp && (
-            <Pressable
-              onPress={() => openWhatsApp(support.whatsapp, ORDER_MESSAGE)}
+          <Pressable
+              onPress={() => router.push("/stores")}
               accessibilityRole="button"
               style={({ pressed }) => ({
                 flex: 1,
@@ -174,13 +173,12 @@ export default function HomeScreen() {
                 paddingHorizontal: 14,
               })}
             >
-              <Ionicons name="logo-whatsapp" size={19} color={colors.brand} />
-              <Txt variant="label" color={colors.white} numberOfLines={1} style={{ fontSize: 14 }}>WhatsApp</Txt>
+              <Ionicons name="storefront" size={18} color={colors.brand} />
+              <Txt variant="label" color={colors.white} numberOfLines={1} style={{ fontSize: 14 }}>Explore stores</Txt>
             </Pressable>
-          )}
           {[
+            { icon: "bag-handle" as const, label: "Shop", onPress: () => shop({}) },
             { icon: "pricetag" as const, label: "Deals", onPress: () => shop({ featured: "1" }) },
-            { icon: "storefront" as const, label: "Stores", onPress: () => router.push("/stores") },
           ].map((b) => (
             <Pressable
               key={b.label}
@@ -232,7 +230,7 @@ export default function HomeScreen() {
       <View style={{ marginHorizontal: gutter, borderRadius: radius.xl, backgroundColor: colors.brandSoft, padding: space.lg, gap: space.md }}>
         <View style={ui.between}>
           <Txt variant="title" style={{ fontFamily: fonts.displayHeavy, fontSize: 21 }}>Earn while you shop</Txt>
-          <Illo name="sparkle" size={30} />
+          <Illo name="coin" size={30} />
         </View>
         {[
           { illo: "coin" as const, title: "1 token for every ₦1", text: "Each store gives its own token, like $XENA. Spend it there like cash." },

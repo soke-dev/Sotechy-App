@@ -7,6 +7,7 @@ import { formatNaira } from "@sotechy/shared";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { api } from "@/lib/api";
 import { formatTokens, tileColor, wallet, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { Illo } from "./illustrations";
 import { BrandMark, StoreCover } from "./store-brand";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
@@ -40,7 +41,7 @@ export function StoreLogo({ store, size = 52, ring }: { store: MarketStore; size
 export function TokenChip({ store, label }: { store: MarketStore; label?: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", backgroundColor: store.theme.accent, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 3 }}>
-      <Ionicons name="sparkles" size={11} color={store.theme.onAccent} />
+      <Illo name="coin" size={15} />
       <Text style={{ fontFamily: fonts.bold, fontSize: 11.5, color: store.theme.onAccent }}>{label ?? `Earn $${store.ticker}`}</Text>
     </View>
   );
