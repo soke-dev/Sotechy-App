@@ -2,7 +2,8 @@ import { ArrowRight, Clock } from "lucide-react";
 import Link from "next/link";
 import { Illo } from "@/components/illustrations";
 import { btn, Card, Pill, ProductThumb, StatCard } from "@/components/ui";
-import { formatNaira, formatTokens, timeAgo, timeLeft } from "@/lib/money";
+import { RelTime } from "@/components/rel-time";
+import { formatNaira, formatTokens } from "@/lib/money";
 import { me, ORDER_STATUS, orderMoney, orders, orderTotal, products, salesByDay, store, token } from "@/lib/mock";
 
 export default function HomePage() {
@@ -12,7 +13,7 @@ export default function HomePage() {
   const maxDay = Math.max(...salesByDay.map((d) => d.amount));
   const owedSecondHalf = active.reduce((n, o) => n + orderMoney(o).second, 0);
   const lowStock = products.filter((p) => p.status === "live" && p.stock <= 3);
-  const hour = new Date().getHours();
+  const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Africa/Lagos" }).format(new Date()));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
@@ -63,7 +64,7 @@ export default function HomePage() {
                     {o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
                   </p>
                   <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-brand-strong">
-                    <Clock size={13} /> {timeLeft(o.acceptBy!)} to accept · @{o.customer.username}
+                    <Clock size={13} /> <RelTime iso={o.acceptBy!} left /> to accept · @{o.customer.username}
                   </p>
                 </div>
                 <ArrowRight size={18} className="text-faint transition group-hover:translate-x-0.5 group-hover:text-ink" />
@@ -129,7 +130,7 @@ export default function HomePage() {
                   <ProductThumb src={o.items[0].image} size={44} rounded="rounded-xl" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{o.items[0].name}{o.items.length > 1 ? ` +${o.items.length - 1}` : ""}</p>
-                    <p className="text-xs text-muted">{o.number} · {timeAgo(o.createdAt)}</p>
+                    <p className="text-xs text-muted">{o.number} · <RelTime iso={o.createdAt} /></p>
                   </div>
                   <Pill tone={ORDER_STATUS[o.status].tone}>{ORDER_STATUS[o.status].label}</Pill>
                 </Link>

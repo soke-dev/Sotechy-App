@@ -4,7 +4,8 @@ import { Clock, Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { EmptyState, inputClass, PageHeader, Pill, ProductThumb } from "@/components/ui";
-import { formatNaira, timeAgo, timeLeft } from "@/lib/money";
+import { RelTime } from "@/components/rel-time";
+import { formatNaira } from "@/lib/money";
 import { ORDER_STATUS, orders, orderTotal, type Order } from "@/lib/mock";
 
 const TABS: { id: string; label: string; match: (o: Order) => boolean }[] = [
@@ -71,14 +72,14 @@ export default function OrdersPage() {
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}</p>
                     <p className="text-sm text-muted">
-                      {o.number} · @{o.customer.username} · {o.fulfilment === "pickup" ? "Pickup" : "Delivery"} · {timeAgo(o.createdAt)}
+                      {o.number} · @{o.customer.username} · {o.fulfilment === "pickup" ? "Pickup" : "Delivery"} · <RelTime iso={o.createdAt} />
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-4 sm:justify-end">
                   {o.status === "new" ? (
                     <span className="inline-flex items-center gap-1 text-sm font-semibold text-brand-strong">
-                      <Clock size={14} /> {timeLeft(o.acceptBy!)}
+                      <Clock size={14} /> <RelTime iso={o.acceptBy!} left />
                     </span>
                   ) : (
                     <Pill tone={ORDER_STATUS[o.status].tone}>{ORDER_STATUS[o.status].label}</Pill>

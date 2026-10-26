@@ -6,7 +6,8 @@ import { notFound, useParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Illo } from "@/components/illustrations";
 import { btn, Card, Field, inputClass, Pill, ProductThumb } from "@/components/ui";
-import { formatNaira, formatTokens, PLATFORM_FEE, timeAgo, timeLeft } from "@/lib/money";
+import { RelTime } from "@/components/rel-time";
+import { formatNaira, formatTokens, PLATFORM_FEE } from "@/lib/money";
 import { ORDER_STATUS, orderMoney, orders, store, type OrderStatus } from "@/lib/mock";
 
 const DECLINE_REASONS = ["Out of stock", "Can't deliver to this location", "Price or listing mistake", "Other"];
@@ -72,7 +73,7 @@ export default function OrderPage() {
             <h1 className="text-3xl font-extrabold">{order.number}</h1>
             <Pill tone={ORDER_STATUS[s].tone}>{ORDER_STATUS[s].label}</Pill>
           </div>
-          <p className="mt-1 text-sm text-muted">Placed {timeAgo(order.createdAt)} · {order.fulfilment === "pickup" ? "Store pickup" : "Delivery"}</p>
+          <p className="mt-1 text-sm text-muted">Placed <RelTime iso={order.createdAt} /> · {order.fulfilment === "pickup" ? "Store pickup" : "Delivery"}</p>
         </div>
       </div>
 
@@ -81,7 +82,7 @@ export default function OrderPage() {
         <section className="mb-6 flex flex-col gap-4 rounded-[28px] bg-panel p-6 text-white sm:flex-row sm:items-center">
           <div className="flex-1">
             <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-sun">
-              <Clock size={15} /> {timeLeft(order.acceptBy!)} to answer
+              <Clock size={15} /> <RelTime iso={order.acceptBy!} left /> to answer
             </p>
             <p className="mt-1 text-xl font-bold">Can you fulfil this order?</p>
             <p className="mt-1 text-sm text-white/70">Accept and {formatNaira(m.first)} (the first 50%) is sent to your bank straight away.</p>
@@ -176,7 +177,7 @@ export default function OrderPage() {
                   <div className="pb-5">
                     <p className="text-sm font-semibold">{h.label}</p>
                     {h.note && <p className="text-sm text-muted">{h.note}</p>}
-                    <p className="text-xs text-faint">{timeAgo(h.at)}</p>
+                    <p className="text-xs text-faint"><RelTime iso={h.at} /></p>
                   </div>
                 </li>
               ))}

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Illo } from "@/components/illustrations";
 import { btn, Card, PageHeader, Pill, StatCard } from "@/components/ui";
-import { formatNaira, timeAgo } from "@/lib/money";
+import { RelTime } from "@/components/rel-time";
+import { formatNaira } from "@/lib/money";
 import { bank, orderMoney, orders, payouts } from "@/lib/mock";
 
 export default function PayoutsPage() {
@@ -29,7 +30,7 @@ export default function PayoutsPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{p.half} · {p.orderNumber}</p>
-                  <p className="text-sm text-muted">{p.half === "First 50%" ? "On accept" : "On delivery"} · {timeAgo(p.at)}</p>
+                  <p className="text-sm text-muted">{p.half === "First 50%" ? "On accept" : "On delivery"} · <RelTime iso={p.at} /></p>
                 </div>
                 <div className="text-right">
                   <p className="font-display text-lg font-bold">{formatNaira(p.amount)}</p>

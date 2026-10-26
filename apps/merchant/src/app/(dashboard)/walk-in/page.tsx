@@ -4,7 +4,8 @@ import { Check, Search } from "lucide-react";
 import { useState } from "react";
 import { Illo } from "@/components/illustrations";
 import { btn, Card, Field, inputClass, PageHeader } from "@/components/ui";
-import { formatNaira, formatTokens, PLATFORM_FEE, SOTECHY_CROSS_BONUS, timeAgo } from "@/lib/money";
+import { RelTime } from "@/components/rel-time";
+import { formatNaira, formatTokens, PLATFORM_FEE, SOTECHY_CROSS_BONUS } from "@/lib/money";
 import { store } from "@/lib/mock";
 
 // Demo directory of Sotechy customers the cashier can look up
@@ -118,7 +119,7 @@ export default function WalkInPage() {
                 <li key={r.at} className="flex items-center justify-between text-sm">
                   <span>
                     <b>{r.who}</b>
-                    <span className="text-muted"> · {timeAgo(r.at)}</span>
+                    <span className="text-muted"> · <RelTime iso={r.at} /></span>
                   </span>
                   <span className="font-semibold">{formatNaira(r.amount)}</span>
                 </li>

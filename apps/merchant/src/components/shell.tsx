@@ -132,12 +132,12 @@ function TabBar({ store, onMore }: { store: ShellStore; onMore: () => void }) {
     { href: "/token", label: `$${store.ticker}`, illo: "coin" },
   ];
   return (
-    <nav className="fixed inset-x-3 bottom-3 z-30 flex items-stretch rounded-3xl border border-line bg-surface/95 px-1 py-1.5 shadow-[0_12px_32px_rgba(23,18,14,0.14)] backdrop-blur lg:hidden">
+    <nav className="fixed inset-x-3 bottom-3 z-30 flex items-stretch rounded-3xl border border-line bg-surface px-1 py-1.5 shadow-[0_12px_32px_rgba(23,18,14,0.14)] lg:hidden">
       {tabs.map((t) => {
         const active = isActive(t.href, path);
         return (
           <Link key={t.href} href={t.href} className="relative flex flex-1 flex-col items-center gap-0.5 py-1">
-            <span className={`flex h-9 w-12 items-center justify-center rounded-2xl transition ${active ? "bg-brand-soft" : "opacity-60 grayscale-[60%]"}`}>
+            <span className={`flex h-9 w-12 items-center justify-center rounded-2xl transition ${active ? "bg-brand-soft" : "opacity-55"}`}>
               <Illo name={t.illo} size={26} />
             </span>
             <span className={`text-[11px] ${active ? "font-bold text-ink" : "text-muted"}`}>{t.label}</span>
@@ -146,7 +146,7 @@ function TabBar({ store, onMore }: { store: ShellStore; onMore: () => void }) {
         );
       })}
       <button onClick={onMore} className="flex flex-1 flex-col items-center gap-0.5 py-1">
-        <span className="flex h-9 w-12 items-center justify-center rounded-2xl opacity-60 grayscale-[60%]">
+        <span className="flex h-9 w-12 items-center justify-center rounded-2xl opacity-55">
           <Illo name="sparkle" size={26} />
         </span>
         <span className="text-[11px] text-muted">More</span>

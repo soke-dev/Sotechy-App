@@ -3,7 +3,8 @@
 import { Camera, Star } from "lucide-react";
 import { useState } from "react";
 import { btn, Card, inputClass, PageHeader, Pill, ProductThumb } from "@/components/ui";
-import { formatTokens, timeAgo } from "@/lib/money";
+import { RelTime } from "@/components/rel-time";
+import { formatTokens } from "@/lib/money";
 import { reviews as initial, store } from "@/lib/mock";
 
 const Stars = ({ n, size = 15 }: { n: number; size?: number }) => (
@@ -49,7 +50,7 @@ export default function ReviewsPage() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <Stars n={r.rating} />
-                  <p className="mt-1 text-sm"><b>{r.customer}</b> <span className="text-muted">on {r.product} · {timeAgo(r.at)}</span></p>
+                  <p className="mt-1 text-sm"><b>{r.customer}</b> <span className="text-muted">on {r.product} · <RelTime iso={r.at} /></span></p>
                 </div>
                 <Pill tone="brand">
                   {r.photo && <Camera size={12} />} +{formatTokens(r.bonus)} ${store.ticker} bonus

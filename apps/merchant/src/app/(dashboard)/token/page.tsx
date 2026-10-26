@@ -2,7 +2,8 @@ import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, ExternalLink, Gift, Lock, 
 import Link from "next/link";
 import { Illo } from "@/components/illustrations";
 import { btn, Card, PageHeader, Pill, StatCard } from "@/components/ui";
-import { formatNaira, formatTokens, MAX_REVIEW_BONUS, SOTECHY_CROSS_BONUS, timeAgo } from "@/lib/money";
+import { RelTime } from "@/components/rel-time";
+import { formatNaira, formatTokens, MAX_REVIEW_BONUS, SOTECHY_CROSS_BONUS } from "@/lib/money";
 import { store, token, tokenActivity, topHolders } from "@/lib/mock";
 
 const ACTIVITY = {
@@ -112,7 +113,7 @@ export default function TokenPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{a.label}</p>
-                    <p className="text-xs text-muted">{a.who} · {timeAgo(a.at)}</p>
+                    <p className="text-xs text-muted">{a.who} · <RelTime iso={a.at} /></p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold">{formatTokens(a.amount)}</p>
