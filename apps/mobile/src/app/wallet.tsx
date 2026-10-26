@@ -244,7 +244,7 @@ export default function WalletScreen() {
               title: "What they are not",
               icon: "close-circle-outline" as IconName,
               tone: colors.danger,
-              items: ["Not money: you can't withdraw them to a bank", "Not crypto to trade or sell", "Can't be sent to wallets outside Sotechy", "Not an investment: their value doesn't go up", "Only spendable at the store that issued them ($SOTECHY at Sotechy stores)"],
+              items: ["Not money: you can't withdraw them to a bank", "Not tradeable for now: you can't sell or swap them", "Can't be sent to wallets outside Sotechy", "Not an investment: their value doesn't go up", "Only spendable at the store that issued them ($SOTECHY at Sotechy stores)"],
             },
           ].map((g) => (
             <View key={g.title} style={{ gap: space.sm }}>
@@ -257,6 +257,12 @@ export default function WalletScreen() {
               ))}
             </View>
           ))}
+          <View style={{ flexDirection: "row", gap: space.sm, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt }}>
+            <Ionicons name="time-outline" size={17} color={colors.ink2} style={{ marginTop: 1 }} />
+            <Txt variant="small" color={colors.ink2} style={{ flex: 1, fontSize: 14 }}>
+              <Text style={{ fontFamily: fonts.semibold }}>In the future, </Text>a store may choose to make its token tradeable. It&apos;s each store&apos;s decision, so some may and others may not. We&apos;ll tell you before anything changes.
+            </Txt>
+          </View>
           <Txt variant="caption">About ₦{(Math.round(tokenNaira(1000) * 100) / 100).toFixed(2)} of spending per 1,000 tokens. Your tokens live in your Sotechy wallet on the Monad network, so every movement can be checked.</Txt>
         </View>
       </Sheet>
