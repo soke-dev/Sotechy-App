@@ -29,7 +29,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   return (
     <>
       <PageHeader title={`Order ${order.orderNumber}`} description={`${order.channel === "online" ? "Online" : "In store"} · ${formatDate(order.createdAt)}`} actions={<StatusBadge status={order.status} />} />
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="flex flex-col gap-4 lg:col-span-2">
           <Card title="Items">
             <DataTable
@@ -62,7 +62,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               ]}
             />
             {pendingPayment && (pendingPayment.method === "bank_transfer" || pendingPayment.method === "crypto") && (
-              <div className="mt-4 rounded border border-amber-200 bg-amber-50 p-3">
+              <div className="mt-4 rounded border border-warn/30 bg-warn-soft p-3">
                 <p className="mb-2 text-sm">
                   Managers: confirm only after checking the money arrived in the{" "}
                   {pendingPayment.method === "bank_transfer" ? "bank account (statement or banking app)" : "wallet (block explorer)"}. Screenshots are not proof of payment.

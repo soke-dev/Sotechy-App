@@ -50,7 +50,7 @@ export default async function SwitchesPage() {
   return (
     <>
       <PageHeader icon={ToggleRight} title="App switches" description="Turn parts of the customer app on or off. Changes save straight away and reach the app within a minute." />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="Maintenance mode">
           <LiveSwitch
             label="Show maintenance screen"

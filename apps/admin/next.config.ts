@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   // uses the classic request-time rendering model instead of Cache Components.
   reactCompiler: true,
   transpilePackages: ["@sotechy/shared"],
+  // Dev only: let a phone on the same Wi-Fi (or 127.0.0.1) load the dev scripts, and keep the dev badge off the tab bar
+  allowedDevOrigins: ["127.0.0.1", "192.168.*.*", "10.*.*.*", "172.*.*.*"],
+  devIndicators: { position: "top-right" },
   // Photo uploads go through server actions (default limit 1 MB); the API caps each image at 5 MB.
   experimental: { serverActions: { bodySizeLimit: "25mb" } },
   turbopack: {

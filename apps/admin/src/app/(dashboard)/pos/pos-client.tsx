@@ -69,7 +69,7 @@ export function PosClient({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card title="Find product">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or SKU" className={`${inputClass} mb-3 w-full`} />
         <ul className="divide-y divide-line text-sm">
@@ -107,7 +107,7 @@ export function PosClient({
           )}
         </div>
         {(method === "bank_transfer" || method === "crypto") && (
-          <p className="mb-3 rounded bg-amber-50 p-2 text-xs text-amber-800">
+          <p className="mb-3 rounded bg-warn-soft p-2 text-xs text-warn">
             Transfers and crypto are saved as pending. Stock is held until a manager confirms the money arrived.
           </p>
         )}
@@ -123,7 +123,7 @@ export function PosClient({
                 className={`${inputClass} w-16`}
               />
               <span className="w-28 text-right">{formatNaira(l.price * l.quantity)}</span>
-              <button onClick={() => setLines((prev) => prev.filter((x) => x !== l))} className="text-red-600">✕</button>
+              <button onClick={() => setLines((prev) => prev.filter((x) => x !== l))} className="text-bad">✕</button>
             </li>
           ))}
         </ul>
@@ -134,8 +134,8 @@ export function PosClient({
           </button>
         </div>
         <p className="mt-1 text-xs text-muted">Final total is calculated by the server (eligible promotions apply).</p>
-        {result?.error && <p className="mt-2 text-sm text-red-600">{result.error}</p>}
-        {result?.message && <p className="mt-2 text-sm text-green-700">{result.message}</p>}
+        {result?.error && <p className="mt-2 text-sm text-bad">{result.error}</p>}
+        {result?.message && <p className="mt-2 text-sm text-good">{result.message}</p>}
       </Card>
     </div>
   );

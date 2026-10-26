@@ -21,7 +21,7 @@ interface MoneyMovesStatus {
 function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2">
-      {ok ? <CircleCheck size={16} className="mt-0.5 shrink-0 text-green-600" /> : <CircleAlert size={16} className="mt-0.5 shrink-0 text-amber-600" />}
+      {ok ? <CircleCheck size={16} className="mt-0.5 shrink-0 text-good" /> : <CircleAlert size={16} className="mt-0.5 shrink-0 text-warn" />}
       <span className="text-ink-2">{children}</span>
     </li>
   );
@@ -42,18 +42,18 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" description="Payments, exchange rate, delivery and contact details (admins)" icon={SettingsIcon} />
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card title="Money Moves (online payments)" className="xl:col-span-2">
           <ErrorNote error={mm.error} />
           {m && (
             <div className="flex flex-col gap-3 text-sm">
               <div
-                className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3 ${m.account ? "bg-green-50 text-green-800" : m.configured ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}
+                className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3 ${m.account ? "bg-good-soft text-good" : m.configured ? "bg-bad-soft text-bad" : "bg-warn-soft text-warn"}`}
               >
                 {m.account ? <CircleCheck size={20} /> : <CircleAlert size={20} />}
                 <span className="font-semibold">{m.account ? `Connected to ${m.account.name}` : m.configured ? `Can't connect: ${m.error}` : "Not connected yet"}</span>
                 {m.mode && (
-                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${m.mode === "live" ? "bg-green-600 text-white" : "bg-amber-500 text-white"}`}>{m.mode} mode</span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${m.mode === "live" ? "bg-good text-white" : "bg-sun text-white"}`}>{m.mode} mode</span>
                 )}
                 {m.account && !m.account.verified && m.mode === "live" && <span className="text-xs">Business not verified yet</span>}
               </div>
@@ -99,7 +99,7 @@ export default async function SettingsPage() {
               >
                 <input type="hidden" name="code" value={m.code} />
                 <span className="flex items-center gap-2 text-sm font-semibold">
-                  <span className={`h-2 w-2 rounded-full ${m.isEnabled ? "bg-green-500" : "bg-neutral-300"}`} />
+                  <span className={`h-2 w-2 rounded-full ${m.isEnabled ? "bg-good" : "bg-line"}`} />
                   {m.label}
                 </span>
                 <div className="flex flex-wrap gap-x-5 gap-y-2">

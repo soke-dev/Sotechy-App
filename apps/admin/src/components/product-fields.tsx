@@ -5,7 +5,7 @@ import { Field, inputClass } from "./ui";
 export function ProductFields({ categories, product }: { categories: Category[]; product?: Product }) {
   const specText = product ? Object.entries(product.specifications).map(([k, v]) => `${k}: ${v}`).join("\n") : "";
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <Field label="Name *">
         <input name="name" required defaultValue={product?.name} className={inputClass} />
       </Field>
@@ -61,13 +61,13 @@ export function ProductFields({ categories, product }: { categories: Category[];
       </Field>
       <div className="flex flex-col gap-2">
         <Field label="Upload photos (first photo is the main one)">
-          <input name="photos" type="file" multiple accept="image/png,image/jpeg,image/webp" className="text-sm" />
+          <input name="photos" type="file" multiple accept="image/png,image/jpeg,image/webp" className="min-w-0 max-w-full text-sm" />
         </Field>
         {product && product.images.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {product.images.map((src) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={src} src={src} alt="" className="h-14 w-14 rounded border border-neutral-200 object-contain" />
+              <img key={src} src={src} alt="" className="h-14 w-14 rounded border border-line object-contain" />
             ))}
           </div>
         )}

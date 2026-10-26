@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
-/* Sotechy admin palette: warm neutrals with Sotechy orange accents (matches the customer app). */
+/* Sotechy palette, shared with the customer app and the merchant dashboard: warm cream, Sotechy orange, ink. */
 @theme inline {
-  --color-canvas: #f7f5f2;
+  --color-canvas: #faf7f3;
   --color-surface: #ffffff;
-  --color-line: #ece6de;
+  --color-surface-alt: #f2ede6;
+  --color-line: #e9e2d9;
   --color-ink: #17120e;
   --color-ink-2: #3a322c;
   --color-muted: #7f756c;
@@ -12,15 +13,39 @@
   --color-brand: #f7931e;
   --color-brand-strong: #e07f0c;
   --color-brand-soft: #fff1df;
-  --font-sans: var(--font-geist-sans);
+  --color-sun: #fdb913;
+  --color-panel: #17120e;
+  --color-panel-2: #241d17;
+  --color-good: #1c8a4c;
+  --color-good-soft: #e4f3e9;
+  --color-warn: #a86a12;
+  --color-warn-soft: #fff3d9;
+  --color-bad: #c9372a;
+  --color-bad-soft: #fbe7e4;
+  --color-info: #2f6fb3;
+  --color-info-soft: #e5f0fb;
+  --font-sans: var(--font-body);
+  --font-display: var(--font-heading);
   --font-mono: var(--font-geist-mono);
 }
 
 @layer base {
+  /* Nothing may push the page wider than the phone */
+  html,
+  body {
+    overflow-x: clip;
+  }
   body {
     background: var(--color-canvas);
     color: var(--color-ink);
-    font-family: var(--font-sans), system-ui, sans-serif;
+    font-family: var(--font-body), system-ui, sans-serif;
+  }
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-heading), var(--font-body), system-ui, sans-serif;
+    letter-spacing: -0.01em;
   }
 
   /* Checkboxes and radios in Sotechy orange */
@@ -38,10 +63,10 @@
   input[type="file"]::file-selector-button {
     margin-right: 0.75rem;
     border: 1px solid var(--color-line);
-    border-radius: 0.5rem;
+    border-radius: 999px;
     background: var(--color-surface);
-    padding: 0.45rem 0.85rem;
-    font-weight: 500;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
     color: var(--color-ink);
     cursor: pointer;
   }
@@ -57,4 +82,18 @@
   code {
     font-family: var(--font-mono), ui-monospace, monospace;
   }
+}
+
+/* Horizontal chip rows scroll without showing a scrollbar */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Dark sidebar scrollbar */
+@utility dark-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }

@@ -15,7 +15,7 @@ export default async function NewProductPage() {
           <ProductFields categories={categories ?? []} />
           <div>
             <h3 className="mb-2 font-medium">First variant & pricing</h3>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Field label="SKU *"><input name="sku" required className={inputClass} /></Field>
               <Field label="Variant name"><input name="variantName" placeholder="Standard / 128GB Black" className={inputClass} /></Field>
               <Field label="Price (₦) *"><input name="price" type="number" min={0} step="0.01" required className={inputClass} /></Field>

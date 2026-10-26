@@ -2,7 +2,7 @@ import { Boxes } from "lucide-react";
 import Link from "next/link";
 import { formatDate, type Branch } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
-import { Card, DataTable, ErrorNote, Field, inputClass, PageHeader } from "@/components/ui";
+import { Card, DataTable, ErrorNote, Field, FilterLinks, inputClass, PageHeader } from "@/components/ui";
 import { load } from "@/lib/api";
 import type { InventoryRow, PosSearchRow, StockMovementRow } from "@/lib/types";
 import { adjustStock, transferStock } from "../actions";
@@ -23,12 +23,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <PageHeader icon={Boxes} title="Inventory" description="Stock per branch. Reserved = held by unpaid orders." />
-      <div className="mb-4 flex flex-wrap gap-2 text-sm">
-        <Link href="/inventory" className="rounded-full border border-line bg-white px-3 py-1">All branches</Link>
-        {(branches.data ?? []).map((b) => (
-          <Link key={b.id} href={`/inventory?branchId=${b.id}`} className="rounded-full border border-line bg-white px-3 py-1">{b.name}</Link>
-        ))}
-      </div>
+      <FilterLinks items={[{ label: "All branches", href: "/inventory", active: !branchId }, ...(branches.data ?? []).map((b) => ({ label: b.name, href: `/inventory?branchId=${b.id}`, active: branchId === b.id }))]} />
 
       <div className="mb-4 grid gap-4 lg:grid-cols-2">
         <Card title="Adjust stock (managers)">
@@ -67,7 +62,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
             { header: "Branch", cell: (r) => r.branchName },
             { header: "On hand", cell: (r) => r.quantity },
             { header: "Reserved", cell: (r) => r.reserved },
-            { header: "Available", cell: (r) => <span className={r.isLow ? "font-semibold text-red-600" : ""}>{r.available}{r.isLow ? " · low" : ""}</span> },
+            { header: "Available", cell: (r) => <span className={r.isLow ? "font-semibold text-bad" : ""}>{r.available}{r.isLow ? " · low" : ""}</span> },
           ]}
         />
       </Card>

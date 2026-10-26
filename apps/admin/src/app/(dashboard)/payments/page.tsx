@@ -2,7 +2,7 @@ import { CreditCard } from "lucide-react";
 import Link from "next/link";
 import { formatDate, formatNaira, PAYMENT_METHOD_LABELS } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
-import { Card, DataTable, ErrorNote, PageHeader, StatusBadge, inputClass } from "@/components/ui";
+import { Card, DataTable, ErrorNote, FilterLinks, inputClass, PageHeader, StatusBadge } from "@/components/ui";
 import { load } from "@/lib/api";
 import type { AdminPaymentRow, RefundRow } from "@/lib/types";
 import { updateRefund } from "../actions";
@@ -17,13 +17,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader icon={CreditCard} title="Payments & refunds" description="Orders become paid only after provider or manager verification" />
-      <div className="mb-4 flex gap-2 text-sm">
-        {["", "pending", "confirmed", "expired", "refunded"].map((s) => (
-          <Link key={s} href={s ? `/payments?status=${s}` : "/payments"} className="rounded-full border border-line bg-white px-3 py-1">
-            {s || "All"}
-          </Link>
-        ))}
-      </div>
+      <FilterLinks items={["", "pending", "confirmed", "expired", "refunded"].map((s) => ({ label: s || "All", href: s ? `/payments?status=${s}` : "/payments", active: (status ?? "") === s }))} />
       <Card title="Payments" className="mb-4">
         <ErrorNote error={payments.error} />
         <DataTable

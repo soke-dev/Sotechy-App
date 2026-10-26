@@ -27,7 +27,7 @@ export default async function ReviewsPage() {
           columns={[
             { header: "When", cell: (r) => formatDate(r.createdAt) },
             { header: "Product", cell: (r) => r.productName },
-            { header: "Rating", cell: (r) => <span className="whitespace-nowrap text-amber-500">{stars(r.rating)}</span> },
+            { header: "Rating", cell: (r) => <span className="whitespace-nowrap text-warn">{stars(r.rating)}</span> },
             {
               header: "Review",
               cell: (r) => (
@@ -43,7 +43,7 @@ export default async function ReviewsPage() {
                 <div>
                   <p>{r.customerName ?? "—"}</p>
                   <p className="text-xs text-muted">{r.customerEmail}</p>
-                  {r.verified && <p className="text-xs text-green-700">Verified purchase</p>}
+                  {r.verified && <p className="text-xs text-good">Verified purchase</p>}
                 </div>
               ),
             },
@@ -53,7 +53,7 @@ export default async function ReviewsPage() {
                 <ActionForm action={setReviewPublished} submitLabel={r.isPublished ? "Hide" : "Show"}>
                   <input type="hidden" name="id" value={r.id} />
                   <input type="hidden" name="isPublished" value={String(!r.isPublished)} />
-                  <span className={`text-sm ${r.isPublished ? "text-green-700" : "text-muted"}`}>{r.isPublished ? "Live" : "Hidden"}</span>
+                  <span className={`text-sm ${r.isPublished ? "text-good" : "text-muted"}`}>{r.isPublished ? "Live" : "Hidden"}</span>
                 </ActionForm>
               ),
             },

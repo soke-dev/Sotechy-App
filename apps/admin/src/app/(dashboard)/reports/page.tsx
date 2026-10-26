@@ -32,7 +32,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             <StatCard label="Outstanding payments" value={formatNaira(s.pendingPayments.value)} hint={`${s.pendingPayments.count} orders`} />
             <StatCard label="Refunded" value={formatNaira(s.refunds.value)} />
           </div>
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <Card title="By channel">
               <DataTable rows={s.byChannel} columns={[{ header: "Channel", cell: (r) => (r.channel === "online" ? "Online" : "In store") }, { header: "Orders", cell: (r) => r.orders }, { header: "Revenue", cell: (r) => formatNaira(r.revenue) }]} />
             </Card>
