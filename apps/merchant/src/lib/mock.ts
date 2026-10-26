@@ -142,18 +142,24 @@ export interface Product {
   status: "live" | "draft" | "hidden";
   sold: number;
   options?: string[];
+  /** Customers can make an offer. `floor` is the lowest price the merchant will consider (only they see it). */
+  negotiable?: { floor?: number; hours: OfferHours };
 }
 
+/** How long an agreed price lasts: never more than 24 hours */
+export type OfferHours = 6 | 12 | 24;
+export const OFFER_HOURS: OfferHours[] = [6, 12, 24];
+
 export const products: Product[] = [
-  { id: "p1", name: "Spark 20 Smartphone 128GB", image: "/demo/item-phone.png", category: "Smartphones", price: 250_000, compareAt: 275_000, stock: 8, status: "live", sold: 42, options: ["Black", "Blue"] },
+  { id: "p1", name: "Spark 20 Smartphone 128GB", image: "/demo/item-phone.png", category: "Smartphones", price: 250_000, compareAt: 275_000, stock: 8, status: "live", sold: 42, options: ["Black", "Blue"], negotiable: { floor: 230_000, hours: 12 } },
   { id: "p2", name: "Fast Charger 25W", image: "/demo/item-charger.png", category: "Chargers & cables", price: 12_000, stock: 55, status: "live", sold: 130 },
-  { id: "p3", name: "Power Bank 20,000mAh", image: "/demo/item-powerbank.png", category: "Power banks", price: 28_000, stock: 2, status: "live", sold: 64 },
-  { id: "p4", name: '43" Smart TV', image: "/demo/item-tv.png", category: "Televisions", price: 390_000, compareAt: 420_000, stock: 3, status: "live", sold: 11 },
-  { id: "p5", name: "Bluetooth Speaker", image: "/demo/item-speaker.png", category: "Bluetooth speakers", price: 35_000, stock: 14, status: "live", sold: 27 },
+  { id: "p3", name: "Power Bank 20,000mAh", image: "/demo/item-powerbank.png", category: "Power banks", price: 28_000, stock: 2, status: "live", sold: 64, negotiable: { hours: 6 } },
+  { id: "p4", name: '43" Smart TV', image: "/demo/item-tv.png", category: "Televisions", price: 390_000, compareAt: 420_000, stock: 3, status: "live", sold: 11, negotiable: { floor: 360_000, hours: 24 } },
+  { id: "p5", name: "Bluetooth Speaker", image: "/demo/item-speaker.png", category: "Bluetooth speakers", price: 35_000, stock: 14, status: "live", sold: 27, negotiable: { floor: 30_000, hours: 6 } },
   { id: "p6", name: "Sound Bar", image: "/demo/item-soundbar.png", category: "Sound bars", price: 120_000, stock: 0, status: "live", sold: 9 },
   { id: "p7", name: "Split Air Conditioner 1.5HP", image: "/demo/item-ac.png", category: "Air conditioners", price: 410_000, stock: 5, status: "live", sold: 6 },
   { id: "p8", name: "Wireless Mouse", image: "/demo/item-mouse.png", category: "Keyboards & mice", price: 9_500, stock: 25, status: "draft", sold: 0 },
-  { id: "p9", name: "14\" Laptop 8GB / 256GB", image: "/demo/item-laptop.png", category: "Laptops", price: 620_000, stock: 4, status: "live", sold: 5 },
+  { id: "p9", name: "14\" Laptop 8GB / 256GB", image: "/demo/item-laptop.png", category: "Laptops", price: 620_000, stock: 4, status: "live", sold: 5, negotiable: { floor: 580_000, hours: 12 } },
   { id: "p10", name: "Digital Air Fryer 4.5L", image: "/demo/item-airfryer.png", category: "Air fryers", price: 95_000, compareAt: 110_000, stock: 7, status: "hidden", sold: 18 },
   // A category the merchant named themselves under "Other"
   { id: "p11", name: "UK-used Smartphone 64GB", image: "/demo/item-phone.png", category: "UK-used phones", price: 165_000, stock: 3, status: "live", sold: 14 },
@@ -290,5 +296,78 @@ export const sentNotices = [
   { id: "s1", title: "Weekend sale: 10% off phones", body: "Every smartphone is 10% off until Sunday, and you still earn $XENA on the full price.", at: ago(25), sentTo: 1_284, opened: 512, link: "Phones" },
   { id: "s2", title: "Back in stock: 25W fast chargers", body: "The fast charger is back. Only 40 left.", at: ago(60 * 52), sentTo: 1_271, opened: 640, link: "Fast Charger 25W" },
   { id: "s3", title: "We now deliver to Asaba and Warri", body: "Order today and get it in 2–3 days. Pickup at GUO Motors park, Asaba.", at: ago(60 * 24 * 9), sentTo: 1_190, opened: 702, link: "" },
+];
+
+export type OfferStatus = "waiting_you" | "waiting_customer" | "agreed" | "declined" | "expired";
+
+export const OFFER_STATUS: Record<OfferStatus, { label: string; tone: "warn" | "info" | "good" | "bad" | "neutral" }> = {
+  waiting_you: { label: "Needs your answer", tone: "warn" },
+  waiting_customer: { label: "Waiting on customer", tone: "info" },
+  agreed: { label: "Deal agreed", tone: "good" },
+  declined: { label: "Declined", tone: "neutral" },
+  expired: { label: "Deal expired", tone: "neutral" },
+};
+
+export interface OfferMessage {
+  id: string;
+  from: "customer" | "merchant";
+  kind: "text" | "offer" | "counter" | "accepted" | "declined";
+  text?: string;
+  amount?: number;
+  hours?: OfferHours;
+  at: string;
+}
+
+/** One customer negotiating one product with this store */
+export interface OfferThread {
+  id: string;
+  productId: string;
+  customer: { name: string; username: string };
+  qty: number;
+  status: OfferStatus;
+  messages: OfferMessage[];
+  /** When the agreed price stops working */
+  expiresAt?: string;
+  agreedPrice?: number;
+}
+
+export const offerThreads: OfferThread[] = [
+  {
+    id: "t1", productId: "p1", customer: { name: "Chidi Okeke", username: "chidi" }, qty: 1, status: "waiting_you",
+    messages: [
+      { id: "m1", from: "customer", kind: "text", text: "Good afternoon. Is the black one still available?", at: ago(42) },
+      { id: "m2", from: "merchant", kind: "text", text: "Yes, we have 8 in stock.", at: ago(38) },
+      { id: "m3", from: "customer", kind: "offer", amount: 220_000, text: "Can you do 220k? I'll pick it up today.", at: ago(20) },
+    ],
+  },
+  {
+    id: "t2", productId: "p4", customer: { name: "Amaka Nwosu", username: "amaka.n" }, qty: 1, status: "waiting_customer",
+    messages: [
+      { id: "m1", from: "customer", kind: "offer", amount: 350_000, text: "Best price for the 43 inch?", at: ago(60 * 5) },
+      { id: "m2", from: "merchant", kind: "counter", amount: 370_000, hours: 12, text: "I can do 370k with free delivery in Benin.", at: ago(60 * 4) },
+    ],
+  },
+  {
+    id: "t3", productId: "p9", customer: { name: "Tunde Bakare", username: "tunde" }, qty: 1, status: "agreed", agreedPrice: 590_000, expiresAt: ahead(60 * 9),
+    messages: [
+      { id: "m1", from: "customer", kind: "offer", amount: 580_000, at: ago(60 * 4) },
+      { id: "m2", from: "merchant", kind: "counter", amount: 590_000, hours: 12, at: ago(60 * 3 + 20) },
+      { id: "m3", from: "customer", kind: "accepted", amount: 590_000, hours: 12, at: ago(60 * 3) },
+    ],
+  },
+  {
+    id: "t4", productId: "p5", customer: { name: "Blessing Eze", username: "blessed" }, qty: 2, status: "declined",
+    messages: [
+      { id: "m1", from: "customer", kind: "offer", amount: 25_000, text: "25k each for two?", at: ago(60 * 26) },
+      { id: "m2", from: "merchant", kind: "declined", text: "Sorry, that's below what they cost us.", at: ago(60 * 25) },
+    ],
+  },
+  {
+    id: "t5", productId: "p3", customer: { name: "Ifeoma Obi", username: "ife" }, qty: 1, status: "expired", agreedPrice: 26_000, expiresAt: ago(60 * 30),
+    messages: [
+      { id: "m1", from: "customer", kind: "offer", amount: 26_000, at: ago(60 * 40) },
+      { id: "m2", from: "merchant", kind: "accepted", amount: 26_000, hours: 6, at: ago(60 * 36) },
+    ],
+  },
 ];
 

@@ -11,7 +11,7 @@ import { Sheet, ZoneForm, ZonePrices } from "./zone-form";
 import { formatNaira, formatTokens, SOTECHY_CROSS_BONUS } from "@/lib/money";
 import { isStandardCategory } from "@/lib/categories";
 import { hintsFor } from "@/lib/category-hints";
-import { deliveryZones, pickup as storePickup, products, store, zoneLabel, type DeliveryZone, type Product } from "@/lib/mock";
+import { deliveryZones, OFFER_HOURS, pickup as storePickup, products, store, zoneLabel, type DeliveryZone, type OfferHours, type Product } from "@/lib/mock";
 
 // Categories this store made up itself under "Other", offered first next time
 const OWN_CATEGORIES = [...new Set(products.map((p) => p.category).filter((c) => !isStandardCategory(c)))];
@@ -37,6 +37,10 @@ export function ProductForm({ product }: { product?: Product }) {
   const [category, setCategory] = useState(product?.category ?? "");
   const [price, setPrice] = useState(product?.price ?? 0);
   const [compareAt, setCompareAt] = useState(product?.compareAt ?? 0);
+  // Offers: customers can negotiate the price with the store
+  const [negotiable, setNegotiable] = useState(Boolean(product?.negotiable));
+  const [floor, setFloor] = useState(product?.negotiable?.floor ?? 0);
+  const [offerHours, setOfferHours] = useState<OfferHours>(product?.negotiable?.hours ?? 12);
   const [photos, setPhotos] = useState<string[]>(product ? [product.image] : []);
   // Photo being arranged (tap to pick on a phone; drag on a computer)
   const [picked, setPicked] = useState<number | null>(null);
@@ -218,6 +222,36 @@ export function ProductForm({ product }: { product?: Product }) {
                 </span>
               </div>
             )}
+
+            {/* Negotiation */}
+            <div className="mt-4 rounded-2xl border border-line p-4">
+              <label className="flex cursor-pointer items-start justify-between gap-4">
+                <span>
+                  <span className="block font-semibold">Customers can make an offer</span>
+                  <span className="block text-sm text-muted">They message you a price for this product. If you agree, only that customer can buy at it, for a time you choose.</span>
+                </span>
+                <input type="checkbox" checked={negotiable} onChange={(e) => setNegotiable(e.target.checked)} className="mt-1" />
+              </label>
+              {negotiable && (
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <Field label="Lowest price you'd consider (₦)" hint="Only you see this. We flag offers below it.">
+                    <input type="number" min={0} value={floor || ""} onChange={(e) => setFloor(Number(e.target.value))} className={inputClass} placeholder="Optional" />
+                  </Field>
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-sm font-semibold text-ink-2">An agreed price lasts</span>
+                    <div className="flex rounded-full bg-surface-alt p-1">
+                      {OFFER_HOURS.map((h) => (
+                        <button key={h} type="button" onClick={() => setOfferHours(h)} className={`flex-1 rounded-full py-2 text-sm font-semibold ${offerHours === h ? "bg-surface shadow-sm" : "text-muted"}`}>
+                          {h} hours
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted">The default when you agree. You can pick another for each deal, up to 24 hours.</span>
+                  </div>
+                  {floor > 0 && price > 0 && floor >= price && <p className="text-xs text-warn sm:col-span-2">Your lowest price is at or above the price itself, so every offer will be flagged.</p>}
+                </div>
+              )}
+            </div>
           </Card>
 
           <Card title="Options and stock" description="Add options like colour, size or storage, each with its own stock.">
@@ -437,6 +471,14 @@ export function ProductForm({ product }: { product?: Product }) {
               You receive {formatNaira(price * 0.98)} after Sotechy&apos;s 2% fee. Buyers earn {formatTokens(tokens)} ${store.ticker} + {formatTokens(Math.round(price * SOTECHY_CROSS_BONUS))} $SOTECHY.
             </p>
           </Review>
+
+          {negotiable && (
+            <Review title="Offers">
+              <p>
+                Customers can make an offer{floor > 0 ? `, lowest you'd consider ${formatNaira(floor)}` : ""}. Agreed prices last {offerHours} hours.
+              </p>
+            </Review>
+          )}
 
           <Review title="Stock">
             <p>

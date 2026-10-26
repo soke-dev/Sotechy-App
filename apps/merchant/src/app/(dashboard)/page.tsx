@@ -4,7 +4,7 @@ import { Illo } from "@/components/illustrations";
 import { btn, Card, Pill, ProductThumb, StatCard } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens } from "@/lib/money";
-import { me, ORDER_STATUS, orderMoney, orders, orderTotal, products, salesByDay, store, token } from "@/lib/mock";
+import { me, offerThreads, ORDER_STATUS, orderMoney, orders, orderTotal, products, salesByDay, store, token } from "@/lib/mock";
 
 export default function HomePage() {
   const waiting = orders.filter((o) => o.status === "new");
@@ -12,6 +12,7 @@ export default function HomePage() {
   const sales14 = salesByDay.reduce((n, d) => n + d.amount, 0);
   const maxDay = Math.max(...salesByDay.map((d) => d.amount));
   const owedSecondHalf = active.reduce((n, o) => n + orderMoney(o).second, 0);
+  const offersWaiting = offerThreads.filter((t) => t.status === "waiting_you").length;
   const lowStock = products.filter((p) => p.status === "live" && p.stock <= 3);
   const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Africa/Lagos" }).format(new Date()));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -72,6 +73,21 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+      )}
+
+      {offersWaiting > 0 && (
+        <Link href="/offers" className="mb-6 flex items-center gap-3 rounded-3xl border-2 border-brand/40 bg-surface p-4 transition hover:border-brand">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-soft">
+            <Illo name="tag" size={28} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">
+              {offersWaiting} price offer{offersWaiting === 1 ? "" : "s"} waiting
+            </span>
+            <span className="block text-sm text-muted">Accept, counter or decline. Customers hear back on WhatsApp and email.</span>
+          </span>
+          <ArrowRight size={18} className="shrink-0 text-faint" />
+        </Link>
       )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">

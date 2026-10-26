@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Illo, type IlloName } from "./illustrations";
 import { ThemeToggle } from "./theme-toggle";
+import { offerThreads } from "@/lib/mock";
 
 interface NavItem {
   href: string;
@@ -26,6 +27,7 @@ const items = (s: ShellStore): NavItem[][] => [
   [
     { href: "/", label: "Home", illo: "home" },
     { href: "/orders", label: "Orders", illo: "box", badge: s.newOrders },
+    { href: "/offers", label: "Offers", illo: "tag", badge: offerThreads.filter((t) => t.status === "waiting_you").length },
     { href: "/customers", label: "Customers", illo: "user" },
     { href: "/products", label: "Products", illo: "bag" },
     { href: "/storefront", label: "Storefront", illo: "store" },
