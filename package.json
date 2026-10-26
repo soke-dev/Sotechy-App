@@ -9,6 +9,7 @@
     "dev:mobile": "pnpm --filter @sotechy/mobile start",
     "dev:web": "pnpm --filter @sotechy/web dev",
     "dev:admin": "pnpm --filter @sotechy/admin dev",
+    "dev:merchant": "pnpm --filter @sotechy/merchant dev",
     "build:api": "pnpm --filter @sotechy/api build",
     "build:web": "pnpm --filter @sotechy/web build",
     "build:admin": "pnpm --filter @sotechy/admin build",

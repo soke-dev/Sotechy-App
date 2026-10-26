@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/* Sotechy palette, shared with the customer app and admin: warm cream, Sotechy orange, ink. */
+@theme inline {
+  --color-canvas: #faf7f3;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f2ede6;
+  --color-line: #e9e2d9;
+  --color-ink: #17120e;
+  --color-ink-2: #3a322c;
+  --color-muted: #7f756c;
+  --color-faint: #b3a99f;
+  --color-brand: #f7931e;
+  --color-brand-strong: #e07f0c;
+  --color-brand-soft: #fff1df;
+  --color-sun: #fdb913;
+  --color-panel: #17120e;
+  --color-good: #1c8a4c;
+  --color-good-soft: #e4f3e9;
+  --color-warn: #a86a12;
+  --color-warn-soft: #fff3d9;
+  --color-bad: #c9372a;
+  --color-bad-soft: #fbe7e4;
+  --font-sans: var(--font-body);
+  --font-display: var(--font-heading);
+}
+
+@layer base {
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-body), system-ui, sans-serif;
+  }
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-heading), var(--font-body), system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-brand);
+    width: 1rem;
+    height: 1rem;
+  }
+  details > summary {
+    cursor: pointer;
+    list-style: none;
+  }
+  details > summary::-webkit-details-marker {
+    display: none;
+  }
+}
