@@ -72,18 +72,6 @@ const builtInSlides: Slide[] = [
     ],
   },
   {
-    bg: colors.brand,
-    fg: colors.white,
-    accent: colors.ink,
-    overline: "Crypto checkout",
-    title: "Pay with\n$MOVE",
-    subtitle: "Save up to 10% on eligible orders",
-    cta: "Start shopping",
-    circle: colors.ink,
-    action: "/shop",
-    badge: "10%",
-  },
-  {
     bg: colors.brandYellow,
     fg: colors.ink,
     accent: colors.ink2,
