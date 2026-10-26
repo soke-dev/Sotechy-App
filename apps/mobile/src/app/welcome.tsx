@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Illo } from "@/components/illustrations";
 import { Burst } from "@/components/tab-icons";
 import { useToast } from "@/components/toast";
-import { Button, Input, Txt, ui } from "@/components/ui";
+import { Button, Input, Txt, PhoneInput, ui } from "@/components/ui";
 import { suggestUsername, useAccountExtras, usernameProblem } from "@/lib/account-extras";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
@@ -132,8 +132,8 @@ export default function WelcomeScreen() {
                 </View>
                 <Switch value={same} onValueChange={setSame} trackColor={{ true: colors.brand, false: colors.line }} thumbColor={colors.white} {...({ activeThumbColor: colors.white } as object)} />
               </Pressable>
-              <Input label={same ? "Phone number" : "Number for calls"} icon="call-outline" keyboardType="phone-pad" autoComplete="tel" value={call} onChangeText={setCall} placeholder="080…" />
-              {!same && <Input label="WhatsApp number" icon="logo-whatsapp" keyboardType="phone-pad" value={whatsapp} onChangeText={setWhatsapp} placeholder="080…" />}
+              <PhoneInput label={same ? "Phone number" : "Number for calls"} value={call} onChange={setCall} />
+              {!same && <PhoneInput label="WhatsApp number" icon="logo-whatsapp" value={whatsapp} onChange={setWhatsapp} />}
             </View>
 
             <Button title="Save and start shopping" icon="checkmark" variant="dark" loading={busy} disabled={!call.trim() && !whatsapp.trim()} onPress={() => saveNumbers(false)} />

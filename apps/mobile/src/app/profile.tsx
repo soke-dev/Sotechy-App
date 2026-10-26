@@ -7,7 +7,7 @@ import { AvatarPicker } from "@/components/avatar-picker";
 import { Burst } from "@/components/tab-icons";
 import { UserAvatar } from "@/components/user-avatar";
 import { useToast } from "@/components/toast";
-import { BottomBar, Button, EmptyState, Input, ListRow, Txt, ui } from "@/components/ui";
+import { BottomBar, Button, EmptyState, Input, ListRow, Txt, PhoneInput, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAccountExtras, usernameProblem } from "@/lib/account-extras";
 import { useAuth } from "@/lib/auth";
@@ -101,8 +101,8 @@ export default function ProfileScreen() {
               <Txt variant="label" style={{ flex: 1 }}>One number for calls and WhatsApp</Txt>
               <Switch value={same} onValueChange={setSame} trackColor={{ true: colors.brand, false: colors.line }} thumbColor={colors.white} {...({ activeThumbColor: colors.white } as object)} />
             </Pressable>
-            <Input label={same ? "Phone number" : "Number for calls"} icon="call-outline" value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" placeholder="080…" />
-            {!same && <Input label="WhatsApp number" icon="logo-whatsapp" value={whatsapp} onChangeText={setWhatsapp} keyboardType="phone-pad" placeholder="080…" />}
+            <PhoneInput label={same ? "Phone number" : "Number for calls"} value={phone} onChange={setPhone} />
+            {!same && <PhoneInput label="WhatsApp number" icon="logo-whatsapp" value={whatsapp} onChange={setWhatsapp} />}
             <Txt variant="caption">Optional. Stores use these for delivery calls and order updates.</Txt>
             <View style={{ gap: 6 }}>
               <Txt variant="label" color={colors.ink2}>Email</Txt>

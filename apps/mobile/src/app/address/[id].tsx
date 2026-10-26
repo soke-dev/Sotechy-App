@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Switch, View } from "react-native";
 import type { AddressInput } from "@sotechy/shared";
 import { useToast } from "@/components/toast";
-import { BottomBar, Button, Chip, Input, Loading, Txt, ui } from "@/components/ui";
+import { BottomBar, Button, Chip, Input, Loading, Txt, PhoneInput, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, gutter, space } from "@/lib/theme";
@@ -71,7 +71,7 @@ export default function AddressFormScreen() {
           </View>
         </View>
         <Input label="Full name" icon="person-outline" value={form.recipientName} onChangeText={(v) => set({ recipientName: v })} autoComplete="name" />
-        <Input label="Phone number" icon="call-outline" value={form.phone} onChangeText={(v) => set({ phone: v })} keyboardType="phone-pad" autoComplete="tel" />
+        <PhoneInput label="Phone number" value={form.phone} onChange={(v) => set({ phone: v })} />
         <Input label="Street address" icon="home-outline" value={form.line1} onChangeText={(v) => set({ line1: v })} placeholder="House number and street" />
         <Input label="Landmark or apartment (optional)" value={form.line2 ?? ""} onChangeText={(v) => set({ line2: v })} placeholder="e.g. Opposite the filling station" />
         <View style={[ui.row, { gap: space.md }]}>

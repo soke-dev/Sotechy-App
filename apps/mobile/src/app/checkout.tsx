@@ -7,7 +7,7 @@ import { AddressCard } from "@/components/address-card";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { PayOptionsLine, useMoneyMoves } from "@/components/money-moves";
 import { useToast } from "@/components/toast";
-import { BottomBar, Button, Divider, ErrorView, Input, Loading, OptionRow, SummaryRow, tap, Txt, ui } from "@/components/ui";
+import { BottomBar, Button, Divider, ErrorView, Input, Loading, OptionRow, SummaryRow, tap, Txt, PhoneInput, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
@@ -209,7 +209,7 @@ export default function CheckoutScreen() {
               {chosenId === "new" && (
                 <View style={{ gap: space.md }}>
                   <Input label="Full name" icon="person-outline" value={address.recipientName} onChangeText={(v) => setAddress({ ...address, recipientName: v })} />
-                  <Input label="Phone number" icon="call-outline" keyboardType="phone-pad" value={address.phone} onChangeText={(v) => setAddress({ ...address, phone: v })} />
+                  <PhoneInput label="Phone number" value={address.phone} onChange={(v) => setAddress({ ...address, phone: v })} />
                   <Input label="Street address" icon="home-outline" value={address.line1} onChangeText={(v) => setAddress({ ...address, line1: v })} />
                   <Input label="Landmark or apartment (optional)" value={address.line2} onChangeText={(v) => setAddress({ ...address, line2: v })} />
                   <View style={[ui.row, { gap: space.md }]}>

@@ -409,6 +409,50 @@ export function QtyStepper({ value, onChange, min = 1, max = 99 }: { value: numb
   );
 }
 
+/** Nigerian numbers: "0803 555 0142", "803..." or "+234803..." all become "+2348035550142" */
+export function toE164NG(input: string) {
+  const digits = input.replace(/\D/g, "");
+  if (!digits) return "";
+  const local = digits.startsWith("234") ? digits.slice(3) : digits.replace(/^0/, "");
+  return `+234${local}`;
+}
+
+/** The part shown after the fixed +234 */
+const localPart = (value: string) => {
+  const d = value.replace(/\D/g, "");
+  return d.startsWith("234") ? d.slice(3) : d.replace(/^0/, "");
+};
+
+/** Phone number with a fixed +234 country code (only Nigeria for now). The value is stored as +234… */
+export function PhoneInput({ label, icon = "call-outline", value, onChange }: { label: string; icon?: IconName; value: string; onChange: (v: string) => void }) {
+  const [focused, setFocused] = useState(false);
+  const local = localPart(value);
+  const pretty = local.replace(/^(\d{3})(\d{0,3})(\d{0,4}).*/, (_, a, b, c) => [a, b, c].filter(Boolean).join(" "));
+  return (
+    <View style={{ gap: 6 }}>
+      <Txt variant="label" color={colors.ink2}>{label}</Txt>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 50, borderRadius: radius.md, borderWidth: 1, borderColor: focused ? colors.ink : colors.line, backgroundColor: colors.surface, paddingLeft: 10, paddingRight: 14 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 8, paddingVertical: 6, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt }}>
+          <Ionicons name={icon} size={15} color={colors.muted} />
+          <Text style={{ fontFamily: fonts.semibold, fontSize: 15, color: colors.ink }}>+234</Text>
+        </View>
+        <TextInput
+          value={local.length > 3 ? pretty : local}
+          onChangeText={(t) => onChange(toE164NG(t.replace(/^0/, "")))}
+          keyboardType="phone-pad"
+          autoComplete="tel"
+          placeholder="803 555 0142"
+          placeholderTextColor={colors.faint}
+          maxLength={13}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{ flex: 1, fontFamily: fonts.body, fontSize: 15, color: colors.ink, paddingVertical: 12 }}
+        />
+      </View>
+    </View>
+  );
+}
+
 export function Input({ label, icon, style, ...props }: TextInputProps & { label?: string; icon?: IconName }) {
   const [focused, setFocused] = useState(false);
   return (
