@@ -38,10 +38,24 @@ function Tabs({ tab, onChange, rating }: { tab: Tab; onChange: (t: Tab) => void;
               tap();
               onChange(t.key);
             }}
-            style={{ flex: 1, minHeight: 54, borderRadius: radius.md, alignItems: "center", justifyContent: "center", gap: 3, backgroundColor: active ? colors.surface : "transparent", borderWidth: active ? StyleSheet.hairlineWidth : 0, borderColor: colors.line }}
+            style={{
+              flex: 1,
+              minHeight: 54,
+              borderRadius: radius.md,
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 3,
+              backgroundColor: active ? colors.surface : "transparent",
+              borderWidth: active ? StyleSheet.hairlineWidth : 0,
+              borderColor: colors.line,
+            }}
           >
-            <Txt variant="label" color={active ? colors.ink : colors.muted} style={{ fontSize: 13 }}>{t.label}</Txt>
-            <Txt variant="caption" style={{ fontSize: 11 }}>{t.sub}</Txt>
+            <Txt variant="label" color={active ? colors.ink : colors.muted} style={{ fontSize: 13 }}>
+              {t.label}
+            </Txt>
+            <Txt variant="caption" style={{ fontSize: 11 }}>
+              {t.sub}
+            </Txt>
           </Pressable>
         );
       })}
@@ -97,7 +111,9 @@ export default function StoreItemScreen() {
         </View>
 
         {/* Details */}
-        <View style={{ marginTop: -radius.xl, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, backgroundColor: colors.bg, paddingHorizontal: gutter, paddingTop: space.xl, gap: space.lg }}>
+        <View
+          style={{ marginTop: -radius.xl, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, backgroundColor: colors.bg, paddingHorizontal: gutter, paddingTop: space.xl, gap: space.lg }}
+        >
           <View style={{ gap: 6 }}>
             <Txt variant="overline">{d.brand}</Txt>
             <Txt variant="title">{product.name}</Txt>
@@ -115,29 +131,19 @@ export default function StoreItemScreen() {
             </Txt>
           </View>
 
-          {/* Who sells it */}
-          <Pressable onPress={() => openStore(store.slug)} style={({ pressed }) => [ui.card, { flexDirection: "row", alignItems: "center", gap: space.md, opacity: pressed ? 0.85 : 1 }]}>
-            <StoreLogo store={store} size={46} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="caption">Sold by</Txt>
-              <View style={ui.row}>
-                <Txt variant="label" style={{ fontSize: 15 }}>{store.name}</Txt>
-                <Ionicons name="checkmark-circle" size={15} color={store.isSotechy ? colors.brand : "#2F6FB3"} />
-              </View>
-              <View style={ui.row}>
-                <Stars value={store.rating} size={11} emptyColor={colors.faint} />
-                <Txt variant="caption">{store.rating} · {store.city}</Txt>
-              </View>
-            </View>
-            <Txt variant="label" color={colors.brandPressed}>Visit store</Txt>
-            <Ionicons name="chevron-forward" size={16} color={colors.brandPressed} />
-          </Pressable>
-
           {/* Negotiation: one compact row */}
           {product.negotiable ? (
             <Pressable
               onPress={() => router.push(open ? { pathname: "/offer/[id]", params: { id: open.id } } : { pathname: "/offer/[id]", params: { id: "new", store: store.slug, product: product.id } })}
-              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md, paddingHorizontal: space.md, borderRadius: radius.lg, backgroundColor: pressed ? colors.surfaceAlt : colors.brandSoft })}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: space.md,
+                paddingVertical: space.md,
+                paddingHorizontal: space.md,
+                borderRadius: radius.lg,
+                backgroundColor: pressed ? colors.surfaceAlt : colors.brandSoft,
+              })}
             >
               <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
                 <Ionicons name="pricetag" size={16} color={colors.brandPressed} />
@@ -153,31 +159,64 @@ export default function StoreItemScreen() {
           <Tabs tab={tab} onChange={setTab} rating={store.rating} />
 
           {tab === "overview" && (
-            <View style={[ui.card, { paddingVertical: space.xs }]}>
-              <Row icon="bicycle" title={`Delivers to ${store.delivery.states.join(", ")}`} text={`Home delivery from ${formatNaira(store.delivery.homeFrom)}. Choose home delivery or pickup at checkout.`} />
-              <Divider />
-              {store.delivery.pickup ? (
-                <>
-                  <Row icon="storefront" title="Pickup available" text={store.delivery.pickup} />
-                  <Divider />
-                </>
-              ) : null}
-              <Row icon="shield-checkmark" title={`Warranty: ${d.warranty}`} text="Your money is held by Sotechy until the store accepts and ships your order." />
-              <Divider />
-              <Row icon="sparkles" title={`Earn $${store.ticker} on this order`} text={`Tokens are released when your order is delivered. Review it with a photo for 10% more.`} />
+            <View style={{ gap: space.md }}>
+              {/* Who sells it */}
+              <Pressable onPress={() => openStore(store.slug)} style={({ pressed }) => [ui.card, { flexDirection: "row", alignItems: "center", gap: space.md, opacity: pressed ? 0.85 : 1 }]}>
+                <StoreLogo store={store} size={46} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Txt variant="caption">Sold by</Txt>
+                  <View style={ui.row}>
+                    <Txt variant="label" style={{ fontSize: 15 }}>
+                      {store.name}
+                    </Txt>
+                    <Ionicons name="checkmark-circle" size={15} color={store.isSotechy ? colors.brand : "#2F6FB3"} />
+                  </View>
+                  <View style={ui.row}>
+                    <Stars value={store.rating} size={11} emptyColor={colors.faint} />
+                    <Txt variant="caption">
+                      {store.rating} · {store.city}
+                    </Txt>
+                  </View>
+                </View>
+                <Txt variant="label" color={colors.brandPressed}>
+                  Visit store
+                </Txt>
+                <Ionicons name="chevron-forward" size={16} color={colors.brandPressed} />
+              </Pressable>
+              <View style={[ui.card, { paddingVertical: space.xs }]}>
+                <Row
+                  icon="bicycle"
+                  title={`Delivers to ${store.delivery.states.join(", ")}`}
+                  text={`Home delivery from ${formatNaira(store.delivery.homeFrom)}. Choose home delivery or pickup at checkout.`}
+                />
+                <Divider />
+                {store.delivery.pickup ? (
+                  <>
+                    <Row icon="storefront" title="Pickup available" text={store.delivery.pickup} />
+                    <Divider />
+                  </>
+                ) : null}
+                <Row icon="shield-checkmark" title={`Warranty: ${d.warranty}`} text="Your money is held by Sotechy until the store accepts and ships your order." />
+                <Divider />
+                <Row icon="sparkles" title={`Earn $${store.ticker} on this order`} text={`Tokens are released when your order is delivered. Review it with a photo for 10% more.`} />
+              </View>
             </View>
           )}
 
           {tab === "about" && (
             <View style={{ gap: space.lg }}>
-              <Txt variant="body" color={colors.ink2}>{d.about}</Txt>
+              <Txt variant="body" color={colors.ink2}>
+                {d.about}
+              </Txt>
               {d.features.length > 0 && (
                 <View style={{ gap: space.sm }}>
                   <Txt variant="heading">Key features</Txt>
                   {d.features.map((f) => (
                     <View key={f} style={[ui.row, { alignItems: "flex-start" }]}>
                       <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-                      <Txt variant="body" style={{ flex: 1 }}>{f}</Txt>
+                      <Txt variant="body" style={{ flex: 1 }}>
+                        {f}
+                      </Txt>
                     </View>
                   ))}
                 </View>
@@ -191,7 +230,9 @@ export default function StoreItemScreen() {
                         {i > 0 && <Divider />}
                         <View style={[ui.between, { paddingVertical: space.md, gap: space.md }]}>
                           <Txt variant="small">{k}</Txt>
-                          <Txt variant="label" style={{ flexShrink: 1, textAlign: "right" }}>{v}</Txt>
+                          <Txt variant="label" style={{ flexShrink: 1, textAlign: "right" }}>
+                            {v}
+                          </Txt>
                         </View>
                       </View>
                     ))}
@@ -200,7 +241,9 @@ export default function StoreItemScreen() {
               )}
               <View style={{ gap: space.sm }}>
                 <Txt variant="heading">In the box</Txt>
-                <Txt variant="body" color={colors.ink2}>{d.inBox.join(" · ")}</Txt>
+                <Txt variant="body" color={colors.ink2}>
+                  {d.inBox.join(" · ")}
+                </Txt>
               </View>
             </View>
           )}
@@ -211,10 +254,16 @@ export default function StoreItemScreen() {
                 <View key={r.name} style={[ui.card, { gap: 6 }]}>
                   <View style={ui.row}>
                     <Stars value={r.stars} size={13} emptyColor={colors.faint} />
-                    <Txt variant="caption">{r.name} · {r.ago}</Txt>
+                    <Txt variant="caption">
+                      {r.name} · {r.ago}
+                    </Txt>
                   </View>
                   <Txt variant="body">{r.text}</Txt>
-                  {r.photo && <Txt variant="caption" color={colors.brandPressed} style={{ fontFamily: fonts.semibold }}>Photo review · earned a 10% ${store.ticker} bonus</Txt>}
+                  {r.photo && (
+                    <Txt variant="caption" color={colors.brandPressed} style={{ fontFamily: fonts.semibold }}>
+                      Photo review · earned a 10% ${store.ticker} bonus
+                    </Txt>
+                  )}
                 </View>
               ))}
             </View>
