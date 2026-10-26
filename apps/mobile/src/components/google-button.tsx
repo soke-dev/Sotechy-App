@@ -1,6 +1,7 @@
 // "Continue with Google". The OAuth flow lives in ./google-auth, which is only loaded when the
 // native crypto module is present (older dev builds don't have it, and importing it would crash).
 import { requireOptionalNativeModule } from "expo";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { ActivityIndicator, Platform, Pressable, Text } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { DEMO_MODE } from "@/lib/api";
@@ -18,6 +19,8 @@ export const GOOGLE_CLIENT_IDS = {
   web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
 };
 
+// Expo Go can't do Google sign-in: Google only sends people back to the real app (its own link scheme)
+const inExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 const nativeReady = Platform.OS === "web" || !!requireOptionalNativeModule("ExpoCrypto");
 const configured = !!Platform.select({ ios: GOOGLE_CLIENT_IDS.ios, android: GOOGLE_CLIENT_IDS.android, default: GOOGLE_CLIENT_IDS.web });
 
@@ -59,6 +62,7 @@ export function GoogleButtonView({ onPress, busy, disabled }: { onPress: () => v
 
 export function GoogleButton({ onIdToken, onError, busy }: GoogleButtonProps) {
   if (DEMO_MODE) return <GoogleButtonView busy={busy} onPress={() => onIdToken("demo-google-id-token")} />;
+  if (inExpoGo) return <GoogleButtonView onPress={() => onError("Google sign-in doesn't work in Expo Go, only in the installed Sotechy app. Use your email and password here.")} />;
   if (!nativeReady) return <GoogleButtonView onPress={() => onError("Google sign-in needs the latest app build. Please update the app.")} />;
   if (!configured) return <GoogleButtonView onPress={() => onError("Google sign-in isn't set up yet.")} />;
   // Loaded lazily so the module (and expo-crypto) is only evaluated when it can work.
