@@ -34,7 +34,7 @@ Sotechy becomes a multi-merchant marketplace. Every verified merchant has a stor
 | ₦100M from Xena | **100M XENA + 10M SOTECHY** (10% cross-store bonus) |
 | Review with a photo (delivered items only) | **+10%** of that item's tokens |
 | Review without a photo (delivered items only) | **+5%** of that item's tokens |
-| Walk-in sale at a merchant's POS | That merchant's token only (no SOTECHY), and only after the merchant pays Sotechy the 2% for that sale |
+| Walk-in sale at a merchant's POS | That merchant's tokens + **10% SOTECHY**, only after the merchant pays Sotechy the 2% for that sale. The customer needs a Sotechy account; the cashier finds them by @username or phone. |
 
 Tokens show as **pending** from checkout and are released **100%** when the order completes. Cancelled or refunded orders never release tokens.
 
@@ -145,7 +145,7 @@ Sotechy manages the reserve directly (no automatic pausing). Admin dashboards sh
 
 - **Wallets and gas:** a wallet is created for every customer at sign-up and linked to their @username; customers sign, Sotechy's relayer submits and pays the gas (customers never need MON) **(confirm the wallet provider: Dynamic, as Money Moves uses, or similar)**.
 - **Safety for a live mainnet launch:**
-  - admin roles on a multisig;
+  - a single Sotechy admin key (no multisig, by choice), kept in a hardware wallet or a cloud key vault, never on a laptop or in code; separate keys for day-to-day jobs (the minting relayer) so the admin key is rarely used;
   - narrow pause switches;
   - small daily mint and redemption limits at first;
   - every rule covered by automated tests before deployment;
