@@ -238,7 +238,7 @@ const config: StoreConfig = {
   banners: [],
 };
 
-const demoUser: User = { id: "u1", email: "demo@sotechy.shop", fullName: "Demo Customer", phone: null, role: "customer", branchId: null, createdAt: now() };
+const demoUser: User = { id: "u1", email: "demo@sotechy.shop", fullName: "Demo Customer", username: null, phone: null, whatsappPhone: null, role: "customer", branchId: null, createdAt: now() };
 let signedIn = false;
 const wishlist = new Set<string>(["p4"]);
 // Promo codes customers can type at checkout (codeless offers live in config.promotions)
@@ -362,7 +362,7 @@ export const mockApi: ApiClient = {
 
   register: async (input) => {
     signedIn = true;
-    Object.assign(demoUser, { email: input.email, fullName: input.fullName ?? demoUser.fullName, phone: input.phone ?? null });
+    Object.assign(demoUser, { email: input.email, fullName: input.fullName ?? demoUser.fullName, username: input.username ?? null, phone: input.phone ?? null });
     return wait({ token: "demo-token", user: demoUser });
   },
   googleSignIn: async () => {
@@ -378,6 +378,11 @@ export const mockApi: ApiClient = {
   updateProfile: async (input) => {
     Object.assign(demoUser, input);
     return wait({ ...demoUser });
+  },
+  checkUsername: async (name) => {
+    const n = name.toLowerCase().replace(/^@/, "");
+    const taken = ["sotechy", "admin", "support", "chidi"].includes(n);
+    return wait({ username: n, available: !taken, reason: taken ? `@${n} is taken` : null });
   },
   addresses: async () => wait(sortedAddresses()),
   addAddress: async (input) => {

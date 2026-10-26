@@ -63,12 +63,14 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
     delete: <T>(path: string) => send<T>("DELETE", path),
 
     // Auth
-    register: (input: { email: string; password: string; fullName?: string; phone?: string }) =>
+    register: (input: { email: string; password: string; fullName?: string; username?: string; phone?: string; whatsappPhone?: string }) =>
       send<AuthResponse>("POST", "/auth/register", input),
     login: (input: { email: string; password: string }) => send<AuthResponse>("POST", "/auth/login", input),
     googleSignIn: (idToken: string) => send<AuthResponse>("POST", "/auth/google", { idToken }),
     me: () => get<User>("/auth/me"),
-    updateProfile: (input: { fullName?: string; phone?: string; avatarStyle?: string | null }) => send<User>("PATCH", "/auth/me", input),
+    updateProfile: (input: { fullName?: string; username?: string; phone?: string | null; whatsappPhone?: string | null; avatarStyle?: string | null }) =>
+      send<User>("PATCH", "/auth/me", input),
+    checkUsername: (name: string) => get<{ username: string; available: boolean; reason: string | null }>(`/auth/username/${encodeURIComponent(name)}`),
 
     // Saved addresses
     addresses: () => get<Address[]>("/me/addresses"),

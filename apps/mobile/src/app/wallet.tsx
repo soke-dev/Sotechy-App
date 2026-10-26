@@ -9,6 +9,7 @@ import { Sheet } from "@/components/shop-filters";
 import { openStore, StoreLogo } from "@/components/store-bits";
 import { router, Stack } from "expo-router";
 import { useToast } from "@/components/toast";
+import { useAuth } from "@/lib/auth";
 import { Button, Chip, Divider, Txt, ui, type IconName } from "@/components/ui";
 import { ago, formatTokens, shortAddress, storeByTicker, tokenNaira, wallet, walletActivity, type WalletEventKind } from "@/lib/marketplace";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
@@ -46,6 +47,7 @@ function ActionButton({ icon, label, onPress, primary }: { icon: IconName; label
 }
 
 export default function WalletScreen() {
+  const { user } = useAuth();
   const toast = useToast();
   const [sheet, setSheet] = useState<"send" | "receive" | "help" | null>(null);
   const [to, setTo] = useState("");
@@ -84,7 +86,7 @@ export default function WalletScreen() {
           </View>
           <Txt variant="label" color={colors.ink2}>≈ {formatNaira(Math.round(total))} to spend</Txt>
           <Pressable onPress={copy} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}>
-            <Txt variant="caption" color={colors.ink2}>@{wallet.username}</Txt>
+            <Txt variant="caption" color={colors.ink2}>@{user?.username ?? wallet.username}</Txt>
             <Txt variant="caption">{shortAddress(wallet.address)}</Txt>
             <Ionicons name="copy-outline" size={13} color={colors.muted} />
           </Pressable>
@@ -272,7 +274,7 @@ export default function WalletScreen() {
           <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
             <Illo name="wallet" size={52} />
           </View>
-          <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 30, color: colors.ink }}>@{wallet.username}</Text>
+          <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 30, color: colors.ink }}>@{user?.username ?? wallet.username}</Text>
           <Txt variant="small" style={{ textAlign: "center" }}>Other Sotechy users can send you tokens with your username or this address.</Txt>
           <Pressable onPress={copy} style={{ flexDirection: "row", alignItems: "center", gap: space.sm, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt }}>
             <Txt variant="caption" color={colors.ink2} style={{ fontFamily: fonts.medium }}>{wallet.address}</Txt>

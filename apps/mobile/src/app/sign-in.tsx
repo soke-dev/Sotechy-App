@@ -46,8 +46,10 @@ export default function SignInScreen() {
     setError(null);
     try {
       if (mode === "signin") {
-        await signIn(email.trim(), password);
-        done();
+        const u = await signIn(email.trim(), password);
+        // Accounts made before usernames existed pick one now
+        if (u.username) done();
+        else welcome();
       } else {
         await signUp({ email: email.trim(), password, fullName: fullName || undefined });
         welcome();
@@ -85,8 +87,9 @@ export default function SignInScreen() {
     const test = { email: "google.tester@example.com", password: "google-test-123", fullName: "Google Tester" };
     try {
       try {
-        await signIn(test.email, test.password);
-        done();
+        const u = await signIn(test.email, test.password);
+        if (u.username) done();
+        else welcome();
       } catch {
         await signUp(test);
         welcome();
@@ -155,7 +158,16 @@ export default function SignInScreen() {
               <Input label="Full name" icon="person-outline" value={fullName} onChangeText={setFullName} autoComplete="name" placeholder="e.g. Ada Okafor" />
             </>
           )}
-          <Input label="Email" icon="mail-outline" autoCapitalize="none" keyboardType="email-address" autoComplete="email" value={email} onChangeText={setEmail} placeholder="you@example.com" />
+          <Input
+            label={mode === "signin" ? "Email or @username" : "Email"}
+            icon="mail-outline"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete={mode === "signin" ? "username" : "email"}
+            value={email}
+            onChangeText={setEmail}
+            placeholder={mode === "signin" ? "you@example.com or @yourname" : "you@example.com"}
+          />
           <View>
             <Input
               label="Password"

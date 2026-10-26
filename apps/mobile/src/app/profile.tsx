@@ -9,7 +9,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { useToast } from "@/components/toast";
 import { BottomBar, Button, EmptyState, Input, ListRow, Txt, PhoneInput, ui } from "@/components/ui";
 import { api } from "@/lib/api";
-import { useAccountExtras, usernameProblem } from "@/lib/account-extras";
+import { useAccountExtras, useUsernameCheck } from "@/lib/account-extras";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
@@ -18,11 +18,12 @@ export default function ProfileScreen() {
   const { user, updateProfile } = useAuth();
   const toast = useToast();
   const [fullName, setFullName] = useState(user?.fullName ?? "");
-  const { extras, save: saveExtras } = useAccountExtras();
+  const { extras } = useAccountExtras();
   const [phone, setPhone] = useState(extras.callNumber || user?.phone || "");
   const [username, setUsername] = useState(extras.username);
   const [whatsapp, setWhatsapp] = useState(extras.whatsappNumber);
   const [same, setSame] = useState(extras.sameNumber);
+  const usernameCheck = useUsernameCheck(username, extras.username || null);
   const [saving, setSaving] = useState(false);
   const [picking, setPicking] = useState(false);
   const addresses = useAsync(async () => (user ? api.addresses() : []), [user?.id]);
@@ -39,7 +40,7 @@ export default function ProfileScreen() {
   }
 
   const cleanUsername = username.trim().toLowerCase().replace(/^@/, "");
-  const usernameError = cleanUsername !== extras.username ? usernameProblem(cleanUsername) : null;
+  const usernameError = usernameCheck.problem;
   const changed =
     fullName.trim() !== (user.fullName ?? "") ||
     phone.trim() !== (extras.callNumber || user.phone || "") ||
@@ -52,8 +53,12 @@ export default function ProfileScreen() {
   async function save() {
     setSaving(true);
     try {
-      await updateProfile({ fullName: fullName.trim(), phone: phone.trim() });
-      await saveExtras({ username: cleanUsername, callNumber: phone.trim(), whatsappNumber: same ? phone.trim() : whatsapp.trim(), sameNumber: same, setupDone: true });
+      await updateProfile({
+        fullName: fullName.trim(),
+        ...(cleanUsername && cleanUsername !== extras.username && { username: cleanUsername }),
+        phone: phone.trim() || null,
+        whatsappPhone: same || !whatsapp.trim() || whatsapp.trim() === phone.trim() ? null : whatsapp.trim(),
+      });
       toast("Profile updated");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Could not save", { icon: "alert-circle" });
@@ -147,7 +152,7 @@ export default function ProfileScreen() {
         }}
       />
       <BottomBar>
-        <Button title={changed ? "Save changes" : "Saved"} variant="dark" icon={changed ? "checkmark" : undefined} onPress={save} loading={saving} disabled={!changed || !!usernameError} style={{ flex: 1 }} />
+        <Button title={changed ? "Save changes" : "Saved"} variant="dark" icon={changed ? "checkmark" : undefined} onPress={save} loading={saving} disabled={!changed || !!usernameError || usernameCheck.checking} style={{ flex: 1 }} />
       </BottomBar>
     </KeyboardAvoidingView>
   );

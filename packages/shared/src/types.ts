@@ -321,7 +321,12 @@ export interface User {
   id: string;
   email: string;
   fullName: string | null;
+  /** Public @handle, lowercase; null until chosen */
+  username: string | null;
+  /** Call number, +234… */
   phone: string | null;
+  /** WhatsApp number when different from `phone`, +234… */
+  whatsappPhone: string | null;
   role: Role;
   branchId: string | null;
   avatarUrl?: string | null;

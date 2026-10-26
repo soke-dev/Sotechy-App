@@ -6,11 +6,12 @@ import { tokenStore } from "./storage";
 interface AuthState {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  /** Resolves with the signed-in account (to see if it still needs a username) */
+  signIn: (email: string, password: string) => Promise<User>;
   signUp: (input: { email: string; password: string; fullName?: string; phone?: string }) => Promise<void>;
   /** Resolves true when the account was just created */
   signInWithGoogle: (idToken: string) => Promise<boolean>;
-  updateProfile: (input: { fullName?: string; phone?: string; avatarStyle?: string | null }) => Promise<void>;
+  updateProfile: (input: { fullName?: string; username?: string; phone?: string | null; whatsappPhone?: string | null; avatarStyle?: string | null }) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -45,7 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthState = {
     user,
     loading,
-    signIn: async (email, password) => accept(await api.login({ email, password })),
+    signIn: async (email, password) => {
+      const res = await api.login({ email, password });
+      await accept(res);
+      return res.user;
+    },
     signUp: async (input) => accept(await api.register(input)),
     signInWithGoogle: async (idToken) => {
       const res = await api.googleSignIn(idToken);

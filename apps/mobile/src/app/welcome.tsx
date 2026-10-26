@@ -9,13 +9,13 @@ import { Illo } from "@/components/illustrations";
 import { Burst } from "@/components/tab-icons";
 import { useToast } from "@/components/toast";
 import { Button, Input, Txt, PhoneInput, ui } from "@/components/ui";
-import { suggestUsername, useAccountExtras, usernameProblem } from "@/lib/account-extras";
+import { suggestUsername, useAccountExtras, useUsernameCheck } from "@/lib/account-extras";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
   const { extras, save } = useAccountExtras();
   const toast = useToast();
   const [step, setStep] = useState<"username" | "numbers">(extras.username ? "numbers" : "username");
@@ -37,17 +37,15 @@ export default function WelcomeScreen() {
   }, [user?.id, extras.username]);
 
   const clean = username.trim().toLowerCase().replace(/^@/, "");
-  const problem = usernameProblem(clean);
+  const check = useUsernameCheck(clean, extras.username);
+  const problem = check.problem;
   const finish = () => router.replace("/");
 
   async function saveNumbers(skip: boolean) {
     setBusy(true);
     try {
       if (!skip) {
-        if (call.trim() && call.trim() !== (user?.phone ?? "")) await updateProfile({ phone: call.trim() });
-        await save({ callNumber: call.trim(), whatsappNumber: same ? call.trim() : whatsapp.trim(), sameNumber: same, setupDone: true });
-      } else {
-        await save({ setupDone: true });
+        await save({ callNumber: call.trim(), whatsappNumber: same ? call.trim() : whatsapp.trim(), sameNumber: same });
       }
       toast(`Welcome to Sotechy, @${clean || extras.username}`);
       finish();
@@ -101,17 +99,25 @@ export default function WelcomeScreen() {
                 placeholderTextColor={colors.faint}
                 style={{ flex: 1, marginLeft: 4, fontFamily: fonts.display, fontSize: 22, color: colors.ink }}
               />
-              {!problem && <Ionicons name="checkmark-circle" size={22} color={colors.success} />}
+              {!problem && !check.checking && <Ionicons name="checkmark-circle" size={22} color={colors.success} />}
             </View>
-            <Txt variant="small" color={problem ? colors.danger : colors.success}>{problem ?? `@${clean} is available`}</Txt>
+            <Txt variant="small" color={problem ? colors.danger : check.checking ? colors.muted : colors.success}>{problem ?? (check.checking ? "Checking…" : `@${clean} is available`)}</Txt>
             <Button
               title="Continue"
               icon="arrow-forward"
               variant="dark"
-              disabled={!!problem || busy}
+              disabled={!!problem || check.checking || busy}
+              loading={busy}
               onPress={async () => {
-                await save({ username: clean });
-                setStep("numbers");
+                setBusy(true);
+                try {
+                  if (clean !== extras.username) await save({ username: clean });
+                  setStep("numbers");
+                } catch (err) {
+                  toast(err instanceof Error ? err.message : "Could not save your username", { icon: "alert-circle" });
+                } finally {
+                  setBusy(false);
+                }
               }}
             />
           </>

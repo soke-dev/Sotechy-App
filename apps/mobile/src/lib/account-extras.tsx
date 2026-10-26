@@ -1,8 +1,7 @@
-// Account details the app keeps alongside the user: their @username and contact numbers for calls and
-// WhatsApp. Saved on this device per account for now; the call number is also saved to the account.
-// Moves to the server with the wallet (usernames are how customers send each other tokens).
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+// The signed-in person's @username and contact numbers, kept on their Sotechy account (so they follow
+// them to every device, and stores and the merchant dashboard see the same details).
+import { useEffect, useState, type ReactNode } from "react";
+import { api } from "./api";
 import { useAuth } from "./auth";
 
 export interface AccountExtras {
@@ -11,23 +10,19 @@ export interface AccountExtras {
   whatsappNumber: string;
   /** One number for calls and WhatsApp */
   sameNumber: boolean;
-  /** The welcome step (username, numbers) has been seen */
+  /** Has picked a username (the welcome step is done) */
   setupDone: boolean;
 }
 
-const EMPTY: AccountExtras = { username: "", callNumber: "", whatsappNumber: "", sameNumber: true, setupDone: false };
-const key = (userId: string) => `sotechy_account_${userId}`;
-
-/** Usernames already in use (sample until the server checks) */
-const TAKEN = ["sotechy", "admin", "support", "chidi", "amaka.n", "tunde", "xena", "help"];
-
+/** Same rules as the server, so people see problems as they type; the server has the final say */
 export function usernameProblem(name: string): string | null {
   const n = name.trim().toLowerCase().replace(/^@/, "");
   if (!n) return "Pick a username";
   if (n.length < 3) return "At least 3 characters";
   if (n.length > 20) return "20 characters at most";
   if (!/^[a-z0-9._]+$/.test(n)) return "Only letters, numbers, dots and underscores";
-  if (TAKEN.includes(n)) return `@${n} is taken`;
+  if (/^[._]|[._]$/.test(n)) return "Can't start or end with a dot or underscore";
+  if (/[._]{2}/.test(n)) return "No two dots or underscores in a row";
   return null;
 }
 
@@ -38,45 +33,61 @@ export function suggestUsername(fullName?: string | null, email?: string | null)
     .replace(/[^a-z0-9]+/g, ".")
     .replace(/^\.+|\.+$/g, "")
     .slice(0, 16);
-  return TAKEN.includes(base) || base.length < 3 ? `${base || "shopper"}${Math.floor(10 + Math.random() * 89)}` : base;
+  return base.length < 3 ? `${base || "shopper"}${Math.floor(10 + Math.random() * 89)}` : base;
 }
 
-interface State {
-  extras: AccountExtras;
-  loaded: boolean;
-  save: (patch: Partial<AccountExtras>) => Promise<void>;
-}
-
-const Ctx = createContext<State>({ extras: EMPTY, loaded: false, save: async () => {} });
-export const useAccountExtras = () => useContext(Ctx);
-
-export function AccountExtrasProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const [extras, setExtras] = useState<AccountExtras>(EMPTY);
-  const [loaded, setLoaded] = useState(false);
+/** Checks a username with the server as the person types (after a short pause) */
+export function useUsernameCheck(name: string, current?: string | null) {
+  const n = name.trim().toLowerCase().replace(/^@/, "");
+  const local = usernameProblem(n);
+  const [result, setResult] = useState<{ name: string; problem: string | null } | null>(null);
 
   useEffect(() => {
-    setLoaded(false);
-    if (!user) {
-      setExtras(EMPTY);
-      return;
-    }
-    AsyncStorage.getItem(key(user.id))
-      .then((v) => setExtras(v ? { ...EMPTY, ...JSON.parse(v) } : { ...EMPTY, callNumber: user.phone ?? "" }))
-      .catch(() => setExtras(EMPTY))
-      .finally(() => setLoaded(true));
-  }, [user]);
+    if (local || n === current) return;
+    let live = true;
+    const t = setTimeout(() => {
+      api
+        .checkUsername(n)
+        .then((r) => live && setResult({ name: n, problem: r.available ? null : (r.reason ?? `@${n} is taken`) }))
+        .catch(() => live && setResult({ name: n, problem: null }));
+    }, 350);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [n, local, current]);
 
-  const save = useCallback(
-    async (patch: Partial<AccountExtras>) => {
-      if (!user) return;
-      const next = { ...extras, ...patch };
-      if (next.sameNumber) next.whatsappNumber = next.callNumber;
-      setExtras(next);
-      await AsyncStorage.setItem(key(user.id), JSON.stringify(next)).catch(() => {});
-    },
-    [user, extras],
-  );
+  if (local) return { problem: local, checking: false };
+  if (n === current) return { problem: null, checking: false };
+  if (result?.name !== n) return { problem: null, checking: true };
+  return { problem: result.problem, checking: false };
+}
 
-  return <Ctx.Provider value={{ extras, loaded, save }}>{children}</Ctx.Provider>;
+export function useAccountExtras() {
+  const { user, updateProfile } = useAuth();
+  const extras: AccountExtras = {
+    username: user?.username ?? "",
+    callNumber: user?.phone ?? "",
+    whatsappNumber: user?.whatsappPhone ?? user?.phone ?? "",
+    sameNumber: !user?.whatsappPhone,
+    setupDone: !!user?.username,
+  };
+  const save = async (patch: Partial<AccountExtras>) => {
+    const call = patch.callNumber ?? extras.callNumber;
+    const same = patch.sameNumber ?? extras.sameNumber;
+    const whatsapp = patch.whatsappNumber ?? extras.whatsappNumber;
+    await updateProfile({
+      ...(patch.username !== undefined && { username: patch.username }),
+      ...((patch.callNumber !== undefined || patch.sameNumber !== undefined || patch.whatsappNumber !== undefined) && {
+        phone: call || null,
+        whatsappPhone: same || !whatsapp || whatsapp === call ? null : whatsapp,
+      }),
+    });
+  };
+  return { extras, loaded: !!user, save };
+}
+
+/** Kept so the provider in the root layout still works; the details now live on the account */
+export function AccountExtrasProvider({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }

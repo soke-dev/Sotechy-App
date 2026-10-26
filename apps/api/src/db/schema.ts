@@ -85,7 +85,12 @@ export const users = pgTable("users", {
   /** Chosen illustrated avatar (m1–m3, f1–f3); null = generated from the user id */
   avatarStyle: text(),
   fullName: text(),
+  /** Public @handle: how people send each other tokens and how stores see a customer. Lowercase. */
+  username: text().unique(),
+  /** Number for calls, as +234… */
   phone: text(),
+  /** WhatsApp number when it differs from `phone`, as +234… */
+  whatsappPhone: text(),
   role: roleEnum().notNull().default("customer"),
   branchId: uuid().references(() => branches.id, { onDelete: "set null" }), // staff home branch
   isActive: boolean().notNull().default(true),
