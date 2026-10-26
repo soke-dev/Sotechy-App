@@ -7,8 +7,9 @@ import { formatNaira } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { Sheet } from "@/components/shop-filters";
 import { openStore, StoreLogo } from "@/components/store-bits";
+import { router } from "expo-router";
 import { useToast } from "@/components/toast";
-import { Button, Chip, Divider, Pill, Txt, ui, type IconName } from "@/components/ui";
+import { Button, Chip, Divider, Txt, ui, type IconName } from "@/components/ui";
 import { ago, formatTokens, shortAddress, storeByTicker, tokenNaira, wallet, walletActivity, type WalletEventKind } from "@/lib/marketplace";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
@@ -21,13 +22,25 @@ const EVENT: Record<WalletEventKind, { icon: IconName; tone: string; sign: "+" |
   sent: { icon: "arrow-up", tone: colors.ink2, sign: "−" },
 };
 
-function ActionButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+function ActionButton({ icon, label, onPress, primary }: { icon: IconName; label: string; onPress: () => void; primary?: boolean }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ flex: 1, alignItems: "center", gap: 6, paddingVertical: space.md, borderRadius: radius.lg, backgroundColor: pressed ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.09)" })}>
-      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center" }}>
-        <Ionicons name={icon} size={19} color={colors.white} />
-      </View>
-      <Text style={{ fontFamily: fonts.semibold, fontSize: 13, color: colors.white }}>{label}</Text>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        height: 46,
+        borderRadius: radius.pill,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        backgroundColor: primary ? (pressed ? colors.inversePressed : colors.inverse) : pressed ? colors.surfaceAlt : colors.surface,
+        borderWidth: primary ? 0 : 1,
+        borderColor: colors.line,
+      })}
+    >
+      <Ionicons name={icon} size={17} color={primary ? colors.onInverse : colors.ink} />
+      <Text style={{ fontFamily: fonts.semibold, fontSize: 14, color: primary ? colors.onInverse : colors.ink }}>{label}</Text>
     </Pressable>
   );
 }
@@ -41,6 +54,7 @@ export default function WalletScreen() {
 
   const total = wallet.balances.reduce((n, b) => n + tokenNaira(b.amount), 0);
   const pending = wallet.balances.reduce((n, b) => n + b.pending, 0);
+  const totalTokens = wallet.balances.reduce((n, b) => n + b.amount, 0);
   const balance = wallet.balances.find((b) => b.ticker === ticker)?.amount ?? 0;
   const value = Number(amount.replace(/\D/g, "")) || 0;
   const recipientOk = /^@?[a-z0-9._]{3,}$/i.test(to.trim()) || /^0x[0-9a-f]{40}$/i.test(to.trim());
@@ -53,36 +67,33 @@ export default function WalletScreen() {
     <View style={ui.screen}>
       <ScrollView contentContainerStyle={{ padding: gutter, paddingBottom: space.xxl * 2, gap: space.lg }}>
         {/* Balance */}
-        <View style={{ borderRadius: radius.xl, backgroundColor: colors.panel, padding: space.lg, gap: space.lg, overflow: "hidden" }}>
-          <View style={{ position: "absolute", right: -50, top: -60, width: 180, height: 180, borderRadius: 90, backgroundColor: colors.brand }} />
-          <View style={{ gap: 4 }}>
-            <Txt variant="small" color="rgba(255,255,255,0.65)">You can spend about</Txt>
-            <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 36, color: colors.white, letterSpacing: -0.8 }}>{formatNaira(Math.round(total))}</Text>
-            <Pressable onPress={copy} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}>
-              <Txt variant="label" color={colors.brandYellow}>@{wallet.username}</Txt>
-              <Txt variant="caption" color="rgba(255,255,255,0.55)">· {shortAddress(wallet.address)}</Txt>
-              <Ionicons name="copy-outline" size={13} color="rgba(255,255,255,0.55)" />
-            </Pressable>
+        <View style={{ gap: 2, paddingTop: space.sm }}>
+          <Txt variant="small">Your tokens</Txt>
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+            <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 38, color: colors.ink, letterSpacing: -1 }}>{formatTokens(totalTokens)}</Text>
+            <Txt variant="label" color={colors.muted}>tokens</Txt>
           </View>
-          <View style={{ flexDirection: "row", gap: space.sm }}>
-            <ActionButton icon="arrow-up" label="Send" onPress={() => setSheet("send")} />
-            <ActionButton icon="arrow-down" label="Receive" onPress={() => setSheet("receive")} />
-            <ActionButton icon="storefront-outline" label="Spend" onPress={() => openStore("sotechy")} />
-          </View>
-        </View>
-
-        {pending > 0 && (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.warningSoft }}>
-            <Ionicons name="time" size={20} color={colors.warning} />
-            <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>
-              <Text style={{ fontFamily: fonts.bold }}>{formatTokens(pending)} tokens pending.</Text> They&apos;re released to you when your orders are delivered.
+          <Txt variant="label" color={colors.ink2}>≈ {formatNaira(Math.round(total))} to spend</Txt>
+          <Pressable onPress={copy} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}>
+            <Txt variant="caption" color={colors.ink2}>@{wallet.username}</Txt>
+            <Txt variant="caption">{shortAddress(wallet.address)}</Txt>
+            <Ionicons name="copy-outline" size={13} color={colors.muted} />
+          </Pressable>
+          {pending > 0 && (
+            <Txt variant="caption" style={{ marginTop: 6 }}>
+              <Ionicons name="time-outline" size={12} color={colors.muted} /> {formatTokens(pending)} more tokens arrive when your orders are delivered
             </Txt>
-          </View>
-        )}
+          )}
+        </View>
+        <View style={{ flexDirection: "row", gap: space.sm }}>
+          <ActionButton primary icon="arrow-up" label="Send" onPress={() => setSheet("send")} />
+          <ActionButton icon="arrow-down" label="Receive" onPress={() => setSheet("receive")} />
+          <ActionButton icon="storefront-outline" label="Spend" onPress={() => router.push("/stores")} />
+        </View>
 
         {/* Tokens */}
         <View style={{ gap: space.sm }}>
-          <Txt variant="heading">Your tokens</Txt>
+          <Txt variant="heading">By store</Txt>
           <View style={[ui.card, { paddingVertical: space.xs }]}>
             {wallet.balances.map((b, i) => {
               const store = storeByTicker(b.ticker);
@@ -90,11 +101,11 @@ export default function WalletScreen() {
                 <View key={b.ticker}>
                   {i > 0 && <Divider />}
                   <Pressable onPress={() => store && openStore(store.slug)} style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>
-                    {store ? <StoreLogo store={store} size={44} /> : <Illo name="coin" size={44} />}
+                    {store ? <StoreLogo store={store} size={38} /> : <Illo name="coin" size={38} />}
                     <View style={{ flex: 1, gap: 1 }}>
                       <Txt variant="label" color={colors.brandPressed} style={{ fontFamily: fonts.bold }}>${b.ticker}</Txt>
                       <Txt variant="caption">{b.ticker === "SOTECHY" ? "Spend at any Sotechy store" : `Spend at ${store?.name ?? "the store"}`}</Txt>
-                      {b.pending > 0 && <Pill label={`+${formatTokens(b.pending)} pending`} tone="warning" />}
+                      {b.pending > 0 && <Txt variant="caption" color={colors.warning}>+{formatTokens(b.pending)} pending</Txt>}
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
                       <Txt variant="price">{formatTokens(b.amount)}</Txt>
@@ -105,20 +116,6 @@ export default function WalletScreen() {
               );
             })}
           </View>
-        </View>
-
-        {/* How tokens work */}
-        <View style={{ flexDirection: "row", gap: space.sm }}>
-          {[
-            { illo: "coin" as const, text: "1 token per ₦1 you spend" },
-            { illo: "sparkle" as const, text: "+10% $SOTECHY at other stores" },
-            { illo: "heart" as const, text: "Up to +10% for a review" },
-          ].map((x) => (
-            <View key={x.text} style={{ flex: 1, alignItems: "center", gap: 6, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.brandSoft }}>
-              <Illo name={x.illo} size={30} />
-              <Txt variant="caption" color={colors.ink2} style={{ textAlign: "center" }}>{x.text}</Txt>
-            </View>
-          ))}
         </View>
 
         {/* Activity */}
@@ -152,7 +149,9 @@ export default function WalletScreen() {
             <Txt variant="label" color={colors.brandPressed}>See every transaction on Monad</Txt>
           </Pressable>
         </View>
-        <Txt variant="caption" style={{ textAlign: "center" }}>Sample wallet · balances come from Monad once the marketplace launches</Txt>
+        <Txt variant="caption" style={{ textAlign: "center" }}>
+          You earn 1 token per ₦1 at each store, plus 10% $SOTECHY at other stores and up to 10% more for a review. Sample wallet: balances come from Monad at launch.
+        </Txt>
       </ScrollView>
 
       <Sheet
