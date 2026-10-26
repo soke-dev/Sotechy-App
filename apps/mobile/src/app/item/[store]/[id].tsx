@@ -133,20 +133,21 @@ export default function StoreItemScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.brandPressed} />
           </Pressable>
 
-          {/* Negotiation */}
+          {/* Negotiation: one compact row */}
           {product.negotiable ? (
-            <View style={{ gap: space.sm, padding: space.lg, borderRadius: radius.xl, backgroundColor: colors.brandSoft }}>
-              <Txt variant="label" style={{ fontSize: 15 }}>{open ? "You're negotiating this" : "Make an offer"}</Txt>
-              <Txt variant="small" color={colors.ink2}>
-                Offer {store.name} a price. If they agree, it&apos;s held for you only, for up to {product.negotiable.hours} hours. You&apos;ll hear back here, on WhatsApp and by email.
-              </Txt>
-              <Button
-                title={open ? "See your offer" : "Make an offer"}
-                icon="pricetag"
-                variant="dark"
-                onPress={() => router.push(open ? { pathname: "/offer/[id]", params: { id: open.id } } : { pathname: "/offer/[id]", params: { id: "new", store: store.slug, product: product.id } })}
-              />
-            </View>
+            <Pressable
+              onPress={() => router.push(open ? { pathname: "/offer/[id]", params: { id: open.id } } : { pathname: "/offer/[id]", params: { id: "new", store: store.slug, product: product.id } })}
+              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md, paddingHorizontal: space.md, borderRadius: radius.lg, backgroundColor: pressed ? colors.surfaceAlt : colors.brandSoft })}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="pricetag" size={16} color={colors.brandPressed} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Txt variant="label">{open ? "You're negotiating this" : "Make an offer"}</Txt>
+                <Txt variant="caption">{open ? "See your conversation with the store" : `Agreed prices are held for you up to ${product.negotiable.hours}h`}</Txt>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.ink2} />
+            </Pressable>
           ) : null}
 
           <Tabs tab={tab} onChange={setTab} rating={store.rating} />
