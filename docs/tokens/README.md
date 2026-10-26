@@ -147,7 +147,7 @@ Sotechy manages the reserve directly (no automatic pausing). Admin dashboards sh
 | **RecyclingPool** | Per-token pool; pays bonuses and promotions with existing tokens. |
 
 - **Wallets, our own contract (no outside provider):** at sign-up Sotechy creates a **Sotechy Wallet** for each customer: a small smart-contract account made by Sotechy's **WalletFactory**, linked to their @username. Its address is known at sign-up and the contract is only deployed on first use, so idle accounts cost no gas.
-  - The wallet only does what the customer asks in the app (send, pay at checkout): the app confirms with the customer's PIN or fingerprint, Sotechy's server authorises the action, and Sotechy's relayer sends it and **pays the gas** (customers never need MON).
+  - The wallet only does what the customer asks in the app (send, pay at checkout): being signed in is enough (no PIN or fingerprint; the app shows a normal confirm screen), Sotechy's server authorises the action for the signed-in customer, and Sotechy's relayer sends it and **pays the gas** (customers never need MON).
   - Because every wallet comes from the factory, the token allowlist is simply "was this wallet made by Sotechy's factory?", which also makes outside wallets impossible to send to.
   - In practice Sotechy holds the keys for customers (custodial), which is part of the legal review. Self-custody (customer passkeys) can be added to the same wallet later.
 - **Safety for a live mainnet launch:**
