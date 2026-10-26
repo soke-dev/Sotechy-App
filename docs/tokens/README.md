@@ -23,8 +23,8 @@ Sotechy becomes a multi-merchant marketplace. Every verified merchant has a stor
 - **Issue rate:** 1 token per ₦1 by default, adjustable per merchant.
 - **Spend only where issued:** XENA only at Xena; SOTECHY only at Sotechy stores.
 - **Store value:** each token buys a fixed naira value of goods at its store, set from the reserve (section 6): **₦0.00909 per token** (≈0.91 kobo) at launch. It's a store benefit, not a cash or market price.
-- **Usernames:** customers send tokens to **@username**; the username is bound to the wallet, and nobody types 0x addresses. Every transfer shows its status and a **View on Monad explorer** link.
-- **Who can hold them:** only registered Sotechy users and Sotechy's own contracts and wallets. The token contract itself rejects transfers to anyone else (an on-chain allowlist), even from a block explorer or another app.
+- **Sending:** customers send to another user's **@username** or to their **Sotechy wallet address** (the one Sotechy created for them; each username is bound to one wallet). Every transfer shows its status and a **View on Monad explorer** link.
+- **No outside wallets:** sending to any wallet Sotechy didn't create is impossible. The app checks first, and the token contract itself rejects it (an on-chain allowlist of Sotechy-created wallets and Sotechy contracts), even if someone tries from a block explorer or another app.
 
 ### What a customer earns
 
@@ -138,7 +138,7 @@ Sotechy manages the reserve directly (no automatic pausing). Admin dashboards sh
 |---|---|
 | **TokenFactory / Registry** | Deploys one token per approved merchant; the official list of Sotechy tokens. |
 | **MerchantToken** (ERC-20) | Balances and transfers; rejects any sender or receiver not on the allowlist. No arbitrary minting. |
-| **Allowlist** | Registered users' wallets (added at sign-up) and approved Sotechy contracts. |
+| **Allowlist** | Only wallets Sotechy created (added at sign-up) and approved Sotechy contracts. Transfers to anything else are rejected. |
 | **OrderMinter** | Mints for a completed order, once per order id (no double minting); cross-store SOTECHY bonus; review bonus (from the pool first). |
 | **Checkout escrow / Redemption** | Holds tokens used at checkout; on completion splits 50/50 to recycling pool and Sotechy wallet; returns them on cancellation. |
 | **RecyclingPool** | Per-token pool; pays bonuses and promotions with existing tokens. |
