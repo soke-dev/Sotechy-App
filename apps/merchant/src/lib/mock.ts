@@ -371,3 +371,13 @@ export const offerThreads: OfferThread[] = [
   },
 ];
 
+/** Featured placement: the price Sotechy charges (set in admin) and this store's feature (sample) */
+const DAY_MS = 86_400_000;
+export const featured = {
+  pricePerMonth: 1_000,
+  until: Date.now() + 26 * DAY_MS as number | null,
+  visits: 3_480,
+  visitsLift: "2.4×",
+  history: [{ id: "f1", months: 1, from: Date.now() - 4 * DAY_MS, to: Date.now() + 26 * DAY_MS, amount: 1_000 }],
+};
+

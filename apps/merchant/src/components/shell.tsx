@@ -39,6 +39,7 @@ const items = (s: ShellStore): NavItem[][] => [
     { href: "/payouts", label: "Payouts", illo: "bank" },
     { href: "/reviews", label: "Reviews", illo: "heart" },
     { href: "/notifications", label: "Notifications", illo: "chat" },
+    { href: "/featured", label: "Get featured", illo: "sparkle" },
   ],
   [
     { href: "/team", label: "Team", illo: "user" },

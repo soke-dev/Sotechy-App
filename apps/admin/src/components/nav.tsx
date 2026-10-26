@@ -21,6 +21,7 @@ import {
   ScrollText,
   Settings,
   ShoppingBag,
+  Sparkles,
   Star,
   Store,
   ToggleRight,
@@ -67,6 +68,7 @@ export const NAV: NavGroup[] = [
       { href: "/merchants", label: "Merchants", icon: Store, illo: "store", count: queue.merchants },
       { href: "/delivery-areas", label: "Delivery areas", icon: MapPin, illo: "pin", count: queue.zones },
       { href: "/merchant-payouts", label: "Merchant payouts", icon: Banknote, illo: "bank" },
+      { href: "/featured-stores", label: "Featured stores", icon: Sparkles, illo: "sparkle" },
     ],
   },
   {
