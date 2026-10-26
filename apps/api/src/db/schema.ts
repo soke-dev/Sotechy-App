@@ -58,6 +58,7 @@ export const stockMovementTypeEnum = pgEnum("stock_movement_type", [
 export const discountTypeEnum = pgEnum("discount_type", ["percentage", "fixed"]);
 export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", ["draft", "ordered", "received", "cancelled"]);
 export const merchantStatusEnum = pgEnum("merchant_status", ["pending", "approved", "suspended"]);
+export const sellerKindEnum = pgEnum("seller_kind", ["registered", "individual"]);
 export const ticketStatusEnum = pgEnum("ticket_status", ["open", "pending", "resolved", "closed"]);
 
 // ---------------------------------------------------------------------------
@@ -99,17 +100,28 @@ export const users = pgTable("users", {
 });
 
 // ---------------------------------------------------------------------------
-// Marketplace (Phase 4 — table exists, onboarding disabled in v1)
+// Marketplace: a store is owned by an ordinary account, so one sign-in works in the app and the dashboard
 // ---------------------------------------------------------------------------
 export const merchants = pgTable("merchants", {
   id: uuid().primaryKey().defaultRandom(),
   name: text().notNull(),
-  ownerId: uuid().references(() => users.id, { onDelete: "set null" }),
+  /** Store address in the app, lowercase, e.g. "xena-gadgets" */
+  slug: text().notNull().unique(),
+  /** The store token's symbol without the $, e.g. "XENA" */
+  ticker: text().notNull().unique(),
+  /** One store per account for now */
+  ownerId: uuid().unique().references(() => users.id, { onDelete: "set null" }),
+  sellerKind: sellerKindEnum().notNull().default("registered"),
+  /** pending = test mode until Sotechy verifies the store */
   status: merchantStatusEnum().notNull().default("pending"),
   contactEmail: text(),
+  /** Number for order calls, as +234… */
   contactPhone: text(),
+  /** WhatsApp number for order alerts when it differs from contactPhone, as +234… */
+  contactWhatsapp: text(),
   commissionRate: numeric({ precision: 5, scale: 2, mode: "number" }),
   createdAt: createdAt(),
+  updatedAt: updatedAt(),
 });
 
 // ---------------------------------------------------------------------------

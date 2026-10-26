@@ -510,6 +510,10 @@ export const mockApi: ApiClient = {
     return wait({ saved });
   },
   createSupportTicket: async () => wait({ id: `t${Date.now()}` }),
+  // The merchant dashboard is web-only
+  merchantMe: unsupported,
+  openStore: unsupported,
+  updateStore: unsupported,
 };
 
 /** Demo only: does what the Money Moves webhook does when a payment succeeds. */

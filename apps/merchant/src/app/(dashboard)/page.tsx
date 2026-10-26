@@ -4,9 +4,12 @@ import { Illo } from "@/components/illustrations";
 import { btn, Card, Pill, ProductThumb, StatCard } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens } from "@/lib/money";
-import { me, offerThreads, ORDER_STATUS, orderMoney, orders, orderTotal, products, salesByDay, store, token } from "@/lib/mock";
+import { getStoreSession } from "@/lib/api";
+// Orders, sales and ratings are still sample data until the marketplace backend lands
+import { store as sample, offerThreads, ORDER_STATUS, orderMoney, orders, orderTotal, products, salesByDay, token } from "@/lib/mock";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { user, store } = await getStoreSession();
   const waiting = orders.filter((o) => o.status === "new");
   const active = orders.filter((o) => ["accepted", "shipped", "delivered"].includes(o.status));
   const sales14 = salesByDay.reduce((n, d) => n + d.amount, 0);
@@ -24,7 +27,8 @@ export default function HomePage() {
         <div className="relative max-w-xl">
           <p className="text-sm font-semibold uppercase tracking-widest text-sun">{store.name}</p>
           <h1 className="mt-2 text-3xl font-extrabold leading-tight sm:text-4xl">
-            {greeting}, {me.name.split(" ")[0]}
+            {greeting}
+            {user.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}
           </h1>
           <p className="mt-2 text-white/70">
             {waiting.length ? (
@@ -95,7 +99,7 @@ export default function HomePage() {
         <StatCard accent illo="wallet" label="Sales, last 14 days" value={formatNaira(sales14)} hint={`${orders.filter((o) => o.status === "completed").length} completed orders`} />
         <StatCard illo="bank" label="Second halves on the way" value={formatNaira(owedSecondHalf)} hint={`${active.length} orders in progress`} />
         <StatCard illo="coin" label={`$${store.ticker} with customers`} value={formatTokens(token.circulating)} hint={`${token.holders} holders`} />
-        <StatCard illo="heart" label="Store rating" value={`${store.rating} ★`} hint={`${store.followers.toLocaleString()} subscribers`} />
+        <StatCard illo="heart" label="Store rating" value={`${sample.rating} ★`} hint={`${sample.followers.toLocaleString()} subscribers`} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">

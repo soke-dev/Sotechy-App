@@ -11,6 +11,7 @@ import { adminManagementRoutes } from "./routes/admin/management";
 import { adminOperationsRoutes } from "./routes/admin/operations";
 import { authRoutes } from "./routes/auth";
 import { mediaRoutes } from "./routes/media";
+import { merchantRoutes } from "./routes/merchant";
 import { meRoutes } from "./routes/me";
 import { orderRoutes } from "./routes/orders";
 import { paymentRoutes } from "./routes/payments";
@@ -34,6 +35,7 @@ export const app = new Hono()
   .route("/store", storeRoutes)
   .route("/orders", orderRoutes)
   .route("/me", meRoutes)
+  .route("/merchant", merchantRoutes)
   .route("/payments", paymentRoutes)
   .route("/media", mediaRoutes)
   .route("/admin", admin);

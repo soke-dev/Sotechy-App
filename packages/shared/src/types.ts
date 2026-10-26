@@ -335,6 +335,28 @@ export interface User {
   createdAt: string;
 }
 
+/** A merchant's store, as its owner sees it */
+export interface MerchantStore {
+  id: string;
+  name: string;
+  slug: string;
+  /** Token symbol without the $ */
+  ticker: string;
+  ownerId: string | null;
+  sellerKind: "registered" | "individual";
+  /** pending = test mode until Sotechy verifies the store */
+  status: "pending" | "approved" | "suspended";
+  contactEmail: string | null;
+  contactPhone: string | null;
+  contactWhatsapp: string | null;
+  createdAt: string;
+}
+
+export interface MerchantSession {
+  user: User;
+  store: MerchantStore | null;
+}
+
 export interface AuthResponse {
   token: string;
   user: User;

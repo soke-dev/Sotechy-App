@@ -7,6 +7,7 @@ import { useState, type ReactNode } from "react";
 import { Illo, type IlloName } from "./illustrations";
 import { ThemeToggle } from "./theme-toggle";
 import { offerThreads } from "@/lib/mock";
+import { signOut } from "@/lib/session-actions";
 
 interface NavItem {
   href: string;
@@ -18,7 +19,8 @@ interface NavItem {
 export interface ShellStore {
   name: string;
   ticker: string;
-  logo: string;
+  /** Until a logo is uploaded the card shows the store's initials */
+  logo?: string | null;
   verified: boolean;
   newOrders: number;
 }
@@ -47,14 +49,27 @@ const items = (s: ShellStore): NavItem[][] => [
   ],
 ];
 
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
 const isActive = (href: string, path: string) => (href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`));
 
 function StoreCard({ store }: { store: ShellStore }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-panel p-3 text-white">
       <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={store.logo} alt="" className="h-9 w-9 object-contain" />
+        {store.logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={store.logo} alt="" className="h-9 w-9 object-contain" />
+        ) : (
+          <span className="font-display text-base font-extrabold">{initials(store.name)}</span>
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <p className="font-display truncate text-[15px] font-bold">{store.name}</p>
@@ -115,15 +130,17 @@ function Sidebar({ store, user, onNavigate }: { store: ShellStore; user: { name:
           View my store <ExternalLink size={15} />
         </Link>
         <div className="flex items-center gap-3 px-1 pt-1">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{user.name.split(" ").map((p) => p[0]).join("").slice(0, 2)}</span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{initials(user.name)}</span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{user.name}</p>
             <p className="text-xs text-muted">{user.role}</p>
           </div>
           <ThemeToggle />
-          <Link href="/login" aria-label="Sign out" className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-surface-alt">
-            <LogOut size={17} />
-          </Link>
+          <form action={signOut}>
+            <button aria-label="Sign out" title="Sign out" className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-surface-alt">
+              <LogOut size={17} />
+            </button>
+          </form>
         </div>
       </div>
     </div>

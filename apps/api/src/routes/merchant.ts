@@ -1,0 +1,97 @@
+import { zValidator } from "@hono/zod-validator";
+import { eq } from "drizzle-orm";
+import { Hono } from "hono";
+import { z } from "zod";
+import { db, schema } from "../db/client";
+import { requireAuth, type AppEnv } from "../lib/auth";
+import { conflict, notFound } from "../lib/errors";
+import { claimUsername, phoneField, slugify, tickerFrom } from "../lib/identity";
+import { publicUser } from "../lib/serialize";
+
+const storeOf = async (ownerId: string) => (await db.select().from(schema.merchants).where(eq(schema.merchants.ownerId, ownerId)))[0] ?? null;
+
+/** "xena", then "xena-2", "xena-3"… (or "XENA", "XENA2"…) until one is free */
+async function firstFree(base: string, column: typeof schema.merchants.slug | typeof schema.merchants.ticker, join: string, max: number) {
+  for (let n = 1; ; n++) {
+    const suffix = n === 1 ? "" : `${join}${n}`;
+    const candidate = `${base.slice(0, max - suffix.length)}${suffix}`;
+    const [taken] = await db.select({ id: schema.merchants.id }).from(schema.merchants).where(eq(column, candidate));
+    if (!taken) return candidate;
+  }
+}
+
+const storeName = z.string().trim().min(2, "Store name is too short").max(60);
+
+/** The signed-in person's own store: the merchant dashboard's view of an account */
+export const merchantRoutes = new Hono<AppEnv>()
+  .use(requireAuth)
+  .get("/me", async (c) => {
+    const id = c.get("user").id;
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+    return c.json({ user: publicUser(user), store: await storeOf(id) });
+  })
+  /** Opens a store for this account. New stores start in test mode (pending) until Sotechy verifies them. */
+  .post(
+    "/store",
+    zValidator(
+      "json",
+      z.object({
+        name: storeName,
+        sellerKind: z.enum(["registered", "individual"]),
+        phone: z.string().max(30),
+        whatsappPhone: z.string().max(30).nullable().optional(),
+        /** Only needed when the account has no @username yet (e.g. a new Google sign-in) */
+        username: z.string().max(30).optional(),
+      }),
+    ),
+    async (c) => {
+      const input = c.req.valid("json");
+      const id = c.get("user").id;
+      if (await storeOf(id)) throw conflict("This account already has a store");
+      const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+
+      const phone = phoneField(input.phone, "Phone number");
+      const whatsapp = phoneField(input.whatsappPhone, "WhatsApp number") ?? null;
+      const username = !user.username && input.username ? await claimUsername(input.username, id) : undefined;
+      const slug = await firstFree(slugify(input.name), schema.merchants.slug, "-", 40);
+      const ticker = await firstFree(tickerFrom(input.name), schema.merchants.ticker, "", 6);
+
+      const store = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(schema.merchants)
+          .values({ name: input.name, slug, ticker, ownerId: id, sellerKind: input.sellerKind, contactEmail: user.email, contactPhone: phone, contactWhatsapp: whatsapp === phone ? null : whatsapp })
+          .returning();
+        // The owner's own account gets the numbers too if it has none, and the username if one was picked here
+        const patch = { ...(username && { username }), ...(!user.phone && phone && { phone, whatsappPhone: whatsapp === phone ? null : whatsapp }) };
+        if (Object.keys(patch).length) await tx.update(schema.users).set(patch).where(eq(schema.users.id, id));
+        return row;
+      });
+      const [fresh] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+      return c.json({ user: publicUser(fresh), store }, 201);
+    },
+  )
+  .patch(
+    "/store",
+    zValidator(
+      "json",
+      z.object({
+        name: storeName.optional(),
+        contactPhone: z.string().max(30).optional(),
+        contactWhatsapp: z.string().max(30).nullable().optional(),
+      }),
+    ),
+    async (c) => {
+      const input = c.req.valid("json");
+      const store = await storeOf(c.get("user").id);
+      if (!store) throw notFound("You don't have a store yet");
+      const phone = phoneField(input.contactPhone, "Phone number");
+      const patch = {
+        ...(input.name !== undefined && { name: input.name }),
+        ...(phone !== undefined && { contactPhone: phone }),
+        ...(input.contactWhatsapp !== undefined && { contactWhatsapp: phoneField(input.contactWhatsapp, "WhatsApp number") }),
+      };
+      if (!Object.keys(patch).length) return c.json(store);
+      const [row] = await db.update(schema.merchants).set(patch).where(eq(schema.merchants.id, store.id)).returning();
+      return c.json(row);
+    },
+  );

@@ -4,7 +4,7 @@ import { Illo, type IlloName } from "./illustrations";
 const PERKS: { illo: IlloName; title: string; body: string }[] = [
   { illo: "store", title: "Your own storefront", body: "Your brand, your colours, your products, inside the Sotechy app." },
   { illo: "coin", title: "Your own token", body: "Customers earn your $TOKEN on every order and come back to spend it." },
-  { illo: "bank", title: "Paid in two halves", body: "50% when you accept an order, 50% when it's delivered. 2% fee, nothing else." },
+  { illo: "bank", title: "Paid as you deliver", body: "Part of each order when you accept it, the rest when it's delivered. Your plan is shown before you go live." },
 ];
 
 /** Two-panel frame for sign-in, sign-up and invitations. */

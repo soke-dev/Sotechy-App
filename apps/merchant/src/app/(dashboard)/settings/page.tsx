@@ -3,7 +3,9 @@
 import { Check, Lock } from "lucide-react";
 import { use, useState } from "react";
 import { btn, Card, Field, inputClass, PageHeader, Tabs } from "@/components/ui";
-import { bank, me, PAYOUT_MATCH_LABEL, payoutNameMatch, store } from "@/lib/mock";
+import { useAccount } from "@/components/account-context";
+import { bank, PAYOUT_MATCH_LABEL, payoutNameMatch } from "@/lib/mock";
+import { ProfileForm, StoreDetailsForm } from "./account-forms";
 
 const BANKS = ["Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank", "Opay", "Moniepoint", "Kuda", "PalmPay", "Wema Bank"];
 
@@ -43,9 +45,10 @@ type Section = (typeof SECTIONS)[number]["id"];
 export default function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   // /settings?tab=payout opens straight on that section
   const { tab: asked } = use(searchParams);
+  const { user, store } = useAccount();
   const [tab, setTab] = useState<Section>(SECTIONS.find((x) => x.id === asked)?.id ?? "store");
   const [notify, setNotify] = useState({ newOrderSms: true, whatsapp: true, payouts: true, reviews: true, weekly: false });
-  const [waNumber, setWaNumber] = useState("0803 000 0000");
+  const [waNumber, setWaNumber] = useState(store.contactWhatsapp ?? store.contactPhone ?? "");
   const [waTest, setWaTest] = useState(false);
   const [accountNumber, setAccountNumber] = useState(bank.accountNumber);
   const resolved = accountNumber.length === 10;
@@ -56,37 +59,16 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
       <Tabs tabs={[...SECTIONS]} value={tab} onChange={setTab} className="mb-5" />
       <div className="max-w-2xl">
         {tab === "store" && (
-          <Card title="Store details" description="Changes to your store name are checked by Sotechy.">
-            <div className="flex flex-col gap-4">
-              <Field label="Store name">
-                <input defaultValue={store.name} className={inputClass} />
-              </Field>
-              <Field label="Store link" hint="Customers can open your store at this address.">
-                <div className="flex items-center rounded-2xl border border-line bg-surface-alt pl-4 text-[15px] text-muted">
-                  sotechy.shop/
-                  <input defaultValue={store.slug} className="min-h-12 flex-1 rounded-r-2xl border-l border-line bg-surface px-3 text-ink outline-none" />
-                </div>
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Support phone">
-                  <input defaultValue="0803 000 0000" className={inputClass} />
-                </Field>
-                <Field label="Support email">
-                  <input defaultValue={me.email} className={inputClass} />
-                </Field>
-              </div>
-              <Field label="Pickup address">
-                <input defaultValue="No. 20 Etete Road, Benin City" className={inputClass} />
-              </Field>
-              <button className={btn.dark}>Save store details</button>
-            </div>
-          </Card>
+          <div className="flex flex-col gap-4">
+            <StoreDetailsForm />
+            <ProfileForm />
+          </div>
         )}
 
         {tab === "payout" && (
           <Card
             title="Payout account"
-            description="Both halves of every order are paid here: 50% when you accept, the rest when delivery is confirmed. The account can be in your business name or your own name."
+            description="Every payout for your orders lands here, in the stages of your payout plan. The account can be in your business name or your own name."
           >
             <div id="payout" className="flex flex-col gap-4">
               <Field label="Bank">
@@ -173,7 +155,7 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="font-semibold">Password</p>
-                  <p className="text-sm text-muted">Signed in as {me.email}</p>
+                  <p className="text-sm text-muted">Signed in as {user.email}</p>
                 </div>
                 <button className={btn.outline}>Change</button>
               </div>

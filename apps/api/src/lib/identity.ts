@@ -1,4 +1,7 @@
-// Usernames and phone numbers: shared rules for sign-up and profile updates.
+// Usernames, phone numbers and store names: shared rules for sign-up, profiles and stores.
+import { eq } from "drizzle-orm";
+import { db, schema } from "../db/client";
+import { badRequest, conflict } from "./errors";
 
 /** Names nobody can take: Sotechy's own, and words that could confuse people */
 const RESERVED = new Set([
@@ -20,6 +23,16 @@ export function usernameRule(name: string): string | null {
   return null;
 }
 
+/** Checks a username is valid and not taken by someone else; returns it normalised */
+export async function claimUsername(name: string, userId?: string) {
+  const n = normaliseUsername(name);
+  const problem = usernameRule(n);
+  if (problem) throw badRequest(problem);
+  const [owner] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.username, n));
+  if (owner && owner.id !== userId) throw conflict(`@${n} is taken`);
+  return n;
+}
+
 /**
  * Nigerian numbers in one form: "0803 555 0142", "803 555 0142", "+234 803…" → "+2348035550142".
  * Returns null when it isn't a valid Nigerian mobile number (10 digits after +234).
@@ -29,4 +42,30 @@ export function normaliseNgPhone(input: string): string | null {
   if (!digits) return null;
   const local = digits.startsWith("234") ? digits.slice(3) : digits.replace(/^0/, "");
   return /^[789]\d{9}$/.test(local) ? `+234${local}` : null;
+}
+
+/** Optional phone fields: empty clears, anything else must be a Nigerian mobile number */
+export function phoneField(value: string | null | undefined, label: string) {
+  if (value === undefined) return undefined;
+  if (value === null || value.trim() === "") return null;
+  const n = normaliseNgPhone(value);
+  if (!n) throw badRequest(`${label} must be a Nigerian mobile number, like 0803 555 0142`);
+  return n;
+}
+
+/** "Xena Gadgets & Co." → "xena-gadgets-co" */
+export const slugify = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40) || "store";
+
+/** "Xena Gadgets" → "XENA", "JB Phones" → "JBPHO": 3–5 capital letters for the store token */
+export function tickerFrom(name: string) {
+  const words = name.toUpperCase().replace(/[^A-Z0-9 ]/g, " ").split(/\s+/).filter(Boolean);
+  const first = words[0] ?? "";
+  const t = first.length >= 3 ? first : words.join("");
+  return (t.length >= 3 ? t : `${t}STORE`).slice(0, 5);
 }

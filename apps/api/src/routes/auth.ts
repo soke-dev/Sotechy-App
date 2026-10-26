@@ -5,29 +5,10 @@ import { z } from "zod";
 import { db, schema } from "../db/client";
 import { checkPassword, hashPassword, issueToken, requireAuth, type AppEnv } from "../lib/auth";
 import { env } from "../env";
-import { badRequest, conflict, forbidden, HttpError, unauthorized } from "../lib/errors";
+import { conflict, forbidden, HttpError, unauthorized } from "../lib/errors";
 import { getFeatures, requireFeature } from "../services/features";
 import { publicUser } from "../lib/serialize";
-import { normaliseNgPhone, normaliseUsername, usernameRule } from "../lib/identity";
-
-/** Checks a username is valid and not taken by someone else; returns it normalised */
-async function claimUsername(name: string, userId?: string) {
-  const n = normaliseUsername(name);
-  const problem = usernameRule(n);
-  if (problem) throw badRequest(problem);
-  const [owner] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.username, n));
-  if (owner && owner.id !== userId) throw conflict(`@${n} is taken`);
-  return n;
-}
-
-/** Optional phone fields: empty clears, anything else must be a Nigerian mobile number */
-function phoneField(value: string | null | undefined, label: string) {
-  if (value === undefined) return undefined;
-  if (value === null || value.trim() === "") return null;
-  const n = normaliseNgPhone(value);
-  if (!n) throw badRequest(`${label} must be a Nigerian mobile number, like 0803 555 0142`);
-  return n;
-}
+import { claimUsername, normaliseUsername, phoneField, usernameRule } from "../lib/identity";
 
 const credentials = z.object({
   email: z.email().transform((e) => e.toLowerCase()),

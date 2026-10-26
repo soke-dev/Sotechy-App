@@ -5,6 +5,8 @@ import type {
   CatalogProduct,
   Category,
   ExchangeRate,
+  MerchantSession,
+  MerchantStore,
   Order,
   OrderDetail,
   OrderSummary,
@@ -71,6 +73,12 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
     updateProfile: (input: { fullName?: string; username?: string; phone?: string | null; whatsappPhone?: string | null; avatarStyle?: string | null }) =>
       send<User>("PATCH", "/auth/me", input),
     checkUsername: (name: string) => get<{ username: string; available: boolean; reason: string | null }>(`/auth/username/${encodeURIComponent(name)}`),
+
+    // Merchant dashboard: the signed-in account's own store
+    merchantMe: () => get<MerchantSession>("/merchant/me"),
+    openStore: (input: { name: string; sellerKind: "registered" | "individual"; phone: string; whatsappPhone?: string | null; username?: string }) =>
+      send<MerchantSession>("POST", "/merchant/store", input),
+    updateStore: (input: { name?: string; contactPhone?: string; contactWhatsapp?: string | null }) => send<MerchantStore>("PATCH", "/merchant/store", input),
 
     // Saved addresses
     addresses: () => get<Address[]>("/me/addresses"),
