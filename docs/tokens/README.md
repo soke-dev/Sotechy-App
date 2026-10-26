@@ -19,7 +19,7 @@ Sotechy becomes a multi-merchant marketplace. Every verified merchant has a stor
 ## 2. Tokens
 
 - Every merchant has its own token, called by its ticker: **$XENA**, **$COLLINS**, **$SOTECHY**. The app calls them **tokens** and shows all of a customer's balances together.
-- **Merchants choose their ticker during onboarding**, with a short explanation of what a store token is (earned by their customers, spent only at their store, not money or an investment). Rules: 3–8 letters/numbers, unique across Sotechy, no reserved or misleading names (SOTECHY, NGN, USD, USDT, MON, …), checked by admin at approval and fixed once the token is created.
+- **Merchants choose their ticker during onboarding**, with a short explanation of what a store token is (earned by their customers, spent only at their store, not money or an investment). Rules: 3–8 letters/numbers, unique across Sotechy, no reserved or misleading names (SOTECHY, NGN, USD, USDT, MON, …), checked by admin at approval. The token contract can be **renamed** (new name and ticker, same token and balances) with Sotechy admin approval, so a merchant who rebrands keeps their token; the merchant request flow for this comes later.
 - **No fixed supply.** Tokens are minted when orders complete.
 - **Issue rate:** 1 token per ₦1 by default, adjustable per merchant.
 - **Spend only where issued:** XENA only at Xena; SOTECHY only at Sotechy stores.
@@ -100,6 +100,7 @@ Worked example, ₦100,000 order from Xena:
   8. Submit for review.
 
   Admin then approves, rejects or asks for changes with a note.
+- **Selling:** merchants upload goods to their storefront from the dashboard: photos, price, options (size, colour, storage), stock, description, key features, what's in the box and specs, the same product page customers already see. Their products also appear in Shop and search; admin can hide listings that break the rules.
 - **Test mode before approval;** live selling and payouts only once verified. Daily payout limits for new merchants.
 - **Team:** owner invites staff with roles (owner, admin, orders, catalogue, finance, viewer).
 - **Dashboard** in the customer app's look (cream, Sotechy orange, illustrated icons):
@@ -158,6 +159,7 @@ Sotechy manages the reserve directly (no automatic pausing). Admin dashboards sh
 
 ## 8. Not in the first build
 
+- Merchant-requested ticker changes (the contract supports renaming from day one; the dashboard flow comes later).
 - DEX trading and liquidity pools: later, separately, after the core passes its tests.
 - Token cash-out: none. Tokens are store value only.
 
