@@ -1,20 +1,29 @@
-import { useState } from "react";
+import { useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { CartButton } from "@/components/cart-button";
 import { Illo } from "@/components/illustrations";
 import { StoreRow } from "@/components/store-bits";
 import { useTabBarInset } from "@/components/tab-bar";
 import { Chip, EmptyState, Input, ScreenHeader, Txt, ui } from "@/components/ui";
-import { STORE_KINDS, stores } from "@/lib/marketplace";
+import { byFeatured, STORE_KINDS, stores } from "@/lib/marketplace";
+
+// Sotechy sells gadgets only, so it doesn't show under these
+const NON_GADGET = new Set(["Fashion", "Beauty & hair", "Food & groceries", "Home & living", "Books & kids", "Sports"]);
 import { colors, gutter, radius, space } from "@/lib/theme";
 
 export default function StoresScreen() {
   const tabInset = useTabBarInset();
   const [q, setQ] = useState("");
-  const [kind, setKind] = useState<string>("");
+  const params = useLocalSearchParams<{ kind?: string }>();
+  const [kind, setKind] = useState<string>(params.kind ?? "");
+  // The tab stays mounted: follow a type picked on Home
+  useEffect(() => {
+    if (params.kind !== undefined) setKind(params.kind);
+  }, [params.kind]);
   const term = q.trim().toLowerCase();
-  const shown = stores
-    .filter((s) => !kind || s.kind === kind || s.kind === "Everything")
+  const shown = byFeatured(stores)
+    .filter((s) => !kind || s.kind === kind || (s.kind === "Everything" && !NON_GADGET.has(kind)))
     .filter((s) => !term || `${s.name} ${s.tagline} ${s.ticker} ${s.city}`.toLowerCase().includes(term));
 
   return (

@@ -5,7 +5,7 @@ import { FlatList, Pressable, ScrollView, Text, useWindowDimensions, View } from
 import { CartButton } from "@/components/cart-button";
 import { MarketProductCard } from "@/components/store-bits";
 import { detailsFor, groupOfCategory } from "@/lib/market-details";
-import { marketProducts, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { isFeatured, marketProducts, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import type { CatalogProduct } from "@sotechy/shared";
 import { MenuButton } from "@/components/menu";
 import { ProductCard } from "@/components/product-card";
@@ -127,7 +127,11 @@ export default function ShopScreen() {
         ? [...ownItems, ...storeItems].sort((a, b) => priceOf(b) - priceOf(a))
         : sort === "rating"
           ? [...ownItems, ...storeItems].sort((a, b) => ratingOf(b) - ratingOf(a))
-          : interleave(ownItems, storeItems);
+          : // Featured stores' products lead the grid (a few), then everyone takes turns
+            (() => {
+              const lead = storeItems.filter((r) => r.kind === "store" && isFeatured(r.store)).slice(0, 4);
+              return [...lead, ...interleave(ownItems, storeItems.filter((r) => !lead.includes(r)))];
+            })();
   const count = products.data ? rows.length : undefined;
 
   return (

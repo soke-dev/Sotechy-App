@@ -6,7 +6,7 @@ import { router } from "expo-router";
 import { formatNaira } from "@sotechy/shared";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { api } from "@/lib/api";
-import { formatTokens, tileColor, wallet, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { formatTokens, isFeatured, tileColor, wallet, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { Illo } from "./illustrations";
 import { BrandMark, ProductArt, StoreCover } from "./store-brand";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
@@ -33,6 +33,16 @@ export function StoreLogo({ store, size = 52, ring }: { store: MarketStore; size
       }}
     >
       <BrandMark store={store} size={size - (ring ? 6 : 0)} />
+    </View>
+  );
+}
+
+/** Marks a store that paid to be featured */
+export function FeaturedTag({ small }: { small?: boolean }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 3, alignSelf: "flex-start", backgroundColor: "rgba(23,18,14,0.82)", borderRadius: radius.pill, paddingHorizontal: small ? 6 : 8, paddingVertical: small ? 1 : 3 }}>
+      <Ionicons name="star" size={small ? 9 : 11} color="#FDB913" />
+      <Text style={{ fontFamily: fonts.bold, fontSize: small ? 10 : 11, color: "#FFFFFF" }}>Featured</Text>
     </View>
   );
 }
@@ -69,6 +79,11 @@ export function FeaturedStoreCard({ store, width }: { store: MarketStore; width:
         <View style={{ position: "absolute", top: 10, right: 10 }}>
           <TokenChip store={store} />
         </View>
+        {isFeatured(store) && (
+          <View style={{ position: "absolute", top: 10, left: 10 }}>
+            <FeaturedTag />
+          </View>
+        )}
       </View>
       <View style={{ position: "absolute", top: 84, left: space.md }}>
         <StoreLogo store={store} size={54} ring={colors.surface} />
@@ -110,6 +125,7 @@ export function StoreRow({ store }: { store: MarketStore }) {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
           <Txt variant="label" numberOfLines={1} style={{ fontSize: 15.5, flexShrink: 1 }}>{store.name}</Txt>
           <Ionicons name="checkmark-circle" size={15} color={store.isSotechy ? colors.brand : "#2F6FB3"} />
+          {isFeatured(store) && <FeaturedTag small />}
         </View>
         <Txt variant="small" numberOfLines={1}>{store.tagline}</Txt>
         <Rating store={store} />
@@ -148,6 +164,11 @@ export function MarketProductCard({ store, product, width = 150, onDark }: { sto
             <Text style={{ fontFamily: fonts.bold, fontSize: 11, color: colors.onInverse }}>-{off}%</Text>
           </View>
         ) : null}
+        {isFeatured(store) && (
+          <View style={{ position: "absolute", top: 8, right: 8 }}>
+            <FeaturedTag small />
+          </View>
+        )}
         {product.negotiable ? (
           <View style={{ position: "absolute", bottom: 8, left: 8, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: store.theme.hero, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
             <Ionicons name="pricetag" size={10} color={store.theme.onHero} />

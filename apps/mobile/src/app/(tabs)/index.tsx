@@ -17,7 +17,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { ArtButton, Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { marketProducts, stores, tileColor, type Img as MarketImg } from "@/lib/marketplace";
+import { byFeatured, marketProducts, stores, tileColor, type Img as MarketImg } from "@/lib/marketplace";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { useFeatures } from "@/lib/store-config";
 import { demoMedia } from "@/lib/mock-api";
@@ -200,7 +200,7 @@ export default function HomeScreen() {
           <SectionHeader title="Stores on Sotechy" action="All stores" onAction={() => router.push("/stores")} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={Math.min(contentWidth * 0.78, 290) + space.md} decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
-          {stores.map((s) => (
+          {byFeatured(stores).map((s) => (
             <FeaturedStoreCard key={s.slug} store={s} width={Math.min(contentWidth * 0.78, 290)} />
           ))}
         </ScrollView>
@@ -251,14 +251,16 @@ export default function HomeScreen() {
 
       {/* Categories */}
       <View style={{ paddingHorizontal: gutter }}>
-        <SectionHeader title="Everything for your home & office" />
+        <SectionHeader title="Shop by category" action="All stores" onAction={() => router.push("/stores")} />
+        {/* Eight shortcuts: Sotechy's top gadget categories, then the marketplace's other store types */}
         <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: space.lg, marginHorizontal: -2 }}>
-          {tops.map((c) => (
+          {tops.slice(0, 4).map((c) => (
             <CircleLink key={c.id} label={c.name} image={c.imageUrl} icon={productIcon(c.name)} onPress={() => shop({ category: c.slug })} />
           ))}
-          <CircleLink label="Deals" illo="tag" onPress={() => shop({ featured: "1" })} />
-          <CircleLink label="New in" illo="sparkle" onPress={() => shop({ sort: "newest" })} />
-          <CircleLink label="Stores" illo="store" onPress={() => router.push("/stores")} />
+          <CircleLink label="Fashion" icon="shirt-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Fashion" } })} />
+          <CircleLink label="Beauty & hair" icon="color-palette-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Beauty & hair" } })} />
+          <CircleLink label="Food & groceries" icon="nutrition-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Food & groceries" } })} />
+          <CircleLink label="Home & living" icon="bed-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Home & living" } })} />
         </View>
       </View>
 

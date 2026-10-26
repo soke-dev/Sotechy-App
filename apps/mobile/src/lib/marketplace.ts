@@ -67,6 +67,8 @@ export interface MarketStore {
   sinceMonths: number;
   /** Sotechy's own store: its products come from the live catalogue */
   isSotechy?: boolean;
+  /** Paid to be featured until this date: shown first on Home, in Shop and in Stores */
+  featuredUntil?: string;
   products: StoreProduct[];
 }
 
@@ -119,6 +121,7 @@ export const stores: MarketStore[] = [
   },
   {
     slug: "xena",
+    featuredUntil: new Date(Date.now() + 26 * 86_400_000).toISOString(),
     name: "Xena Gadgets",
     ticker: "XENA",
     tagline: "Phones and gadgets at fair prices",
@@ -217,7 +220,7 @@ const moreStores: MarketStore[] = [
     products: [q("ad1", "Ankara Wrap Dress", 28_000, "shirt", 33_000, "A flowing wrap dress in bold Ankara print, lined and fully adjustable."), q("ad2", "Men's Ankara Shirt", 18_500, "shirt-outline"), q("ad3", "Ankara Two-Piece Set", 34_000, "shirt"), q("ad4", "Aso-Oke Gele", 12_000, "ribbon"), q("ad5", "Beaded Handbag", 15_500, "bag-handle"), q("ad6", "Leather Sandals", 21_000, "footsteps")],
   },
   {
-    slug: "glow", name: "Glow by Tee", ticker: "GLOW", tagline: "Makeup and skincare for every skin tone", city: "Lagos", rating: 4.9, reviews: 1_120, followers: 9_840, kind: "Beauty & hair",
+    slug: "glow", featuredUntil: new Date(Date.now() + 21 * 86_400_000).toISOString(), name: "Glow by Tee", ticker: "GLOW", tagline: "Makeup and skincare for every skin tone", city: "Lagos", rating: 4.9, reviews: 1_120, followers: 9_840, kind: "Beauty & hair",
     about: "Foundations, lip colours and skincare picked for deep and medium skin tones. Every product is original.", theme: t("#C2185B", "#4A0D26"),
     delivery: { states: ["Lagos", "Ogun", "Oyo"], homeFrom: 2_000 }, sinceMonths: 4,
     highlights: ["Original products only", "Shades for deep and medium skin", "Free samples on orders over ₦30,000"],
@@ -231,7 +234,7 @@ const moreStores: MarketStore[] = [
     products: [q("hv1", "Bone Straight Wig 20\"", 185_000, "woman", 210_000), q("hv2", "Body Wave Frontal Wig", 160_000, "woman"), q("hv3", "Curly Bob Wig", 95_000, "woman"), q("hv4", "Hair Bundles (3)", 120_000, "cut"), q("hv5", "Edge Control Gel", 4_500, "water")],
   },
   {
-    slug: "freshmart", name: "FreshMart Groceries", ticker: "FRESH", tagline: "Groceries delivered the same day", city: "Abuja", rating: 4.6, reviews: 2_310, followers: 11_200, kind: "Food & groceries",
+    slug: "freshmart", featuredUntil: new Date(Date.now() + 12 * 86_400_000).toISOString(), name: "FreshMart Groceries", ticker: "FRESH", tagline: "Groceries delivered the same day", city: "Abuja", rating: 4.6, reviews: 2_310, followers: 11_200, kind: "Food & groceries",
     about: "Rice, oil, provisions and fresh food from the market, delivered across Abuja the same day.", theme: t("#2E7D32", "#123B16"),
     delivery: { states: ["FCT Abuja", "Nasarawa"], homeFrom: 1_500 }, sinceMonths: 8,
     highlights: ["Same-day delivery in Abuja", "Fresh food checked before packing", "Bulk prices for big orders"],
@@ -239,7 +242,7 @@ const moreStores: MarketStore[] = [
     products: [q("fm1", "Rice 50kg Bag", 78_000, "cart", 82_000), q("fm2", "Vegetable Oil 5L", 14_500, "water"), q("fm3", "Fresh Tomatoes Basket", 18_000, "nutrition"), q("fm4", "Eggs (Crate of 30)", 6_800, "egg"), q("fm5", "Frozen Chicken 2kg", 11_500, "restaurant"), q("fm6", "Bottled Water (12)", 3_600, "water")],
   },
   {
-    slug: "oakrattan", name: "Oak & Rattan", ticker: "OAK", tagline: "Furniture made in Nigeria", city: "Ibadan", rating: 4.7, reviews: 214, followers: 1_980, kind: "Home & living",
+    slug: "oakrattan", featuredUntil: new Date(Date.now() + 5 * 86_400_000).toISOString(), name: "Oak & Rattan", ticker: "OAK", tagline: "Furniture made in Nigeria", city: "Ibadan", rating: 4.7, reviews: 214, followers: 1_980, kind: "Home & living",
     about: "Sofas, beds and dining sets from our Ibadan workshop, delivered and set up for you.", theme: t("#8D5A2B", "#3A2412"),
     delivery: { states: ["Oyo", "Lagos", "Ogun", "Osun"], homeFrom: 8_000 }, sinceMonths: 5,
     highlights: ["Made in our Ibadan workshop", "Delivered and set up", "2-year frame warranty"],
@@ -288,10 +291,15 @@ for (const store of stores) for (const item of store.products) if (NEGOTIABLE[it
 
 export const storeBySlug = (slug: string) => stores.find((s) => s.slug === slug);
 
+/** Whether a store's paid feature is running */
+export const isFeatured = (s: MarketStore) => !!s.featuredUntil && new Date(s.featuredUntil).getTime() > Date.now();
+/** Featured stores first, keeping the order otherwise */
+export const byFeatured = <T extends MarketStore>(list: T[]) => [...list.filter(isFeatured), ...list.filter((s) => !isFeatured(s))];
+
 /** Products from every marketplace store, taking turns so no one store fills the row */
 export function marketProducts(onlyDeals = false): { store: MarketStore; product: StoreProduct }[] {
-  const lists = stores
-    .filter((st) => !st.isSotechy)
+  // Featured stores' products come first
+  const lists = byFeatured(stores.filter((st) => !st.isSotechy))
     .map((st) => st.products.filter((pr) => !onlyDeals || (pr.compareAt ?? 0) > pr.price).map((product) => ({ store: st, product })));
   const out: { store: MarketStore; product: StoreProduct }[] = [];
   for (let i = 0; lists.some((l) => i < l.length); i++) for (const l of lists) if (l[i]) out.push(l[i]);
