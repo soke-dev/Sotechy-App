@@ -26,6 +26,12 @@
 }
 
 @layer base {
+  /* Nothing may push the page wider than the phone: a wide row would make the
+     browser zoom out and drag the fixed tab bar with it. */
+  html,
+  body {
+    overflow-x: clip;
+  }
   body {
     background: var(--color-canvas);
     color: var(--color-ink);

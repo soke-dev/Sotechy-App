@@ -1,8 +1,9 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { Clock, Home, Plus, Store, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { btn, Field, inputClass } from "./ui";
+import { formatNaira } from "@/lib/money";
 import { NIGERIAN_STATES, type DeliveryZone } from "@/lib/mock";
 
 const TIMES = ["Same day", "Same day – 1 day", "1–2 days", "2–3 days", "3–5 days", "5–7 days"];
@@ -24,13 +25,17 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
   );
 }
 
-/** Add or edit a delivery area: state, optional cities, fee, time and free-delivery amount. */
+/** Add or edit a delivery area: state, optional cities, home and pickup prices, time and free-delivery amount.
+ *  New areas, and changes to the state or cities, go to Sotechy for approval. */
 export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSave: (z: DeliveryZone) => void; onDelete?: () => void }) {
   const [state, setState] = useState(zone?.state ?? "Edo");
   const [whole, setWhole] = useState(zone ? zone.areas.length === 0 : false);
   const [areas, setAreas] = useState<string[]>(zone?.areas ?? []);
   const [area, setArea] = useState("");
-  const [fee, setFee] = useState(zone?.fee ?? 0);
+  const [homeFee, setHomeFee] = useState(zone?.homeFee ?? 0);
+  const [hasPickup, setHasPickup] = useState(zone ? Boolean(zone.pickup) : true);
+  const [pickupFee, setPickupFee] = useState(zone?.pickup?.fee ?? 0);
+  const [point, setPoint] = useState(zone?.pickup?.point ?? "");
   const [days, setDays] = useState(zone?.days ?? "1–2 days");
   const [freeOver, setFreeOver] = useState(zone?.freeOver ?? 0);
 
@@ -39,10 +44,18 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
     if (a && !areas.includes(a)) setAreas([...areas, a]);
     setArea("");
   };
-  const valid = whole || areas.length > 0;
+  const placeChanged = !zone || zone.state !== state || (whole ? zone.areas.length > 0 : zone.areas.join("|") !== areas.join("|"));
+  const valid = (whole || areas.length > 0) && (!hasPickup || point.trim().length > 0);
+  const cheaper = hasPickup && homeFee > 0 && pickupFee >= homeFee;
 
   return (
     <div className="flex flex-col gap-4">
+      {placeChanged && (
+        <p className="flex items-start gap-2 rounded-2xl bg-warn-soft px-3 py-2.5 text-sm text-warn">
+          <Clock size={16} className="mt-0.5 shrink-0" />
+          {zone ? "Changing the state or cities sends this area back to Sotechy for approval." : "Sotechy checks you can really deliver here before customers see it. Usually within a day."}
+        </p>
+      )}
       <Field label="State">
         <select value={state} onChange={(e) => setState(e.target.value)} className={inputClass}>
           {NIGERIAN_STATES.map((s) => <option key={s}>{s}</option>)}
@@ -85,17 +98,40 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
         </Field>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Delivery fee (₦)">
-          <input type="number" min={0} value={fee || ""} onChange={(e) => setFee(Number(e.target.value))} className={inputClass} placeholder="0 = free" />
-        </Field>
-        <Field label="Delivery time">
-          <select value={days} onChange={(e) => setDays(e.target.value)} className={inputClass}>
-            {TIMES.map((t) => <option key={t}>{t}</option>)}
-          </select>
-        </Field>
+      <div className="rounded-3xl border border-line p-4">
+        <p className="mb-3 flex items-center gap-2 text-sm font-semibold"><Home size={16} className="text-brand-strong" /> Home delivery</p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Price (₦)">
+            <input type="number" inputMode="numeric" min={0} value={homeFee || ""} onChange={(e) => setHomeFee(Number(e.target.value))} className={inputClass} placeholder="0 = free" />
+          </Field>
+          <Field label="Takes">
+            <select value={days} onChange={(e) => setDays(e.target.value)} className={inputClass}>
+              {TIMES.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </Field>
+        </div>
       </div>
-      <Field label="Free delivery over (₦)" hint="Optional. Orders above this amount ship free to this area.">
+
+      <div className="rounded-3xl border border-line p-4">
+        <label className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2 text-sm font-semibold"><Store size={16} className="text-brand-strong" /> Pickup in this area</span>
+          <input type="checkbox" checked={hasPickup} onChange={(e) => setHasPickup(e.target.checked)} />
+        </label>
+        <p className="mt-1 text-xs text-muted">Customers collect from a park, courier office or your shop. Usually cheaper than home delivery.</p>
+        {hasPickup && (
+          <div className="mt-3 flex flex-col gap-3">
+            <Field label="Pickup price (₦)">
+              <input type="number" inputMode="numeric" min={0} value={pickupFee || ""} onChange={(e) => setPickupFee(Number(e.target.value))} className={inputClass} placeholder="0 = free" />
+            </Field>
+            <Field label="Pickup point">
+              <input value={point} onChange={(e) => setPoint(e.target.value)} className={inputClass} placeholder="e.g. GIG Logistics hub, Ekpoma" />
+            </Field>
+            {cheaper && <p className="text-xs text-warn">Pickup usually costs less than home delivery ({formatNaira(homeFee)}).</p>}
+          </div>
+        )}
+      </div>
+
+      <Field label="Free home delivery over (₦)" hint="Optional. Orders above this amount get home delivery free.">
         <input type="number" min={0} value={freeOver || ""} onChange={(e) => setFreeOver(Number(e.target.value))} className={inputClass} />
       </Field>
 
@@ -106,12 +142,37 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
         <button
           type="button"
           disabled={!valid}
-          onClick={() => onSave({ id: zone?.id ?? `z${Date.now()}`, state, areas: whole ? [] : areas, fee, days, freeOver: freeOver || undefined, active: zone?.active ?? true })}
+          onClick={() =>
+            onSave({
+              id: zone?.id ?? `z${Date.now()}`,
+              state,
+              areas: whole ? [] : areas,
+              homeFee,
+              pickup: hasPickup ? { fee: pickupFee, point: point.trim() } : undefined,
+              days,
+              freeOver: freeOver || undefined,
+              active: zone?.active ?? true,
+              review: placeChanged ? "pending" : zone!.review,
+              reviewNote: placeChanged ? undefined : zone!.reviewNote,
+            })
+          }
           className={`${btn.dark} flex-1`}
         >
-          <Plus size={16} /> {zone ? "Save delivery area" : "Add delivery area"}
+          {zone ? (placeChanged ? "Save and send for approval" : "Save changes") : <><Plus size={16} /> Send for approval</>}
         </button>
       </div>
     </div>
+  );
+}
+
+const price = (n: number) => (n ? formatNaira(n) : "Free");
+
+/** The two prices a customer chooses between for an area. */
+export function ZonePrices({ zone }: { zone: DeliveryZone }) {
+  return (
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
+      <span className="inline-flex items-center gap-1"><Home size={13} className="text-muted" /> Home {price(zone.homeFee)}</span>
+      {zone.pickup && <span className="inline-flex items-center gap-1"><Store size={13} className="text-muted" /> Pickup {price(zone.pickup.fee)}</span>}
+    </span>
   );
 }

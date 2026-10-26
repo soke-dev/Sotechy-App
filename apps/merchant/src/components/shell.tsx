@@ -3,7 +3,7 @@
 import { ExternalLink, LogOut, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Illo, type IlloName } from "./illustrations";
 
 interface NavItem {
@@ -159,7 +159,12 @@ function TabBar({ store, onMore }: { store: ShellStore; onMore: () => void }) {
 export function MerchantShell({ store, user, children }: { store: ShellStore; user: { name: string; role: string }; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
-  useEffect(() => setOpen(false), [path]);
+  // Close the drawer when the page changes
+  const [shownPath, setShownPath] = useState(path);
+  if (path !== shownPath) {
+    setShownPath(path);
+    setOpen(false);
+  }
 
   return (
     <div className="min-h-screen">
@@ -177,7 +182,7 @@ export function MerchantShell({ store, user, children }: { store: ShellStore; us
         </aside>
       </div>
 
-      <div className="lg:pl-72">
+      <div className="min-w-0 lg:pl-72">
         {!store.verified && (
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-warn-soft px-4 py-2 text-center text-sm text-warn">
             <b>Test mode.</b> Finish verification to start selling for real.

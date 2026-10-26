@@ -228,24 +228,36 @@ export const NIGERIAN_STATES = [
   "Osun", "Oyo", "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara",
 ];
 
+/** Sotechy checks every new area (and any change to its state or cities) before customers see it. */
+export type ZoneReview = "pending" | "approved" | "declined";
+
 /** A saved delivery area: set up once, then ticked on any product. */
 export interface DeliveryZone {
   id: string;
   state: string;
   /** Empty = the whole state */
   areas: string[];
-  fee: number;
+  /** Delivered to the customer's door */
+  homeFee: number;
+  /** Collected from a pickup point in the area. Cheaper; unset = no pickup there. */
+  pickup?: { fee: number; point: string };
   days: string;
   freeOver?: number;
   active: boolean;
+  review: ZoneReview;
+  reviewNote?: string;
 }
 
 export const deliveryZones: DeliveryZone[] = [
-  { id: "z1", state: "Edo", areas: ["Benin City"], fee: 2_000, days: "Same day – 1 day", freeOver: 100_000, active: true },
-  { id: "z2", state: "Edo", areas: ["Ekpoma", "Auchi"], fee: 4_000, days: "1–2 days", active: true },
-  { id: "z3", state: "Delta", areas: ["Asaba", "Warri"], fee: 5_500, days: "2–3 days", active: true },
-  { id: "z4", state: "Lagos", areas: [], fee: 7_500, days: "3–5 days", active: false },
+  { id: "z1", state: "Edo", areas: ["Benin City"], homeFee: 2_000, pickup: { fee: 0, point: "Our shop, No. 20 Etete Road" }, days: "Same day – 1 day", freeOver: 100_000, active: true, review: "approved" },
+  { id: "z2", state: "Edo", areas: ["Ekpoma", "Auchi"], homeFee: 4_000, pickup: { fee: 2_500, point: "GIG Logistics hub, Ekpoma" }, days: "1–2 days", active: true, review: "approved" },
+  { id: "z3", state: "Delta", areas: ["Asaba", "Warri"], homeFee: 5_500, pickup: { fee: 3_500, point: "GUO Motors park, Asaba" }, days: "2–3 days", active: true, review: "approved" },
+  { id: "z4", state: "Lagos", areas: [], homeFee: 7_500, pickup: { fee: 5_000, point: "GIG Logistics, Ikeja" }, days: "3–5 days", active: true, review: "pending" },
+  { id: "z5", state: "Rivers", areas: ["Port Harcourt"], homeFee: 6_000, days: "3–5 days", active: true, review: "declined", reviewNote: "We couldn't confirm a courier for Port Harcourt. Send us a waybill receipt and we'll look again." },
 ];
+
+/** Customers only see areas that are approved and switched on. */
+export const zoneLive = (z: DeliveryZone) => z.review === "approved" && z.active;
 
 export const pickup = { enabled: true, address: "No. 20 Etete Road, Benin City", hours: "Mon–Sat, 9am – 6pm" };
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Illo } from "./illustrations";
 import { btn, Card, Field, inputClass, ProductThumb } from "./ui";
-import { Sheet, ZoneForm } from "./zone-form";
+import { Sheet, ZoneForm, ZonePrices } from "./zone-form";
 import { formatNaira, formatTokens, SOTECHY_CROSS_BONUS } from "@/lib/money";
 import { deliveryZones, pickup as storePickup, store, zoneLabel, type DeliveryZone, type Product } from "@/lib/mock";
 
@@ -28,8 +28,8 @@ export function ProductForm({ product }: { product?: Product }) {
   const [specs, setSpecs] = useState<[string, string][]>([["", ""]]);
   const [status, setStatus] = useState<Product["status"]>(product?.status ?? "live");
   // Delivery: tick saved areas (all of them by default) or add a new one here
-  const [zones, setZones] = useState<DeliveryZone[]>(deliveryZones.filter((z) => z.active));
-  const [ticked, setTicked] = useState<Set<string>>(new Set(deliveryZones.filter((z) => z.active).map((z) => z.id)));
+  const [zones, setZones] = useState<DeliveryZone[]>(deliveryZones.filter((z) => z.active && z.review !== "declined"));
+  const [ticked, setTicked] = useState<Set<string>>(new Set(deliveryZones.filter((z) => z.active && z.review !== "declined").map((z) => z.id)));
   const [pickup, setPickup] = useState(storePickup.enabled);
   const [adding, setAdding] = useState(false);
 
@@ -223,7 +223,8 @@ export function ProductForm({ product }: { product?: Product }) {
                     <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${on ? "border-ink bg-ink text-white" : "border-faint"}`}>{on && <Check size={13} />}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold">{zoneLabel(z)}</span>
-                      <span className="text-xs text-muted">{z.fee ? formatNaira(z.fee) : "Free"} · {z.days}</span>
+                      <ZonePrices zone={z} />
+                      {z.review === "pending" && <span className="mt-0.5 block text-xs font-semibold text-warn">Waiting for approval · goes live once Sotechy approves</span>}
                     </span>
                   </button>
                 );
@@ -233,7 +234,7 @@ export function ProductForm({ product }: { product?: Product }) {
               </button>
               <label className="mt-1 flex items-center justify-between gap-3 border-t border-line pt-3 text-sm">
                 <span>
-                  <span className="block font-semibold">Store pickup</span>
+                  <span className="block font-semibold">Pickup at your shop</span>
                   <span className="text-xs text-muted">{storePickup.address}</span>
                 </span>
                 <input type="checkbox" checked={pickup} onChange={(e) => setPickup(e.target.checked)} />

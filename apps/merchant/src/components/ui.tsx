@@ -23,10 +23,10 @@ export function PageHeader({ title, description, actions, illo }: { title: strin
 
 export function Card({ title, description, actions, children, className = "", padded = true }: { title?: string; description?: string; actions?: ReactNode; children: ReactNode; className?: string; padded?: boolean }) {
   return (
-    <section className={`rounded-3xl border border-line bg-surface ${className}`}>
+    <section className={`min-w-0 rounded-3xl border border-line bg-surface ${className}`}>
       {(title || actions) && (
         <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
-          <div>
+          <div className="min-w-0">
             {title && <h2 className="text-lg font-bold">{title}</h2>}
             {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
           </div>
