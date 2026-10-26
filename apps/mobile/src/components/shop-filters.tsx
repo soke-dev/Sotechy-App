@@ -58,7 +58,8 @@ export function priceLabel(f: ShopFilters) {
 export const brandLabel = (f: ShopFilters) => (f.brands.length === 0 ? "Brand" : f.brands.length === 1 ? f.brands[0] : `${f.brands[0]} +${f.brands.length - 1}`);
 
 /** Bottom sheet with a title, scrollable body and optional footer. */
-function Sheet({ visible, title, right, onClose, children, footer }: { visible: boolean; title: string; right?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
+/** Bottom sheet used across the app (filters, wallet, notifications) */
+export function Sheet({ visible, title, right, onClose, children, footer }: { visible: boolean; title: string; right?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

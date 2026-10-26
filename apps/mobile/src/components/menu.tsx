@@ -153,6 +153,10 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
             <QuickLink illo="sparkle" label="New in" onPress={() => go({ pathname: "/shop", params: { sort: "newest" } })} />
             <QuickLink illo="receipt" label="Track order" onPress={() => go("/orders")} />
             <QuickLink illo="heart" label="Saved" onPress={() => go("/wishlist")} />
+            <QuickLink illo="store" label="Stores" onPress={() => go("/stores")} />
+            <QuickLink illo="coin" label="Wallet" onPress={() => go("/wallet")} />
+            <QuickLink illo="chat" label="Store news" onPress={() => go("/notifications")} />
+            <QuickLink illo="cart" label="Cart" onPress={() => go("/cart")} />
           </View>
 
           {/* Guests only: sign-in prompt */}

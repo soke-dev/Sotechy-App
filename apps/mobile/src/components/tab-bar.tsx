@@ -8,12 +8,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { colors, fonts } from "@/lib/theme";
-import { AccountIcon, Burst, CartIcon, HomeIcon, OrdersIcon, ShopIcon } from "./tab-icons";
+import { AccountIcon, Burst, CartIcon, HomeIcon, OrdersIcon, ShopIcon, StoresIcon } from "./tab-icons";
 import { UserAvatar } from "./user-avatar";
 
 const ICONS: Record<string, ComponentType<{ active: boolean; size?: number }>> = {
   index: HomeIcon,
   shop: ShopIcon,
+  stores: StoresIcon,
   cart: CartIcon,
   orders: OrdersIcon,
   account: AccountIcon,

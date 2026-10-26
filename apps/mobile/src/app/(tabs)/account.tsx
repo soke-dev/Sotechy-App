@@ -104,6 +104,14 @@ export default function AccountScreen() {
           <ListRow illo="cart" title="Cart" onPress={() => router.push("/cart")} />
         </Group>
 
+        <Group title="Stores and tokens">
+          <ListRow illo="coin" title="Wallet" subtitle="Your store tokens, send and receive" onPress={() => router.push("/wallet")} />
+          <Divider style={{ marginLeft: 62 }} />
+          <ListRow illo="chat" title="Store notifications" subtitle="Choose which stores can message you" onPress={() => router.push("/notifications")} />
+          <Divider style={{ marginLeft: 62 }} />
+          <ListRow illo="store" title="Stores" onPress={() => router.push("/stores")} />
+        </Group>
+
         <DarkModeRow />
 
         <Group title="Help">

@@ -5,17 +5,20 @@ import { router, type Href } from "expo-router";
 import { Linking, Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira, type CatalogProduct, type Category } from "@sotechy/shared";
+import { CartButton } from "@/components/cart-button";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { MenuButton } from "@/components/menu";
 import { ProductRail } from "@/components/product-rail";
 import { SupportChat } from "@/components/support-chat";
 import { useTabBarInset } from "@/components/tab-bar";
-import { AccountIcon, CartIcon } from "@/components/tab-icons";
+import { FeaturedStoreCard } from "@/components/store-bits";
+import { AccountIcon } from "@/components/tab-icons";
 import { UserAvatar } from "@/components/user-avatar";
 import { ArtButton, Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { useCart } from "@/lib/cart";
+import { formatTokens, stores, tokenNaira, wallet } from "@/lib/marketplace";
+import { useStoreNotifications } from "@/lib/store-notifications";
 import { useFeatures } from "@/lib/store-config";
 import { demoMedia } from "@/lib/mock-api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
@@ -66,7 +69,7 @@ const topOf = (cats: Category[], id: string | null) => {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { count } = useCart();
+  const { unread } = useStoreNotifications();
   const { user } = useAuth();
   const tabInset = useTabBarInset();
   const features = useFeatures();
@@ -110,9 +113,10 @@ export default function HomeScreen() {
               {/* Avatar sits inside the ring like the signed-out icon */}
               {user ? <UserAvatar seed={user.id} preset={user.avatarStyle} size={30} /> : <AccountIcon active size={32} />}
             </ArtButton>
-            <ArtButton label="Cart" badge={count} onPress={() => router.push("/cart")}>
-              <CartIcon active size={30} />
+            <ArtButton label="Notifications" badge={unread} onPress={() => router.push("/notifications")}>
+              <Ionicons name="notifications" size={22} color={colors.brand} />
             </ArtButton>
+            <CartButton />
           </View>
         </View>
         {features.announcementOn && features.announcement ? (
@@ -146,16 +150,12 @@ export default function HomeScreen() {
               })}
             >
               <Ionicons name="logo-whatsapp" size={19} color={colors.brand} />
-              <Txt variant="label" color={colors.white} numberOfLines={1} style={{ fontSize: 14 }}>Order on WhatsApp</Txt>
+              <Txt variant="label" color={colors.white} numberOfLines={1} style={{ fontSize: 14 }}>WhatsApp</Txt>
             </Pressable>
           )}
           {[
             { icon: "pricetag" as const, label: "Deals", onPress: () => shop({ featured: "1" }) },
-            {
-              icon: "location" as const,
-              label: "Stores",
-              onPress: () => headOffice && Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${headOffice.address}, ${headOffice.city}, Nigeria`)}`),
-            },
+            { icon: "storefront" as const, label: "Stores", onPress: () => router.push("/stores") },
           ].map((b) => (
             <Pressable
               key={b.label}
@@ -169,7 +169,44 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* Store tokens: what the customer can spend */}
+      <Pressable
+        onPress={() => router.push("/wallet")}
+        style={({ pressed }) => ({ marginHorizontal: gutter, marginTop: -space.md, borderRadius: radius.xl, backgroundColor: pressed ? colors.panelPressed : colors.panel, padding: space.md, flexDirection: "row", alignItems: "center", gap: space.md, overflow: "hidden" })}
+      >
+        <View style={{ position: "absolute", right: -26, top: -34, width: 96, height: 96, borderRadius: 48, backgroundColor: colors.brand, opacity: 0.95 }} />
+        <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.1)", alignItems: "center", justifyContent: "center" }}>
+          <Illo name="coin" size={32} />
+        </View>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Txt variant="caption" color="rgba(255,255,255,0.6)">Your store tokens · @{wallet.username}</Txt>
+          <Txt variant="label" color={colors.white} style={{ fontSize: 16 }}>
+            ≈ {formatNaira(Math.round(wallet.balances.reduce((n, b) => n + tokenNaira(b.amount), 0)))} to spend
+          </Txt>
+          <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+            {wallet.balances.map((b) => (
+              <View key={b.ticker} style={{ borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.1)", paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Txt variant="caption" color={colors.brandYellow} style={{ fontSize: 11 }}>${b.ticker} {formatTokens(b.amount)}</Txt>
+              </View>
+            ))}
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.white} />
+      </Pressable>
+
       <HeroCarousel width={contentWidth} />
+
+      {/* Marketplace stores */}
+      <View>
+        <View style={{ paddingHorizontal: gutter }}>
+          <SectionHeader title="Stores on Sotechy" action="All stores" onAction={() => router.push("/stores")} />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={Math.min(contentWidth * 0.78, 290) + space.md} decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
+          {stores.map((s) => (
+            <FeaturedStoreCard key={s.slug} store={s} width={Math.min(contentWidth * 0.78, 290)} />
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Deals of the day */}
       {deals.length > 0 && (
@@ -190,6 +227,29 @@ export default function HomeScreen() {
           </View>
         </View>
       )}
+
+      {/* How store tokens work */}
+      <View style={{ marginHorizontal: gutter, borderRadius: radius.xl, backgroundColor: colors.brandSoft, padding: space.lg, gap: space.md }}>
+        <View style={ui.between}>
+          <Txt variant="title" style={{ fontFamily: fonts.displayHeavy, fontSize: 21 }}>Earn while you shop</Txt>
+          <Illo name="sparkle" size={30} />
+        </View>
+        {[
+          { illo: "coin" as const, title: "1 token for every ₦1", text: "Each store gives its own token, like $XENA. Spend it there like cash." },
+          { illo: "tag" as const, title: "+10% $SOTECHY at other stores", text: "Spend $SOTECHY at any Sotechy store." },
+          { illo: "heart" as const, title: "Up to 10% more for a review", text: "Review what you bought, with a photo for the full 10%." },
+        ].map((x) => (
+          <View key={x.title} style={{ flexDirection: "row", gap: space.md, alignItems: "center" }}>
+            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+              <Illo name={x.illo} size={28} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Txt variant="label">{x.title}</Txt>
+              <Txt variant="small" color={colors.ink2}>{x.text}</Txt>
+            </View>
+          </View>
+        ))}
+      </View>
 
       {/* Categories */}
       <View style={{ paddingHorizontal: gutter }}>

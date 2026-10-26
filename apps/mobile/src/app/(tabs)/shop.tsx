@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { FlatList, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { CartButton } from "@/components/cart-button";
 import { MenuButton } from "@/components/menu";
 import { ProductCard } from "@/components/product-card";
 import { brandLabel, countFilters, FilterSheet, NO_FILTERS, priceLabel, SORTS, SortSheet, toQuery, type ShopFilters } from "@/components/shop-filters";
@@ -88,7 +89,7 @@ export default function ShopScreen() {
 
   return (
     <View style={ui.screen}>
-      <ScreenHeader title={group?.name ?? (filters.deals ? "Deals" : "Shop")} right={<MenuButton />} />
+      <ScreenHeader title={group?.name ?? (filters.deals ? "Deals" : "Shop")} right={<View style={{ flexDirection: "row", gap: space.sm }}><CartButton /><MenuButton /></View>} />
       <View style={{ paddingHorizontal: gutter, paddingBottom: space.md }}>
         <Input
           icon="search"

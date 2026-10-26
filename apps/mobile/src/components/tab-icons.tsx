@@ -45,6 +45,28 @@ export function ShopIcon({ active, size = 40 }: Props) {
   );
 }
 
+export function StoresIcon({ active, size = 40 }: Props) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      {/* building */}
+      <Rect x={8} y={20} width={32} height={21} rx={2.5} fill={pick(active, "#FFE3B3", grey.light)} />
+      {/* awning: striped, with a scalloped edge */}
+      <Path d="M6 12.5 a3 3 0 0 1 3 -3 H39 a3 3 0 0 1 3 3 V18 H6 Z" fill={pick(active, "#F7931E", grey.mid)} />
+      <Rect x={14.5} y={9.5} width={6} height={8.5} fill={pick(active, "#FFF4E0", grey.light)} />
+      <Rect x={27.5} y={9.5} width={6} height={8.5} fill={pick(active, "#FFF4E0", grey.light)} />
+      <Path d="M6 18 a4 4 0 0 0 8.5 0 a3.25 3.25 0 0 0 6.5 0 a3.25 3.25 0 0 0 6.5 0 a3.25 3.25 0 0 0 6.5 0 a4 4 0 0 0 8 0 Z" fill={pick(active, "#E07F0C", grey.dark)} />
+      {/* door */}
+      <Rect x={27} y={27} width={8.5} height={14} rx={1.5} fill={pick(active, "#3A322C", grey.ink)} />
+      <Circle cx={33.4} cy={34.5} r={0.9} fill={pick(active, "#FDB913", grey.light)} />
+      {/* window with a coin sign */}
+      <Rect x={12.5} y={26.5} width={11} height={9} rx={1.5} fill={pick(active, "#5CB8F2", grey.mid)} />
+      <Circle cx={18} cy={31} r={2.6} fill={pick(active, "#FDB913", grey.light)} />
+      {/* ground */}
+      <Rect x={5} y={40.5} width={38} height={2.5} rx={1.25} fill={pick(active, "#E07F0C", grey.mid)} />
+    </Svg>
+  );
+}
+
 export function CartIcon({ active, size = 40 }: Props) {
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">

@@ -1,9 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import { Pressable, ScrollView, View } from "react-native";
 import { formatNaira } from "@sotechy/shared";
-import { BottomBar, Button, Divider, EmptyState, QtyStepper, ScreenHeader, SummaryRow, Txt, ui } from "@/components/ui";
-import { useTabBarInset } from "@/components/tab-bar";
+import { BottomBar, Button, Divider, EmptyState, QtyStepper, SummaryRow, Txt, ui } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { colors, gutter, radius, space } from "@/lib/theme";
@@ -12,12 +11,10 @@ import { ProductImage } from "@/components/product-image";
 export default function CartScreen() {
   const cart = useCart();
   const { user } = useAuth();
-  const tabInset = useTabBarInset();
 
   if (cart.lines.length === 0) {
     return (
       <View style={ui.screen}>
-        <ScreenHeader title="Cart" />
         <EmptyState
           illo="cart"
           title="Your cart is empty"
@@ -30,8 +27,9 @@ export default function CartScreen() {
 
   return (
     <View style={ui.screen}>
-      <ScreenHeader title="Cart" subtitle={`${cart.count} item${cart.count === 1 ? "" : "s"}`} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabInset + 96, gap: space.lg }}>
+      {/* Cart opens from the header buttons now that Stores has its tab */}
+      <Stack.Screen options={{ title: `Cart (${cart.count})` }} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingTop: space.sm, paddingBottom: 120, gap: space.lg }}>
         <View style={[ui.card, { paddingVertical: space.sm }]}>
           {cart.lines.map((line, i) => (
             <View key={line.variantId}>
@@ -71,7 +69,7 @@ export default function CartScreen() {
           <Txt variant="caption">Prices and stock are confirmed when you place the order</Txt>
         </View>
       </ScrollView>
-      <BottomBar aboveTabBar={tabInset}>
+      <BottomBar>
         <View style={{ flex: 1 }}>
           <Txt variant="caption">Total</Txt>
           <Txt variant="price" style={{ fontSize: 19 }}>{formatNaira(cart.subtotal)}</Txt>
