@@ -64,9 +64,11 @@ export function GoogleButtonView({ onPress, busy, disabled }: { onPress: () => v
 
 export function GoogleButton({ onIdToken, onError, busy, onTest }: GoogleButtonProps) {
   if (DEMO_MODE) return <GoogleButtonView busy={busy} onPress={() => onIdToken("demo-google-id-token")} />;
-  if (inExpoGo) return <GoogleButtonView busy={busy} onPress={() => (onTest ? onTest() : onError("Google sign-in doesn't work in Expo Go. Use your email and password here."))} />;
-  if (!nativeReady) return <GoogleButtonView onPress={() => onError("Google sign-in needs the latest app build. Please update the app.")} />;
-  if (!configured) return <GoogleButtonView onPress={() => onError("Google sign-in isn't set up yet.")} />;
+  // Wherever real Google sign-in can't run (Expo Go, an older build, no client IDs), sign in a test account while testing
+  if (inExpoGo || !nativeReady || !configured) {
+    if (onTest) return <GoogleButtonView busy={busy} onPress={onTest} />;
+    return <GoogleButtonView onPress={() => onError(!nativeReady ? "Google sign-in needs the latest app build. Please update the app." : "Google sign-in isn't set up yet.")} />;
+  }
   // Loaded lazily so the module (and expo-crypto) is only evaluated when it can work.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { GoogleAuthButton } = require("./google-auth") as typeof import("./google-auth");
