@@ -398,14 +398,14 @@ export const nairaShort = (n: number) => (n >= 1_000_000 ? `₦${(n / 1_000_000)
 /** Paid featured placement: the monthly price and stores currently featured (sample) */
 const DAY_MS = 86_400_000;
 export const featuring = {
-  pricePerMonth: 1_000,
+  pricePerMonth: 2_000,
   /** Most stores featured at once; a full slot list keeps it meaningful */
   maxStores: 8,
   stores: [
-    { merchantId: "m2", since: ago(60 * 24 * 4), until: new Date(Date.now() + 26 * DAY_MS).toISOString(), paid: 1_000 },
-    { merchantId: "m6", since: ago(60 * 24 * 10), until: new Date(Date.now() + 50 * DAY_MS).toISOString(), paid: 3_000 },
-    { merchantId: "m3", since: ago(60 * 24 * 9), until: new Date(Date.now() + 21 * DAY_MS).toISOString(), paid: 1_000 },
+    { merchantId: "m2", since: ago(60 * 24 * 4), until: new Date(Date.now() + 26 * DAY_MS).toISOString(), paid: 2_000 },
+    { merchantId: "m6", since: ago(60 * 24 * 10), until: new Date(Date.now() + 20 * DAY_MS).toISOString(), paid: 2_000 },
+    { merchantId: "m3", since: ago(60 * 24 * 9), until: new Date(Date.now() + 21 * DAY_MS).toISOString(), paid: 2_000 },
   ],
-  revenueThisMonth: 5_000,
+  revenueThisMonth: 6_000,
 };
 

@@ -4,13 +4,12 @@
 // The monthly price is set by Sotechy in admin (sample here until the backend exists).
 import { Check, CreditCard, X } from "lucide-react";
 import { useState } from "react";
-import { Illo, type IlloName } from "@/components/illustrations";
+import type { IlloName } from "@/components/illustrations";
 import { btn, Card, PageHeader, Pill, StatCard } from "@/components/ui";
 import { Sheet } from "@/components/zone-form";
 import { formatNaira } from "@/lib/money";
 import { featured, store } from "@/lib/mock";
 
-const MONTHS = [1, 3, 6, 12];
 const DAY = 86_400_000;
 
 const BENEFITS: { illo: IlloName; title: string; text: string }[] = [
@@ -25,7 +24,8 @@ const fmtDate = (ms: number) => new Intl.DateTimeFormat("en-GB", { day: "numeric
 export default function FeaturedPage() {
   const [until, setUntil] = useState(featured.until);
   const [history, setHistory] = useState(featured.history);
-  const [months, setMonths] = useState(1);
+  // One month at a time for now; longer plans come later
+  const months = 1;
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
@@ -57,40 +57,25 @@ export default function FeaturedPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_1fr]">
         <Card title={active ? "Add more time" : "Feature your store"} description={active ? "Extra months start when your current feature ends." : "Starts as soon as you pay."}>
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-4 gap-2">
-              {MONTHS.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMonths(m)}
-                  className={`flex flex-col items-center rounded-2xl border-2 px-2 py-3 transition ${months === m ? "border-brand bg-brand-soft" : "border-line hover:border-faint"}`}
-                >
-                  <span className="font-display text-xl font-bold">{m}</span>
-                  <span className="text-xs text-muted">month{m === 1 ? "" : "s"}</span>
-                </button>
-              ))}
-            </div>
-            <div className="flex items-baseline justify-between rounded-2xl bg-surface-alt px-4 py-3">
-              <span className="text-sm text-muted">
-                {months} × {formatNaira(featured.pricePerMonth)}
-                <br />
-                Featured until {fmtDate(newUntil)}
-              </span>
-              <span className="font-display text-2xl font-extrabold">{formatNaira(total)}</span>
+            <div className="flex items-center justify-between gap-4 border-b border-line pb-4">
+              <div>
+                <p className="font-semibold">1 month</p>
+                <p className="text-sm text-muted">Featured until {fmtDate(newUntil)}</p>
+              </div>
+              <p className="font-display text-xl font-bold">{formatNaira(total)}</p>
             </div>
             <button onClick={() => setPaying(true)} className={btn.primary}>
               <CreditCard size={16} /> Pay {formatNaira(total)}
             </button>
-            <p className="text-xs text-muted">Paid through Money Moves: bank transfer, crypto or the Money Moves app. Not refundable once it starts.</p>
+            <p className="text-xs text-muted">Paid through Money Moves. Not refundable once it starts. Longer plans come later.</p>
           </div>
         </Card>
 
         <Card title="What you get">
-          <ul className="flex flex-col gap-4">
+          <ul className="flex flex-col gap-3">
             {BENEFITS.map((b) => (
               <li key={b.title} className="flex gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-soft">
-                  <Illo name={b.illo} size={28} />
-                </span>
+                <Check size={18} className="mt-0.5 shrink-0 text-good" />
                 <span>
                   <span className="block font-semibold">{b.title}</span>
                   <span className="block text-sm text-muted">{b.text}</span>

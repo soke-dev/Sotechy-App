@@ -44,7 +44,7 @@ export default function FeaturedStoresPage() {
               <input type="number" min={0} step={500} value={price} onChange={(e) => setPrice(Number(e.target.value))} className={`${inputClass} w-full`} />
             </Field>
             <div className="flex flex-wrap gap-1.5">
-              {[1_000, 2_500, 5_000, 10_000].map((p) => (
+              {[2_000, 5_000, 10_000, 20_000].map((p) => (
                 <button key={p} onClick={() => setPrice(p)} className={`rounded-full border px-3 py-1 text-xs font-semibold ${price === p ? "border-ink bg-ink text-white" : "border-line bg-surface hover:border-faint"}`}>
                   {formatNaira(p)}
                 </button>
