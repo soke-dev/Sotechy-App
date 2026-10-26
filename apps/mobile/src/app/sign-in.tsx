@@ -78,6 +78,26 @@ export default function SignInScreen() {
   );
   const onGoogleError = useCallback((message: string) => setError(message), []);
 
+  // Expo Go can't run real Google sign-in, so while testing it signs in a test Google account by email
+  async function testGoogle() {
+    setLoading("google");
+    setError(null);
+    const test = { email: "google.tester@example.com", password: "google-test-123", fullName: "Google Tester" };
+    try {
+      try {
+        await signIn(test.email, test.password);
+        done();
+      } catch {
+        await signUp(test);
+        welcome();
+      }
+    } catch (err) {
+      setError(explain(err, "Test Google sign-in failed"));
+    } finally {
+      setLoading(null);
+    }
+  }
+
   const switchMode = () => {
     setMode(mode === "signin" ? "signup" : "signin");
     setError(null);
@@ -121,7 +141,7 @@ export default function SignInScreen() {
 
           {features.googleSignIn && (
             <>
-              <GoogleButton onIdToken={onGoogleToken} onError={onGoogleError} busy={loading === "google"} />
+              <GoogleButton onIdToken={onGoogleToken} onError={onGoogleError} onTest={testGoogle} busy={loading === "google"} />
               <View style={[ui.row, { gap: space.md }]}>
                 <View style={{ flex: 1, height: 1, backgroundColor: colors.line }} />
                 <Txt variant="caption">or use email</Txt>
