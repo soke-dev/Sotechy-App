@@ -11,12 +11,12 @@ export default function Loading() {
       </div>
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-28 rounded-3xl bg-surface-alt" />
+          <div key={i} className="h-28 rounded-2xl bg-surface-alt" />
         ))}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-40 rounded-3xl bg-surface-alt" />
+          <div key={i} className="h-40 rounded-2xl bg-surface-alt" />
         ))}
       </div>
     </div>

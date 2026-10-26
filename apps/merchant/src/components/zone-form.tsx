@@ -12,7 +12,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={onClose}>
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] bg-surface p-6 sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[28px] bg-surface p-6 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl font-bold">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-alt">
@@ -98,7 +98,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
         </Field>
       )}
 
-      <div className="rounded-3xl border border-line p-4">
+      <div className="rounded-2xl border border-line p-4">
         <p className="mb-3 flex items-center gap-2 text-sm font-semibold"><Home size={16} className="text-brand-strong" /> Home delivery</p>
         <div className="grid grid-cols-2 gap-3">
           <Field required label="Price (₦)">
@@ -112,7 +112,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
         </div>
       </div>
 
-      <div className="rounded-3xl border border-line p-4">
+      <div className="rounded-2xl border border-line p-4">
         <label className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-2 text-sm font-semibold"><Store size={16} className="text-brand-strong" /> Pickup in this area</span>
           <input type="checkbox" checked={hasPickup} onChange={(e) => setHasPickup(e.target.checked)} />

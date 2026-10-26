@@ -47,7 +47,7 @@ export default function DeliveryPage() {
         }
       />
 
-      <section className="mb-6 flex flex-wrap items-center gap-4 rounded-[28px] bg-panel p-5 text-white sm:p-6">
+      <section className="mb-6 flex flex-wrap items-center gap-4 rounded-2xl bg-panel p-5 text-white sm:p-6">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 sm:h-16 sm:w-16">
           <Illo name="pin" size={34} />
         </span>
@@ -70,7 +70,7 @@ export default function DeliveryPage() {
             zones.map((z) => {
               const approved = z.review === "approved";
               return (
-                <div key={z.id} className={`relative rounded-3xl border bg-surface transition hover:border-faint ${zoneLive(z) ? "border-line" : "border-dashed border-line"}`}>
+                <div key={z.id} className={`relative rounded-2xl border bg-surface transition hover:border-faint ${zoneLive(z) ? "border-line" : "border-dashed border-line"}`}>
                   <button onClick={() => setEditing(z)} className={`flex w-full items-start gap-3 p-4 text-left sm:gap-4 ${approved ? "pr-20" : ""}`}>
                     <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${zoneLive(z) ? "bg-brand-soft" : "bg-surface-alt"}`}>
                       <MapPin size={19} className={zoneLive(z) ? "text-brand-strong" : "text-muted"} />

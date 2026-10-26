@@ -47,7 +47,7 @@ export default function NotificationsPage() {
     <>
       <PageHeader illo="chat" title="Notifications" description="Send deals and news to people who subscribed to your store in the Sotechy app. Only subscribers get them, as a pop-up and in their inbox." />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-3">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <StatCard accent illo="chat" label="Subscribers" value={store.followers.toLocaleString()} hint="Will get your message" />
         <StatCard illo="sparkle" label="Opened" value={`${Math.round(opens * 100)}%`} hint="Of your last messages" />
         <StatCard illo="receipt" label="Left this week" value={`${left} of ${PER_WEEK}`} hint="So subscribers don't switch you off" />

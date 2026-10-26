@@ -1,4 +1,4 @@
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowRight, Clock, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Illo } from "@/components/illustrations";
 import { btn, Card, Pill, ProductThumb, StatCard } from "@/components/ui";
@@ -20,9 +20,7 @@ export default function HomePage() {
   return (
     <>
       {/* Greeting band */}
-      <section className="relative mb-6 overflow-hidden rounded-[28px] bg-panel p-6 text-white sm:p-8">
-        <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-brand" />
-        <div className="absolute -right-28 -top-32 h-96 w-96 rounded-full border border-white/10" />
+      <section className="relative mb-6 overflow-hidden rounded-2xl bg-panel p-6 text-white sm:p-8">
         <div className="relative max-w-xl">
           <p className="text-sm font-semibold uppercase tracking-widest text-sun">{store.name}</p>
           <h1 className="mt-2 text-3xl font-extrabold leading-tight sm:text-4xl">
@@ -41,8 +39,11 @@ export default function HomePage() {
             <Link href="/orders" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong">
               Review orders <ArrowRight size={16} />
             </Link>
-            <Link href="/products/new" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-5 text-sm font-semibold text-white hover:bg-surface/15">
+            <Link href="/products/new" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-5 text-sm font-semibold text-white hover:bg-white/15">
               Add a product
+            </Link>
+            <Link href="/featured" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-5 text-sm font-semibold text-white hover:bg-white/15">
+              <Sparkles size={15} className="text-sun" /> Get featured
             </Link>
           </div>
         </div>
@@ -54,7 +55,7 @@ export default function HomePage() {
           <h2 className="mb-3 text-lg font-bold">Needs your answer</h2>
           <div className="grid gap-3 md:grid-cols-2">
             {waiting.map((o) => (
-              <Link key={o.id} href={`/orders/${o.id}`} className="group flex min-w-0 items-center gap-4 rounded-3xl border-2 border-brand/40 bg-surface p-4 transition hover:border-brand">
+              <Link key={o.id} href={`/orders/${o.id}`} className="group flex min-w-0 items-center gap-4 rounded-2xl border-2 border-brand/40 bg-surface p-4 transition hover:border-brand">
                 <ProductThumb src={o.items[0].image} size={64} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -76,7 +77,7 @@ export default function HomePage() {
       )}
 
       {offersWaiting > 0 && (
-        <Link href="/offers" className="mb-6 flex items-center gap-3 rounded-3xl border-2 border-brand/40 bg-surface p-4 transition hover:border-brand">
+        <Link href="/offers" className="mb-6 flex items-center gap-3 rounded-2xl border-2 border-brand/40 bg-surface p-4 transition hover:border-brand">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-soft">
             <Illo name="tag" size={28} />
           </span>

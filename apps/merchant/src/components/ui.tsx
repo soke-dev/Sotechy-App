@@ -2,15 +2,11 @@
 import type { ReactNode } from "react";
 import { Illo, type IlloName } from "./illustrations";
 
-export function PageHeader({ title, description, actions, illo }: { title: string; description?: string; actions?: ReactNode; illo?: IlloName }) {
+// `illo` is accepted for older call sites but no longer drawn: headers are plain text
+export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode; illo?: IlloName }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="flex min-w-0 items-center gap-3">
-        {illo && (
-          <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-soft sm:flex">
-            <Illo name={illo} size={38} />
-          </span>
-        )}
         <div className="min-w-0">
           <h1 className="text-[26px] font-bold leading-tight sm:text-3xl">{title}</h1>
           {description && <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>}
@@ -23,7 +19,7 @@ export function PageHeader({ title, description, actions, illo }: { title: strin
 
 export function Card({ title, description, actions, children, className = "", padded = true, required }: { title?: string; description?: string; actions?: ReactNode; children: ReactNode; className?: string; padded?: boolean; required?: boolean }) {
   return (
-    <section className={`min-w-0 rounded-3xl border border-line bg-surface ${className}`}>
+    <section className={`min-w-0 rounded-2xl border border-line bg-surface ${className}`}>
       {(title || actions) && (
         <div className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
           <div className="min-w-0">
@@ -38,18 +34,16 @@ export function Card({ title, description, actions, children, className = "", pa
   );
 }
 
-/** `wide`: laid out in a row even on a phone, for a card that spans the full width */
-export function StatCard({ illo, label, value, hint, accent, wide }: { illo: IlloName; label: string; value: ReactNode; hint?: ReactNode; accent?: boolean; wide?: boolean }) {
+/** A number with its label: a small icon beside the label, the value, an optional hint. `accent` tints it. */
+export function StatCard({ illo, label, value, hint, accent }: { illo: IlloName; label: string; value: ReactNode; hint?: ReactNode; accent?: boolean; wide?: boolean }) {
   return (
-    <div className={`flex min-w-0 rounded-3xl border p-3.5 sm:flex-row sm:items-center sm:gap-4 sm:p-4 ${wide ? "flex-row items-center gap-3" : "flex-col items-start gap-2"} ${accent ? "border-transparent bg-panel text-white" : "border-line bg-surface"}`}>
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-14 sm:w-14 sm:rounded-2xl ${accent ? "bg-white/10" : "bg-brand-soft"}`}>
-        <Illo name={illo} size={24} />
-      </span>
-      <div className="min-w-0">
-        <p className={`text-xs font-medium ${accent ? "text-white/60" : "text-muted"}`}>{label}</p>
-        <p className="font-display truncate text-lg font-bold sm:text-2xl">{value}</p>
-        {hint && <p className={`text-xs ${accent ? "text-white/60" : "text-muted"}`}>{hint}</p>}
-      </div>
+    <div className={`min-w-0 rounded-2xl border px-4 py-3 ${accent ? "border-brand/30 bg-brand-soft" : "border-line bg-surface"}`}>
+      <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
+        <Illo name={illo} size={16} />
+        <span className="truncate">{label}</span>
+      </p>
+      <p className="font-display mt-1 truncate text-xl font-bold leading-tight sm:text-[22px]">{value}</p>
+      {hint && <p className="mt-0.5 truncate text-xs text-muted">{hint}</p>}
     </div>
   );
 }
@@ -88,7 +82,7 @@ export function ProductThumb({ src, size = 56, rounded = "rounded-2xl" }: { src:
 
 export function EmptyState({ illo, title, message, action }: { illo: IlloName; title: string; message?: string; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-line px-6 py-12 text-center">
+    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-6 py-12 text-center">
       <Illo name={illo} size={64} />
       <p className="font-display text-lg font-bold">{title}</p>
       {message && <p className="max-w-sm text-sm text-muted">{message}</p>}

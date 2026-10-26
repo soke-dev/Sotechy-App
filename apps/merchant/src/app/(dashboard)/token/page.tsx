@@ -28,8 +28,7 @@ export default function TokenPage() {
     <>
       <PageHeader illo="coin" title={`$${t} token`} description="Your store's own token. Customers earn it when their orders complete and spend it only at your store." />
 
-      <section className="relative mb-6 overflow-hidden rounded-[28px] bg-panel p-6 text-white sm:p-8">
-        <div className="absolute -right-10 -top-10 h-56 w-56 rounded-full bg-brand/90" />
+      <section className="relative mb-6 overflow-hidden rounded-2xl bg-panel p-6 text-white sm:p-8">
         <div className="absolute right-10 top-10 hidden sm:block">
           <Illo name="coin" size={120} />
         </div>
@@ -41,7 +40,7 @@ export default function TokenPage() {
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
             <span className="rounded-full bg-white/10 px-3 py-1.5 font-mono">{token.contract}</span>
-            <a href={token.explorer} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-surface/15">
+            <a href={token.explorer} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-white/15">
               View on Monad explorer <ExternalLink size={14} />
             </a>
           </div>

@@ -102,7 +102,7 @@ export default function CustomersPage() {
         <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {shown.map((c) => (
             <li key={c.username} className="min-w-0">
-              <button onClick={() => setOpen(c)} className="flex w-full items-center gap-3 rounded-3xl border border-line bg-surface p-3.5 text-left transition hover:shadow-[0_8px_24px_rgba(23,18,14,0.06)]">
+              <button onClick={() => setOpen(c)} className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface p-3.5 text-left transition hover:shadow-[0_8px_24px_rgba(23,18,14,0.06)]">
                 <Initials name={c.name} />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">

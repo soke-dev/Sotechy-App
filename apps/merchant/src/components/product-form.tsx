@@ -357,7 +357,7 @@ export function ProductForm({ product }: { product?: Product }) {
 
         <div className="flex flex-col gap-6 lg:sticky lg:top-8 lg:self-start">
           <Card title="Preview" description="How it looks in the Sotechy app">
-            <div className="mx-auto w-48 overflow-hidden rounded-3xl border border-line bg-surface">
+            <div className="mx-auto w-48 overflow-hidden rounded-2xl border border-line bg-surface">
               <ProductThumb src={photos[0] ?? "/demo/item-phone.png"} size="fluid" rounded="rounded-none" />
               <div className="p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">{store.name}</p>

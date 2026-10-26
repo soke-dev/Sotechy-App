@@ -22,7 +22,7 @@ function Bubble({ m, t }: { m: OfferMessage; t: OfferThread }) {
   if (m.kind === "text")
     return (
       <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-        <div className={`max-w-[80%] rounded-3xl px-4 py-2.5 text-sm ${mine ? "rounded-br-lg bg-inverse text-on-inverse" : "rounded-bl-lg bg-surface-alt"}`}>
+        <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${mine ? "rounded-br-lg bg-inverse text-on-inverse" : "rounded-bl-lg bg-surface-alt"}`}>
           {m.text}
           <span className={`mt-1 block text-[11px] ${mine ? "opacity-60" : "text-muted"}`}><RelTime iso={m.at} /></span>
         </div>
@@ -32,7 +32,7 @@ function Bubble({ m, t }: { m: OfferMessage; t: OfferThread }) {
     m.kind === "offer" ? `${t.customer.name.split(" ")[0]} offered` : m.kind === "counter" ? (mine ? "You countered" : "Counter-offer") : m.kind === "accepted" ? "Deal agreed" : "Declined";
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-      <div className={`w-full max-w-sm rounded-3xl border-2 p-4 text-sm ${m.kind === "accepted" ? "border-good/40 bg-good-soft" : m.kind === "declined" ? "border-line bg-surface-alt" : "border-brand/40 bg-brand-soft"}`}>
+      <div className={`w-full max-w-sm rounded-2xl border-2 p-4 text-sm ${m.kind === "accepted" ? "border-good/40 bg-good-soft" : m.kind === "declined" ? "border-line bg-surface-alt" : "border-brand/40 bg-brand-soft"}`}>
         <p className="text-xs font-bold uppercase tracking-wider text-muted">{label}</p>
         {m.amount ? (
           <p className="font-display mt-1 text-2xl font-extrabold">
@@ -63,7 +63,7 @@ function Conversation({ t, onChange, onBack }: { t: OfferThread; onChange: (next
   const told = `${first} was told on WhatsApp, by email and in the app.`;
 
   return (
-    <div className="flex min-h-[70vh] min-w-0 flex-col rounded-3xl border border-line bg-surface">
+    <div className="flex min-h-[70vh] min-w-0 flex-col rounded-2xl border border-line bg-surface">
       {/* Product and customer */}
       <div className="flex items-center gap-3 border-b border-line p-4">
         <button onClick={onBack} aria-label="All offers" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-surface-alt lg:hidden">
@@ -242,7 +242,7 @@ export default function OffersPage() {
                   <li key={t.id}>
                     <button
                       onClick={() => setOpenId(t.id)}
-                      className={`flex w-full items-center gap-3 rounded-3xl border bg-surface p-3 text-left transition ${openId === t.id ? "border-ink" : t.status === "waiting_you" ? "border-brand/40" : "border-line hover:border-faint"}`}
+                      className={`flex w-full items-center gap-3 rounded-2xl border bg-surface p-3 text-left transition ${openId === t.id ? "border-ink" : t.status === "waiting_you" ? "border-brand/40" : "border-line hover:border-faint"}`}
                     >
                       <ProductThumb src={p.image} size={48} rounded="rounded-xl" />
                       <span className="min-w-0 flex-1">
@@ -273,7 +273,7 @@ export default function OffersPage() {
           {open ? (
             <Conversation key={open.id} t={open} onChange={change} onBack={() => setOpenId(null)} />
           ) : (
-            <div className="flex min-h-[50vh] items-center justify-center rounded-3xl border-2 border-dashed border-line p-6">
+            <div className="flex min-h-[50vh] items-center justify-center rounded-2xl border-2 border-dashed border-line p-6">
               <EmptyState illo="chat" title="Pick a conversation" message="Offers and messages from customers about your negotiable products show here." />
             </div>
           )}

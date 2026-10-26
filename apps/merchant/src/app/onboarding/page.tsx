@@ -73,7 +73,7 @@ export default function OnboardingPage() {
         </span>
         <h1 className="mt-5 text-center text-3xl font-extrabold">Submitted for review</h1>
         <p className="mt-2 text-center text-muted">We usually review new stores within 1–2 working days. We&apos;ll email you, and you can keep setting up your store in test mode meanwhile.</p>
-        <ol className="mt-8 flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5">
+        <ol className="mt-8 flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5">
           {[
             ["Submitted", "Just now", true],
             ["In review", "Sotechy checks your documents and ID", false],
@@ -143,7 +143,7 @@ export default function OnboardingPage() {
             <h1 className="text-3xl font-extrabold">{STEP_INFO[step].title}</h1>
           </div>
 
-          <div className="rounded-3xl border border-line bg-surface p-5 sm:p-7">
+          <div className="rounded-2xl border border-line bg-surface p-5 sm:p-7">
             {step === "setup" && (
               <div className="flex flex-col gap-5">
                 <Choice
@@ -275,8 +275,7 @@ export default function OnboardingPage() {
                 <p className={`-mt-3 text-sm ${problem ? "text-bad" : "text-good"}`}>{problem ?? `$${ticker} is available.`}</p>
 
                 {/* Token preview */}
-                <div className="relative overflow-hidden rounded-3xl bg-panel p-5 text-white">
-                  <div className="absolute -right-8 -top-8 h-36 w-36 rounded-full bg-brand" />
+                <div className="relative overflow-hidden rounded-2xl bg-panel p-5 text-white">
                   <div className="relative flex items-center gap-4">
                     <Illo name="coin" size={56} />
                     <div>

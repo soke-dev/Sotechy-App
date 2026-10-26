@@ -79,7 +79,7 @@ export default function ReviewsPage() {
           )}
           <ul className="flex flex-col gap-4">
             {shown.map((r) => (
-              <li key={r.id} className="rounded-3xl border border-line bg-surface p-5">
+              <li key={r.id} className="rounded-2xl border border-line bg-surface p-5">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <Stars n={r.rating} />

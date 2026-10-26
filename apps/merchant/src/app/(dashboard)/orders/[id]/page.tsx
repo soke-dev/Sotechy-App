@@ -16,7 +16,7 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-[28px] bg-surface p-6 sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-t-[28px] bg-surface p-6 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-bold">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-alt">
@@ -82,7 +82,7 @@ export default function OrderPage() {
 
       {/* What to do next */}
       {s === "new" && (
-        <section className="mb-6 flex flex-col gap-4 rounded-[28px] bg-panel p-6 text-white sm:flex-row sm:items-center">
+        <section className="mb-6 flex flex-col gap-4 rounded-2xl bg-panel p-6 text-white sm:flex-row sm:items-center">
           <div className="flex-1">
             <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-sun">
               <Clock size={15} /> <RelTime iso={order.acceptBy!} left /> to answer
@@ -91,7 +91,7 @@ export default function OrderPage() {
             <p className="mt-1 text-sm text-white/70">Accept and {formatNaira(m.first)} (the first 50%) is sent to your bank straight away.</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setDialog("decline")} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/10 px-5 font-semibold hover:bg-surface/15">
+            <button onClick={() => setDialog("decline")} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/10 px-5 font-semibold hover:bg-white/15">
               <X size={17} /> Decline
             </button>
             <button onClick={() => setDialog("accept")} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-brand px-6 font-semibold hover:bg-brand-strong">
@@ -120,7 +120,7 @@ export default function OrderPage() {
       {s === "completed" && <NextStep illo="sparkle" title="Completed" body={`Both halves are paid and @${order.customer.username} received their $${store.ticker}.`} />}
       {s === "declined" && <NextStep illo="doc" title="You declined this order" body="The customer was refunded and their pending tokens were cancelled." />}
       {s === "payback" && (
-        <section className="mb-6 rounded-[28px] border-2 border-bad/30 bg-bad-soft p-6">
+        <section className="mb-6 rounded-2xl border-2 border-bad/30 bg-bad-soft p-6">
           <p className="text-xl font-bold text-bad">Please pay back {formatNaira(m.first)}</p>
           <p className="mt-1 text-sm text-ink-2">This order couldn&apos;t be shipped, so Sotechy is refunding the customer. Send the first 50% back to Sotechy&apos;s account below and tap &quot;I&apos;ve paid it back&quot;.</p>
           <div className="mt-4 grid gap-2 rounded-2xl bg-surface p-4 text-sm sm:grid-cols-3">
@@ -288,7 +288,7 @@ export default function OrderPage() {
 
 function NextStep({ illo, title, body, children }: { illo: Parameters<typeof Illo>[0]["name"]; title: string; body: string; children?: ReactNode }) {
   return (
-    <section className="mb-6 flex flex-col gap-4 rounded-[28px] border border-line bg-surface p-5 sm:flex-row sm:items-center">
+    <section className="mb-6 flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 sm:flex-row sm:items-center">
       <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand-soft">
         <Illo name={illo} size={36} />
       </span>

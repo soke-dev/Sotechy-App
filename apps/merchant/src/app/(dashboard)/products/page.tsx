@@ -115,7 +115,7 @@ export default function ProductsPage() {
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {list.map((p) => (
             <li key={p.id}>
-              <Link href={`/products/${p.id}`} className="group flex h-full flex-col overflow-hidden rounded-3xl border border-line bg-surface transition hover:shadow-[0_10px_28px_rgba(23,18,14,0.08)]">
+              <Link href={`/products/${p.id}`} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface transition hover:shadow-[0_10px_28px_rgba(23,18,14,0.08)]">
                 <div className="relative">
                   <ProductThumb src={p.image} size="fluid" rounded="rounded-none" />
                   <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">

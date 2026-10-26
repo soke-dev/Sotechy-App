@@ -48,10 +48,10 @@ export default function FeaturedPage() {
         </p>
       )}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-3">
-        <StatCard accent illo="sparkle" label="Status" value={active ? "Featured" : "Not featured"} hint={active ? `Until ${fmtDate(until!)} · ${daysLeft} days left` : "Your store shows in normal order"} />
-        <StatCard illo="wallet" label="Price" value={`${formatNaira(featured.pricePerMonth)} / month`} hint="Set by Sotechy" />
-        <StatCard illo="user" label="Store visits while featured" value={featured.visits.toLocaleString()} hint={`${featured.visitsLift} more than before`} />
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+        <StatCard accent illo="sparkle" label="Status" value={active ? "Featured" : "Not featured"} hint={active ? `${daysLeft} days left` : "Shown in normal order"} />
+        <StatCard illo="wallet" label="Price a month" value={formatNaira(featured.pricePerMonth)} hint="Set by Sotechy" />
+        <StatCard illo="user" label="Visits while featured" value={featured.visits.toLocaleString()} hint={`${featured.visitsLift} more than before`} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_1fr]">

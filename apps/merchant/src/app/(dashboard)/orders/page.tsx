@@ -59,7 +59,7 @@ export default function OrdersPage() {
             <li key={o.id}>
               <Link
                 href={`/orders/${o.id}`}
-                className={`flex flex-col gap-3 rounded-3xl border bg-surface p-4 transition hover:shadow-[0_8px_24px_rgba(23,18,14,0.06)] sm:flex-row sm:items-center ${o.status === "new" ? "border-brand/50" : "border-line"}`}
+                className={`flex flex-col gap-3 rounded-2xl border bg-surface p-4 transition hover:shadow-[0_8px_24px_rgba(23,18,14,0.06)] sm:flex-row sm:items-center ${o.status === "new" ? "border-brand/50" : "border-line"}`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   <div className="flex -space-x-3">
