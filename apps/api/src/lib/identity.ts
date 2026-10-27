@@ -69,3 +69,13 @@ export function tickerFrom(name: string) {
   const t = first.length >= 3 ? first : words.join("");
   return (t.length >= 3 ? t : `${t}STORE`).slice(0, 5);
 }
+
+/** A referral code is the referrer's @username. Returns their account id, or a 400 for an unknown code. */
+export async function referrerFor(code: string | undefined, userId?: string) {
+  if (!code?.trim()) return undefined;
+  const n = normaliseUsername(code);
+  const [referrer] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.username, n));
+  if (!referrer) throw badRequest(`We couldn't find the referral code "${code.trim()}". Check it, or leave it empty.`);
+  if (referrer.id === userId) throw badRequest("You can't use your own referral code");
+  return referrer.id;
+}

@@ -75,7 +75,8 @@ if (adminEmail && adminPassword) {
       fullName: "Sotechy Admin",
       role: "admin",
     })
-    .onConflictDoNothing();
+    // An existing account with this email is made an admin (its password is left as it is)
+    .onConflictDoUpdate({ target: s.users.email, set: { role: "admin", isActive: true } });
   console.log(`Admin account: ${adminEmail}`);
 }
 

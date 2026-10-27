@@ -153,17 +153,18 @@ export function storeNoticeEmail(to: string, d: { name: string | null; store: st
 // ---------------------------------------------------------------------------
 export function storeOpenedEmail(to: string, d: { name: string | null; store: string; ticker: string }) {
   return build(to, `${d.store} is open on Sotechy`, {
-    preheader: "You're in test mode. Finish setup to start selling for real.",
+    preheader: "Explore your dashboard now. You can start selling once Sotechy verifies your store.",
     hero: "store-opened",
     eyebrow: "Sotechy for merchants",
     heading: `${d.store} is open`,
     blocks: [
-      { kind: "text", text: `Welcome, ${first(d.name)}. Your store and its token **$${d.ticker}** are ready. You're in **test mode** until Sotechy verifies your store.` },
+      { kind: "text", text: `Welcome, ${first(d.name)}. Your store and its token **$${d.ticker}** are ready. Explore your dashboard and get set up now; adding products and taking orders unlock once Sotechy verifies your store.` },
       {
         kind: "checklist",
         items: [
           { done: true, text: "Open your store" },
-          { done: false, text: "Add your business details and ID" },
+          { done: false, text: "Verify your identity (ID and a quick selfie)" },
+          { done: false, text: "Add your business details" },
           { done: false, text: "Add a payout bank account" },
           { done: false, text: "Choose where you deliver" },
           { done: false, text: "Add your first products" },
@@ -293,5 +294,20 @@ export function idCheckEmail(to: string, d: { name: string | null; store: string
       { kind: "button", label: c.button, url: merchantLink("/onboarding?step=you") },
     ],
     reason: "You're getting this because you verified your identity to sell on Sotechy.",
+  });
+}
+
+export function staffCodeEmail(to: string, d: { name: string | null; code: string; minutes: number }) {
+  return build(to, `${d.code} is your Sotechy admin code`, {
+    preheader: `Finish signing in to the admin dashboard. It works for ${d.minutes} minutes.`,
+    hero: "code",
+    eyebrow: "Sotechy admin",
+    heading: "Your sign-in code",
+    blocks: [
+      { kind: "text", text: `Hi ${first(d.name)}, enter this code to finish signing in to the Sotechy admin dashboard.` },
+      { kind: "code", code: d.code, caption: `Works once, for ${d.minutes} minutes` },
+      { kind: "note", tone: "bad", icon: "shield", text: "Didn't just sign in? Someone has your password. Change it now and tell the other admins." },
+    ],
+    reason: "You're getting this because someone signed in to your Sotechy staff account with the right password.",
   });
 }

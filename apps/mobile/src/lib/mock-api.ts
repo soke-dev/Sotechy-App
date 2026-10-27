@@ -514,7 +514,9 @@ export const mockApi: ApiClient = {
   resetPassword: async () => wait({ token: "demo-token", user: { ...demoUser } }),
   registerPushDevice: async () => wait({ ok: true as const }),
   unregisterPushDevice: async () => wait({ ok: true as const }),
-  // The merchant dashboard is web-only
+  // The admin and merchant dashboards are web-only
+  staffLogin: unsupported,
+  staffVerify: unsupported,
   merchantMe: unsupported,
   openStore: unsupported,
   updateStore: unsupported,

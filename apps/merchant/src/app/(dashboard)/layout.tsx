@@ -8,7 +8,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const { user, store } = await getStoreSession();
   return (
     <MerchantShell
-      store={{ name: store.name, ticker: store.ticker, verified: store.status === "approved", newOrders: orders.filter((o) => o.status === "new").length }}
+      store={{ name: store.name, ticker: store.ticker, verified: store.status === "approved", paused: store.status === "suspended", newOrders: orders.filter((o) => o.status === "new").length }}
       user={{ name: user.fullName || (user.username ? `@${user.username}` : user.email), role: user.username ? `@${user.username} · Owner` : "Owner" }}
     >
       <AccountProvider value={{ user, store }}>{children}</AccountProvider>

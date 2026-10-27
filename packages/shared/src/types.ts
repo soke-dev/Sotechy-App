@@ -327,6 +327,8 @@ export interface User {
   phone: string | null;
   /** WhatsApp number when different from `phone`, +234… */
   whatsappPhone: string | null;
+  /** Account that referred them, if they used a referral code */
+  referredById?: string | null;
   role: Role;
   branchId: string | null;
   avatarUrl?: string | null;

@@ -41,18 +41,21 @@ export async function signIn(_: FormState, form: FormData): Promise<FormState> {
 export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   const password = String(form.get("password") ?? "");
   if (password.length < 8) return { error: "Password must be at least 8 characters" };
+  if (password !== String(form.get("confirm") ?? "")) return { error: "The passwords don't match" };
   try {
     const res = await api.register({
       email: field(form, "email"),
       password,
       fullName: [field(form, "firstName"), field(form, "lastName")].filter(Boolean).join(" "),
       username: field(form, "username") || undefined,
+      referralCode: field(form, "referralCode") || undefined,
     });
     await keepSession(res.token);
   } catch (err) {
     return { error: errorMessage(err) };
   }
-  redirect("/signup?step=store");
+  const ref = field(form, "referralCode");
+  redirect(ref ? `/signup?step=store&ref=${encodeURIComponent(ref)}` : "/signup?step=store");
 }
 
 /** Google Identity Services hands the browser an ID token; the API checks it with Google */
@@ -111,6 +114,7 @@ export async function openStore(_: FormState, form: FormData): Promise<FormState
       phone,
       whatsappPhone: same || sameNumber(field(form, "whatsapp"), phone) ? null : field(form, "whatsapp") || null,
       username: field(form, "username") || undefined,
+      referralCode: field(form, "referralCode") || undefined,
     });
   } catch (err) {
     return { error: errorMessage(err) };

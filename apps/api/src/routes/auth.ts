@@ -4,14 +4,15 @@ import { and, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../db/client";
-import { checkPassword, hashPassword, issueToken, requireAuth, type AppEnv } from "../lib/auth";
+import { checkPassword, hashPassword, issueToken, requireAuth, STAFF, type AppEnv } from "../lib/auth";
 import { env } from "../env";
 import { badRequest, conflict, forbidden, HttpError, unauthorized } from "../lib/errors";
 import { sendEmail, sendEmailLater } from "../lib/email";
-import { passwordCodeEmail, welcomeEmail } from "../emails/templates";
+import { passwordCodeEmail, staffCodeEmail, welcomeEmail } from "../emails/templates";
 import { getFeatures, requireFeature } from "../services/features";
 import { publicUser } from "../lib/serialize";
-import { claimUsername, normaliseUsername, phoneField, usernameRule } from "../lib/identity";
+import { audit } from "../lib/audit";
+import { claimUsername, normaliseUsername, phoneField, referrerFor, usernameRule } from "../lib/identity";
 
 const credentials = z.object({
   email: z.email().transform((e) => e.toLowerCase()),
@@ -19,6 +20,7 @@ const credentials = z.object({
 });
 
 const RESET_MINUTES = 15;
+const STAFF_CODE_MINUTES = 10;
 const hashCode = (code: string) => createHmac("sha256", env.JWT_SECRET).update(code).digest("hex");
 
 /** Signing in takes an email or an @username */
@@ -37,6 +39,8 @@ export const authRoutes = new Hono<AppEnv>()
         username: z.string().max(30).optional(),
         phone: z.string().max(30).optional(),
         whatsappPhone: z.string().max(30).optional(),
+        /** Optional: the @username of whoever invited them */
+        referralCode: z.string().max(30).optional(),
       }),
     ),
     async (c) => {
@@ -45,6 +49,7 @@ export const authRoutes = new Hono<AppEnv>()
       const [existing] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, input.email));
       if (existing) throw conflict("An account with this email already exists");
       const username = input.username ? await claimUsername(input.username) : null;
+      const referredById = await referrerFor(input.referralCode);
 
       const [user] = await db
         .insert(schema.users)
@@ -55,6 +60,7 @@ export const authRoutes = new Hono<AppEnv>()
           username,
           phone: phoneField(input.phone, "Phone number") ?? null,
           whatsappPhone: phoneField(input.whatsappPhone, "WhatsApp number") ?? null,
+          referredById: referredById ?? null,
         })
         .returning();
       sendEmailLater(welcomeEmail(user.email, { name: user.fullName }));
@@ -111,6 +117,44 @@ export const authRoutes = new Hono<AppEnv>()
     }
     return c.json({ token: await issueToken(user), user: publicUser(user) });
   })
+  /**
+   * Admin dashboard, step 1: the right email and password email a 6-digit code (and nothing else happens).
+   * Wrong details, or a non-staff account, get the same answer as a wrong password.
+   */
+  .post("/staff/login", zValidator("json", z.object({ email: z.email().transform((e) => e.toLowerCase()), password: z.string().min(1) })), async (c) => {
+    const input = c.req.valid("json");
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.email, input.email));
+    const ok = user?.isActive && user.passwordHash && STAFF.includes(user.role) && (await checkPassword(input.password, user.passwordHash));
+    if (!user || !ok) throw unauthorized("Incorrect email or password");
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    await db.delete(schema.loginCodes).where(eq(schema.loginCodes.userId, user.id));
+    const [challenge] = await db
+      .insert(schema.loginCodes)
+      .values({ userId: user.id, codeHash: hashCode(code), expiresAt: new Date(Date.now() + STAFF_CODE_MINUTES * 60_000) })
+      .returning();
+    await sendEmail(staffCodeEmail(user.email, { name: user.fullName, code, minutes: STAFF_CODE_MINUTES }));
+    return c.json({ challengeId: challenge.id });
+  })
+  /** Admin dashboard, step 2: the emailed code finishes signing in */
+  .post(
+    "/staff/verify",
+    zValidator("json", z.object({ challengeId: z.uuid(), code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code from the email") })),
+    async (c) => {
+      const { challengeId, code } = c.req.valid("json");
+      const wrong = () => badRequest("That code is wrong or has expired. Sign in again for a new one.");
+      const [challenge] = await db.select().from(schema.loginCodes).where(eq(schema.loginCodes.id, challengeId));
+      if (!challenge || challenge.expiresAt < new Date() || challenge.attempts >= 5) throw wrong();
+      if (!timingSafeEqual(Buffer.from(challenge.codeHash), Buffer.from(hashCode(code)))) {
+        await db.update(schema.loginCodes).set({ attempts: challenge.attempts + 1 }).where(eq(schema.loginCodes.id, challenge.id));
+        throw wrong();
+      }
+      await db.delete(schema.loginCodes).where(eq(schema.loginCodes.userId, challenge.userId));
+      const [user] = await db.select().from(schema.users).where(eq(schema.users.id, challenge.userId));
+      if (!user?.isActive || !STAFF.includes(user.role)) throw wrong();
+      await audit(db, { actorId: user.id, action: "staff.sign_in", entityType: "user", entityId: user.id });
+      return c.json({ token: await issueToken(user, { staff: true }), user: publicUser(user) });
+    },
+  )
   /** Google sign-in: the app sends Google's ID token; we verify it with Google before trusting it. */
   .post("/google", zValidator("json", z.object({ idToken: z.string().min(20) })), async (c) => {
     const features = await getFeatures();

@@ -25,6 +25,8 @@ export default function SignInScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [referral, setReferral] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState<"email" | "google" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +53,11 @@ export default function SignInScreen() {
         if (u.username) done();
         else welcome();
       } else {
-        await signUp({ email: email.trim(), password, fullName: fullName || undefined });
+        if (password !== confirm) {
+          setError("The passwords don't match");
+          return;
+        }
+        await signUp({ email: email.trim(), password, fullName: fullName || undefined, referralCode: referral?.trim() || undefined });
         welcome();
       }
     } catch (err) {
@@ -182,6 +188,38 @@ export default function SignInScreen() {
               <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={19} color={colors.muted} />
             </Pressable>
           </View>
+          {mode === "signup" && (
+            <>
+              <Input
+                label="Confirm password"
+                icon="lock-closed-outline"
+                secureTextEntry={!showPassword}
+                value={confirm}
+                onChangeText={setConfirm}
+                autoComplete="new-password"
+                placeholder="Type it again"
+              />
+              {confirm.length > 0 && confirm !== password && (
+                <Txt variant="small" color={colors.danger} style={{ marginTop: -space.sm }}>The passwords don&apos;t match</Txt>
+              )}
+              {/* Optional: hidden behind a link so it doesn't crowd the form */}
+              {referral === null ? (
+                <Pressable onPress={() => setReferral("")} hitSlop={8} style={{ alignSelf: "flex-start", marginTop: -space.xs }}>
+                  <Txt variant="label" color={colors.brandPressed} style={{ fontSize: 14 }}>Have a referral code?</Txt>
+                </Pressable>
+              ) : (
+                <Input
+                  label="Referral code (optional)"
+                  icon="gift-outline"
+                  autoCapitalize="none"
+                  autoFocus
+                  value={referral}
+                  onChangeText={(t) => setReferral(t.replace(/^@/, ""))}
+                  placeholder="The @username of whoever invited you"
+                />
+              )}
+            </>
+          )}
 
           {error && (
             <View style={{ flexDirection: "row", gap: space.sm, backgroundColor: colors.dangerSoft, borderRadius: radius.md, padding: space.md }}>
@@ -196,7 +234,7 @@ export default function SignInScreen() {
             icon="arrow-forward"
             onPress={submit}
             loading={loading === "email"}
-            disabled={!email || password.length < (mode === "signup" ? 8 : 1) || loading === "google"}
+            disabled={!email || password.length < (mode === "signup" ? 8 : 1) || (mode === "signup" && confirm !== password) || loading === "google"}
           />
 
           {features.signups && (

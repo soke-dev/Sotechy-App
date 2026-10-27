@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { conflict, notFound } from "../lib/errors";
-import { claimUsername, phoneField, slugify, tickerFrom } from "../lib/identity";
+import { claimUsername, phoneField, referrerFor, slugify, tickerFrom } from "../lib/identity";
 import { publicUser } from "../lib/serialize";
 import { sendEmailLater } from "../lib/email";
 import { storeOpenedEmail } from "../emails/templates";
@@ -45,6 +45,8 @@ export const merchantRoutes = new Hono<AppEnv>()
         whatsappPhone: z.string().max(30).nullable().optional(),
         /** Only needed when the account has no @username yet (e.g. a new Google sign-in) */
         username: z.string().max(30).optional(),
+        /** Optional, for accounts made with Google that haven't entered one yet */
+        referralCode: z.string().max(30).optional(),
       }),
     ),
     async (c) => {
@@ -56,6 +58,7 @@ export const merchantRoutes = new Hono<AppEnv>()
       const phone = phoneField(input.phone, "Phone number");
       const whatsapp = phoneField(input.whatsappPhone, "WhatsApp number") ?? null;
       const username = !user.username && input.username ? await claimUsername(input.username, id) : undefined;
+      const referredById = !user.referredById ? await referrerFor(input.referralCode, id) : undefined;
       const slug = await firstFree(slugify(input.name), schema.merchants.slug, "-", 40);
       const ticker = await firstFree(tickerFrom(input.name), schema.merchants.ticker, "", 6);
 
@@ -65,7 +68,7 @@ export const merchantRoutes = new Hono<AppEnv>()
           .values({ name: input.name, slug, ticker, ownerId: id, sellerKind: input.sellerKind, contactEmail: user.email, contactPhone: phone, contactWhatsapp: whatsapp === phone ? null : whatsapp })
           .returning();
         // The owner's own account gets the numbers too if it has none, and the username if one was picked here
-        const patch = { ...(username && { username }), ...(!user.phone && phone && { phone, whatsappPhone: whatsapp === phone ? null : whatsapp }) };
+        const patch = { ...(username && { username }), ...(referredById && { referredById }), ...(!user.phone && phone && { phone, whatsappPhone: whatsapp === phone ? null : whatsapp }) };
         if (Object.keys(patch).length) await tx.update(schema.users).set(patch).where(eq(schema.users.id, id));
         return row;
       });

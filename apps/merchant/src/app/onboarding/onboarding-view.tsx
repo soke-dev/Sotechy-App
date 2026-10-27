@@ -72,7 +72,7 @@ export default function OnboardingView({ initialStep }: { initialStep?: StepId }
           <Illo name="sparkle" size={60} />
         </span>
         <h1 className="mt-5 text-center text-3xl font-extrabold">Submitted for review</h1>
-        <p className="mt-2 text-center text-muted">We usually review new stores within 1–2 working days. We&apos;ll email you, and you can keep setting up your store in test mode meanwhile.</p>
+        <p className="mt-2 text-center text-muted">We usually review new stores within 1–2 working days. We&apos;ll email you. Meanwhile you can explore your dashboard and get your store ready.</p>
         <ol className="mt-8 flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5">
           {[
             ["Submitted", "Just now", true],

@@ -1,7 +1,5 @@
-import { ActionForm } from "@/components/action-form";
 import { Illo, type IlloName } from "@/components/illustrations";
-import { Field, inputClass } from "@/components/ui";
-import { login } from "./actions";
+import { LoginForm } from "./login-form";
 
 const PERKS: { illo: IlloName; text: string }[] = [
   { illo: "store", text: "Approve merchants and their delivery areas" },
@@ -10,7 +8,8 @@ const PERKS: { illo: IlloName; text: string }[] = [
   { illo: "phone", text: "Switch parts of the app on and off" },
 ];
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ reset?: string }> }) {
+  const { reset } = await searchParams;
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel (large screens) */}
@@ -50,15 +49,8 @@ export default function LoginPage() {
             <Illo name="shield" size={36} />
           </span>
           <h2 className="text-3xl font-extrabold">Welcome back</h2>
-          <p className="mb-8 mt-1 text-muted">Sign in with your staff account.</p>
-          <ActionForm action={login} submitLabel="Sign in" className="flex flex-col gap-4 [&>button]:w-full">
-            <Field label="Email">
-              <input name="email" type="email" required autoComplete="email" placeholder="you@sotechy.shop" className={inputClass} />
-            </Field>
-            <Field label="Password">
-              <input name="password" type="password" required autoComplete="current-password" className={inputClass} />
-            </Field>
-          </ActionForm>
+          <p className="mb-8 mt-1 text-muted">Sign in with your staff account. We&apos;ll email you a code to finish.</p>
+          <LoginForm reset={!!reset} />
         </div>
       </div>
     </main>

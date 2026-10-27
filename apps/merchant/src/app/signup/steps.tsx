@@ -2,18 +2,18 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { FormError, PhoneField, UsernameField } from "@/components/account-fields";
+import { FormError, PhoneField, ReferralField, UsernameField } from "@/components/account-fields";
 import { GoogleButton } from "@/components/google-button";
 import { Illo } from "@/components/illustrations";
 import { btn, Field, inputClass } from "@/components/ui";
 import { openStore, signOut, signUp } from "@/lib/session-actions";
 
-export function AccountStep() {
+export function AccountStep({ referral }: { referral?: string }) {
   const [state, action, pending] = useActionState(signUp, null);
   return (
     <>
       <h2 className="text-3xl font-extrabold">Open your store</h2>
-      <p className="mb-8 mt-1 text-muted">Start in test mode right away. Sell for real once you&apos;re verified.</p>
+      <p className="mb-8 mt-1 text-muted">Set up in a few minutes. Explore your dashboard straight away, and start selling once Sotechy verifies your store.</p>
       <GoogleButton />
       <div className="my-6 flex items-center gap-3 text-xs text-muted">
         <span className="h-px flex-1 bg-line" /> or use email <span className="h-px flex-1 bg-line" />
@@ -30,6 +30,10 @@ export function AccountStep() {
         <Field label="Password" required hint="At least 8 characters.">
           <input name="password" type="password" required minLength={8} autoComplete="new-password" className={inputClass} />
         </Field>
+        <Field label="Confirm password" required>
+          <input name="confirm" type="password" required minLength={8} autoComplete="new-password" className={inputClass} />
+        </Field>
+        <ReferralField defaultValue={referral} />
         <FormError message={state?.error} />
         <button disabled={pending} className={btn.dark}>{pending ? "Creating your account…" : "Create account"}</button>
       </form>
@@ -40,7 +44,7 @@ export function AccountStep() {
   );
 }
 
-export function StoreStep({ firstName, needsUsername, phone }: { firstName: string | null; needsUsername: boolean; phone: string | null }) {
+export function StoreStep({ firstName, needsUsername, phone, referral }: { firstName: string | null; needsUsername: boolean; phone: string | null; referral?: string }) {
   const [state, action, pending] = useActionState(openStore, null);
   const [kind, setKind] = useState<"individual" | "registered">("registered");
   const [same, setSame] = useState(true);
@@ -54,6 +58,7 @@ export function StoreStep({ firstName, needsUsername, phone }: { firstName: stri
           <input name="storeName" required minLength={2} maxLength={60} className={inputClass} placeholder="e.g. Xena Gadgets" />
         </Field>
         {needsUsername && <UsernameField required />}
+        {needsUsername && <ReferralField defaultValue={referral} />}
         <div className="flex flex-col gap-2">
           <span className="text-sm font-semibold text-ink-2">You are selling as</span>
           <input type="hidden" name="sellerKind" value={kind} />
@@ -84,7 +89,7 @@ export function StoreStep({ firstName, needsUsername, phone }: { firstName: stri
         </label>
         {!same && <PhoneField name="whatsapp" label="WhatsApp number" required />}
         <label className="flex items-start gap-3 text-sm text-ink-2">
-          <input type="checkbox" required className="mt-0.5" /> I agree to Sotechy&apos;s merchant terms, including the fee and payout plan shown before I go live.
+          <input type="checkbox" required className="mt-0.5" /> I agree to Sotechy&apos;s merchant terms.
         </label>
         <FormError message={state?.error} />
         <button disabled={pending} className={btn.primary}>{pending ? "Opening your store…" : "Continue to setup"}</button>

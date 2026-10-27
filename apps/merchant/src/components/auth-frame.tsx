@@ -4,7 +4,7 @@ import { Illo, type IlloName } from "./illustrations";
 const PERKS: { illo: IlloName; title: string; body: string }[] = [
   { illo: "store", title: "Your own storefront", body: "Your brand, your colours, your products, inside the Sotechy app." },
   { illo: "coin", title: "Your own token", body: "Customers earn your $TOKEN on every order and come back to spend it." },
-  { illo: "bank", title: "Paid as you deliver", body: "Part of each order when you accept it, the rest when it's delivered. Your plan is shown before you go live." },
+  { illo: "shield", title: "Verified stores only", body: "Every store is checked by Sotechy, so shoppers buy with confidence." },
 ];
 
 /** Two-panel frame for sign-in, sign-up and invitations. */
@@ -19,7 +19,7 @@ export function AuthFrame({ children }: { children: ReactNode }) {
         </div>
         <div className="relative">
           <h1 className="max-w-md text-5xl font-extrabold leading-[1.05]">Sell on Sotechy.</h1>
-          <p className="mt-3 max-w-md text-lg text-white/70">Open your store, reward every customer with your own token, and get paid as you go.</p>
+          <p className="mt-3 max-w-md text-lg text-white/70">Open your store and reward every customer with your own token.</p>
           <ul className="mt-10 flex max-w-md flex-col gap-5">
             {PERKS.map((p) => (
               <li key={p.title} className="flex items-start gap-4">

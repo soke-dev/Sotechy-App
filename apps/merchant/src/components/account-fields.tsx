@@ -70,6 +70,26 @@ export function UsernameField({ required, defaultValue = "" }: { required?: bool
   );
 }
 
+/** Optional referral code (someone's @username). Hidden behind a link unless it came in a ?ref= link. */
+export function ReferralField({ defaultValue }: { defaultValue?: string }) {
+  const [open, setOpen] = useState(!!defaultValue);
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="-mt-1 self-start text-sm font-semibold text-brand-strong hover:underline">
+        Have a referral code?
+      </button>
+    );
+  }
+  return (
+    <Field label="Referral code" hint="Optional. The @username of whoever invited you.">
+      <span className="relative flex items-center">
+        <span className="pointer-events-none absolute left-4 text-muted">@</span>
+        <input name="referralCode" defaultValue={defaultValue?.replace(/^@/, "")} autoFocus={!defaultValue} autoCapitalize="none" spellCheck={false} className={`${inputClass} pl-8`} placeholder="their.username" />
+      </span>
+    </Field>
+  );
+}
+
 /** Nigerian mobile number with a fixed +234 */
 export function PhoneField({ name, label, required, hint, defaultValue }: { name: string; label: string; required?: boolean; hint?: string; defaultValue?: string | null }) {
   return (

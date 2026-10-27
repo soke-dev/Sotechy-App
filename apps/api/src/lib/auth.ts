@@ -17,13 +17,16 @@ export interface AuthUser {
 export type AppEnv = { Variables: { user: AuthUser } };
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
+/** Admin sessions last a working day */
+const STAFF_TOKEN_TTL_SECONDS = 60 * 60 * 12;
 
 export const hashPassword = (password: string) => bcrypt.hash(password, 12);
 export const checkPassword = (password: string, hash: string) => bcrypt.compare(password, hash);
 
-export function issueToken(user: { id: string }) {
+/** `staff`: signed in through the admin dashboard's emailed code. Only those sessions get staff powers. */
+export function issueToken(user: { id: string }, opts: { staff?: boolean } = {}) {
   const now = Math.floor(Date.now() / 1000);
-  return sign({ sub: user.id, iat: now, exp: now + TOKEN_TTL_SECONDS }, env.JWT_SECRET, "HS256");
+  return sign({ sub: user.id, iat: now, exp: now + (opts.staff ? STAFF_TOKEN_TTL_SECONDS : TOKEN_TTL_SECONDS), ...(opts.staff && { stf: 1 }) }, env.JWT_SECRET, "HS256");
 }
 
 /** Requires a valid bearer token. Role is re-read from the database so demotions apply immediately. */
@@ -32,9 +35,11 @@ export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
   if (!header?.startsWith("Bearer ")) throw unauthorized();
 
   let userId: string;
+  let staffSession = false;
   try {
     const payload = await verify(header.slice(7), env.JWT_SECRET, "HS256");
     userId = String(payload.sub);
+    staffSession = payload.stf === 1;
   } catch {
     throw unauthorized("Session expired, please sign in again");
   }
@@ -45,7 +50,9 @@ export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
     .where(eq(schema.users.id, userId));
   if (!user || !user.isActive) throw unauthorized();
 
-  c.set("user", { id: user.id, email: user.email, role: user.role, branchId: user.branchId });
+  // Staff who signed in without the emailed code (e.g. in the shopping app) act as customers
+  const role = user.role !== "customer" && !staffSession ? "customer" : user.role;
+  c.set("user", { id: user.id, email: user.email, role, branchId: user.branchId });
   await next();
 });
 

@@ -20,7 +20,14 @@ export async function sendEmail(email: Email): Promise<void> {
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: env.EMAIL_FROM, to: [email.to], subject: email.subject, text: email.text, html: email.html }),
   });
-  if (!res.ok) throw new Error(`Resend refused the email (${res.status}): ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) {
+    const why = `Resend refused the email (${res.status}): ${(await res.text()).slice(0, 300)}`;
+    if (env.NODE_ENV === "production") throw new Error(why);
+    // Locally, test addresses (like admin@local.test) are refused; print it so codes can still be used
+    console.log(`\n[email not sent: ${why}] to ${email.to}: ${email.subject}\n${email.text}\n`);
+  } else if (env.NODE_ENV !== "production") {
+    console.log(`[email sent] to ${email.to}: ${email.subject}`);
+  }
 }
 
 /** For emails nobody should wait on (welcome, notices): failures are logged, never thrown */

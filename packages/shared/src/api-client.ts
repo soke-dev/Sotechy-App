@@ -66,10 +66,13 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
     delete: <T>(path: string) => send<T>("DELETE", path),
 
     // Auth
-    register: (input: { email: string; password: string; fullName?: string; username?: string; phone?: string; whatsappPhone?: string }) =>
+    register: (input: { email: string; password: string; fullName?: string; username?: string; phone?: string; whatsappPhone?: string; referralCode?: string }) =>
       send<AuthResponse>("POST", "/auth/register", input),
     login: (input: { email: string; password: string }) => send<AuthResponse>("POST", "/auth/login", input),
     googleSignIn: (idToken: string) => send<AuthResponse>("POST", "/auth/google", { idToken }),
+    /** Admin dashboard: right email + password email a code, then the code signs in */
+    staffLogin: (input: { email: string; password: string }) => send<{ challengeId: string }>("POST", "/auth/staff/login", input),
+    staffVerify: (input: { challengeId: string; code: string }) => send<AuthResponse>("POST", "/auth/staff/verify", input),
     /** Push notifications for this phone (Expo push token) */
     registerPushDevice: (input: { token: string; platform: "android" | "ios" }) => send<{ ok: true }>("POST", "/me/push-devices", input),
     unregisterPushDevice: (token: string) => send<{ ok: true }>("DELETE", "/me/push-devices", { token }),
@@ -83,7 +86,7 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
 
     // Merchant dashboard: the signed-in account's own store
     merchantMe: () => get<MerchantSession>("/merchant/me"),
-    openStore: (input: { name: string; sellerKind: "registered" | "individual"; phone: string; whatsappPhone?: string | null; username?: string }) =>
+    openStore: (input: { name: string; sellerKind: "registered" | "individual"; phone: string; whatsappPhone?: string | null; username?: string; referralCode?: string }) =>
       send<MerchantSession>("POST", "/merchant/store", input),
     updateStore: (input: { name?: string; contactPhone?: string; contactWhatsapp?: string | null }) => send<MerchantStore>("PATCH", "/merchant/store", input),
     /** Starts the owner's ID + liveness check; open the returned URL */

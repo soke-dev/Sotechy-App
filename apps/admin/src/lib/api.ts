@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ApiError, createApiClient, type User } from "@sotechy/shared";
 
-export const TOKEN_COOKIE = "sotechy_admin_token";
+export const TOKEN_COOKIE = "sotechy_admin_session";
 
 export const api = createApiClient({
   baseUrl: process.env.API_URL ?? "http://localhost:4000",

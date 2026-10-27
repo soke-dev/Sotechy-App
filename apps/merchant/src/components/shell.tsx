@@ -22,6 +22,8 @@ export interface ShellStore {
   /** Until a logo is uploaded the card shows the store's initials */
   logo?: string | null;
   verified: boolean;
+  /** Paused by Sotechy */
+  paused?: boolean;
   newOrders: number;
 }
 
@@ -75,7 +77,7 @@ function StoreCard({ store }: { store: ShellStore }) {
         <p className="font-display truncate text-[15px] font-bold">{store.name}</p>
         <p className="flex items-center gap-1.5 text-xs text-white/60">
           <span className={`h-1.5 w-1.5 rounded-full ${store.verified ? "bg-green-400" : "bg-amber-400"}`} />
-          {store.verified ? "Verified · live" : "Test mode"}
+          {store.verified ? "Verified · live" : store.paused ? "Paused" : "Awaiting verification"}
         </p>
       </div>
     </div>
@@ -208,9 +210,19 @@ export function MerchantShell({ store, user, children }: { store: ShellStore; us
 
       <div className="min-w-0 lg:pl-72">
         {!store.verified && (
-          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-warn-soft px-4 py-2 text-center text-sm text-warn">
-            <b>Test mode.</b> Finish verification to start selling for real.
-            <Link href="/onboarding" className="font-semibold underline">Continue setup</Link>
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-warn-soft px-4 py-2.5 text-center text-sm text-warn">
+            {store.paused ? (
+              <span>
+                <b>Your store is paused.</b> Email support@sotechy.shop and we&apos;ll help you sort it out.
+              </span>
+            ) : (
+              <>
+                <span>
+                  <b>Waiting for verification.</b> Look around and get your store ready. Adding products and taking orders unlock once Sotechy approves you.
+                </span>
+                <Link href="/onboarding" className="font-semibold underline">Finish setup</Link>
+              </>
+            )}
           </div>
         )}
         <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-10">{children}</main>

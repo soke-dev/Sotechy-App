@@ -15,9 +15,10 @@ function Progress({ step }: { step: 0 | 1 }) {
 }
 
 /** Opening a store: an account (or an existing Sotechy app account), then the store itself */
-export default async function SignupPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
+export default async function SignupPage({ searchParams }: { searchParams: Promise<{ step?: string; ref?: string }> }) {
+  const { step, ref } = await searchParams;
   const signedIn = (await cookies()).has(TOKEN_COOKIE);
-  if (!signedIn && (await searchParams).step === "store") redirect("/signup");
+  if (!signedIn && step === "store") redirect(ref ? `/signup?ref=${encodeURIComponent(ref)}` : "/signup");
 
   if (signedIn) {
     const { user, store } = await getSession();
@@ -25,7 +26,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
     return (
       <AuthFrame>
         <Progress step={1} />
-        <StoreStep firstName={user.fullName?.split(" ")[0] ?? null} needsUsername={!user.username} phone={user.phone} />
+        <StoreStep firstName={user.fullName?.split(" ")[0] ?? null} needsUsername={!user.username} phone={user.phone} referral={ref} />
       </AuthFrame>
     );
   }
@@ -33,7 +34,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   return (
     <AuthFrame>
       <Progress step={0} />
-      <AccountStep />
+      <AccountStep referral={ref} />
     </AuthFrame>
   );
 }

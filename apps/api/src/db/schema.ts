@@ -110,6 +110,8 @@ export const users = pgTable("users", {
   phone: text(),
   /** WhatsApp number when it differs from `phone`, as +234… */
   whatsappPhone: text(),
+  /** Who invited them (they entered that person's referral code, which is their @username) */
+  referredById: uuid(),
   role: roleEnum().notNull().default("customer"),
   branchId: uuid().references(() => branches.id, { onDelete: "set null" }), // staff home branch
   isActive: boolean().notNull().default(true),
@@ -128,6 +130,18 @@ export const pushDevices = pgTable("push_devices", {
   platform: text().notNull(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
+});
+
+/** Admin sign-in: after the right password, a 6-digit code is emailed. Only a hash of the code is kept. */
+export const loginCodes = pgTable("login_codes", {
+  id: uuid().primaryKey().defaultRandom(),
+  userId: uuid()
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  codeHash: text().notNull(),
+  expiresAt: timestamp({ withTimezone: true }).notNull(),
+  attempts: integer().notNull().default(0),
+  createdAt: createdAt(),
 });
 
 /** Emailed 6-digit codes for resetting a password. Only a hash of the code is kept. */

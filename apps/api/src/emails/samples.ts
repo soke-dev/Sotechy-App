@@ -37,6 +37,7 @@ const pickup: T.OrderEmailData = {
 /** name → [who it's for, the email] */
 export const SAMPLES: Record<string, ["Customers" | "Merchants", () => Email | null]> = {
   welcome: ["Customers", () => T.welcomeEmail(to, { name: "Ada Okafor" })],
+  "admin-code": ["Merchants", () => T.staffCodeEmail(to, { name: "Collins", code: "730415", minutes: 10 })],
   "password-code": ["Customers", () => T.passwordCodeEmail(to, { code: "482913", minutes: 15 })],
   "order-paid": ["Customers", () => T.orderUpdateEmail(to, "paid", { name: "Ada Okafor", order: delivery })],
   "order-processing": ["Customers", () => T.orderUpdateEmail(to, "processing", { name: "Ada Okafor", order: delivery })],
