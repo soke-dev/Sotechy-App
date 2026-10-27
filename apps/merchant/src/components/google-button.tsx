@@ -7,6 +7,10 @@ import { FormError } from "./account-fields";
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
+// Google's script is set up once per page; the mounted button swaps in its own handler
+let initialised = false;
+let onCredential: (credential: string) => void = () => {};
+
 interface GoogleId {
   accounts: {
     id: {
@@ -41,10 +45,11 @@ export function GoogleButton() {
     const draw = () => {
       const g = (window as unknown as { google?: GoogleId }).google;
       if (!g || !holder.current) return;
-      g.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: ({ credential }) => start(async () => setError((await googleSignIn(credential))?.error ?? null)),
-      });
+      onCredential = (credential) => start(async () => setError((await googleSignIn(credential))?.error ?? null));
+      if (!initialised) {
+        g.accounts.id.initialize({ client_id: CLIENT_ID, callback: ({ credential }) => onCredential(credential) });
+        initialised = true;
+      }
       g.accounts.id.renderButton(holder.current, { theme: "outline", size: "large", shape: "pill", text: "continue_with", width: holder.current.offsetWidth || 320 });
     };
     const existing = document.querySelector<HTMLScriptElement>("script[data-gis]");
