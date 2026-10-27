@@ -12,6 +12,7 @@ import { badRequest, conflict, notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
 import { createCheckout, MoneyMovesError, retrieveCheckout, retrievePayment, verifyWebhookSignature, type MMEvent, type MMPayment } from "../services/moneymoves";
 import { confirmPayment } from "../services/orders";
+import { FEATURE_REF, settleFeaturing } from "../services/featuring";
 
 const isUuid = (v: string | null | undefined): v is string => !!v && /^[0-9a-f-]{36}$/i.test(v);
 
@@ -26,6 +27,7 @@ const savedCheckout = (raw: unknown): SavedCheckout | null => {
 export async function settleFromMoneyMoves(paymentId: string) {
   const p: MMPayment = await retrievePayment(paymentId);
   const ourId = p.checkout_reference;
+  if (ourId?.startsWith(FEATURE_REF)) return settleFeaturing(ourId.slice(FEATURE_REF.length), p);
   if (!isUuid(ourId)) return; // not one of our checkouts (e.g. a payment link)
   if (p.status === "successful") {
     // "successful" means the full amount arrived.

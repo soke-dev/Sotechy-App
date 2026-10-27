@@ -13,6 +13,7 @@ import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem } from "@sotechy/shared";
 import { accountNameMatch, slugify } from "../lib/identity";
 import { railBanks, railRecipient, railResolve } from "../services/payout-rail";
+import { buyFeaturing, featuredCount, featuringSettings, purchasesOf } from "../services/featuring";
 import { answerOffer, storeOffers } from "../services/offers";
 import { sendPushLater } from "../services/push";
 import { payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
@@ -336,6 +337,17 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     const [row] = await db.select().from(schema.media).where(and(eq(schema.media.id, c.req.param("id")), eq(schema.media.createdBy, c.get("user").id)));
     if (!row) throw notFound("File not found");
     return c.body(new Uint8Array(row.data), 200, { "Content-Type": row.contentType, "Cache-Control": "private, no-store" });
+  })
+
+  // --- Paid featuring ---
+  .get("/featuring", async (c) => {
+    const store = c.get("store");
+    const [settings, taken, purchases] = await Promise.all([featuringSettings(), featuredCount(), purchasesOf(store.id)]);
+    return c.json({ ...settings, spotsLeft: Math.max(0, settings.maxStores - taken), featuredUntil: store.featuredUntil, purchases });
+  })
+  .post("/featuring", zValidator("json", z.object({ months: z.number().int().min(1).max(3) })), async (c) => {
+    const [owner] = await db.select({ email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
+    return c.json(await buyFeaturing(c.get("store"), c.req.valid("json").months, { email: owner.email, name: owner.name }));
   })
 
   // --- Reviews of the store's products, and its replies ---
