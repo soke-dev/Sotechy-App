@@ -241,6 +241,8 @@ export interface Order {
   paymentMethod: PaymentMethodCode;
   cryptoAsset: string | null;
   reservationExpiresAt: string | null;
+  /** When the customer said they got it */
+  customerConfirmedAt?: string | null;
   createdAt: string;
 }
 
@@ -676,6 +678,8 @@ export interface MerchantOrder {
   createdAt: string;
   acceptBy?: string;
   history: { at: string; label: string; note?: string }[];
+  /** When the customer said they got it */
+  customerConfirmedAt?: string | null;
   /** On a single order: how the store is paid for it */
   payoutTerms?: { plan: import("./payouts").PayoutPlan; feeRate: number; finalAfterHours: number };
   /** On a single order: its payments to the store so far */

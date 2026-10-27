@@ -9,6 +9,8 @@ import { badRequest, HttpError, notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
 import { moneyMovesConfigured } from "../services/moneymoves";
 import { cancelOrder, placeOrder } from "../services/orders";
+import { finalDueNow } from "../services/payouts";
+import { sendPushLater } from "../services/push";
 import { getSetting } from "../services/settings";
 
 const { orders, orderItems, payments, orderStatusHistory } = schema;
@@ -112,4 +114,26 @@ export const orderRoutes = new Hono<AppEnv>()
   })
   .post("/:id/cancel", async (c) => {
     return c.json(await cancelOrder(c.get("user"), c.req.param("id")));
+  })
+  /** The customer got their order. The store's final payment falls due straight away. */
+  .post("/:id/received", async (c) => {
+    const user = c.get("user");
+    const [o] = await db
+      .update(orders)
+      .set({ customerConfirmedAt: new Date() })
+      .where(and(eq(orders.id, c.req.param("id")), eq(orders.customerId, user.id), eq(orders.status, "delivered"), sql`${orders.customerConfirmedAt} is null`))
+      .returning();
+    if (!o) {
+      const [owned] = await db.select({ status: orders.status }).from(orders).where(and(eq(orders.id, c.req.param("id")), eq(orders.customerId, user.id)));
+      if (!owned) throw notFound("Order not found");
+      if (owned.status !== "delivered") throw badRequest("The store hasn't marked this order delivered yet");
+    } else {
+      await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: "delivered", toStatus: "delivered", note: "Customer confirmed they got it", changedBy: user.id });
+      if (o.merchantId) {
+        await finalDueNow(o.id);
+        const [store] = await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId));
+        if (store?.ownerId) sendPushLater([store.ownerId], { title: "Delivery confirmed", body: `The customer got ${o.orderNumber}. Your final payment is on its way.`, data: { url: `/orders/${o.id}` } });
+      }
+    }
+    return c.json(await loadOrderDetail(c.req.param("id")));
   });

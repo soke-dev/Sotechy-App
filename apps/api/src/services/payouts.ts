@@ -62,16 +62,17 @@ async function tellAdmins(p: typeof payouts.$inferSelect, orderNumber: string) {
 /** The store hears when money is on its way to its bank */
 async function tellStorePaid(p: typeof payouts.$inferSelect) {
   const [row] = await db
-    .select({ store: merchants.name, ownerId: merchants.ownerId, email: schema.users.email, orderNumber: orders.orderNumber })
+    .select({ store: merchants.name, ownerId: merchants.ownerId, email: schema.users.email, contactEmail: merchants.contactEmail, orderNumber: orders.orderNumber })
     .from(merchants)
     .innerJoin(orders, eq(orders.id, p.orderId))
     .leftJoin(schema.users, eq(schema.users.id, merchants.ownerId))
     .where(eq(merchants.id, p.merchantId));
   if (!row) return;
   const stage = p.stage === "first" ? "First payment" : "Final payment";
-  if (row.email) {
+  // The store's contact email (where its order emails go) and the owner's sign-in email, once each
+  for (const to of [...new Set([row.contactEmail, row.email].filter((e): e is string => !!e).map((e) => e.toLowerCase()))]) {
     sendEmailLater(
-      payoutSentEmail(row.email, {
+      payoutSentEmail(to, {
         store: row.store,
         amount: p.amount,
         bank: p.bankName ?? "your bank",
@@ -82,6 +83,14 @@ async function tellStorePaid(p: typeof payouts.$inferSelect) {
     );
   }
   if (row.ownerId) sendPushLater([row.ownerId], { title: "Payout sent", body: `₦${p.amount.toLocaleString("en-NG")} for ${row.orderNumber} is on its way to your bank`, data: { url: "/payouts" } });
+}
+
+/** The customer confirmed they got the order: the store's final payment is due now rather than after the wait */
+export async function finalDueNow(orderId: string) {
+  await db
+    .update(payouts)
+    .set({ dueAt: new Date() })
+    .where(and(eq(payouts.orderId, orderId), eq(payouts.stage, "final"), eq(payouts.status, "scheduled")));
 }
 
 /** A cancelled or refunded order: payouts not yet sent are called off, and what was already paid is owed back */

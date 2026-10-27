@@ -551,6 +551,8 @@ export const orders = pgTable(
     idempotencyKey: text().unique(),
     stockCommitted: boolean().notNull().default(false), // true once stock has been deducted
     reservationExpiresAt: timestamp({ withTimezone: true }),
+    /** The customer said they got it; the store's final payment falls due then */
+    customerConfirmedAt: timestamp({ withTimezone: true }),
     notes: text(),
     createdBy: uuid().references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),

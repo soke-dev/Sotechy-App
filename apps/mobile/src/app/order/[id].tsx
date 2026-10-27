@@ -133,6 +133,7 @@ export default function OrderScreen() {
   const receipt = useAsync(() => api.orderReceipt(id).catch(() => null), [id]);
   const [cancelling, setCancelling] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const moneyMoves = useMoneyMoves();
   const [payOpen, setPayOpen] = useState(false);
   // After Money Moves closes, look for the payment for a minute (the webhook can take a few seconds).
@@ -163,6 +164,21 @@ export default function OrderScreen() {
   const store = order.branch;
   const mapsUrl = store ? `https://maps.google.com/?q=${encodeURIComponent(`${store.address}, ${store.city}, Nigeria`)}` : null;
   const history = [...order.history].reverse();
+
+  /** The customer says they got it, so the store's last payment can go */
+  async function confirmReceived() {
+    setConfirming(true);
+    try {
+      await api.confirmReceived(order!.id);
+      tap();
+      toast("Thanks for confirming", { icon: "checkmark-circle" });
+      await reload();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't confirm. Try again.", { icon: "alert-circle" });
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   async function copy(value: string) {
     await Clipboard.setStringAsync(value);
@@ -223,6 +239,19 @@ export default function OrderScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: space.md }}>
           <ActivityIndicator color={colors.brandPressed} />
           <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>Checking for your Money Moves payment. This usually takes a few seconds.</Txt>
+        </View>
+      )}
+
+      {order.status === "delivered" && !order.customerConfirmedAt && (
+        <View style={[ui.card, { gap: space.md }]}>
+          <View style={[ui.row, { gap: space.md }]}>
+            <Illo name="box" size={38} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt variant="label">{order.fulfilmentType === "pickup" ? "Did you collect your order?" : "Did you get your order?"}</Txt>
+              <Txt variant="small">Let the store know it reached you. If something&apos;s wrong, contact support instead.</Txt>
+            </View>
+          </View>
+          <Button title="Yes, I got it" icon="checkmark-circle" variant="dark" loading={confirming} onPress={confirmReceived} />
         </View>
       )}
 

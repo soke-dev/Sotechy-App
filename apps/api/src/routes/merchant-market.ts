@@ -256,7 +256,10 @@ async function ordersForDashboard(storeId: string, ids?: string[]) {
     return {
       id: o.id,
       number: o.orderNumber,
-      status: dashboardStatus(o.status),
+      // Delivered orders wait for the customer to say they got it (or the final payment's wait to pass)
+      status:
+        o.status === "delivered" && !o.customerConfirmedAt && Date.now() - o.updatedAt.getTime() < 48 * 3_600_000 ? ("delivered" as const) : dashboardStatus(o.status),
+      customerConfirmedAt: o.customerConfirmedAt?.toISOString() ?? null,
       customer: {
         name: name ?? a?.recipientName ?? "Customer",
         username: username ?? "",

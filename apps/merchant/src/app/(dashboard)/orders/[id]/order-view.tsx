@@ -60,10 +60,11 @@ export function OrderView({ order }: { order: Order }) {
   /** Where each of the two payments is: paid, on its way, or not yet due */
   const stageState = (stage: "first" | "final") => {
     const p = order.payouts?.find((x) => x.stage === stage);
-    if (!p) return { label: stage === "first" ? "When you accept" : "After delivery", tone: "neutral" as const, done: false };
+    if (!p) return { label: stage === "first" ? "When you accept" : "When the customer confirms delivery", tone: "neutral" as const, done: false };
     if (p.status === "paid") return { label: `Paid ${new Date(p.paidAt!).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}`, tone: "good" as const, done: true };
     if (p.status === "cancelled") return { label: "Cancelled", tone: "neutral" as const, done: false };
     if (p.status === "held") return { label: "On hold", tone: "warn" as const, done: false };
+    if (stage === "final" && !order.customerConfirmedAt && new Date(p.dueAt).getTime() > Date.now()) return { label: "When the customer confirms delivery", tone: "neutral" as const, done: false };
     return { label: new Date(p.dueAt).getTime() > Date.now() ? `Due ${new Date(p.dueAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}` : "On its way", tone: "info" as const, done: false };
   };
   const firstState = stageState("first");
@@ -250,8 +251,8 @@ export function OrderView({ order }: { order: Order }) {
               {firstState.done && finalState.done
                 ? "Paid in full to your payout account."
                 : firstState.done
-                  ? `First payment made. The final payment comes ${afterDays} after delivery.`
-                  : `Paid to your payout account: the first part when you accept, the rest ${afterDays} after delivery.`}
+                  ? `First payment made. The rest comes when the customer confirms delivery, or ${afterDays} after you mark it delivered.`
+                  : `Paid to your payout account: the first part when you accept, the rest when the customer confirms delivery (or ${afterDays} after you mark it delivered).`}
             </p>
             {order.paidWithTokens > 0 && <p className="mt-3 text-xs text-muted">The ${store.ticker} part is paid to you in naira by Sotechy, like the rest of the order.</p>}
           </Card>
@@ -288,7 +289,7 @@ export function OrderView({ order }: { order: Order }) {
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-ink-2">
-                After delivery <span className="text-xs text-muted">· {afterDays} later</span>
+                After delivery <span className="text-xs text-muted">· when the customer confirms</span>
               </dt>
               <dd className="font-semibold">{formatNaira(pay.second)}</dd>
             </div>
