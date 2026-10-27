@@ -19,18 +19,19 @@ export default async function HomePage() {
   const lowStock = products.filter((p) => p.status === "live" && p.stock <= 3);
   const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Africa/Lagos" }).format(new Date()));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const today = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Africa/Lagos" }).format(new Date());
 
   return (
     <>
       {/* Greeting band */}
-      <section className="relative mb-6 overflow-hidden rounded-2xl bg-panel p-6 text-white sm:p-8">
-        <div className="relative max-w-xl">
-          <p className="text-sm font-semibold uppercase tracking-widest text-sun">{store.name}</p>
-          <h1 className="mt-2 text-3xl font-extrabold leading-tight sm:text-4xl">
+      <section className="relative mb-5 overflow-hidden rounded-2xl bg-panel px-5 py-4 text-white sm:px-6 sm:py-5">
+        <div className="relative">
+          <p className="text-xs text-white/55">{today}</p>
+          <h1 className="mt-0.5 text-xl font-bold leading-tight sm:text-2xl">
             {greeting}
             {user.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}
           </h1>
-          <p className="mt-2 text-white/70">
+          <p className="mt-1 text-sm text-white/70">
             {waiting.length ? (
               <>
                 You have <b className="text-white">{waiting.length} new order{waiting.length === 1 ? "" : "s"}</b> waiting for your answer.
@@ -39,15 +40,19 @@ export default async function HomePage() {
               "No orders waiting. Nice work."
             )}
           </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Link href="/orders" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong">
-              Review orders <ArrowRight size={16} />
+          {/* One row on every screen: equal thirds on phones, natural widths from small tablets up */}
+          <div className="mt-3.5 grid grid-cols-3 gap-2 sm:flex">
+            <Link href="/orders" className="inline-flex h-9 items-center justify-center whitespace-nowrap gap-1 rounded-full bg-brand px-2 text-[12.5px] font-semibold text-white hover:bg-brand-strong sm:px-4 sm:text-[13px]">
+              <span className="sm:hidden">Orders</span>
+              <span className="hidden sm:inline">Review orders</span> <ArrowRight size={14} />
             </Link>
-            <Link href="/products/new" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-5 text-sm font-semibold text-white hover:bg-white/15">
-              Add a product
+            <Link href="/products/new" className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full bg-white/10 px-2 text-[12.5px] font-semibold text-white hover:bg-white/15 sm:px-4 sm:text-[13px]">
+              <span className="sm:hidden">Add item</span>
+              <span className="hidden sm:inline">Add a product</span>
             </Link>
-            <Link href="/featured" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/10 px-5 text-sm font-semibold text-white hover:bg-white/15">
-              <Sparkles size={15} className="text-sun" /> Get featured
+            <Link href="/featured" className="inline-flex h-9 items-center justify-center whitespace-nowrap gap-1 rounded-full bg-white/10 px-2 text-[12.5px] font-semibold text-white hover:bg-white/15 sm:px-4 sm:text-[13px]">
+              <Sparkles size={14} className="text-sun" /> <span className="sm:hidden">Feature</span>
+              <span className="hidden sm:inline">Get featured</span>
             </Link>
           </div>
         </div>

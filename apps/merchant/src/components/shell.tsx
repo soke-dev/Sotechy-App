@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Illo, type IlloName } from "./illustrations";
 import { ThemeToggle } from "./theme-toggle";
+import { TopBar } from "./top-bar";
 import { signOut } from "@/lib/session-actions";
 
 interface NavItem {
@@ -27,6 +28,8 @@ export interface ShellStore {
   newOrders: number;
   /** Price offers waiting for an answer */
   offersWaiting: number;
+  /** Payouts on their way to the store */
+  balance: number;
 }
 
 const items = (s: ShellStore): NavItem[][] => [
@@ -222,6 +225,7 @@ export function MerchantShell({ store, user, children }: { store: ShellStore; us
       </div>
 
       <div className="min-w-0 lg:pl-72">
+        <TopBar storeName={store.name} balance={store.balance} newOrders={store.newOrders} offersWaiting={store.offersWaiting} user={user} />
         {!store.verified && (
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-warn-soft px-4 py-2.5 text-center text-sm text-warn">
             {store.paused ? (
@@ -238,7 +242,7 @@ export function MerchantShell({ store, user, children }: { store: ShellStore; us
             )}
           </div>
         )}
-        <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-10">{children}</main>
+        <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-5 sm:px-6 lg:px-10 lg:pb-12 lg:pt-8">{children}</main>
       </div>
 
       <TabBar store={store} onMore={() => setOpen(true)} />
