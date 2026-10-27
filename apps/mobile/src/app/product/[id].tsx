@@ -1,10 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
-import { router, useLocalSearchParams } from "expo-router";
-import { useRef, useState, type ComponentRef } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatNaira, formatUsd, type CatalogProduct, type ProductDetail, type ProductReviews, type Review } from "@sotechy/shared";
+import { formatNaira, formatUsd, type CatalogProduct, type OfferView, type ProductDetail, type ProductReviews, type Review } from "@sotechy/shared";
 import { useCartFeedback } from "@/components/cart-feedback";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { ProductCard } from "@/components/product-card";
@@ -133,8 +133,62 @@ function OverviewTab({
   onVariant: (id: string) => void;
   pickupBranch: string | undefined;
 }) {
+  const store = product.store;
   return (
     <View style={{ gap: space.lg }}>
+      {store ? (
+        <Pressable onPress={() => router.push(`/store/${store.slug}`)} style={({ pressed }) => [ui.card, { gap: space.md, opacity: pressed ? 0.85 : 1 }]}>
+          <View style={[ui.row, { gap: space.md }]}>
+            {store.logoUrl ? (
+              <Image source={{ uri: store.logoUrl }} style={{ width: 44, height: 44, borderRadius: 22 }} contentFit="cover" />
+            ) : (
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
+                <Txt variant="label" color={colors.brandPressed}>{store.name.slice(0, 2).toUpperCase()}</Txt>
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Txt variant="overline">Sold by</Txt>
+              <Txt variant="label" numberOfLines={1}>{store.name}</Txt>
+            </View>
+            <Pill label="Verified" tone="success" icon="shield-checkmark" />
+            <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+          </View>
+          <Divider />
+          {[
+            ["shield-checkmark-outline", "Checked and verified by Sotechy"],
+            ["sparkles-outline", `Earn $${store.ticker} on this order, plus 10% in $SOTECHY`],
+            ["chatbubbles-outline", "Ask the store or make an offer in the app"],
+          ].map(([icon, text]) => (
+            <View key={text} style={[ui.row, { gap: space.sm }]}>
+              <Ionicons name={icon as IconName} size={16} color={colors.success} />
+              <Txt variant="small" color={colors.ink2}>{text}</Txt>
+            </View>
+          ))}
+        </Pressable>
+      ) : (
+        <View style={[ui.card, { gap: space.md }]}>
+          <View style={[ui.row, { gap: space.md }]}>
+            <Image source={require("../../../assets/brand/sotechylogo.png")} style={{ width: 40, height: 40 }} contentFit="contain" />
+            <View style={{ flex: 1 }}>
+              <Txt variant="overline">Sold by</Txt>
+              <Txt variant="label">Sotechy Shop · Benin City</Txt>
+            </View>
+            <Pill label="Official store" tone="brand" icon="checkmark-circle" />
+          </View>
+          <Divider />
+          {[
+            ["shield-checkmark-outline", "Genuine products with warranty"],
+            ["storefront-outline", "Inspect and pick up in store"],
+            ["chatbubbles-outline", "Real people on call and WhatsApp"],
+          ].map(([icon, text]) => (
+            <View key={text} style={[ui.row, { gap: space.sm }]}>
+              <Ionicons name={icon as IconName} size={16} color={colors.success} />
+              <Txt variant="small" color={colors.ink2}>{text}</Txt>
+            </View>
+          ))}
+        </View>
+      )}
+
       {product.variants.length > 1 && (
         <View style={{ gap: space.sm }}>
           <Txt variant="label">Choose an option</Txt>
@@ -154,32 +208,11 @@ function OverviewTab({
             subtitle={pickupBranch ? "Usually ready the same day" : "Currently unavailable"}
           />
         )}
-        {product.allowDelivery && <InfoRow illo="bike" title="Delivery in Benin City" subtitle="Fee and timing shown at checkout" />}
+        {product.allowDelivery && <InfoRow illo="bike" title={store ? `Delivered by ${store.name}` : "Delivery in Benin City"} subtitle="Fee and timing shown at checkout" />}
         <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "Warranty details on request"} subtitle={product.returnPolicy ?? undefined} />
-        <InfoRow illo="wallet" title="Pay your way" subtitle="Bank transfer, online payment or $MOVE" />
+        <InfoRow illo="wallet" title="Pay your way" subtitle="Bank transfer or the Money Moves app, and your tokens" />
       </View>
 
-      <View style={[ui.card, { gap: space.md }]}>
-        <View style={[ui.row, { gap: space.md }]}>
-          <Image source={require("../../../assets/brand/sotechylogo.png")} style={{ width: 40, height: 40 }} contentFit="contain" />
-          <View style={{ flex: 1 }}>
-            <Txt variant="overline">Sold by</Txt>
-            <Txt variant="label">Sotechy Shop · Benin City</Txt>
-          </View>
-          <Pill label="Official store" tone="brand" icon="checkmark-circle" />
-        </View>
-        <Divider />
-        {[
-          ["shield-checkmark-outline", "Genuine products with warranty"],
-          ["storefront-outline", "Inspect and pick up in store"],
-          ["chatbubbles-outline", "Real people on call and WhatsApp"],
-        ].map(([icon, text]) => (
-          <View key={text} style={[ui.row, { gap: space.sm }]}>
-            <Ionicons name={icon as IconName} size={16} color={colors.success} />
-            <Txt variant="small" color={colors.ink2}>{text}</Txt>
-          </View>
-        ))}
-      </View>
     </View>
   );
 }
@@ -352,6 +385,19 @@ export default function ProductScreen() {
   const toast = useToast();
   const config = useAsync(() => api.storeConfig());
   const fx = useAsync(() => api.exchangeRate());
+  // This customer's offers, to show the one on this product instead of "Make an offer"
+  const offers = useAsync(async () => (user ? api.offers() : ([] as OfferView[])), [user?.id]);
+  useFocusEffect(
+    useCallback(() => {
+      offers.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id]),
+  );
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
   const heroHeight = Math.round(Math.min(width, 720) * 0.95);
 
   // Related = other products in the same top-level category.
@@ -379,6 +425,16 @@ export default function ProductScreen() {
   const rating = reviews.data?.summary.average ?? product.ratingAverage ?? 0;
   const ratingCount = reviews.data?.summary.count ?? product.ratingCount ?? 0;
   const mine = user ? reviews.data?.reviews.find((r) => r.userId === user.id) : undefined;
+  // An open offer on this product: the store's turn, the customer's turn, or a price held for them
+  const openOffer = (offers.data ?? [])
+    .filter((o) => o.product.id === product.id && (o.status === "waiting_store" || o.status === "waiting_customer" || (o.status === "agreed" && (!o.agreedUntil || new Date(o.agreedUntil).getTime() > now))))
+    .sort((a, b) => (a.product.variantId === variant?.id ? -1 : 0) - (b.product.variantId === variant?.id ? -1 : 0) || b.updatedAt.localeCompare(a.updatedAt))[0];
+  const left = (iso: string) => {
+    const secs = Math.max(0, Math.floor((new Date(iso).getTime() - now) / 1000));
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    return `${h ? `${h}h ` : ""}${m}m ${String(secs % 60).padStart(2, "0")}s left`;
+  };
 
   async function addCurrent() {
     if (!variant || !product) return;
@@ -490,15 +546,6 @@ export default function ProductScreen() {
           <View style={{ gap: 6 }}>
             {product.brand ? <Txt variant="overline">{product.brand}{product.model ? ` · ${product.model}` : ""}</Txt> : null}
             <Txt variant="title">{product.name}</Txt>
-            {product.store && (
-              <Pressable onPress={() => router.push(`/store/${product.store!.slug}`)} hitSlop={6} style={[ui.row, { gap: 6, alignSelf: "flex-start" }]}>
-                <Ionicons name="storefront-outline" size={15} color={colors.muted} />
-                <Txt variant="small">
-                  Sold by <Txt variant="label" color={colors.brandPressed} style={{ fontSize: 14 }}>{product.store.name}</Txt>
-                </Txt>
-                <Ionicons name="chevron-forward" size={14} color={colors.muted} />
-              </Pressable>
-            )}
             <View style={[ui.row, { marginTop: 4, flexWrap: "wrap" }]}>
               <Price amount={variant?.price ?? 0} compareAt={variant?.compareAtPrice} size="lg" />
               {features.usdPrices && fx.data && variant ? (
@@ -508,7 +555,34 @@ export default function ProductScreen() {
               ) : null}
               {off > 0 && <Pill label={`Save ${off}%`} tone="brand" />}
             </View>
-            {product.negotiable && product.store && variant && available > 0 ? (
+            {openOffer ? (
+              <Pressable
+                onPress={() => router.push({ pathname: "/offer/[id]", params: { id: openOffer.id } })}
+                style={({ pressed }) => [
+                  ui.row,
+                  {
+                    gap: 8,
+                    alignSelf: "flex-start",
+                    paddingHorizontal: 14,
+                    paddingVertical: 9,
+                    borderRadius: radius.pill,
+                    borderWidth: 1,
+                    borderColor: openOffer.status === "waiting_store" ? colors.line : colors.brand,
+                    backgroundColor: pressed ? colors.surfaceAlt : openOffer.status === "waiting_store" ? colors.surface : colors.brandSoft,
+                  },
+                ]}
+              >
+                <Ionicons name={openOffer.status === "agreed" ? "time-outline" : openOffer.status === "waiting_customer" ? "chatbubble-ellipses-outline" : "hourglass-outline"} size={16} color={openOffer.status === "waiting_store" ? colors.ink : colors.brandPressed} />
+                <Txt variant="label" style={{ fontSize: 14 }}>
+                  {openOffer.status === "agreed"
+                    ? `Your price ${formatNaira(openOffer.agreedPrice ?? openOffer.lastAmount)}${openOffer.agreedUntil ? ` · ${left(openOffer.agreedUntil)}` : ""}`
+                    : openOffer.status === "waiting_customer"
+                      ? `The store replied · see offer`
+                      : `Offer sent · waiting for the store`}
+                </Txt>
+                <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+              </Pressable>
+            ) : product.negotiable && product.store && variant && available > 0 ? (
               <Pressable
                 onPress={() =>
                   user
