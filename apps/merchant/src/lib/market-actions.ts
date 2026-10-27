@@ -124,3 +124,31 @@ export async function findWalkInCustomer(q: string): Promise<Result<{ id: string
 export async function startWalkIn(input: { customer: string; amount: number; note?: string }): Promise<Result<{ id: string; fee: number; checkoutUrl: string }>> {
   return attempt(() => api.post<{ id: string; fee: number; checkoutUrl: string }>("/merchant/walk-in", input));
 }
+
+export interface StorePayoutAccount {
+  id: string;
+  bankCode: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  match: "business" | "owner" | null;
+  isDefault: boolean;
+  verifiedAt: string;
+}
+
+/** The store's payout accounts (up to 3); payouts go to the default */
+export async function listPayoutAccounts(): Promise<Result<StorePayoutAccount[]>> {
+  return attempt(() => api.get<StorePayoutAccount[]>("/merchant/payout-accounts"));
+}
+
+export async function addPayoutAccount(input: { bankCode: string; accountNumber: string; makeDefault?: boolean }): Promise<Result<StorePayoutAccount>> {
+  return attempt(() => api.post<StorePayoutAccount>("/merchant/payout-accounts", input), ["/settings", "/payouts"]);
+}
+
+export async function makeDefaultPayoutAccount(id: string): Promise<Result<StorePayoutAccount[]>> {
+  return attempt(() => api.post<StorePayoutAccount[]>(`/merchant/payout-accounts/${id}/default`, {}), ["/settings", "/payouts", "/"]);
+}
+
+export async function removePayoutAccount(id: string): Promise<Result<StorePayoutAccount[]>> {
+  return attempt(() => api.delete<StorePayoutAccount[]>(`/merchant/payout-accounts/${id}`), ["/settings"]);
+}

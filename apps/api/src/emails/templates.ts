@@ -337,3 +337,25 @@ export function payoutApprovalEmail(to: string, d: { name: string | null; store:
     reason: "You're getting this because you're a Sotechy admin.",
   });
 }
+
+export function payoutAccountChangedEmail(to: string, d: { name: string | null; store: string; bank: string; last4: string; accountName: string }) {
+  return build(to, `${d.store}'s payouts now go to ${d.bank} ••••${d.last4}`, {
+    preheader: "Your default payout account changed. If this wasn't you, tell us now.",
+    hero: "payout",
+    eyebrow: "Sotechy · Payouts",
+    heading: "Your payout account changed",
+    blocks: [
+      { kind: "text", text: `Hi ${first(d.name)}, from now on every payout for **${d.store}** goes to this account:` },
+      {
+        kind: "rows",
+        rows: [
+          { icon: "bank", label: "Bank", value: d.bank },
+          { icon: "receipt", label: "Account", value: `••••${d.last4} · ${d.accountName}` },
+        ],
+      },
+      { kind: "text", text: "If you didn't make this change, email support@sotechy.shop straight away and change your password." },
+      { kind: "button", label: "See payout accounts", url: "https://merchant.sotechy.shop/settings?tab=payout" },
+    ],
+    reason: "You're getting this because your store's payout account changed.",
+  });
+}

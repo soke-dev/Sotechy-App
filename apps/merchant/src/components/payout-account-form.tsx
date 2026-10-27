@@ -20,7 +20,10 @@ export interface SavedAccount {
 
 const MATCH = { business: "Matches your business name", owner: "Matches your own name" } as const;
 
-export function PayoutAccountForm({ saved, onSaved }: { saved: SavedAccount | null; onSaved?: (a: PayoutAccount) => void }) {
+type Save = (input: { bankCode: string; accountNumber: string }) => Promise<{ ok: PayoutAccount } | { error: string }>;
+
+/** `save`: where the account goes (setup's single account by default; Settings adds to the list instead) */
+export function PayoutAccountForm({ saved, onSaved, save = savePayoutAccount, submitLabel }: { saved: SavedAccount | null; onSaved?: (a: PayoutAccount) => void; save?: Save; submitLabel?: string }) {
   const router = useRouter();
   const [banks, setBanks] = useState<Bank[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -40,7 +43,7 @@ export function PayoutAccountForm({ saved, onSaved }: { saved: SavedAccount | nu
     start(async () => {
       if (!bank) return;
       setError(null);
-      const r = await savePayoutAccount({ bankCode: bank.code, accountNumber });
+      const r = await save({ bankCode: bank.code, accountNumber });
       if ("error" in r) return setError(r.error);
       setResult({ bankCode: r.ok.bankCode, bankName: r.ok.bankName, accountNumber: r.ok.accountNumber, accountName: r.ok.accountName, match: r.ok.match });
       onSaved?.(r.ok);
@@ -92,7 +95,7 @@ export function PayoutAccountForm({ saved, onSaved }: { saved: SavedAccount | nu
 
       {!unchanged && (
         <button type="button" disabled={!ready || saving} onClick={check} className={btn.dark}>
-          {saving ? "Checking with your bank…" : result ? "Check and use this account" : "Check and save account"}
+          {saving ? "Checking with your bank…" : (submitLabel ?? (result ? "Check and use this account" : "Check and save account"))}
         </button>
       )}
       <p className="text-xs text-muted">We ask your bank for the name on the account. It should be your business name or your own name, as on your ID.</p>

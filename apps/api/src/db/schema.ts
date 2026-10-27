@@ -1055,3 +1055,25 @@ export const chainOps = pgTable(
   },
   (t) => [unique().on(t.contract, t.kind, t.sourceId), index().on(t.monadAt), index().on(t.baseAt)],
 );
+
+/** A store's payout accounts (up to 3). Payouts always go to the default one, which is also copied onto the store. */
+export const payoutAccounts = pgTable(
+  "payout_accounts",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    bankCode: text().notNull(),
+    bankName: text().notNull(),
+    accountNumber: text().notNull(),
+    /** The name the bank gave for the account */
+    accountName: text().notNull(),
+    /** "business", "owner", or null when it matches neither (Sotechy reviews those) */
+    match: text(),
+    isDefault: boolean().notNull().default(false),
+    verifiedAt: timestamp({ withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [unique().on(t.merchantId, t.bankCode, t.accountNumber), index().on(t.merchantId)],
+);

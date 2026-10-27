@@ -4,7 +4,7 @@ import { Check, Lock } from "lucide-react";
 import { use, useState } from "react";
 import { btn, Card, Field, inputClass, PageHeader, Tabs } from "@/components/ui";
 import { useAccount } from "@/components/account-context";
-import { PayoutAccountForm } from "@/components/payout-account-form";
+import { PayoutAccounts } from "@/components/payout-accounts";
 import { ProfileForm, StoreDetailsForm } from "./account-forms";
 
 /** `locked`: always on and can't be switched off */
@@ -34,7 +34,7 @@ function Toggle({ on, onChange, label, hint, locked }: { on: boolean; onChange: 
 
 const SECTIONS = [
   { id: "store", label: "Store details" },
-  { id: "payout", label: "Payout account" },
+  { id: "payout", label: "Payout accounts" },
   { id: "security", label: "Security" },
   { id: "notifications", label: "Notifications" },
 ] as const;
@@ -61,20 +61,9 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
         )}
 
         {tab === "payout" && (
-          <Card
-            title="Payout account"
-            description="Every payout for your orders lands here. The account can be in your business name or your own name."
-          >
-            <div id="payout">
-              <PayoutAccountForm
-                saved={
-                  store.payoutAccountNumber
-                    ? { bankCode: store.payoutBankCode ?? null, bankName: store.payoutBankName ?? null, accountNumber: store.payoutAccountNumber, accountName: store.payoutAccountName ?? null, match: store.payoutAccountMatch ?? null }
-                    : null
-                }
-              />
-            </div>
-          </Card>
+          <div id="payout">
+            <PayoutAccounts />
+          </div>
         )}
 
         {tab === "notifications" && (

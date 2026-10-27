@@ -11,9 +11,10 @@ import { audit } from "../lib/audit";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem } from "@sotechy/shared";
-import { accountNameMatch, slugify } from "../lib/identity";
-import { railBanks, railRecipient, railResolve } from "../services/payout-rail";
+import { slugify } from "../lib/identity";
+import { railBanks } from "../services/payout-rail";
 import { buyFeaturing, featuredCount, featuringSettings, purchasesOf } from "../services/featuring";
+import { addPayoutAccount, makeDefault, payoutAccountsOf, removePayoutAccount } from "../services/payout-accounts";
 import { findCustomer, startWalkIn, walkInsOf } from "../services/walk-in";
 import { storeTokenStats } from "../services/tokens";
 import { CHAINS, currentContract } from "../services/chain";
@@ -445,50 +446,27 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
 
   // --- Payouts: the account they go to, and what's been paid ---
   .get("/banks", async (c) => c.json(await railBanks()))
-  /** Checks the account with the bank and saves it. Payouts only go automatically to an account in
-   *  the business's or the owner's name; anything else waits for Sotechy. */
+  /** Setup's single account: checked with the bank, added, and made the default */
   .put(
     "/payout-account",
     zValidator("json", z.object({ bankCode: z.string().trim().min(2).max(10), accountNumber: z.string().regex(/^\d{10}$/, "Account numbers have 10 digits") })),
-    async (c) => {
-      const { bankCode, accountNumber } = c.req.valid("json");
-      const store = c.get("store");
-      const bank = (await railBanks()).find((b) => b.code === bankCode);
-      if (!bank) throw badRequest("Choose your bank from the list");
-      const [owner] = await db.select({ fullName: schema.users.fullName, email: schema.users.email }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
-      const accountName = await railResolve(bankCode, accountNumber, owner?.fullName ?? store.name);
-      const match = accountNameMatch(accountName, [store.name, store.application?.registeredName], owner?.fullName ?? "");
-      // With Bachs, the store's own payout account there holds this bank account
-      const recipientId = await railRecipient({
-        existingId: store.payoutRecipientId,
-        storeId: store.id,
-        storeName: store.name,
-        email: store.contactEmail ?? owner?.email ?? "",
-        ownerName: owner?.fullName ?? store.name,
-        bankCode: bank.code,
-        accountNumber,
-        accountName,
-      });
-      const verifiedAt = new Date();
-      await db
-        .update(schema.merchants)
-        .set({
-          payoutBankCode: bank.code,
-          payoutBankName: bank.name,
-          payoutAccountNumber: accountNumber,
-          payoutAccountName: accountName,
-          payoutAccountMatch: match,
-          payoutVerifiedAt: verifiedAt,
-          payoutRecipientId: recipientId ?? store.payoutRecipientId,
-          // Setup shows the same account
-          application: { ...(store.application ?? {}), bank: { bankName: bank.name, accountNumber } } as typeof store.application,
-          updatedAt: verifiedAt,
-        })
-        .where(eq(schema.merchants.id, store.id));
-      await audit(db, { actorId: c.get("user").id, action: "merchant.payout_account", entityType: "merchant", entityId: store.id, details: { bank: bank.name, last4: accountNumber.slice(-4), match } });
-      return c.json({ bankCode: bank.code, bankName: bank.name, accountNumber, accountName, match, verifiedAt: verifiedAt.toISOString() });
-    },
+    async (c) => c.json(await addPayoutAccount(c.get("store"), c.get("user").id, { ...c.req.valid("json"), makeDefault: true })),
   )
+  /** Up to 3 accounts; payouts always go to the default */
+  .get("/payout-accounts", async (c) => c.json(await payoutAccountsOf(c.get("store").id)))
+  .post(
+    "/payout-accounts",
+    zValidator("json", z.object({ bankCode: z.string().trim().min(2).max(10), accountNumber: z.string().regex(/^\d{10}$/, "Account numbers have 10 digits"), makeDefault: z.boolean().optional() })),
+    async (c) => c.json(await addPayoutAccount(c.get("store"), c.get("user").id, c.req.valid("json")), 201),
+  )
+  .post("/payout-accounts/:id/default", async (c) => {
+    await makeDefault(c.get("store"), c.get("user").id, c.req.param("id"));
+    return c.json(await payoutAccountsOf(c.get("store").id));
+  })
+  .delete("/payout-accounts/:id", async (c) => {
+    await removePayoutAccount(c.get("store"), c.get("user").id, c.req.param("id"));
+    return c.json(await payoutAccountsOf(c.get("store").id));
+  })
   .get("/payouts", async (c) => {
     const store = c.get("store");
     const settings = await payoutSettings();
