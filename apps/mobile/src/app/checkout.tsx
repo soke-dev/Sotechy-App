@@ -464,7 +464,7 @@ export default function CheckoutScreen() {
                         <Ionicons name="checkmark" size={17} color={colors.white} />
                       </View>
                     ) : (
-                      <Illo name={t.ticker === "SOTECHY" ? "sparkle" : "coin"} size={28} />
+                      <Illo name="coin" size={28} />
                     )}
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Txt variant="label" numberOfLines={1}>${t.ticker}</Txt>

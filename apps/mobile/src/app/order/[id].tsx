@@ -131,7 +131,8 @@ function Hero({ order, onCopy }: { order: OrderDetail; onCopy: (v: string) => vo
 }
 
 export default function OrderScreen() {
-  const { id, checking } = useLocalSearchParams<{ id: string; checking?: string }>();
+  // review=1 comes from the Orders tab's Review button: the review opens once the order has loaded
+  const { id, checking, review } = useLocalSearchParams<{ id: string; checking?: string; review?: string }>();
   const { data: order, error, loading, reload } = useAsync(() => api.order(id), [id]);
   const config = useAsync(() => api.storeConfig());
   // Delivered orders have a receipt, recorded on Monad (none before then)
@@ -143,6 +144,14 @@ export default function OrderScreen() {
   // Reviewing from the order: pick the item first when there's more than one
   const [pickingReview, setPickingReview] = useState(false);
   const [reviewing, setReviewing] = useState<{ productId: string; name: string } | null>(null);
+  const [reviewAsked, setReviewAsked] = useState(review !== "1");
+  useEffect(() => {
+    if (reviewAsked || order?.status !== "delivered") return;
+    setReviewAsked(true);
+    const items = [...new Map(order.items.filter((i) => i.productId).map((i) => [i.productId!, { productId: i.productId!, name: i.productName }])).values()];
+    if (items.length === 1) setReviewing(items[0]);
+    else if (items.length > 1) setPickingReview(true);
+  }, [order, reviewAsked]);
   const [confirming, setConfirming] = useState<"yes" | "no" | null>(null);
   const moneyMoves = useMoneyMoves();
   const [payOpen, setPayOpen] = useState(false);
