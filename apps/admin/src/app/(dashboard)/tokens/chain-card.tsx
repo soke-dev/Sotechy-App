@@ -8,7 +8,7 @@ import { useState, useTransition } from "react";
 import { usePasswordPrompt } from "@/components/password-prompt";
 import { RelTime } from "@/components/rel-time";
 import { Card, ErrorNote, Pill, primaryButtonClass, secondaryButtonClass } from "@/components/ui";
-import { retryStuck, sendBaseBatch } from "./actions";
+import { copyToNewContract, retryStuck, sendBaseBatch } from "./actions";
 
 interface Wallet {
   address: string;
@@ -28,6 +28,8 @@ interface Contract {
   perDay?: number;
   mintedToday?: number;
   issued?: number;
+  /** A newer version is deployed and waits for the ledger to be copied to it */
+  needsCopy?: boolean;
 }
 
 export interface ChainStatus {
@@ -78,9 +80,19 @@ function Gas({ label, wallet, symbol, hint }: { label: string; wallet: Wallet; s
   );
 }
 
-function ContractRow({ c }: { c: Contract }) {
+function ContractRow({ c, onCopy, busy }: { c: Contract; onCopy: () => void; busy: boolean }) {
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-3">
+      {c.needsCopy && (
+        <div className="mb-2 flex w-full flex-wrap items-center gap-3 rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn">
+          <span className="min-w-0 flex-1">
+            v{c.version} is deployed but empty. Nothing is written to it until you copy everything across from the ledger.
+          </span>
+          <button type="button" disabled={busy} onClick={onCopy} className={primaryButtonClass}>
+            Copy everything to v{c.version}
+          </button>
+        </div>
+      )}
       <span className="font-semibold">{NAME[c.contract]}</span>
       {c.reachable && c.state ? <Pill tone={STATE[c.state].tone}>{STATE[c.state].label}</Pill> : <Pill tone="warn">Can&apos;t reach the chain</Pill>}
       <span className="text-sm text-muted">
@@ -109,6 +121,20 @@ export function ChainCards({ chains, queue, error }: { chains: ChainStatus[]; qu
       const r = await sendBaseBatch(password);
       if ("error" in r) return setNote({ tone: "bad", text: r.error });
       setNote({ tone: "good", text: `Copied ${count(r.sent)} changes to Base${r.left ? `, ${count(r.left)} still waiting` : ""}.` });
+      router.refresh();
+    });
+
+  const copy = (contract: "tokens" | "receipts", chain: "monad" | "base", version: number) =>
+    start(async () => {
+      setNote(null);
+      const password = await ask(
+        `Copy everything to ${NAME[contract]} v${version}?`,
+        contract === "tokens" ? "Every token and every balance is created on the new contract from the ledger. Retire the old contract from your computer once it's done." : "Every receipt is issued again on the new contract, with the same numbers.",
+      );
+      if (!password) return;
+      const r = await copyToNewContract(contract, chain, password);
+      if ("error" in r) return setNote({ tone: "bad", text: r.error });
+      setNote({ tone: "good", text: `${r.queued} changes queued for v${r.version}. ${chain === "monad" ? "Monad picks them up within seconds." : "Send a batch to Base to write them."}` });
       router.refresh();
     });
 
@@ -147,7 +173,7 @@ export function ChainCards({ chains, queue, error }: { chains: ChainStatus[]; qu
           {c.contracts.length === 0 && <p className="mt-3 text-sm text-muted">Not deployed on {c.chainName} yet. Once the gas is there, the contracts go up and batches can start.</p>}
           <ul className="mt-3 divide-y divide-line">
             {c.contracts.map((x) => (
-              <ContractRow key={x.contract} c={x} />
+              <ContractRow key={x.contract} c={x} busy={busy} onCopy={() => copy(x.contract, c.chain, x.version)} />
             ))}
           </ul>
           {c.primary && queue && queue.monadStuck > 0 && (

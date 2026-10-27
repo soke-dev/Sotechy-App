@@ -6,7 +6,9 @@ import { formatEther } from "viem";
 import { audit } from "../../lib/audit";
 import { requirePassword, requireRole, type AppEnv } from "../../lib/auth";
 import { HttpError } from "../../lib/errors";
-import { CHAINS, currentContract, publicClient, queueStats, retryStuck, sendBaseBatch, type ChainName } from "../../services/chain";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
+import { CHAINS, copyToNewContract, currentContract, needsCopy, publicClient, queueStats, retryStuck, sendBaseBatch, type ChainName } from "../../services/chain";
 import { CROSS_BONUS, latestActivity, reserveSummary, tokenRegistry } from "../../services/tokens";
 import { db } from "../../db/client";
 
@@ -40,7 +42,7 @@ async function contractStatus(contract: ContractName, chain: ChainName) {
     } else {
       detail = { issued: Number(await client.readContract({ address: current.address, abi: sotechyReceiptsAbi, functionName: "totalIssued" })) };
     }
-    return { ...base, reachable: true, state: retired ? "retired" : paused ? "paused" : "running", ...detail };
+    return { ...base, reachable: true, state: retired ? "retired" : paused ? "paused" : "running", needsCopy: await needsCopy(contract, chain), ...detail };
   } catch {
     return { ...base, reachable: false };
   }
@@ -102,6 +104,17 @@ export const adminChainRoutes = new Hono<AppEnv>()
       return c.json(result);
     } catch (err) {
       throw new HttpError(400, err instanceof Error ? err.message : "The Base batch failed");
+    }
+  })
+  /** After deploying a new contract: rebuild it from the ledger (tokens, balances or receipts) */
+  .post("/chain/copy", ADMIN, requirePassword, zValidator("json", z.object({ contract: z.enum(["tokens", "receipts"]), chain: z.enum(["monad", "base"]) })), async (c) => {
+    const { contract, chain } = c.req.valid("json");
+    try {
+      const result = await copyToNewContract(contract, chain);
+      await audit(db, { actorId: c.get("user").id, action: "chain.copy_to_new_contract", entityType: "chain", details: { contract, chain, ...result } });
+      return c.json(result);
+    } catch (err) {
+      throw new HttpError(400, err instanceof Error ? err.message : "The copy failed");
     }
   })
   /** Lets changes that failed too often on Monad go again */

@@ -27,6 +27,9 @@ const PENDING: OrderStatus[] = ["paid", "processing", "ready_for_pickup", "dispa
 /** A wallet's address: from the user id, so there's no key to lose or steal */
 export const walletAddress = (userId: string): Address => getAddress(`0x${keccak256(toBytes(`sotechy:wallet:${userId}`)).slice(-40)}`);
 
+/** A real transaction (not one marked as moved to a new contract, or skipped on the other chain) */
+const isTxHash = (tx: string | null): tx is string => !!tx && /^0x[0-9a-f]{64}$/i.test(tx);
+
 /** A ledger id as the bytes32 recorded with the change on chain */
 const refOf = (uuid: string): Hex => `0x${uuid.replace(/-/g, "").padEnd(64, "0")}`;
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -304,7 +307,7 @@ export async function receiptFor(userId: string, orderId: string) {
   const [r] = await db.select().from(receipts).where(and(eq(receipts.orderId, orderId), eq(receipts.userId, userId)));
   if (!r) return null;
   const [op] = await db.select({ tx: chainOps.monadTx, at: chainOps.monadAt }).from(chainOps).where(and(eq(chainOps.contract, "receipts"), eq(chainOps.sourceId, String(r.id))));
-  return { id: r.id, content: r.content, fingerprint: r.fingerprint, tx: op?.at ? op.tx : null };
+  return { id: r.id, content: r.content, fingerprint: r.fingerprint, tx: op?.at && isTxHash(op.tx) ? op.tx : null };
 }
 
 // ---------------------------------------------------------------------------
@@ -395,7 +398,7 @@ export async function activityFor(userId: string, limit = 50) {
       order: numbers.find((n) => n.id === r.orderId)?.number ?? null,
       at: r.createdAt.toISOString(),
       /** Set once it's written on Monad */
-      tx: op?.at ? op.tx : null,
+      tx: op?.at && isTxHash(op.tx) ? op.tx : null,
     };
   });
 }
@@ -460,8 +463,10 @@ async function holdersOf(tokenId: number, limit?: number) {
 /** Each token's supply and holders, for the admin */
 export async function tokenRegistry() {
   const rows = await supplyByToken();
-  const registered = await db.select({ sourceId: chainOps.sourceId, at: chainOps.monadAt }).from(chainOps).where(and(eq(chainOps.contract, "tokens"), eq(chainOps.kind, "register")));
-  const ids = registered.map((r) => Number(r.sourceId.replace("token:", "")));
+  const registered = await db.select({ data: chainOps.data, at: chainOps.monadAt, tx: chainOps.monadTx }).from(chainOps).where(and(eq(chainOps.contract, "tokens"), eq(chainOps.kind, "register")));
+  const ids = [...new Set(registered.map((r) => Number(r.data.tokenId)))];
+  // On chain when created on the current contract (a token copied to a new contract counts once that's written)
+  const live = new Set(registered.filter((r) => r.at && !r.tx?.startsWith("moved:")).map((r) => Number(r.data.tokenId)));
   const stores = await tokenStores(ids);
   const holders = await Promise.all(ids.map(async (id) => [id, (await holdersOf(id)).length] as const));
   return ids
@@ -474,7 +479,7 @@ export async function tokenRegistry() {
         spent: r?.spent ?? 0,
         recyclePool: r?.recyclePool ?? 0,
         holders: holders.find(([h]) => h === id)?.[1] ?? 0,
-        onChain: !!registered.find((x) => x.sourceId === `token:${id}`)?.at,
+        onChain: live.has(id),
       };
     })
     .filter((t) => t.ticker)
@@ -589,7 +594,7 @@ export async function latestActivity(limit = 20) {
       from: who(r.fromUserId),
       to: who(r.toUserId),
       at: r.createdAt.toISOString(),
-      tx: op?.at ? op.tx : null,
+      tx: op?.at && isTxHash(op.tx) ? op.tx : null,
     };
   });
 }

@@ -2,13 +2,14 @@
 // seconds. Base is a mirror that only gets a batch when an admin sends one. Each queued change keeps
 // its transaction per chain, so nothing is written twice and a failed write is simply tried again.
 import { deployments, sotechyReceiptsAbi, sotechyTokensAbi, type ContractName } from "@sotechy/contracts";
-import { and, asc, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, like, lt, lte, not, or, sql } from "drizzle-orm";
 import { createPublicClient, createWalletClient, http, type Address, type Chain, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base, monad } from "viem/chains";
 import { db, schema } from "../db/client";
 import { env } from "../env";
-import { ensureStoreTokens } from "./tokens";
+import { getSetting } from "./settings";
+import { ensureStoreTokens, walletAddress } from "./tokens";
 
 const ops = schema.chainOps;
 export type ChainName = "monad" | "base";
@@ -117,16 +118,125 @@ async function waiting(chain: ChainName, contract: ContractName, kinds: string[]
     .limit(limit);
 }
 
-/** Token ids whose token is created on this chain */
+/** Token ids whose token is created on this chain's current contract (registrations from before a move don't count) */
 async function registeredOn(chain: ChainName) {
-  const rows = await db.select({ data: ops.data }).from(ops).where(and(eq(ops.contract, "tokens"), eq(ops.kind, "register"), isNotNull(col(chain).at)));
+  const c = col(chain);
+  const rows = await db
+    .select({ data: ops.data })
+    .from(ops)
+    .where(and(eq(ops.contract, "tokens"), eq(ops.kind, "register"), isNotNull(c.at), or(isNull(c.tx), not(like(c.tx, "moved:%")))));
   return new Set(rows.map((r) => Number(r.data.tokenId)));
+}
+
+// ---------------------------------------------------------------------------
+// Moving to a new contract
+// ---------------------------------------------------------------------------
+
+const VERSIONS_KEY = "chainContractVersions";
+type Versions = Record<string, number>;
+
+const saveVersions = (v: Versions) =>
+  db.insert(schema.appSettings).values({ key: VERSIONS_KEY, value: v }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value: v } });
+
+/** The contract version on each chain that the ledger has been copied to (the first deploy needs no copy) */
+async function copiedVersions(): Promise<Versions> {
+  const saved = (await getSetting<Versions>(VERSIONS_KEY)) ?? {};
+  let changed = false;
+  for (const contract of ["tokens", "receipts"] as const)
+    for (const chain of ["monad", "base"] as const) {
+      const key = `${contract}:${chain}`;
+      const current = currentContract(contract, chain);
+      if (current && saved[key] === undefined) {
+        // First seen: the first deploy is where everything has been going; any later one needs a copy
+        saved[key] = deployments[contract][chain][0].version;
+        changed = true;
+      }
+    }
+  if (changed) await saveVersions(saved);
+  return saved;
+}
+
+/** A newer contract is deployed on this chain but the ledger hasn't been copied to it yet */
+export async function needsCopy(contract: ContractName, chain: ChainName) {
+  const current = currentContract(contract, chain);
+  if (!current) return false;
+  return current.version > ((await copiedVersions())[`${contract}:${chain}`] ?? current.version);
+}
+
+/** Largest amount one mint can carry, so a big balance is copied in several mints */
+const MINT_CHUNK = 10_000_000;
+
+/**
+ * Rebuilds a new contract from the ledger: every token and every balance (for receipts: every receipt,
+ * same numbers). What went to the old contract isn't sent again, and the other chain is left alone.
+ */
+export async function copyToNewContract(contract: ContractName, chain: ChainName) {
+  const current = currentContract(contract, chain);
+  if (!current) throw new Error(`No ${contract} contract on ${chain}`);
+  if (!(await needsCopy(contract, chain))) throw new Error(`The ${contract} contract on ${chain} is already up to date`);
+  const v = current.version;
+  const movedTx = `moved:v${v}`;
+  // The other chain never sees these
+  const skipOther = chain === "monad" ? { baseAt: new Date(), baseTx: "n/a" } : { monadAt: new Date(), monadTx: "n/a" };
+  const zero = `0x${"0".repeat(64)}`;
+  let queued = 0;
+  await db.transaction(async (tx) => {
+    const [{ last }] = await tx.select({ last: sql<number>`coalesce(max(${ops.id}), 0)::int` }).from(ops).where(eq(ops.contract, contract));
+    // Everything before now was for the old contract: never send it to the new one
+    await tx
+      .update(ops)
+      .set(chain === "monad" ? { monadAt: sql`coalesce(${ops.monadAt}, now())`, monadTx: sql`coalesce(${ops.monadTx}, ${movedTx})` } : { baseAt: sql`coalesce(${ops.baseAt}, now())`, baseTx: sql`coalesce(${ops.baseTx}, ${movedTx})` })
+      .where(and(eq(ops.contract, contract), lte(ops.id, last)));
+    if (contract === "tokens") {
+      await tx.update(ops).set(chain === "monad" ? { monadTx: movedTx } : { baseTx: movedTx }).where(and(eq(ops.contract, "tokens"), eq(ops.kind, "register"), lte(ops.id, last)));
+      const tokens = await tx.select({ data: ops.data }).from(ops).where(and(eq(ops.contract, "tokens"), eq(ops.kind, "register"), lte(ops.id, last)));
+      const seen = new Set<number>();
+      for (const t of tokens) {
+        const tokenId = Number(t.data.tokenId);
+        if (seen.has(tokenId)) continue;
+        seen.add(tokenId);
+        await tx.insert(ops).values({ contract, kind: "register", sourceId: `v${v}:token:${tokenId}`, ref: zero, data: { tokenId, ticker: String(t.data.ticker) }, ...skipOther }).onConflictDoNothing();
+        queued++;
+      }
+      const e = schema.tokenEntries;
+      const moves = await tx
+        .select({ tokenId: e.tokenId, from: e.fromUserId, to: e.toUserId, amount: e.amount })
+        .from(e);
+      const held = new Map<string, number>();
+      for (const m of moves) {
+        if (m.to) held.set(`${m.tokenId}|${m.to}`, (held.get(`${m.tokenId}|${m.to}`) ?? 0) + m.amount);
+        if (m.from) held.set(`${m.tokenId}|${m.from}`, (held.get(`${m.tokenId}|${m.from}`) ?? 0) - m.amount);
+      }
+      for (const [key, total] of held) {
+        const [tokenId, holder] = key.split("|");
+        let left = total;
+        for (let i = 0; left > 0; i++) {
+          const amount = Math.min(left, MINT_CHUNK);
+          left -= amount;
+          await tx
+            .insert(ops)
+            .values({ contract, kind: "mint", sourceId: `v${v}:balance:${tokenId}:${holder}:${i}`, ref: zero, data: { tokenId: Number(tokenId), amount, to: walletAddress(holder) }, ...skipOther })
+            .onConflictDoNothing();
+          queued++;
+        }
+      }
+    } else {
+      const old = await tx.select().from(ops).where(and(eq(ops.contract, "receipts"), eq(ops.kind, "receipt"), lte(ops.id, last)));
+      for (const r of old) {
+        await tx.insert(ops).values({ contract, kind: "receipt", sourceId: `v${v}:${r.sourceId}`, ref: r.ref, data: r.data, ...skipOther }).onConflictDoNothing();
+        queued++;
+      }
+    }
+  });
+  await saveVersions({ ...(await copiedVersions()), [`${contract}:${chain}`]: v });
+  return { version: v, queued };
 }
 
 /** One pass over a chain: create new tokens, then token changes, then receipts. Returns how many went through. */
 async function pass(chain: ChainName, limit: number) {
   let done = 0;
-  if (currentContract("tokens", chain)) {
+  // A newer contract waiting for its copy gets nothing until an admin starts the copy
+  if (currentContract("tokens", chain) && !(await needsCopy("tokens", chain))) {
     for (const reg of await waiting(chain, "tokens", ["register"], limit)) {
       // Already there (e.g. written before a restart lost the result)? Then just note it.
       const deployed = currentContract("tokens", chain)!;
@@ -139,7 +249,7 @@ async function pass(chain: ChainName, limit: number) {
     // Changes for a token that isn't on chain yet wait for it, without holding up the others
     if (await sendGroup(chain, changes, (l) => ({ contract: "tokens", functionName: "applyOps", args: [l.map(tokenOp)] }))) done += changes.length;
   }
-  if (currentContract("receipts", chain)) {
+  if (currentContract("receipts", chain) && !(await needsCopy("receipts", chain))) {
     const list = await waiting(chain, "receipts", ["receipt"], limit);
     if (await sendGroup(chain, list, (l) => ({ contract: "receipts", functionName: "issue", args: [l.map(receiptOp)] }))) done += list.length;
   }

@@ -14,6 +14,16 @@ export async function sendBaseBatch(password: string): Promise<{ sent: number; l
   }
 }
 
+export async function copyToNewContract(contract: "tokens" | "receipts", chain: "monad" | "base", password: string): Promise<{ version: number; queued: number } | { error: string }> {
+  try {
+    const result = await withPassword<{ version: number; queued: number }>("POST", "/admin/chain/copy", { contract, chain }, password);
+    revalidatePath("/tokens");
+    return result;
+  } catch (err) {
+    return { error: errorMessage(err) };
+  }
+}
+
 export async function retryStuck(): Promise<{ retried: number } | { error: string }> {
   try {
     const result = await api.post<{ retried: number }>("/admin/chain/retry", {});

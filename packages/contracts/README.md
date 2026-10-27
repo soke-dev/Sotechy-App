@@ -32,6 +32,9 @@ pnpm owner retire --yes          # for good, when moving to a new contract
 
 Chains: `monad`, `base`, `monad-testnet`, `base-sepolia`, and `local` (anvil) for trying things out.
 
-## Moving to a new contract or chain
+## Moving to a new contract
 
-Retire the old contract, deploy the new one, and the API copies every balance across from the ledger. The old contract stays readable as history.
+1. Deploy the new version: `pnpm chain:deploy --chain monad --contract tokens` (it becomes v2, v3…). Raise `--max-per-day` if the ledger holds more than a day's limit.
+2. Commit `deployments.json` and `dist/index.ts`, and redeploy the API. From then on nothing is written to that contract until step 3.
+3. On the admin Tokens page, press **Copy everything to v2** (asks for your password). The new contract is rebuilt from the ledger: every token and every balance, or every receipt with its number. Monad writes it within seconds; on Base, send a batch.
+4. Retire the old contract from this computer: `pnpm owner retire --yes --chain monad --contract tokens`. Its history stays readable.
