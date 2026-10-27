@@ -2,7 +2,7 @@
 
 // Store decisions: approve (go live), suspend or reopen review, and delivery area approval.
 import { revalidatePath } from "next/cache";
-import { api, errorMessage } from "@/lib/api";
+import { api, errorMessage, withPassword } from "@/lib/api";
 
 type Result = { ok: true } | { error: string };
 
@@ -18,8 +18,8 @@ async function attempt(fn: () => Promise<unknown>, id: string): Promise<Result> 
   }
 }
 
-export async function setStoreStatus(id: string, status: "pending" | "approved" | "suspended", note?: string): Promise<Result> {
-  return attempt(() => api.patch(`/admin/merchants/${id}/status`, { status, note }), id);
+export async function setStoreStatus(id: string, status: "pending" | "approved" | "suspended", password: string, note?: string): Promise<Result> {
+  return attempt(() => withPassword("PATCH", `/admin/merchants/${id}/status`, { status, note }, password), id);
 }
 
 export async function reviewZone(storeId: string, zoneId: string, review: "approved" | "declined", note?: string): Promise<Result> {

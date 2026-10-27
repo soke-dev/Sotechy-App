@@ -5,6 +5,7 @@
 import type { Bank } from "@sotechy/shared";
 import { env } from "../env";
 import { HttpError } from "../lib/errors";
+import { NIGERIAN_BANKS } from "./banks";
 
 const BASE = "https://api.flutterwave.com/v3";
 export const flutterwaveReady = () => !!env.FLUTTERWAVE_SECRET_KEY;
@@ -24,21 +25,10 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Pr
   return json.data as T;
 }
 
-const STAND_IN_BANKS: Bank[] = [
-  { code: "044", name: "Access Bank" },
-  { code: "058", name: "GTBank" },
-  { code: "011", name: "First Bank of Nigeria" },
-  { code: "033", name: "United Bank for Africa" },
-  { code: "057", name: "Zenith Bank" },
-  { code: "50211", name: "Kuda Bank" },
-  { code: "999992", name: "OPay" },
-  { code: "50515", name: "Moniepoint MFB" },
-];
-
 let banksCache: { at: number; banks: Bank[] } | null = null;
 /** Nigerian banks with their codes, A to Z (kept for a day) */
 export async function nigerianBanks(): Promise<Bank[]> {
-  if (standIn()) return STAND_IN_BANKS;
+  if (standIn()) return NIGERIAN_BANKS;
   if (banksCache && Date.now() - banksCache.at < 86_400_000) return banksCache.banks;
   const rows = await call<{ code: string; name: string }[]>("GET", "/banks/NG");
   const seen = new Set<string>();

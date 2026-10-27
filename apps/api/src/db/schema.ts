@@ -244,6 +244,7 @@ export const merchants = pgTable("merchants", {
 });
 
 export const zoneReviewEnum = pgEnum("zone_review", ["pending", "approved", "declined"]);
+export const offerStatusEnum = pgEnum("offer_status", ["waiting_store", "waiting_customer", "agreed", "declined", "expired", "used"]);
 export const payoutStageEnum = pgEnum("payout_stage", ["first", "final", "payback"]);
 export const payoutStatusEnum = pgEnum("payout_status", ["scheduled", "sending", "paid", "failed", "held", "cancelled", "owed", "settled"]);
 
@@ -366,6 +367,9 @@ export const productReviews = pgTable(
     verified: boolean().notNull().default(false),
     /** admins can hide a review */
     isPublished: boolean().notNull().default(true),
+    /** The store's public answer */
+    storeReply: text(),
+    storeRepliedAt: timestamp({ withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -788,4 +792,114 @@ export const merchantPayouts = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [unique().on(t.orderId, t.stage), index().on(t.status, t.dueAt), index().on(t.merchantId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
+// Price offers: a customer offers a price on a negotiable product, the store answers
+// ---------------------------------------------------------------------------
+export const offers = pgTable(
+  "offers",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    productId: uuid()
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    variantId: uuid()
+      .notNull()
+      .references(() => productVariants.id, { onDelete: "cascade" }),
+    customerId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: offerStatusEnum().notNull().default("waiting_store"),
+    /** The price when the offer was made */
+    listPrice: money().notNull(),
+    /** The amount currently on the table */
+    lastAmount: money().notNull(),
+    agreedPrice: money(),
+    /** An agreed price is held for the customer until then */
+    agreedUntil: timestamp({ withTimezone: true }),
+    /** The order the agreed price was used in */
+    orderId: uuid().references(() => orders.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.merchantId, t.updatedAt), index().on(t.customerId, t.updatedAt)],
+);
+
+export const offerMessages = pgTable(
+  "offer_messages",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    offerId: uuid()
+      .notNull()
+      .references(() => offers.id, { onDelete: "cascade" }),
+    /** "customer" or "store" */
+    from: text().notNull(),
+    /** "offer", "counter", "accept", "decline" */
+    kind: text().notNull(),
+    amount: money(),
+    text: text(),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.offerId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
+// Following stores, and the messages stores send their followers
+// ---------------------------------------------------------------------------
+export const storeFollows = pgTable(
+  "store_follows",
+  {
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.merchantId] }), index().on(t.merchantId)],
+);
+
+export const storeNotices = pgTable(
+  "store_notices",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    title: text().notNull(),
+    body: text().notNull(),
+    /** A product the message points to */
+    productId: uuid().references(() => products.id, { onDelete: "set null" }),
+    sentTo: integer().notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.merchantId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
+// Paid featuring: a store pays to be shown first for a while
+// ---------------------------------------------------------------------------
+export const featuredPurchases = pgTable(
+  "featured_purchases",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    months: integer().notNull(),
+    amount: money().notNull(),
+    /** "pending", "paid" or "expired" */
+    status: text().notNull().default("pending"),
+    checkoutId: text(),
+    /** Featured until this date once paid */
+    until: timestamp({ withTimezone: true }),
+    paidAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.merchantId, t.createdAt)],
 );

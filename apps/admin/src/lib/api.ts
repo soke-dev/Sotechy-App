@@ -10,6 +10,10 @@ export const api = createApiClient({
   fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
 });
 
+/** Sends to an endpoint that needs the admin's password again */
+export const withPassword = <T>(method: "POST" | "PUT" | "PATCH", path: string, body: unknown, password: string) =>
+  api.request<T>(path, { method, body: JSON.stringify(body), headers: { "x-confirm-password": password } });
+
 /** Loads an admin endpoint. Signed-out users go to /login; other errors are returned for display. */
 export async function load<T>(path: string): Promise<{ data: T | null; error: string | null }> {
   let status = 0;

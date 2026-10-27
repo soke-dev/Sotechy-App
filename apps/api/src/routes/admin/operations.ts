@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../../db/client";
 import { audit } from "../../lib/audit";
-import { MANAGERS, requireRole, type AppEnv } from "../../lib/auth";
+import { MANAGERS, requireRole, type AppEnv, requirePassword } from "../../lib/auth";
 import { badRequest, notFound } from "../../lib/errors";
 import { adjustStock, transferStock } from "../../services/inventory";
 import { cancelOrder, recordWalkInSale, updateOrderStatus, verifyPaymentManually } from "../../services/orders";
@@ -116,6 +116,7 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
   .patch(
     "/refunds/:id",
     requireRole(...MANAGERS),
+    requirePassword,
     zValidator("json", z.object({ status: z.enum(["approved", "rejected", "processed"]) })),
     async (c) => {
       const actor = c.get("user");

@@ -489,7 +489,8 @@ export interface Banner {
 }
 
 export interface PlaceOrderInput {
-  items: { variantId: string; quantity: number }[];
+  /** `offerId`: a price agreed with the store (one item) */
+  items: { variantId: string; quantity: number; offerId?: string }[];
   fulfilmentType: FulfilmentType;
   branchId: string;
   deliveryAddress?: DeliveryAddress;
@@ -518,6 +519,8 @@ export interface CartLine {
   imageUrl: string | null;
   /** null or missing: Sotechy's own stock */
   store?: CartSeller | null;
+  /** A price agreed with the store for this item (quantity stays 1) */
+  offerId?: string | null;
 }
 
 export interface Paginated<T> {
@@ -714,4 +717,27 @@ export interface MerchantApplicationInput {
   /** Set once the store has picked its ticker itself */
   tickerChosen?: boolean;
   submit?: boolean;
+}
+
+export type OfferStatus = "waiting_store" | "waiting_customer" | "agreed" | "declined" | "expired" | "used";
+
+/** A price offer and its back-and-forth */
+export interface OfferView {
+  id: string;
+  status: OfferStatus;
+  listPrice: number;
+  /** The amount on the table now */
+  lastAmount: number;
+  agreedPrice: number | null;
+  /** The agreed price is held until then */
+  agreedUntil: string | null;
+  /** How long an agreed price is held */
+  hours: number;
+  createdAt: string;
+  updatedAt: string;
+  product: { id: string; slug: string; name: string; image: string | null; variantId: string; variantName: string };
+  store: { slug: string; name: string; logoUrl: string | null };
+  /** Shown to the store only */
+  customer: { name: string; username: string } | null;
+  messages: { id: string; from: "customer" | "store"; kind: "offer" | "counter" | "accept" | "decline"; amount: number | null; text: string | null; createdAt: string }[];
 }

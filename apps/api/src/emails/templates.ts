@@ -311,3 +311,29 @@ export function staffCodeEmail(to: string, d: { name: string | null; code: strin
     reason: "You're getting this because someone signed in to your Sotechy staff account with the right password.",
   });
 }
+
+// ---------------------------------------------------------------------------
+// Admins
+// ---------------------------------------------------------------------------
+export function payoutApprovalEmail(to: string, d: { name: string | null; store: string; orderNumber: string; stage: string; amount: number; dueAt: Date }) {
+  const due = d.dueAt > new Date();
+  return build(to, `Approve ${formatNaira(d.amount)} to ${d.store}`, {
+    preheader: `${d.stage} for ${d.orderNumber}${due ? `, due ${when(d.dueAt)}` : ", due now"}.`,
+    hero: "payout",
+    eyebrow: "Sotechy admin · Payout",
+    heading: "A payout needs your approval",
+    blocks: [
+      { kind: "text", text: `Hi ${first(d.name)}, **${d.store}** is owed a payout. Nothing is sent until you approve it.` },
+      {
+        kind: "rows",
+        rows: [
+          { icon: "receipt", label: "Order", value: `${d.orderNumber} · ${d.stage}` },
+          { icon: "bank", label: "Amount", value: formatNaira(d.amount) },
+          { icon: "sparkle", label: "Due", value: due ? when(d.dueAt) : "Now" },
+        ],
+      },
+      { kind: "button", label: "Review and approve", url: "https://admin.sotechy.shop/merchant-payouts" },
+    ],
+    reason: "You're getting this because you're a Sotechy admin.",
+  });
+}

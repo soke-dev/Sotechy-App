@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../../db/client";
 import { audit } from "../../lib/audit";
-import { requireRole, type AppEnv } from "../../lib/auth";
+import { requirePassword, requireRole, type AppEnv } from "../../lib/auth";
 import { badRequest, notFound } from "../../lib/errors";
 import { provider, providerName, railBalance, railReady, railStandIn } from "../../services/payout-rail";
 import { payoutSettings, payoutsFor, sendPayout, toPayoutRow } from "../../services/payouts";
@@ -51,14 +51,15 @@ export const adminPayoutRoutes = new Hono<AppEnv>()
     });
   })
   /** Sends now, even before it's due (the admin is approving it) */
-  .post("/payouts/:id/send", ADMIN, async (c) => c.json(await sendPayout(c.req.param("id"), { actorId: c.get("user").id, force: true })))
+  .post("/payouts/:id/send", ADMIN, requirePassword, async (c) => c.json(await sendPayout(c.req.param("id"), { actorId: c.get("user").id, force: true })))
   .post("/payouts/:id/hold", ADMIN, async (c) => c.json(await move(c.req.param("id"), ["scheduled", "failed"], "held", c.get("user").id)))
-  .post("/payouts/:id/release", ADMIN, async (c) => c.json(await move(c.req.param("id"), ["held"], "scheduled", c.get("user").id)))
+  .post("/payouts/:id/release", ADMIN, requirePassword, async (c) => c.json(await move(c.req.param("id"), ["held"], "scheduled", c.get("user").id)))
   /** A payback the store has returned */
-  .post("/payouts/:id/settle", ADMIN, async (c) => c.json(await move(c.req.param("id"), ["owed"], "settled", c.get("user").id)))
+  .post("/payouts/:id/settle", ADMIN, requirePassword, async (c) => c.json(await move(c.req.param("id"), ["owed"], "settled", c.get("user").id)))
   .put(
     "/payout-settings",
     ADMIN,
+    requirePassword,
     zValidator("json", z.object({ autoSend: z.boolean(), feeRate: z.number().min(0).max(0.3), standard: plan, finalAfterHours: z.number().int().min(0).max(24 * 30), bankFeeCover: z.number().min(0).max(5_000).default(50) })),
     async (c) => {
       const value = c.req.valid("json");
@@ -70,7 +71,7 @@ export const adminPayoutRoutes = new Hono<AppEnv>()
     },
   )
   /** A store's own plan; null puts it back on the standard plan */
-  .put("/merchants/:id/payout-plan", ADMIN, zValidator("json", z.object({ plan: plan.nullable() })), async (c) => {
+  .put("/merchants/:id/payout-plan", ADMIN, requirePassword, zValidator("json", z.object({ plan: plan.nullable() })), async (c) => {
     const { plan: next } = c.req.valid("json");
     const [row] = await db.update(schema.merchants).set({ payoutPlan: next }).where(eq(schema.merchants.id, c.req.param("id"))).returning({ id: schema.merchants.id });
     if (!row) throw notFound("Store not found");

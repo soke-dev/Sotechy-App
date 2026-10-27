@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../../db/client";
 import { audit } from "../../lib/audit";
-import { hashPassword, MANAGERS, requireRole, type AppEnv } from "../../lib/auth";
+import { hashPassword, MANAGERS, requireRole, type AppEnv, requirePassword } from "../../lib/auth";
 import { notFound } from "../../lib/errors";
 import { sendEmailLater } from "../../lib/email";
 import { publicUser } from "../../lib/serialize";
@@ -348,6 +348,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
   .patch(
     "/merchants/:id/status",
     ADMIN,
+    requirePassword,
     zValidator("json", z.object({ status: z.enum(["pending", "approved", "suspended"]), note: z.string().max(500).optional() })),
     async (c) => {
       const { status, note } = c.req.valid("json");

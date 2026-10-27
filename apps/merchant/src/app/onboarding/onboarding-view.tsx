@@ -53,6 +53,24 @@ export interface OnboardingStart {
 
 type TickerCheck = { ticker: string; available: boolean; reason: string | null } | null;
 
+/** Tickers made from the store name: its first word, initials, and mixes of the two */
+function tickerIdeas(storeName: string): string[] {
+  const words = storeName.toUpperCase().replace(/&/g, " ").replace(/[^A-Z0-9 ]/g, "").split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const [first, second = ""] = words;
+  const initials = words.map((w) => w[0]).join("");
+  const ideas = [
+    first.slice(0, 6),
+    first.slice(0, 4),
+    first.slice(0, 4) + second.slice(0, 2),
+    first.slice(0, 3) + second.slice(0, 1),
+    initials.length >= 3 ? initials.slice(0, 5) : initials + first.slice(1, 4 - initials.length + 1),
+    first.slice(0, 5) + "S",
+    words.join("").slice(0, 8),
+  ];
+  return [...new Set(ideas.filter((t) => !tickerProblem(t)))].slice(0, 6);
+}
+
 export default function OnboardingView({ initialStep, start }: { initialStep?: StepId; start: OnboardingStart }) {
   const app = start.application;
   const router = useRouter();
@@ -103,6 +121,19 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
   }, [cleanTicker]);
   const tickerLocal = cleanTicker ? tickerProblem(cleanTicker) : "Choose a ticker";
   const tickerOk = !tickerLocal && tickerCheck?.ticker === cleanTicker && tickerCheck.available;
+
+  // Suggestions from the store name, keeping only the free ones
+  const [ideas, setIdeas] = useState<string[]>([]);
+  useEffect(() => {
+    if (start.tokenApproved) return;
+    let live = true;
+    Promise.all(tickerIdeas(start.storeName).map((t) => checkTicker(t))).then((rs) => {
+      if (live) setIdeas(rs.filter((r) => r?.available).map((r) => r!.ticker).slice(0, 4));
+    });
+    return () => {
+      live = false;
+    };
+  }, [start.storeName, start.tokenApproved]);
 
   /** What's still missing on each step; null when it's complete */
   const missing: Record<StepId, string | null> = {
@@ -421,6 +452,21 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                           ? (tickerLocal ?? (tickerCheck?.ticker === cleanTicker && !tickerCheck.available ? (tickerCheck.reason ?? "Taken") : "3 to 8 letters or numbers. It's fixed once Sotechy approves your store."))
                           : `3 to 8 letters or numbers, e.g. ${start.ticker}. It's fixed once Sotechy approves your store.`}
                       </p>
+                      {ideas.length > 0 && (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-semibold text-muted">Ideas from your store name:</span>
+                          {ideas.map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setTicker(t)}
+                              className={`rounded-full border px-3 py-1 font-display text-sm font-bold transition ${cleanTicker === t ? "border-ink bg-ink text-white" : "border-line bg-surface hover:border-ink"}`}
+                            >
+                              ${t}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {tickerOk && (
                         <p className="mt-3 text-sm text-ink-2">
                           Customers earn <b>1 ${cleanTicker}</b> for every ₦1 they spend with you. A {formatNaira(50_000)} order earns 50,000 ${cleanTicker}.

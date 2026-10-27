@@ -9,6 +9,7 @@ import type { AuthUser } from "../lib/auth";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { findPromotion } from "./promotions";
 import { deliveryFeeFor, getSetting, type DeliverySettings } from "./settings";
+import { agreedPriceFor, releaseOffers } from "./offers";
 import { payoutsForStatus } from "./payouts";
 import { storeDeliveryCharge } from "./store-delivery";
 
@@ -65,7 +66,7 @@ async function loadVariants(tx: Tx, ids: string[]) {
 async function priceAndHoldStock(
   tx: Tx,
   lines: { variantId: string; quantity: number }[],
-  opts: { branchId: string; mode: "reserve" | "deduct"; fulfilment: "delivery" | "pickup"; requirePublished: boolean; merchantId?: string | null },
+  opts: { branchId: string; mode: "reserve" | "deduct"; fulfilment: "delivery" | "pickup"; requirePublished: boolean; merchantId?: string | null; prices?: Map<string, number> },
 ) {
   const variants = await loadVariants(tx, lines.map((l) => l.variantId));
   let subtotal = 0;
@@ -90,14 +91,16 @@ async function priceAndHoldStock(
       await tx.update(inventory).set({ quantity: inv.quantity - line.quantity }).where(eq(inventory.id, inv.id));
     }
 
-    const lineTotal = round2(v.price * line.quantity);
+    // A price agreed with the store replaces the shop price
+    const unit = opts.prices?.get(v.id) ?? v.price;
+    const lineTotal = round2(unit * line.quantity);
     subtotal += lineTotal;
     items.push({
       variantId: v.id,
       productName: v.productName,
       variantName: v.name,
       sku: v.sku,
-      unitPrice: v.price,
+      unitPrice: unit,
       unitCost: v.costPrice,
       quantity: line.quantity,
       lineTotal,
@@ -168,6 +171,13 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
 
       const lines = normaliseLines(input.items);
       if (lines.length === 0) throw badRequest("Cart is empty");
+      // Agreed prices: each one is this customer's, still held, and for one item
+      const agreed = [];
+      for (const line of input.items.filter((i) => i.offerId)) {
+        if (input.items.filter((i) => i.variantId === line.variantId).length > 1) throw badRequest("Buy extra ones at the shop price in a separate order");
+        agreed.push(await agreedPriceFor(tx, userId, line));
+      }
+      const prices = new Map(agreed.map((o) => [o!.variantId, o!.agreedPrice!]));
 
       const { subtotal, items } = await priceAndHoldStock(tx, lines, {
         branchId: input.branchId,
@@ -175,6 +185,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
         fulfilment: input.fulfilmentType,
         requirePublished: true,
         merchantId: branch.merchantId,
+        prices,
       });
 
       // A store charges from its own delivery areas; Sotechy uses its delivery settings
@@ -220,6 +231,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
         .returning();
 
       await tx.insert(orderItems).values(items.map((i) => ({ ...i, orderId: order.id })));
+      if (agreed.length) await tx.update(schema.offers).set({ status: "used", orderId: order.id }).where(inArray(schema.offers.id, agreed.map((o) => o!.id)));
       await tx.insert(payments).values({
         orderId: order.id,
         method: input.paymentMethod,
@@ -441,6 +453,7 @@ export async function cancelOrder(actor: AuthUser, orderId: string, note?: strin
 
     if (order.stockCommitted) await returnCommittedStock(tx, order, actor.id);
     else await releaseReservedStock(tx, order);
+    if (order.status === "pending_payment" || order.status === "payment_failed") await releaseOffers(tx, orderId);
 
     await tx.update(payments).set({ status: "expired" }).where(and(eq(payments.orderId, orderId), eq(payments.status, "pending")));
 
@@ -487,6 +500,7 @@ export async function releaseExpiredReservations() {
       const [order] = await tx.select().from(orders).where(eq(orders.id, id)).for("update", { skipLocked: true });
       if (!order || order.status !== "pending_payment") return false;
       await releaseReservedStock(tx, order);
+      await releaseOffers(tx, id);
       await tx.update(payments).set({ status: "expired" }).where(and(eq(payments.orderId, id), eq(payments.status, "pending")));
       await tx.update(orders).set({ status: "cancelled", reservationExpiresAt: null }).where(eq(orders.id, id));
       await recordStatus(tx, id, "pending_payment", "cancelled", null, "Payment window expired");

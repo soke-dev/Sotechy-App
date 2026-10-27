@@ -12,6 +12,7 @@ import { StoreAvatar } from "../merchants/merchants-list";
 import type { AdminStore } from "../merchants/store-types";
 import type { AdminPayouts } from "./page";
 import { payoutAction, savePayoutSettings, setStorePlan } from "./actions";
+import { usePasswordPrompt } from "@/components/password-prompt";
 
 type Tab = "due" | "waiting" | "sending" | "failed" | "held" | "paid" | "paybacks" | "all";
 
@@ -51,10 +52,19 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
   const sum = (rows: AdminPayoutRow[]) => rows.reduce((n, p) => n + p.amount, 0);
   const owed = list.filter((p) => p.status === "owed");
 
+  const { ask, prompt } = usePasswordPrompt();
   const act = (id: string, action: "send" | "hold" | "release" | "settle") =>
     start(async () => {
       setError(null);
-      const r = await payoutAction(id, action);
+      let password = "";
+      if (action !== "hold") {
+        const p = list.find((x) => x.id === id);
+        setConfirm(null);
+        const given = await ask(action === "send" ? "Confirm this payout" : action === "release" ? "Release this payout?" : "Mark as repaid?", p ? `${formatNaira(p.amount)} · ${p.storeName} · ${p.orderNumber}` : undefined);
+        if (!given) return;
+        password = given;
+      }
+      const r = await payoutAction(id, action, password);
       if ("error" in r) setError(r.error);
       setConfirm(null);
       router.refresh();
@@ -74,13 +84,14 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
           {data.providerName} isn&apos;t connected, so nothing can be sent yet. Add {data.provider === "bachs" ? "BACHS_SECRET_KEY and BACHS_WEBHOOK_SECRET" : "FLUTTERWAVE_SECRET_KEY and FLUTTERWAVE_WEBHOOK_HASH"} to the API service.
         </p>
       )}
+      {prompt}
       {data.testMode && (
         <p className="mb-5 rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">Test mode: there&apos;s no {data.providerName} key here, so payouts are pretend and no money moves.</p>
       )}
       {error && <p className="mb-5 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
 
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard illo="wallet" tone="brand" label={`${data.providerName} balance`} value={data.balance == null ? "—" : formatNaira(data.balance)} hint={data.balance != null && data.balance < sum(due) ? "Less than what's due: top it up" : "Available for payouts"} />
+        <StatCard illo="wallet" tone="brand" label="Balance" value={data.balance == null ? "—" : formatNaira(data.balance)} hint={data.balance != null && data.balance < sum(due) ? "Less than what's due: top it up" : "Available for payouts"} />
         <StatCard illo="bank" tone="info" label="Due now" value={formatNaira(sum(due))} hint={`${due.length} payout${due.length === 1 ? "" : "s"}`} />
         <StatCard illo="bike" tone="neutral" label="Coming up" value={formatNaira(sum(groups.waiting))} hint="Final payments after delivery" />
         <StatCard illo="doc" tone="bad" label="Owed back by stores" value={formatNaira(sum(owed))} hint={groups.failed.length ? `${groups.failed.length} failed transfer${groups.failed.length === 1 ? "" : "s"}` : "No failed transfers"} />
@@ -220,26 +231,24 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
 
 function SettingsCard({ settings, provider }: { settings: PayoutSettings; provider: AdminPayouts["provider"] }) {
   const router = useRouter();
+  const { ask, prompt } = usePasswordPrompt();
   const [form, setForm] = useState(settings);
   const [saving, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const changed = JSON.stringify(form) !== JSON.stringify(settings);
   const save = () =>
     start(async () => {
-      const r = await savePayoutSettings(form);
+      const password = await ask("Save payout settings?");
+      if (!password) return;
+      const r = await savePayoutSettings(form, password);
       setMsg("error" in r ? { ok: false, text: r.error } : { ok: true, text: "Saved. New orders use it." });
       router.refresh();
     });
   return (
     <Card title="Payout settings" description="The plan for every store without its own, applied to orders accepted after you save.">
+      {prompt}
       <div className="flex flex-col gap-5">
-        <label className="flex items-start justify-between gap-4 rounded-2xl border border-line p-4">
-          <span>
-            <span className="block font-semibold">Send automatically</span>
-            <span className="block text-sm text-muted">Due payouts go out by themselves, except to accounts changed in the last day or not in the store&apos;s or owner&apos;s name. Off: you press Send.</span>
-          </span>
-          <input type="checkbox" checked={form.autoSend} onChange={(e) => setForm({ ...form, autoSend: e.target.checked })} className="mt-1 h-5 w-5 accent-[var(--color-brand)]" />
-        </label>
+        <p className="rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">Every payout waits for an admin to approve it. You get an email and a text when one is ready.</p>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-semibold text-ink-2">Sotechy&apos;s fee (%)</span>
@@ -274,6 +283,7 @@ function SettingsCard({ settings, provider }: { settings: PayoutSettings; provid
 
 function StorePlans({ stores, settings }: { stores: AdminStore[]; settings: PayoutSettings }) {
   const router = useRouter();
+  const { ask, prompt } = usePasswordPrompt();
   const [editing, setEditing] = useState<{ storeId: string; plan: PayoutPlan } | null>(null);
   const [saving, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -281,7 +291,9 @@ function StorePlans({ stores, settings }: { stores: AdminStore[]; settings: Payo
   const save = (storeId: string, plan: PayoutPlan | null) =>
     start(async () => {
       setError(null);
-      const r = await setStorePlan(storeId, plan);
+      const password = await ask(plan ? "Save this store's plan?" : "Put this store back on the standard plan?");
+      if (!password) return;
+      const r = await setStorePlan(storeId, plan, password);
       if ("error" in r) return setError(r.error);
       setEditing(null);
       router.refresh();
@@ -296,6 +308,7 @@ function StorePlans({ stores, settings }: { stores: AdminStore[]; settings: Payo
         </button>
       }
     >
+      {prompt}
       {custom.length === 0 ? (
         <p className="text-sm text-muted">Every store is on the standard plan: {describePlan(settings.standard)}.</p>
       ) : (

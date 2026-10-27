@@ -25,6 +25,12 @@ const schema = z.object({
   GEOAPIFY_API_KEY: z.string().optional(),
   /** Payouts to stores (Flutterwave v3 secret key, FLWSECK-…) and the secret hash set on its webhook */
   /** Which service pays stores */
+  /** Text messages (Termii): admin alerts such as payouts waiting for approval */
+  TERMII_API_KEY: z.string().optional(),
+  TERMII_SENDER_ID: z.string().default("Sotechy"),
+  TERMII_BASE_URL: z.string().url().default("https://v3.api.termii.com"),
+  /** Extra phone numbers for admin alerts, comma-separated (admins' own phone numbers are used too) */
+  ADMIN_ALERT_PHONES: z.string().default(""),
   PAYOUT_PROVIDER: z.enum(["bachs", "flutterwave"]).default("bachs"),
   /** Bachs API key (sk_live_… or sk_sandbox_…) and the signing secret of its webhook endpoint */
   BACHS_SECRET_KEY: z.string().optional(),

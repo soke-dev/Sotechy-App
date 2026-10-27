@@ -18,6 +18,7 @@ import { mediaRoutes } from "./routes/media";
 import { merchantRoutes } from "./routes/merchant";
 import { merchantMarketRoutes } from "./routes/merchant-market";
 import { meRoutes } from "./routes/me";
+import { offerRoutes } from "./routes/offers";
 import { orderRoutes } from "./routes/orders";
 import { paymentRoutes } from "./routes/payments";
 import { storeRoutes } from "./routes/store";
@@ -43,6 +44,7 @@ export const app = new Hono()
   .route("/auth", authRoutes)
   .route("/store", storeRoutes)
   .route("/orders", orderRoutes)
+  .route("/offers", offerRoutes)
   .route("/me", meRoutes)
   .route("/merchant", merchantRoutes)
   .route("/merchant", merchantMarketRoutes)

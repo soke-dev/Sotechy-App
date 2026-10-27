@@ -11,6 +11,7 @@ import { Card, dangerButtonClass, inputClass, Pill, primaryButtonClass, secondar
 import { reviewZone, setStoreStatus } from "../actions";
 import { StoreAvatar } from "../merchants-list";
 import { KYC, STAGE, stageOf, type AdminStoreDetail, type AdminZone } from "../store-types";
+import { usePasswordPrompt } from "@/components/password-prompt";
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -56,12 +57,25 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
     start(async () => {
       setError(null);
       const r = await fn();
-      if ("error" in r) setError(r.error);
+      if ("error" in r) setError(r.error || null);
       else {
         after?.();
         router.refresh();
       }
     });
+  // Opening, suspending or reinstating a store needs the admin's password
+  const { ask, prompt } = usePasswordPrompt();
+  const confirmStatus = async (status: "approved" | "suspended", note?: string): Promise<{ ok: true } | { error: string }> => {
+    const title = status === "suspended" ? `Suspend ${store.name}?` : store.status === "suspended" ? `Reinstate ${store.name}?` : `Approve ${store.name} and go live?`;
+    const detail =
+      status === "approved" && store.status === "pending"
+        ? `Its token $${store.ticker} is created with this ticker, and the store can start selling.`
+        : status === "suspended"
+          ? "Its storefront closes straight away and it can't take orders."
+          : "Its storefront opens again.";
+    const password = await ask(title, detail);
+    return password ? setStoreStatus(store.id, status, password, note) : { error: "" };
+  };
 
   return (
     <>
@@ -95,7 +109,7 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
             {store.status === "pending" && (
               <button
                 disabled={busy}
-                onClick={() => run(() => setStoreStatus(store.id, "approved"))}
+                onClick={() => run(() => confirmStatus("approved"))}
                 className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-40"
               >
                 <Check size={16} /> {busy ? "Saving…" : "Approve and go live"}
@@ -107,7 +121,7 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
               </button>
             )}
             {store.status === "suspended" && (
-              <button disabled={busy} onClick={() => run(() => setStoreStatus(store.id, "approved"))} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong">
+              <button disabled={busy} onClick={() => run(() => confirmStatus("approved"))} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong">
                 Reinstate store
               </button>
             )}
@@ -118,6 +132,7 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
         )}
       </section>
 
+      {prompt}
       {error && <p className="mb-4 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
 
       <ul className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-3xl border border-line bg-surface px-5 py-4">
@@ -268,7 +283,7 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
           disabled={busy || !reason.trim()}
           onClick={() =>
             run(
-              () => setStoreStatus(store.id, "suspended", reason.trim()),
+              () => confirmStatus("suspended", reason.trim()),
               () => setSuspending(false),
             )
           }

@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { AppFeatures, OrderStatus, PaymentMethodCode } from "@sotechy/shared";
 import type { ActionResult } from "@/lib/action-result";
-import { api, errorMessage, TOKEN_COOKIE, uploadImages } from "@/lib/api";
+import { api, errorMessage, TOKEN_COOKIE, uploadImages, withPassword } from "@/lib/api";
 
 type Prev = ActionResult | null;
 
@@ -210,7 +210,7 @@ export async function verifyPayment(_: Prev, f: FormData) {
 }
 
 export async function updateRefund(_: Prev, f: FormData) {
-  return run(() => api.patch(`/admin/refunds/${str(f, "id")}`, { status: str(f, "status") }), ["/payments"]);
+  return run(() => withPassword("PATCH", `/admin/refunds/${str(f, "id")}`, { status: str(f, "status") }, str(f, "password") ?? ""), ["/payments"]);
 }
 
 /** Walk-in sale from the POS screen. */

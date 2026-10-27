@@ -13,7 +13,9 @@ import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem } from "@sotechy/shared";
 import { accountNameMatch, slugify } from "../lib/identity";
 import { railBanks, railRecipient, railResolve } from "../services/payout-rail";
+import { answerOffer, storeOffers } from "../services/offers";
 import { payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
+import { answerSchema } from "./offers";
 import { cancelOrder, updateOrderStatus } from "../services/orders";
 
 type Store = typeof schema.merchants.$inferSelect;
@@ -334,6 +336,15 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     if (!row) throw notFound("File not found");
     return c.body(new Uint8Array(row.data), 200, { "Content-Type": row.contentType, "Cache-Control": "private, no-store" });
   })
+
+  // --- Price offers from customers ---
+  .get("/offers", async (c) => c.json(await storeOffers(c.get("store").id)))
+  .get("/offers/:id", async (c) => {
+    const [offer] = await storeOffers(c.get("store").id, c.req.param("id"));
+    if (!offer) throw notFound("Offer not found");
+    return c.json(offer);
+  })
+  .post("/offers/:id/answer", zValidator("json", answerSchema), async (c) => c.json(await answerOffer(c.req.param("id"), { side: "store", merchantId: c.get("store").id }, c.req.valid("json"))))
 
   /** Whether a ticker is free for this store's token */
   .get("/ticker/:ticker", async (c) => {

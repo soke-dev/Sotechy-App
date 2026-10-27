@@ -14,7 +14,7 @@ import { getSetting } from "../services/settings";
 const { orders, orderItems, payments, orderStatusHistory } = schema;
 
 export const paymentMethodSchema = z.enum(["bank_transfer", "online", "crypto", "cash", "pos_terminal"]);
-export const lineSchema = z.object({ variantId: z.uuid(), quantity: z.number().int().positive().max(100) });
+export const lineSchema = z.object({ variantId: z.uuid(), quantity: z.number().int().positive().max(100), offerId: z.uuid().optional() });
 
 const placeOrderSchema = z.object({
   items: z.array(lineSchema).min(1).max(50),

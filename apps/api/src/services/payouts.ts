@@ -8,6 +8,11 @@ import { db, schema, type Tx } from "../db/client";
 import { audit } from "../lib/audit";
 import { badRequest, HttpError, notFound } from "../lib/errors";
 import { provider, railCheck, railSend, type RailResult } from "./payout-rail";
+import { sendEmailLater } from "../lib/email";
+import { sendSmsLater } from "../lib/sms";
+import { env } from "../env";
+import { payoutApprovalEmail, payoutSentEmail } from "../emails/templates";
+import { sendPushLater } from "./push";
 import { getSetting } from "./settings";
 
 const { merchantPayouts: payouts, orders, merchants } = schema;
@@ -35,10 +40,48 @@ async function schedule(order: typeof orders.$inferSelect, stage: "first" | "fin
   const amount = stage === "first" ? split.first : split.second;
   if (amount <= 0) return;
   const dueAt = stage === "first" ? new Date() : new Date(Date.now() + settings.finalAfterHours * 3_600_000);
-  await db
+  const [created] = await db
     .insert(payouts)
     .values({ merchantId: order.merchantId!, orderId: order.id, stage, amount, fee: stage === "first" ? split.firstFee : split.secondFee, dueAt, reference: reference(order.orderNumber, stage) })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning();
+  if (created) void tellAdmins(created, order.orderNumber);
+}
+
+/** Every payout waits for an admin: they get an email and a text when one is set up */
+async function tellAdmins(p: typeof payouts.$inferSelect, orderNumber: string) {
+  const [store] = await db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, p.merchantId));
+  const admins = await db.select({ email: schema.users.email, name: schema.users.fullName, phone: schema.users.phone }).from(schema.users).where(eq(schema.users.role, "admin"));
+  const stage = p.stage === "first" ? "First payment" : "Final payment";
+  for (const a of admins) sendEmailLater(payoutApprovalEmail(a.email, { name: a.name, store: store?.name ?? "A store", orderNumber, stage, amount: p.amount, dueAt: p.dueAt }));
+  const phones = [...admins.map((a) => a.phone ?? ""), ...env.ADMIN_ALERT_PHONES.split(",").map((x) => x.trim())];
+  const due = p.dueAt > new Date() ? ` (due ${p.dueAt.toLocaleDateString("en-NG", { day: "numeric", month: "short", timeZone: "Africa/Lagos" })})` : "";
+  sendSmsLater(phones, `Sotechy: ${stage.toLowerCase()} of N${p.amount.toLocaleString("en-NG")} to ${store?.name ?? "a store"} for ${orderNumber} needs your approval${due}. admin.sotechy.shop/merchant-payouts`);
+}
+
+/** The store hears when money is on its way to its bank */
+async function tellStorePaid(p: typeof payouts.$inferSelect) {
+  const [row] = await db
+    .select({ store: merchants.name, ownerId: merchants.ownerId, email: schema.users.email, orderNumber: orders.orderNumber })
+    .from(merchants)
+    .innerJoin(orders, eq(orders.id, p.orderId))
+    .leftJoin(schema.users, eq(schema.users.id, merchants.ownerId))
+    .where(eq(merchants.id, p.merchantId));
+  if (!row) return;
+  const stage = p.stage === "first" ? "First payment" : "Final payment";
+  if (row.email) {
+    sendEmailLater(
+      payoutSentEmail(row.email, {
+        store: row.store,
+        amount: p.amount,
+        bank: p.bankName ?? "your bank",
+        account: `••••${p.accountNumber?.slice(-4) ?? ""}`,
+        reference: p.reference,
+        orders: [{ number: row.orderNumber, amount: p.amount, stage }],
+      }),
+    );
+  }
+  if (row.ownerId) sendPushLater([row.ownerId], { title: "Payout sent", body: `₦${p.amount.toLocaleString("en-NG")} for ${row.orderNumber} is on its way to your bank`, data: { url: "/payouts" } });
 }
 
 /** A cancelled or refunded order: payouts not yet sent are called off, and what was already paid is owed back */
@@ -134,6 +177,7 @@ async function applyTransfer(payoutId: string, t: Pick<RailResult, "status" | "f
       .returning();
     // Paid out for an order that was cancelled while the transfer was on its way: it's owed back
     if (p) {
+      void tellStorePaid(p);
       const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, p.orderId));
       if (order?.status === "cancelled" || order?.status === "refunded") await unwind(p.orderId);
     }
@@ -156,7 +200,7 @@ export async function transferWebhook(ref: string, providerId: string) {
   await applyTransfer(p.id, t);
 }
 
-/** Every couple of minutes: catch transfers whose webhook didn't arrive, and send due payouts when that's switched on */
+/** Every couple of minutes: catch payouts whose webhook didn't arrive */
 export async function payoutRound() {
   const stuck = await db
     .select({ id: payouts.id, provider: payouts.provider, providerId: payouts.providerId, recipientId: merchants.payoutRecipientId })
@@ -171,20 +215,7 @@ export async function payoutRound() {
       .catch((err) => console.warn("Payout check failed:", err instanceof Error ? err.message : err));
   }
 
-  const settings = await payoutSettings();
-  if (!settings.autoSend) return;
-  const due = await db
-    .select({ id: payouts.id })
-    .from(payouts)
-    .where(and(eq(payouts.status, "scheduled"), lte(payouts.dueAt, new Date()), or(eq(payouts.stage, "first"), eq(payouts.stage, "final"))))
-    .orderBy(asc(payouts.dueAt))
-    .limit(10);
-  for (const p of due) {
-    await sendPayout(p.id, { actorId: null }).catch((err) => {
-      // Waiting on an admin (new or unmatched account) isn't a failure worth shouting about
-      if (!(err instanceof HttpError && err.status === 400)) console.warn("Automatic payout failed:", err instanceof Error ? err.message : err);
-    });
-  }
+  // Nothing is sent automatically: every payout waits for an admin to approve it
 }
 
 /** A store's payouts and paybacks, newest first */

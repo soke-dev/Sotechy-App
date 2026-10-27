@@ -6,6 +6,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Bank } from "@sotechy/shared";
 import { env } from "../env";
 import { HttpError } from "../lib/errors";
+import { NIGERIAN_BANKS, readBanks } from "./banks";
 
 export const bachsReady = () => !!env.BACHS_SECRET_KEY;
 const standIn = () => !env.BACHS_SECRET_KEY && env.NODE_ENV !== "production";
@@ -38,27 +39,20 @@ async function call<T = Json>(method: "GET" | "POST", path: string, opts: { body
 /** Lists come back as { items: [...] } */
 const itemsOf = (json: unknown): Json[] => (Array.isArray(json) ? json : (((json as Json)?.items ?? (json as Json)?.data ?? []) as Json[]));
 
-const STAND_IN_BANKS: Bank[] = [
-  { code: "044", name: "Access Bank" },
-  { code: "058", name: "GTBank" },
-  { code: "011", name: "First Bank of Nigeria" },
-  { code: "033", name: "United Bank for Africa" },
-  { code: "057", name: "Zenith Bank" },
-  { code: "50211", name: "Kuda Bank" },
-  { code: "999992", name: "OPay" },
-  { code: "50515", name: "Moniepoint MFB" },
-];
-
 let banksCache: { at: number; banks: Bank[] } | null = null;
-/** Nigerian banks with their codes, A to Z (kept for a day) */
+/** Nigerian banks with their codes, A to Z (kept for a day). Bachs' list, or ours when it comes back empty. */
 export async function bachsBanks(): Promise<Bank[]> {
-  if (standIn()) return STAND_IN_BANKS;
+  if (standIn()) return NIGERIAN_BANKS;
   if (banksCache && Date.now() - banksCache.at < 86_400_000) return banksCache.banks;
-  const seen = new Set<string>();
-  const banks = itemsOf(await call("GET", "/v1/reference/banks?country=NG"))
-    .map((b) => ({ code: String(b.code ?? b.bank_code ?? ""), name: String(b.name ?? b.bank_name ?? "").trim() }))
-    .filter((b) => b.code && b.name && !seen.has(b.code) && !!seen.add(b.code))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  let banks: Bank[] = [];
+  try {
+    const json = await call("GET", "/v1/reference/banks?country=NG");
+    banks = readBanks(json);
+    if (!banks.length) console.warn("Bachs bank list came back empty:", JSON.stringify(json).slice(0, 400));
+  } catch (err) {
+    console.warn("Bachs bank list failed:", err instanceof Error ? err.message : err);
+  }
+  if (!banks.length) return NIGERIAN_BANKS;
   banksCache = { at: Date.now(), banks };
   return banks;
 }

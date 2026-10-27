@@ -53,6 +53,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
                       <option value="processed">Mark refunded</option>
                       <option value="rejected">Reject</option>
                     </select>
+                    <input type="password" name="password" required placeholder="Your password" autoComplete="current-password" className={inputClass} />
                   </ActionForm>
                 ),
             },
