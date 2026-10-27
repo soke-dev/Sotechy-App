@@ -33,9 +33,9 @@ export async function storeDeliveryCharge(
   const [store] = await tx.select({ name: schema.merchants.name }).from(schema.merchants).where(eq(schema.merchants.id, merchantId));
 
   if (input.fulfilment === "pickup") {
+    // Only approved pickup locations: one waiting for Sotechy's approval can't be used yet
     const points = areas.filter((a) => a.pickupPoint);
-    // Stores without a listed pickup point arrange collection themselves
-    if (!points.length) return { fee: 0, zoneId: null };
+    if (!points.length) throw badRequest(`${store?.name ?? "This store"} doesn't have a pickup location yet`);
     const point = points.find((a) => a.id === input.pickupZoneId);
     if (!point) throw badRequest("Choose where you'll collect your order");
     return { fee: point.pickupFee ?? 0, zoneId: point.id };

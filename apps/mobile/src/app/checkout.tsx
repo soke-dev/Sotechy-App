@@ -35,7 +35,7 @@ function Section({ step, title, children }: { step: number; title: string; child
   );
 }
 
-function FulfilmentCard({ illo, title, subtitle, active, locked, onPress }: { illo: IlloName; title: string; subtitle: string; active: boolean; locked?: boolean; onPress: () => void }) {
+function FulfilmentCard({ illo, title, subtitle, active, locked, lockedNote = "Not available for this order", onPress }: { illo: IlloName; title: string; subtitle: string; active: boolean; locked?: boolean; lockedNote?: string; onPress: () => void }) {
   return (
     <Pressable
       disabled={locked}
@@ -50,7 +50,7 @@ function FulfilmentCard({ illo, title, subtitle, active, locked, onPress }: { il
         <Txt variant="label" style={{ flex: 1 }}>{title}</Txt>
         {locked && <Ionicons name="lock-closed" size={16} color={colors.muted} />}
       </View>
-      <Txt variant="caption">{locked ? "Not available for this order" : subtitle}</Txt>
+      <Txt variant="caption">{locked ? lockedNote : subtitle}</Txt>
     </Pressable>
   );
 }
@@ -114,12 +114,20 @@ export default function CheckoutScreen() {
   // Switches from admin and each item's own rules: fall back to whichever is still allowed.
   const itemsPickup = (products.data ?? []).every((p) => p.allowPickup);
   const itemsDelivery = (products.data ?? []).every((p) => p.allowDelivery);
-  const canPickup = features.pickup && itemsPickup;
-  const canDelivery = features.delivery && itemsDelivery;
+  // A store's approved areas only: one waiting for Sotechy's approval isn't offered yet
+  const areas = sellerInfo.data?.areas ?? [];
+  const pickupPoints = areas.filter((a) => a.pickupPoint);
+  const storeLoaded = !seller || !!sellerInfo.data;
+  const storePickup = !seller || !storeLoaded || pickupPoints.length > 0;
+  const storeDelivery = !seller || !storeLoaded || areas.length > 0;
+  const canPickup = features.pickup && itemsPickup && storePickup;
+  const canDelivery = features.delivery && itemsDelivery && storeDelivery;
   const fulfilment: FulfilmentType = chosenFulfilment === "pickup" && !canPickup && canDelivery ? "delivery" : chosenFulfilment === "delivery" && !canDelivery && canPickup ? "pickup" : chosenFulfilment;
   const onlyOne = canPickup !== canDelivery && !!products.data;
   const paused = !features.ordering || (!features.delivery && !features.pickup);
-  const mixedItems = !!products.data && !canPickup && !canDelivery && !paused;
+  // Neither way works: the store's areas are still being approved, or the items want different ones
+  const noWay = !!products.data && storeLoaded && !canPickup && !canDelivery && !paused;
+  const notSetUp = !!seller && storeLoaded && areas.length === 0;
   const promoOn = features.promoCodes;
   // Deliveries go out from the main store; pickup lets the customer choose.
   const selectedBranch = seller?.branchId ?? (fulfilment === "pickup" ? branchId : null) ?? cfg.branches[0]?.id ?? null;
@@ -131,10 +139,8 @@ export default function CheckoutScreen() {
   const phoneOk = !!user?.phone || phone.replace(/\D/g, "").length >= 10;
   const addressOk = fulfilment === "pickup" ? phoneOk : !!chosen || (!user && !!(address.recipientName && address.phone && address.line1 && address.city));
   // A store charges from its own delivery areas (the API works out the same fee)
-  const areas = sellerInfo.data?.areas ?? [];
   const where = chosen ?? address;
   const sellerArea = seller && fulfilment === "delivery" ? deliveryAreaFor(areas, where.state, where.city) : null;
-  const pickupPoints = areas.filter((a) => a.pickupPoint);
   const pickupPoint = pickupPoints.find((a) => a.id === pickupZoneId) ?? pickupPoints[0] ?? null;
   // The store doesn't deliver to the address (known once its areas have loaded)
   const outOfArea = !!seller && fulfilment === "delivery" && !!sellerInfo.data && !!where.city && !sellerArea;
@@ -259,7 +265,7 @@ export default function CheckoutScreen() {
             </Txt>
           )}
           <View style={[ui.row, { gap: space.md, alignItems: "stretch" }]}>
-            {features.pickup && <FulfilmentCard illo="pin" title="Pickup location" subtitle={seller ? (pickupPoints.length ? `From ${formatNaira(Math.min(...pickupPoints.map((p) => p.pickupFee ?? 0)))}` : "Collect it yourself") : "Free · usually same day"} active={fulfilment === "pickup" && canPickup} locked={!itemsPickup} onPress={() => setFulfilment("pickup")} />}
+            {features.pickup && <FulfilmentCard illo="pin" title="Pickup location" subtitle={seller ? (pickupPoints.length ? `From ${formatNaira(Math.min(...pickupPoints.map((p) => p.pickupFee ?? 0)))}` : "Collect it yourself") : "Free · usually same day"} active={fulfilment === "pickup" && canPickup} locked={!itemsPickup || !storePickup} lockedNote={itemsPickup ? "Not available yet" : undefined} onPress={() => setFulfilment("pickup")} />}
             {features.delivery && <FulfilmentCard
               illo="bike"
               title="Delivery"
@@ -275,38 +281,48 @@ export default function CheckoutScreen() {
                     : `${formatNaira(cfg.delivery.flatFee)} · 1–2 days`
               }
               active={fulfilment === "delivery" && canDelivery}
-              locked={!itemsDelivery}
+              locked={!itemsDelivery || !storeDelivery}
+              lockedNote={itemsDelivery ? "Not available yet" : undefined}
               onPress={() => setFulfilment("delivery")}
             />}
           </View>
           {onlyOne && (
             <Txt variant="small" color={colors.ink2}>
-              {canDelivery ? "Items in this order are for delivery only." : "Items in this order are for pickup only."}
+              {canDelivery
+                ? itemsPickup
+                  ? `${seller?.name ?? "This store"} has no pickup location yet.`
+                  : "Items in this order are for delivery only."
+                : itemsDelivery
+                  ? `${seller?.name ?? "This store"} doesn't deliver yet.`
+                  : "Items in this order are for pickup only."}
             </Txt>
           )}
-          {mixedItems && (
-            <Txt variant="small" color={colors.danger}>
-              Some items are delivery only and others pickup only. Order them separately.
-            </Txt>
+          {noWay && (
+            <View style={{ flexDirection: "row", gap: space.sm, padding: space.md, borderRadius: 14, backgroundColor: colors.warningSoft }}>
+              <Ionicons name="time-outline" size={18} color={colors.warning} />
+              <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>
+                {notSetUp
+                  ? `${seller?.name ?? "This store"} is still getting its delivery areas and pickup locations approved by Sotechy. You'll be able to order soon; your cart is saved.`
+                  : !itemsPickup && !itemsDelivery
+                    ? "Some items are delivery only and others pickup only. Order them separately."
+                    : `${seller?.name ?? "This store"} can't deliver or have this collected yet. Your cart is saved; try again soon.`}
+              </Txt>
+            </View>
           )}
         </Section>
 
         <Section step={2} title={fulfilment === "pickup" ? "Pickup location" : "Delivery details"}>
           {fulfilment === "pickup" &&
             seller &&
-            (pickupPoints.length ? (
-              pickupPoints.map((p) => (
-                <OptionRow
-                  key={p.id}
-                  illo="pin"
-                  title={p.pickupPoint ?? seller.name}
-                  subtitle={`${p.state} · ${p.pickupFee ? formatNaira(p.pickupFee) : "Free"} · ${p.days}`}
-                  selected={pickupPoint?.id === p.id}
-                  onPress={() => setPickupZoneId(p.id)}
-                />
-              ))
-            ) : (
-              <OptionRow illo="pin" title={seller.name} subtitle="The store tells you where and when to collect it" selected onPress={() => {}} />
+            pickupPoints.map((p) => (
+              <OptionRow
+                key={p.id}
+                illo="pin"
+                title={p.pickupPoint ?? seller.name}
+                subtitle={`${p.state} · ${p.pickupFee ? formatNaira(p.pickupFee) : "Free"} · ${p.days}`}
+                selected={pickupPoint?.id === p.id}
+                onPress={() => setPickupZoneId(p.id)}
+              />
             ))}
           {fulfilment === "pickup" &&
             !seller &&
@@ -492,7 +508,7 @@ export default function CheckoutScreen() {
               setPayOpen(true);
             }}
             loading={submitting || checkingPromo}
-            disabled={paused || mixedItems || !products.data || !selectedBranch || cart.lines.length === 0 || !addressOk || outOfArea}
+            disabled={paused || noWay || !products.data || !storeLoaded || !selectedBranch || cart.lines.length === 0 || !addressOk || outOfArea}
           />
         </View>
       </BottomBar>

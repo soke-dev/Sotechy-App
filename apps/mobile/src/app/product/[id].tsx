@@ -39,6 +39,7 @@ import { useCart } from "@/lib/cart";
 import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+import { loadStore } from "@/lib/marketplace";
 import { sellerOf, useAddToCart } from "@/components/add-to-cart";
 
 type Tab = "overview" | "about" | "reviews";
@@ -134,6 +135,11 @@ function OverviewTab({
   pickupBranch: string | undefined;
 }) {
   const store = product.store;
+  // A store's approved delivery areas and pickup locations (ones awaiting approval aren't offered yet)
+  const storeInfo = useAsync(async () => (store ? loadStore(store.slug) : null), [store?.slug]);
+  const areas = storeInfo.data?.areas ?? [];
+  const points = areas.filter((a) => a.pickupPoint);
+  const known = !store || !!storeInfo.data;
   return (
     <View style={{ gap: space.lg }}>
       {store ? (
@@ -201,16 +207,26 @@ function OverviewTab({
       )}
 
       <View style={[ui.card, { paddingVertical: space.sm }]}>
-        {product.allowPickup && (
-          <InfoRow
-            illo="store"
-            title={pickupBranch ? `Pick up at ${pickupBranch}` : "Pickup location"}
-            subtitle={pickupBranch ? "Usually ready the same day" : "Currently unavailable"}
-          />
-        )}
-        {product.allowDelivery && <InfoRow illo="bike" title={store ? `Delivered by ${store.name}` : "Delivery in Benin City"} subtitle="Fee and timing shown at checkout" />}
+        {product.allowPickup &&
+          (store ? (
+            known && (
+              <InfoRow
+                illo="pin"
+                title={points.length ? `Pick up at ${points[0].pickupPoint}${points.length > 1 ? ` +${points.length - 1} more` : ""}` : "Pickup location"}
+                subtitle={points.length ? "Choose where at checkout" : "Not available yet"}
+              />
+            )
+          ) : (
+            <InfoRow illo="pin" title={pickupBranch ? `Pick up at ${pickupBranch}` : "Pickup location"} subtitle={pickupBranch ? "Usually ready the same day" : "Currently unavailable"} />
+          ))}
+        {product.allowDelivery &&
+          (store ? (
+            known && <InfoRow illo="bike" title={`Delivered by ${store.name}`} subtitle={areas.length ? "Fee and timing shown at checkout" : "Not available yet"} />
+          ) : (
+            <InfoRow illo="bike" title="Delivery in Benin City" subtitle="Fee and timing shown at checkout" />
+          ))}
         <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "Warranty details on request"} subtitle={product.returnPolicy ?? undefined} />
-        <InfoRow illo="wallet" title="Pay your way" subtitle="Bank transfer or the Money Moves app, and your tokens" />
+        <InfoRow illo="wallet" title="Pay your way" subtitle="Stablecoin through Money Moves, and your tokens" />
       </View>
 
     </View>
