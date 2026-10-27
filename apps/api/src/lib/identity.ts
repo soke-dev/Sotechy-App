@@ -45,6 +45,7 @@ export async function claimUsername(name: string, userId?: string, opts: { staff
  * Returns null when it isn't a valid Nigerian mobile number (10 digits after +234).
  */
 export function normaliseNgPhone(input: string): string | null {
+  if (/[^\d\s+()-]/.test(input)) return null;
   const digits = input.replace(/\D/g, "");
   if (!digits) return null;
   const local = digits.startsWith("234") ? digits.slice(3) : digits.replace(/^0/, "");
@@ -60,10 +61,30 @@ export function phoneField(value: string | null | undefined, label: string) {
   return n;
 }
 
+/** Store usernames that would clash with pages or look official */
+const RESERVED_STORES = new Set(["admin", "api", "app", "help", "support", "login", "signup", "terms", "privacy", "store", "stores", "shop", "merchant", "merchants", "www", "mail", "official"]);
+
+/**
+ * Why a store username (its link, sotechy.shop/xena-gadgets) can't be used, or null if it's fine.
+ * Lowercase letters, numbers and single hyphens, 3 to 30 long.
+ */
+export function storeHandleRule(handle: string, opts: { staff?: boolean } = {}): string | null {
+  const h = handle.trim().toLowerCase().replace(/^@/, "");
+  if (h.length < 3) return "At least 3 characters";
+  if (h.length > 30) return "30 characters at most";
+  if (!/^[a-z0-9-]+$/.test(h)) return "Only letters, numbers and hyphens";
+  if (/^-|-$/.test(h)) return "Can't start or end with a hyphen";
+  if (/--/.test(h)) return "No two hyphens in a row";
+  if (RESERVED_STORES.has(h)) return `@${h} is reserved`;
+  if (!opts.staff && OFFICIAL.test(h.replace(/-/g, ""))) return "Names with \"sotechy\" in them are kept for the Sotechy team";
+  return null;
+}
+
 /** "Xena Gadgets & Co." → "xena-gadgets-co" */
 export const slugify = (name: string) =>
   name
     .toLowerCase()
+    .replace(/['’]/g, "")
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")

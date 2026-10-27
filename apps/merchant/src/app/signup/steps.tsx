@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { FormError, PhoneField, ReferralField, UsernameField } from "@/components/account-fields";
+import { FormError, PhoneField, ReferralField, StoreHandleField } from "@/components/account-fields";
 import { GoogleButton } from "@/components/google-button";
 import { Illo } from "@/components/illustrations";
 import { btn, Field, inputClass } from "@/components/ui";
@@ -26,7 +26,6 @@ export function AccountStep({ referral }: { referral?: string }) {
         <Field label="Email" required>
           <input name="email" type="email" required autoComplete="email" className={inputClass} placeholder="you@yourstore.ng" />
         </Field>
-        <UsernameField required />
         <Field label="Password" required hint="At least 8 characters.">
           <input name="password" type="password" required minLength={8} autoComplete="new-password" className={inputClass} />
         </Field>
@@ -44,11 +43,12 @@ export function AccountStep({ referral }: { referral?: string }) {
   );
 }
 
-export function StoreStep({ firstName, needsUsername, phone, referral }: { firstName: string | null; needsUsername: boolean; phone: string | null; referral?: string }) {
+export function StoreStep({ firstName, askReferral, phone, referral }: { firstName: string | null; askReferral: boolean; phone: string | null; referral?: string }) {
   const [state, action, pending] = useActionState(openStore, null);
   const [kind, setKind] = useState<"individual" | "registered">("registered");
   const [same, setSame] = useState(true);
   const [agreed, setAgreed] = useState(false);
+  const [name, setName] = useState("");
 
   return (
     <>
@@ -56,10 +56,10 @@ export function StoreStep({ firstName, needsUsername, phone, referral }: { first
       <p className="mb-8 mt-1 text-muted">You can change these later in settings.</p>
       <form action={action} className="flex flex-col gap-5">
         <Field label="Store name" required>
-          <input name="storeName" required minLength={2} maxLength={60} className={inputClass} placeholder="e.g. Xena Gadgets" />
+          <input name="storeName" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={60} className={inputClass} placeholder="e.g. Xena Gadgets" />
         </Field>
-        {needsUsername && <UsernameField required />}
-        {needsUsername && <ReferralField defaultValue={referral} />}
+        <StoreHandleField storeName={name} />
+        {askReferral && <ReferralField defaultValue={referral} />}
         <div className="flex flex-col gap-2">
           <span className="text-sm font-semibold text-ink-2">You are selling as</span>
           <input type="hidden" name="sellerKind" value={kind} />

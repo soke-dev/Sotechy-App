@@ -27,9 +27,9 @@ export function StoreDetailsForm() {
         <Field label="Store name" required>
           <input name="name" required minLength={2} maxLength={60} defaultValue={store.name} className={inputClass} />
         </Field>
-        <Field label="Store link" hint="Customers can open your store at this address.">
+        <Field label="Store username" hint={`Customers find your store at sotechy.shop/${store.slug}. Email support@sotechy.shop to change it.`}>
           <div className="flex min-h-12 items-center rounded-2xl border border-line bg-surface-alt px-4 text-[15px] text-muted">
-            sotechy.shop/<span className="text-ink">{store.slug}</span>
+            @<span className="text-ink">{store.slug}</span>
           </div>
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -55,7 +55,7 @@ export function ProfileForm() {
         <Field label="Full name" required>
           <input name="fullName" required defaultValue={user.fullName ?? ""} autoComplete="name" className={inputClass} />
         </Field>
-        <UsernameField required defaultValue={user.username ?? ""} />
+        <UsernameField defaultValue={user.username ?? ""} />
         <div className="grid gap-4 sm:grid-cols-2">
           <PhoneField name="phone" label="Phone for calls" defaultValue={user.phone} />
           <PhoneField name="whatsappPhone" label="WhatsApp" hint="Leave empty if it's the same number." defaultValue={user.whatsappPhone} />

@@ -26,7 +26,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
     return (
       <AuthFrame>
         <Progress step={1} />
-        <StoreStep firstName={user.fullName?.split(" ")[0] ?? null} needsUsername={!user.username} phone={user.phone} referral={ref} />
+        <StoreStep firstName={user.fullName?.split(" ")[0] ?? null} askReferral={!user.referredById} phone={user.phone} referral={ref} />
       </AuthFrame>
     );
   }

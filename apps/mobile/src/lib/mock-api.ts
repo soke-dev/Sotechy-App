@@ -520,6 +520,7 @@ export const mockApi: ApiClient = {
   merchantMe: unsupported,
   openStore: unsupported,
   updateStore: unsupported,
+  checkStoreHandle: unsupported,
   startIdCheck: unsupported,
   idCheckStatus: unsupported,
 };

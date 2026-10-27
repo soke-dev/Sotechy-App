@@ -4,8 +4,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
-import { conflict, notFound } from "../lib/errors";
-import { claimUsername, phoneField, referrerFor, slugify, tickerFrom } from "../lib/identity";
+import { badRequest, conflict, notFound } from "../lib/errors";
+import { claimUsername, phoneField, referrerFor, slugify, storeHandleRule, tickerFrom } from "../lib/identity";
 import { publicUser } from "../lib/serialize";
 import { sendEmailLater } from "../lib/email";
 import { storeOpenedEmail } from "../emails/templates";
@@ -24,6 +24,16 @@ async function firstFree(base: string, column: typeof schema.merchants.slug | ty
 }
 
 const storeName = z.string().trim().min(2, "Store name is too short").max(60);
+
+/** Checks a chosen store username and that no other store has it */
+async function claimStoreHandle(raw: string) {
+  const h = raw.trim().toLowerCase().replace(/^@/, "");
+  const problem = storeHandleRule(h);
+  if (problem) throw badRequest(problem);
+  const [taken] = await db.select({ id: schema.merchants.id }).from(schema.merchants).where(eq(schema.merchants.slug, h));
+  if (taken) throw conflict(`@${h} is taken. Try another store username.`);
+  return h;
+}
 
 /** The signed-in person's own store: the merchant dashboard's view of an account */
 export const merchantRoutes = new Hono<AppEnv>()
@@ -47,6 +57,8 @@ export const merchantRoutes = new Hono<AppEnv>()
         username: z.string().max(30).optional(),
         /** Optional, for accounts made with Google that haven't entered one yet */
         referralCode: z.string().max(30).optional(),
+        /** The store's username and link (sotechy.shop/xena-gadgets); made from the name when left out */
+        slug: z.string().max(40).optional(),
       }),
     ),
     async (c) => {
@@ -59,7 +71,7 @@ export const merchantRoutes = new Hono<AppEnv>()
       const whatsapp = phoneField(input.whatsappPhone, "WhatsApp number") ?? null;
       const username = !user.username && input.username ? await claimUsername(input.username, id) : undefined;
       const referredById = !user.referredById ? await referrerFor(input.referralCode, id) : undefined;
-      const slug = await firstFree(slugify(input.name), schema.merchants.slug, "-", 40);
+      const slug = input.slug ? await claimStoreHandle(input.slug) : await firstFree(slugify(input.name), schema.merchants.slug, "-", 40);
       const ticker = await firstFree(tickerFrom(input.name), schema.merchants.ticker, "", 6);
 
       const store = await db.transaction(async (tx) => {
@@ -77,6 +89,14 @@ export const merchantRoutes = new Hono<AppEnv>()
       return c.json({ user: publicUser(fresh), store }, 201);
     },
   )
+  /** Is this store username free? (checked live while opening a store) */
+  .get("/handle/:handle", async (c) => {
+    const h = c.req.param("handle").trim().toLowerCase().replace(/^@/, "");
+    const problem = storeHandleRule(h);
+    if (problem) return c.json({ handle: h, available: false, reason: problem });
+    const [taken] = await db.select({ id: schema.merchants.id }).from(schema.merchants).where(eq(schema.merchants.slug, h));
+    return c.json({ handle: h, available: !taken, reason: taken ? `@${h} is taken` : null });
+  })
   /** Starts (or restarts) the owner's ID + liveness check; returns Didit's page to send them to */
   .post("/verification", async (c) => {
     const store = await storeOf(c.get("user").id);

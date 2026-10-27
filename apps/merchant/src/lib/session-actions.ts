@@ -47,7 +47,6 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
       email: field(form, "email"),
       password,
       fullName: [field(form, "firstName"), field(form, "lastName")].filter(Boolean).join(" "),
-      username: field(form, "username") || undefined,
       referralCode: field(form, "referralCode") || undefined,
     });
     await keepSession(res.token);
@@ -110,10 +109,10 @@ export async function openStore(_: FormState, form: FormData): Promise<FormState
   try {
     await api.openStore({
       name: field(form, "storeName"),
+      slug: field(form, "storeHandle") || undefined,
       sellerKind: field(form, "sellerKind") === "individual" ? "individual" : "registered",
       phone,
       whatsappPhone: same || sameNumber(field(form, "whatsapp"), phone) ? null : field(form, "whatsapp") || null,
-      username: field(form, "username") || undefined,
       referralCode: field(form, "referralCode") || undefined,
     });
   } catch (err) {
@@ -125,6 +124,15 @@ export async function openStore(_: FormState, form: FormData): Promise<FormState
 export async function signOut() {
   (await cookies()).delete(TOKEN_COOKIE);
   redirect("/login");
+}
+
+/** Is this store username free? */
+export async function checkStoreHandle(handle: string) {
+  try {
+    return await api.checkStoreHandle(handle);
+  } catch {
+    return null;
+  }
 }
 
 /** Is this @username free? (asked from the browser while someone types) */
@@ -154,7 +162,7 @@ export async function saveStoreDetails(_: SaveState, form: FormData): Promise<Sa
 export async function saveProfile(_: SaveState, form: FormData): Promise<SaveState> {
   const phone = field(form, "phone");
   const whatsapp = field(form, "whatsappPhone");
-  const username = field(form, "username").replace(/^@/, "").toLowerCase();
+  const username = field(form, "handle").replace(/^@/, "").toLowerCase();
   try {
     await api.updateProfile({
       fullName: field(form, "fullName"),

@@ -86,9 +86,10 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
 
     // Merchant dashboard: the signed-in account's own store
     merchantMe: () => get<MerchantSession>("/merchant/me"),
-    openStore: (input: { name: string; sellerKind: "registered" | "individual"; phone: string; whatsappPhone?: string | null; username?: string; referralCode?: string }) =>
+    openStore: (input: { name: string; slug?: string; sellerKind: "registered" | "individual"; phone: string; whatsappPhone?: string | null; username?: string; referralCode?: string }) =>
       send<MerchantSession>("POST", "/merchant/store", input),
     updateStore: (input: { name?: string; contactPhone?: string; contactWhatsapp?: string | null }) => send<MerchantStore>("PATCH", "/merchant/store", input),
+    checkStoreHandle: (handle: string) => get<{ handle: string; available: boolean; reason: string | null }>(`/merchant/handle/${encodeURIComponent(handle)}`),
     /** Starts the owner's ID + liveness check; open the returned URL */
     startIdCheck: () => send<{ url: string }>("POST", "/merchant/verification"),
     idCheckStatus: () => get<{ status: KycStatus; updatedAt: string | null; available: boolean }>("/merchant/verification"),

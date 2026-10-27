@@ -426,29 +426,45 @@ const localPart = (value: string) => {
 /** Phone number with a fixed +234 country code (only Nigeria for now). The value is stored as +234… */
 export function PhoneInput({ label, icon = "call-outline", value, onChange }: { label: string; icon?: IconName; value: string; onChange: (v: string) => void }) {
   const [focused, setFocused] = useState(false);
+  const [left, setLeft] = useState(false);
   const local = localPart(value);
+  const wrong = left && !focused && local.length > 0 && !/^[789]\d{9}$/.test(local);
   const pretty = local.replace(/^(\d{3})(\d{0,3})(\d{0,4}).*/, (_, a, b, c) => [a, b, c].filter(Boolean).join(" "));
   return (
     <View style={{ gap: 6 }}>
       <Txt variant="label" color={colors.ink2}>{label}</Txt>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 50, borderRadius: radius.md, borderWidth: 1, borderColor: focused ? colors.ink : colors.line, backgroundColor: colors.surface, paddingLeft: 10, paddingRight: 14 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 50, borderRadius: radius.md, borderWidth: 1, borderColor: wrong ? colors.danger : focused ? colors.ink : colors.line, backgroundColor: colors.surface, paddingLeft: 10, paddingRight: 14 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 8, paddingVertical: 6, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt }}>
           <Ionicons name={icon} size={15} color={colors.muted} />
           <Text style={{ fontFamily: fonts.semibold, fontSize: 15, color: colors.ink }}>+234</Text>
         </View>
         <TextInput
           value={local.length > 3 ? pretty : local}
-          onChangeText={(t) => onChange(toE164NG(t.replace(/^0/, "")))}
+          onChangeText={(t) => {
+            // Digits only, at most the 10 after +234 (a leading 0 or 234 is dropped)
+            let d = t.replace(/\D/g, "");
+            if (d.startsWith("234") && d.length > 10) d = d.slice(3);
+            d = d.replace(/^0/, "").slice(0, 10);
+            onChange(d ? `+234${d}` : "");
+          }}
           keyboardType="phone-pad"
           autoComplete="tel"
           placeholder="803 555 0142"
           placeholderTextColor={colors.faint}
           maxLength={13}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={() => {
+            setFocused(false);
+            setLeft(true);
+          }}
           style={{ flex: 1, fontFamily: fonts.body, fontSize: 15, color: colors.ink, paddingVertical: 12 }}
         />
       </View>
+      {wrong && (
+        <Txt variant="small" color={colors.danger}>
+          {local.length < 10 ? `That's ${local.length} digits. Nigerian mobile numbers have 10 after +234.` : "Nigerian mobile numbers start with 7, 8 or 9 after +234."}
+        </Txt>
+      )}
     </View>
   );
 }
