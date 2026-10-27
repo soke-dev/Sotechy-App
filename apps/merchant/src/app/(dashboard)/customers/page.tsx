@@ -7,7 +7,11 @@ import { RelTime } from "@/components/rel-time";
 import { EmptyState, PageHeader, Pill, StatCard } from "@/components/ui";
 import { Sheet } from "@/components/zone-form";
 import { formatNaira, formatTokens } from "@/lib/money";
-import { customerExtras, ORDER_STATUS, orders, orderTotal, store, type Order } from "@/lib/mock";
+import { customerExtras, ORDER_STATUS, orders, orderTotal, type Order } from "@/lib/mock";
+import { useAccount } from "@/components/account-context";
+
+/** Customers who follow the store; following comes with the marketplace backend */
+const SUBSCRIBERS = 0;
 
 interface Customer {
   name: string;
@@ -60,6 +64,7 @@ function Initials({ name, size = 44 }: { name: string; size?: number }) {
 }
 
 export default function CustomersPage() {
+  const { store } = useAccount();
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<keyof typeof SORTS>("spent");
   const [open, setOpen] = useState<Customer | null>(null);
@@ -85,7 +90,7 @@ export default function CustomersPage() {
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard accent illo="user" label="Customers" value={customers.length} hint="Ordered at least once" />
         <StatCard illo="heart" label="Came back" value={repeat} hint={`${Math.round((repeat / Math.max(1, customers.length)) * 100)}% ordered again`} />
-        <StatCard illo="chat" label="Get your updates" value={store.followers.toLocaleString()} hint="Subscribed in the app" />
+        <StatCard illo="chat" label="Get your updates" value={SUBSCRIBERS.toLocaleString()} hint="Subscribed in the app" />
         <StatCard illo="coin" label={`Hold $${store.ticker}`} value={customers.filter((c) => c.tokens > 0).length} hint="Can spend it with you" />
       </div>
 

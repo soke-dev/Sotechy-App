@@ -56,7 +56,7 @@ export default function DeliveryPage() {
             {live.length ? `You deliver to ${states.length} state${states.length === 1 ? "" : "s"}` : "No delivery areas live yet"}
           </p>
           <p className="text-sm text-white/70">
-            {live.length ? states.join(", ") : "Customers can still pick up from your shop."} {pickup.enabled && "· Shop pickup on"}
+            {live.length ? states.join(", ") : pickup.enabled ? "Customers can still pick up from your shop." : "Add an area, or switch on shop pickup below, so customers can order."} {pickup.enabled && "· Shop pickup on"}
           </p>
         </div>
         {waiting > 0 && <span className="rounded-full bg-sun px-3 py-1 text-xs font-bold text-ink">{waiting} waiting for approval</span>}

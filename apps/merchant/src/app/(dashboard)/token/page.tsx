@@ -4,7 +4,8 @@ import { Illo } from "@/components/illustrations";
 import { btn, Card, PageHeader, Pill, StatCard } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens, MAX_REVIEW_BONUS, SOTECHY_CROSS_BONUS } from "@/lib/money";
-import { store, token, tokenActivity, topHolders } from "@/lib/mock";
+import { token, tokenActivity, topHolders } from "@/lib/mock";
+import { getStoreSession } from "@/lib/api";
 
 const ACTIVITY = {
   mint: { icon: ArrowUpRight, label: "Released", tone: "bg-good-soft text-good" },
@@ -14,7 +15,8 @@ const ACTIVITY = {
   transfer: { icon: ArrowLeftRight, label: "Transfer", tone: "bg-surface-alt text-ink-2" },
 } as const;
 
-export default function TokenPage() {
+export default async function TokenPage() {
+  const { store } = await getStoreSession();
   const supply = [
     { label: "With customers", value: token.circulating, color: "bg-brand" },
     { label: "Pending release", value: token.pending, color: "bg-sun" },
@@ -33,16 +35,22 @@ export default function TokenPage() {
           <Illo name="coin" size={120} />
         </div>
         <div className="relative max-w-lg">
-          <p className="text-sm font-semibold uppercase tracking-widest text-sun">{token.name}</p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-sun">{store.name} Token</p>
           <p className="font-display mt-1 text-5xl font-extrabold">${t}</p>
           <p className="mt-3 text-white/75">
             1 ${t} = <b className="text-white">₦{token.storeValue.toFixed(5)}</b> to spend at {store.name}
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
-            <span className="rounded-full bg-white/10 px-3 py-1.5 font-mono">{token.contract}</span>
-            <a href={token.explorer} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-white/15">
-              View on Monad explorer <ExternalLink size={14} />
-            </a>
+            {token.contract && token.explorer ? (
+              <>
+                <span className="rounded-full bg-white/10 px-3 py-1.5 font-mono">{token.contract}</span>
+                <a href={token.explorer} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-white/15">
+                  View on Monad explorer <ExternalLink size={14} />
+                </a>
+              </>
+            ) : (
+              <span className="rounded-full bg-white/10 px-3 py-1.5">Created on Monad when Sotechy approves your store</span>
+            )}
           </div>
         </div>
       </section>
@@ -116,7 +124,7 @@ export default function TokenPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold">{formatTokens(a.amount)}</p>
-                    <a href={token.explorer} target="_blank" rel="noreferrer" className="text-xs font-semibold text-brand-strong hover:underline">Explorer</a>
+                    {token.explorer && <a href={token.explorer} target="_blank" rel="noreferrer" className="text-xs font-semibold text-brand-strong hover:underline">Explorer</a>}
                   </div>
                 </li>
               );
@@ -155,7 +163,7 @@ export default function TokenPage() {
           <Card title="Name and ticker">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="font-semibold">{token.name}</p>
+                <p className="font-semibold">{store.name} Token</p>
                 <p className="text-sm text-muted">${t}</p>
               </div>
               <Pill tone="neutral" dot={false}>

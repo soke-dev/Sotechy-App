@@ -3,7 +3,7 @@ import { Illo } from "@/components/illustrations";
 import { btn, Card, PageHeader, StatCard } from "@/components/ui";
 import { PayoutHistory } from "@/components/payout-history";
 import { formatNaira } from "@/lib/money";
-import { bank, orderMoney, orders, PAYOUT_MATCH_LABEL, payoutNameMatch, payouts } from "@/lib/mock";
+import { bank, orderMoney, orders, payouts } from "@/lib/mock";
 
 export default function PayoutsPage() {
   const paid = payouts.filter((p) => p.status === "paid").reduce((n, p) => n + p.amount, 0);
@@ -25,23 +25,27 @@ export default function PayoutsPage() {
 
         <div className="flex flex-col gap-6">
           <Card title="Paid into">
-            <div className="flex items-center gap-4 rounded-2xl bg-surface-alt p-4">
-              <Illo name="bank" size={44} />
-              <div>
-                <p className="font-semibold">{bank.accountName}</p>
-                <p className="text-sm text-muted">{bank.bankName} · ••••{bank.accountNumber.slice(-4)}</p>
+            {bank ? (
+              <div className="flex items-center gap-4 rounded-2xl bg-surface-alt p-4">
+                <Illo name="bank" size={44} />
+                <div>
+                  <p className="font-semibold">{bank.accountName}</p>
+                  <p className="text-sm text-muted">{bank.bankName} · ••••{bank.accountNumber.slice(-4)}</p>
+                </div>
               </div>
-            </div>
-            <p className="mt-3 flex items-center gap-2 text-sm text-good">
-              <span className="h-2 w-2 rounded-full bg-good" /> {PAYOUT_MATCH_LABEL[payoutNameMatch(bank.accountName) ?? "business"]}
-            </p>
-            <Link href="/settings?tab=payout" className={`${btn.outline} mt-4 w-full`}>Change payout account</Link>
+            ) : (
+              <div className="flex items-center gap-4 rounded-2xl bg-surface-alt p-4">
+                <Illo name="bank" size={44} />
+                <p className="text-sm text-muted">No payout account yet. Add the bank account your money should go to.</p>
+              </div>
+            )}
+            <Link href="/settings?tab=payout" className={`${bank ? btn.outline : btn.dark} mt-4 w-full`}>{bank ? "Change payout account" : "Add payout account"}</Link>
           </Card>
 
           <Card title="How you're paid">
             <ol className="flex flex-col gap-4">
               {[
-                { illo: "box" as const, title: "You accept the order", body: "First 50% of your share is sent straight away." },
+                { illo: "box" as const, title: "You accept the order", body: "The first part of your share is sent straight away." },
                 { illo: "bike" as const, title: "You deliver it", body: "Mark it delivered when the customer has it." },
                 { illo: "heart" as const, title: "Customer confirms", body: "The second 50% is sent. If they don't respond, Sotechy reviews and confirms." },
               ].map((s, i) => (

@@ -2,26 +2,31 @@
 
 import { AlertTriangle, Check, ExternalLink, ImagePlus } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { useAccount } from "@/components/account-context";
 import { StorefrontView, type StorefrontLook } from "@/components/storefront-view";
 import { btn, Card, Field, inputClass, PageHeader } from "@/components/ui";
-import { products, store } from "@/lib/mock";
+import type { Product } from "@/lib/mock";
 import { THEME_PRESETS, themeWarnings, withAccent } from "@/lib/themes";
 
+/** Products come with the marketplace backend; until then the store has none */
+const products: Product[] = [];
+
 export default function StorefrontPage() {
-  const [presetId, setPresetId] = useState(store.themeId);
+  const { user, store } = useAccount();
+  const [presetId, setPresetId] = useState("sotechy");
   const [accent, setAccent] = useState<string | null>(null);
   const [look, setLook] = useState<Omit<StorefrontLook, "theme">>({
     header: "cover",
     layout: "grid",
     name: store.name,
-    tagline: store.tagline,
-    announcement: "Free delivery in Benin City on orders over ₦100,000",
-    logo: store.logo,
-    cover: store.cover,
+    tagline: "",
+    announcement: "",
+    logo: user.avatarUrl ?? null,
+    cover: null,
     ticker: store.ticker,
-    rating: store.rating,
-    followers: store.followers,
+    rating: null,
+    followers: 0,
   });
   const [saved, setSaved] = useState(false);
   const preset = THEME_PRESETS.find((p) => p.id === presetId) ?? THEME_PRESETS[0];
@@ -104,24 +109,34 @@ export default function StorefrontPage() {
               <Field label="Logo" hint="Square, PNG with a clear background works best.">
                 <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-line p-3 hover:border-brand">
                   <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl" style={{ background: theme.accent }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={look.logo} alt="" className="h-11 w-11 object-contain" />
+                    {look.logo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={look.logo} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+                    ) : (
+                      <ImagePlus size={20} style={{ color: theme.onAccent }} />
+                    )}
                   </span>
-                  <span className="flex items-center gap-1.5 text-sm font-semibold text-ink-2"><ImagePlus size={16} /> Change logo</span>
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-ink-2"><ImagePlus size={16} /> {look.logo ? "Change logo" : "Add a logo"}</span>
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => upload("logo")(e.target.files)} />
                 </label>
               </Field>
               <Field label="Cover photo" hint="Wide photo of your shop or products.">
                 <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-line p-3 hover:border-brand">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={look.cover} alt="" className="h-14 w-20 rounded-xl object-cover" />
-                  <span className="flex items-center gap-1.5 text-sm font-semibold text-ink-2"><ImagePlus size={16} /> Change cover</span>
+                  {look.cover ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={look.cover} alt="" className="h-14 w-20 rounded-xl object-cover" />
+                  ) : (
+                    <span className="flex h-14 w-20 items-center justify-center rounded-xl bg-surface-alt text-muted">
+                      <ImagePlus size={20} />
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-ink-2"><ImagePlus size={16} /> {look.cover ? "Change cover" : "Add a cover"}</span>
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => upload("cover")(e.target.files)} />
                 </label>
               </Field>
               <div className="sm:col-span-2">
                 <Field label="Tagline">
-                  <input value={look.tagline} maxLength={90} onChange={(e) => set({ tagline: e.target.value })} className={inputClass} />
+                  <input value={look.tagline} maxLength={90} onChange={(e) => set({ tagline: e.target.value })} className={inputClass} placeholder="e.g. Phones and gadgets, delivered across Benin City" />
                 </Field>
               </div>
               <div className="sm:col-span-2">
@@ -147,11 +162,9 @@ export default function StorefrontPage() {
         {/* Live phone preview */}
         <div className="lg:sticky lg:top-8 lg:self-start">
           <p className="mb-3 text-center text-sm font-semibold text-muted">Live preview</p>
-          <div className="mx-auto w-[340px] rounded-[46px] bg-panel p-3 shadow-[0_24px_60px_rgba(23,18,14,0.25)]">
-            <div className="h-[640px] overflow-y-auto overflow-x-hidden rounded-[36px]" style={{ background: theme.background }}>
-              <StorefrontView look={{ ...look, theme }} products={products} compact />
-            </div>
-          </div>
+          <Phone background={theme.background} statusInk={theme.onHero}>
+            <StorefrontView look={{ ...look, theme }} products={products} compact />
+          </Phone>
         </div>
       </div>
     </>
@@ -160,12 +173,57 @@ export default function StorefrontPage() {
 
 function Segment<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: [T, string][] }) {
   return (
-    <div className="flex rounded-full bg-surface-alt p-1">
+    <div className="grid auto-cols-fr grid-flow-col gap-1 rounded-full bg-surface-alt p-1">
       {options.map(([v, label]) => (
-        <button key={v} type="button" onClick={() => onChange(v)} className={`flex-1 rounded-full py-2.5 text-sm font-semibold ${value === v ? "bg-surface shadow-sm" : "text-muted"}`}>
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          className={`whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition ${value === v ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}
+        >
           {label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** A modern phone: thin bezel, Dynamic Island, status bar, side buttons, home bar. Scrolls without a scrollbar. */
+function Phone({ background, statusInk, children }: { background: string; statusInk: string; children: ReactNode }) {
+  // The status bar sits over the store's header, so it takes the header's text colour
+  const ink = statusInk;
+  return (
+    <div className="relative mx-auto w-[330px]">
+      {/* Side buttons */}
+      <span className="absolute -left-[3px] top-[118px] h-8 w-[3px] rounded-l bg-[#2b2520]" />
+      <span className="absolute -left-[3px] top-[166px] h-14 w-[3px] rounded-l bg-[#2b2520]" />
+      <span className="absolute -left-[3px] top-[230px] h-14 w-[3px] rounded-l bg-[#2b2520]" />
+      <span className="absolute -right-[3px] top-[190px] h-20 w-[3px] rounded-r bg-[#2b2520]" />
+      <div className="rounded-[54px] bg-[#17120e] p-[9px] shadow-[0_30px_70px_-20px_rgba(23,18,14,0.45),inset_0_0_0_1.5px_rgba(255,255,255,0.08)]">
+        <div className="relative h-[660px] overflow-hidden rounded-[46px]" style={{ background }}>
+          {/* Status bar and Dynamic Island */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-12 items-center justify-between px-7 text-[13px] font-semibold" style={{ color: ink }}>
+            <span>9:41</span>
+            <span className="absolute left-1/2 top-[11px] h-[26px] w-[92px] -translate-x-1/2 rounded-full bg-black" />
+            <span className="flex items-center gap-1.5">
+              <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor" aria-hidden>
+                <rect x="0" y="7" width="3" height="4" rx="1" />
+                <rect x="4.5" y="5" width="3" height="6" rx="1" />
+                <rect x="9" y="2.5" width="3" height="8.5" rx="1" />
+                <rect x="13.5" y="0" width="3" height="11" rx="1" />
+              </svg>
+              <svg width="25" height="12" viewBox="0 0 25 12" fill="none" aria-hidden>
+                <rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="currentColor" opacity="0.4" />
+                <rect x="2" y="2" width="16" height="8" rx="2" fill="currentColor" />
+                <rect x="23" y="4" width="1.5" height="4" rx="0.75" fill="currentColor" opacity="0.4" />
+              </svg>
+            </span>
+          </div>
+          <div className="no-scrollbar h-full overflow-y-auto overflow-x-hidden overscroll-contain">{children}</div>
+          {/* Home bar */}
+          <span className="pointer-events-none absolute bottom-2 left-1/2 h-[5px] w-32 -translate-x-1/2 rounded-full bg-black/40" />
+        </div>
+      </div>
     </div>
   );
 }

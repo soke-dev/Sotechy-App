@@ -4,7 +4,7 @@ import { Check, Lock } from "lucide-react";
 import { use, useState } from "react";
 import { btn, Card, Field, inputClass, PageHeader, Tabs } from "@/components/ui";
 import { useAccount } from "@/components/account-context";
-import { bank, PAYOUT_MATCH_LABEL, payoutNameMatch } from "@/lib/mock";
+import { bank } from "@/lib/mock";
 import { ProfileForm, StoreDetailsForm } from "./account-forms";
 
 const BANKS = ["Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank", "Opay", "Moniepoint", "Kuda", "PalmPay", "Wema Bank"];
@@ -50,7 +50,7 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
   const [notify, setNotify] = useState({ newOrderSms: true, whatsapp: true, payouts: true, reviews: true, weekly: false });
   const [waNumber, setWaNumber] = useState(store.contactWhatsapp ?? store.contactPhone ?? "");
   const [waTest, setWaTest] = useState(false);
-  const [accountNumber, setAccountNumber] = useState(bank.accountNumber);
+  const [accountNumber, setAccountNumber] = useState(bank?.accountNumber ?? "");
   const resolved = accountNumber.length === 10;
 
   return (
@@ -72,7 +72,10 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
           >
             <div id="payout" className="flex flex-col gap-4">
               <Field label="Bank">
-                <select defaultValue={bank.bankName} className={inputClass}>
+                <select defaultValue={bank?.bankName ?? ""} className={inputClass}>
+                  <option value="" disabled>
+                    Choose your bank
+                  </option>
                   {BANKS.map((b) => (
                     <option key={b}>{b}</option>
                   ))}
@@ -87,14 +90,9 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
                 />
               </Field>
               {resolved && (
-                <div className="flex items-center gap-3 rounded-2xl bg-good-soft px-4 py-3 text-sm">
-                  <Check size={18} className="text-good" />
-                  <span>
-                    <b>{bank.accountName}</b>
-                    <br />
-                    <span className="text-good">{PAYOUT_MATCH_LABEL[payoutNameMatch(bank.accountName) ?? "business"]}</span>
-                  </span>
-                </div>
+                <p className="rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">
+                  Sotechy checks the name on this account matches your business or your ID before your first payout.
+                </p>
               )}
               <button disabled={!resolved} className={btn.dark}>
                 Save payout account

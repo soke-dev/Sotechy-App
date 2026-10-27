@@ -6,7 +6,8 @@ import { Illo } from "@/components/illustrations";
 import { btn, Card, Field, inputClass, PageHeader } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens, PLATFORM_FEE, SOTECHY_CROSS_BONUS } from "@/lib/money";
-import { store } from "@/lib/mock";
+import { useAccount } from "@/components/account-context";
+
 
 // Demo directory of Sotechy customers the cashier can look up
 const people = [
@@ -21,6 +22,7 @@ const recent = [
 ];
 
 export default function WalkInPage() {
+  const { store } = useAccount();
   const [query, setQuery] = useState("");
   const [amount, setAmount] = useState(0);
   const [note, setNote] = useState("");

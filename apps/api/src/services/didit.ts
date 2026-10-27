@@ -19,7 +19,13 @@ async function didit<T>(path: string, init?: RequestInit): Promise<T> {
   if (!diditConfigured()) throw new HttpError(503, "ID checks aren't set up yet");
   const res = await fetch(`${BASE}${path}`, { ...init, headers: { "Content-Type": "application/json", "x-api-key": env.DIDIT_API_KEY!, ...init?.headers } });
   if (!res.ok) {
-    console.error(`Didit ${path} → ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const body = (await res.text()).slice(0, 300);
+    if (/credit/i.test(body)) {
+      // Sotechy's Didit account needs topping up (business.didit.me); the merchant can't fix this
+      console.error(`DIDIT OUT OF CREDITS: top up at https://business.didit.me (${path} → ${res.status})`);
+      throw new HttpError(503, "ID checks are paused on our side for a moment. Please try again later; our team has been told.");
+    }
+    console.error(`Didit ${path} → ${res.status}: ${body}`);
     throw new HttpError(502, "The ID check service didn't answer. Please try again in a minute.");
   }
   return (await res.json()) as T;

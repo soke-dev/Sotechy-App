@@ -4,7 +4,11 @@ import { Bell, Check, Send } from "lucide-react";
 import { useState } from "react";
 import { RelTime } from "@/components/rel-time";
 import { btn, Card, Field, inputClass, PageHeader, Pill, StatCard } from "@/components/ui";
-import { products, sentNotices, store } from "@/lib/mock";
+import { products, sentNotices } from "@/lib/mock";
+import { useAccount } from "@/components/account-context";
+
+/** Customers who follow the store; following comes with the marketplace backend */
+const SUBSCRIBERS = 0;
 
 const TITLE_MAX = 50;
 const BODY_MAX = 160;
@@ -13,13 +17,18 @@ const sentThisWeek = (iso: string) => Date.now() - new Date(iso).getTime() < 7 *
 
 /** How the message looks when it pops up on a subscriber's phone */
 function PhonePop({ title, body }: { title: string; body: string }) {
+  const { store, user } = useAccount();
   return (
     <div className="rounded-[32px] bg-panel p-3">
-      <div className="rounded-[24px] bg-[url('/demo/store-inside.jpg')] bg-cover bg-center p-3 pb-16">
+      <div className="rounded-[24px] bg-gradient-to-br from-[#3a2a1c] via-[#20180f] to-[#100c08] p-3 pb-16">
         <div className="flex gap-3 rounded-2xl bg-white/95 p-3 text-[#17120e] shadow-lg">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={store.logo} alt="" className="h-[80%] w-[80%] object-contain" />
+            {user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.avatarUrl} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-sm font-extrabold text-white">{store.name.slice(0, 2).toUpperCase()}</span>
+            )}
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[11px] font-semibold text-[#7f756c]">{store.name} · now</span>
@@ -48,7 +57,7 @@ export default function NotificationsPage() {
       <PageHeader illo="chat" title="Notifications" description="Send deals and news to people who subscribed to your store in the Sotechy app. Only subscribers get them, as a pop-up and in their inbox." />
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
-        <StatCard accent illo="chat" label="Subscribers" value={store.followers.toLocaleString()} hint="Will get your message" />
+        <StatCard accent illo="chat" label="Subscribers" value={SUBSCRIBERS.toLocaleString()} hint="Will get your message" />
         <StatCard illo="sparkle" label="Opened" value={`${Math.round(opens * 100)}%`} hint="Of your last messages" />
         <StatCard illo="receipt" label="Left this week" value={`${left} of ${PER_WEEK}`} hint="So subscribers don't switch you off" />
       </div>
@@ -60,7 +69,7 @@ export default function NotificationsPage() {
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-good-soft">
                 <Check size={26} className="text-good" />
               </span>
-              <p className="font-display text-xl font-bold">Sent to {store.followers.toLocaleString()} subscribers</p>
+              <p className="font-display text-xl font-bold">Sent to {SUBSCRIBERS.toLocaleString()} subscribers</p>
               <p className="text-sm text-muted">It pops up on their phones now and stays in their Notifications inbox.</p>
               <button onClick={() => setDone(false)} className={btn.outline}>Write another</button>
             </div>
@@ -88,7 +97,7 @@ export default function NotificationsPage() {
               <button
                 disabled={!ready}
                 onClick={() => {
-                  setSent([{ id: `s${Date.now()}`, title: title.trim(), body: body.trim(), at: new Date().toISOString(), sentTo: store.followers, opened: 0, link }, ...sent]);
+                  setSent([{ id: `s${Date.now()}`, title: title.trim(), body: body.trim(), at: new Date().toISOString(), sentTo: SUBSCRIBERS, opened: 0, link }, ...sent]);
                   setTitle("");
                   setBody("");
                   setLink("");
@@ -96,7 +105,7 @@ export default function NotificationsPage() {
                 }}
                 className={btn.primary}
               >
-                <Send size={16} /> Send to {store.followers.toLocaleString()} subscribers
+                <Send size={16} /> Send to {SUBSCRIBERS.toLocaleString()} subscribers
               </button>
               {left === 0 && <p className="text-xs text-warn">You&apos;ve sent {PER_WEEK} this week. You can send again next week.</p>}
               <p className="text-xs text-muted">Sotechy checks messages for spam. Order updates are sent separately and don&apos;t count.</p>

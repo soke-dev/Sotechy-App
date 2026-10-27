@@ -11,7 +11,8 @@ import { Sheet, ZoneForm, ZonePrices } from "./zone-form";
 import { formatNaira, formatTokens, SOTECHY_CROSS_BONUS } from "@/lib/money";
 import { isStandardCategory } from "@/lib/categories";
 import { hintsFor } from "@/lib/category-hints";
-import { deliveryZones, OFFER_HOURS, pickup as storePickup, products, store, zoneLabel, type DeliveryZone, type OfferHours, type Product } from "@/lib/mock";
+import { deliveryZones, OFFER_HOURS, pickup as storePickup, products, zoneLabel, type DeliveryZone, type OfferHours, type Product } from "@/lib/mock";
+import { useAccount } from "@/components/account-context";
 
 // Categories this store made up itself under "Other", offered first next time
 const OWN_CATEGORIES = [...new Set(products.map((p) => p.category).filter((c) => !isStandardCategory(c)))];
@@ -33,6 +34,7 @@ function Review({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export function ProductForm({ product }: { product?: Product }) {
+  const { store } = useAccount();
   const [name, setName] = useState(product?.name ?? "");
   const [category, setCategory] = useState(product?.category ?? "");
   const [price, setPrice] = useState(product?.price ?? 0);

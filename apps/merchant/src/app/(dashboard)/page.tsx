@@ -5,8 +5,7 @@ import { btn, Card, Pill, ProductThumb, StatCard } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens } from "@/lib/money";
 import { getStoreSession } from "@/lib/api";
-// Orders, sales and ratings are still sample data until the marketplace backend lands
-import { store as sample, offerThreads, ORDER_STATUS, orderMoney, orders, orderTotal, products, salesByDay, token } from "@/lib/mock";
+import { offerThreads, ORDER_STATUS, orderMoney, orders, orderTotal, products, salesByDay, token } from "@/lib/mock";
 
 export default async function HomePage() {
   const { user, store } = await getStoreSession();
@@ -97,13 +96,20 @@ export default async function HomePage() {
 
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard accent illo="wallet" label="Sales, last 14 days" value={formatNaira(sales14)} hint={`${orders.filter((o) => o.status === "completed").length} completed orders`} />
-        <StatCard illo="bank" label="Second halves on the way" value={formatNaira(owedSecondHalf)} hint={`${active.length} orders in progress`} />
+        <StatCard illo="bank" label="Owed to you" value={formatNaira(owedSecondHalf)} hint={`From ${active.length} order${active.length === 1 ? "" : "s"} in progress`} />
         <StatCard illo="coin" label={`$${store.ticker} with customers`} value={formatTokens(token.circulating)} hint={`${token.holders} holders`} />
-        <StatCard illo="heart" label="Store rating" value={`${sample.rating} ★`} hint={`${sample.followers.toLocaleString()} subscribers`} />
+        <StatCard illo="heart" label="Store rating" value="New" hint="Ratings appear after your first reviews" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <Card title="Sales" description="Last 14 days, before Sotechy's 2% fee">
+          {maxDay === 0 ? (
+            <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-2xl bg-surface-alt text-center">
+              <Illo name="receipt" size={36} />
+              <p className="font-semibold">No sales yet</p>
+              <p className="max-w-xs text-sm text-muted">Your daily sales show here once orders start coming in.</p>
+            </div>
+          ) : (
           <div className="flex h-56 items-end gap-1.5 sm:gap-2.5">
             {salesByDay.map((d, i) => (
               <div key={d.day} className="group flex h-full flex-1 flex-col items-center justify-end gap-2">
@@ -116,6 +122,7 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
+          )}
         </Card>
 
         <Card title={`Your $${store.ticker} token`} actions={<Link href="/token" className="text-sm font-semibold text-brand-strong hover:underline">Open</Link>}>
@@ -144,6 +151,7 @@ export default async function HomePage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card title="Orders in progress" actions={<Link href="/orders" className="text-sm font-semibold text-brand-strong hover:underline">All orders</Link>}>
+          {!active.length && <p className="text-sm text-muted">No orders in progress. Orders you accept show here until they&apos;re delivered.</p>}
           <ul className="flex flex-col divide-y divide-line">
             {active.map((o) => (
               <li key={o.id}>

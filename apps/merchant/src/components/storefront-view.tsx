@@ -15,12 +15,24 @@ export interface StorefrontLook {
   name: string;
   tagline: string;
   announcement: string;
-  logo: string;
-  cover: string;
+  /** Store logo (or the owner's picture); initials when there's none */
+  logo: string | null;
+  /** Without one, the header uses the theme's colour band */
+  cover: string | null;
   ticker: string;
-  rating: number;
+  /** null until the first reviews come in */
+  rating: number | null;
   followers: number;
 }
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "S";
 
 export function StorefrontView({ look, products, compact = false }: { look: StorefrontLook; products: Product[]; compact?: boolean }) {
   const t = look.theme;
@@ -30,27 +42,40 @@ export function StorefrontView({ look, products, compact = false }: { look: Stor
   const categories = Object.keys(counts).sort((a, b) => counts[b] - counts[a] || a.localeCompare(b));
   const [category, setCategory] = useState("All");
   const shown = category === "All" ? live : live.filter((p) => p.category === category);
+  const cover = look.header === "cover" && look.cover;
   return (
     <div style={{ background: t.background, color: t.text }} className="min-h-full">
       {/* Header */}
       <div className="relative" style={{ background: t.hero, color: t.onHero }}>
-        {look.header === "cover" && (
+        {cover && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={look.cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.65))" }} />
           </>
         )}
-        <div className={`relative ${compact ? "px-4 pb-5 pt-10" : "mx-auto max-w-5xl px-6 pb-10 pt-20"}`} style={look.header === "cover" ? { color: "#fff" } : undefined}>
+        <div className={`relative ${compact ? "px-4 pb-5 pt-10" : "mx-auto max-w-5xl px-6 pb-10 pt-20"}`} style={cover ? { color: "#fff" } : undefined}>
           <div className="flex items-end gap-3">
             <span className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 ${compact ? "h-16 w-16" : "h-24 w-24"}`} style={{ background: t.accent, borderColor: t.background }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={look.logo} alt="" className="h-[80%] w-[80%] object-contain" />
+              {look.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={look.logo} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+              ) : (
+                <span className={`font-display font-extrabold ${compact ? "text-xl" : "text-3xl"}`} style={{ color: t.onAccent }}>
+                  {initials(look.name)}
+                </span>
+              )}
             </span>
             <div className="min-w-0 pb-1">
               <p className={`font-display font-extrabold leading-tight ${compact ? "text-xl" : "text-4xl"}`}>{look.name}</p>
               <p className={`flex items-center gap-1.5 opacity-80 ${compact ? "text-[11px]" : "text-sm"}`}>
-                <Star size={compact ? 11 : 14} fill="currentColor" /> {look.rating} · {look.followers.toLocaleString()} subscribers
+                {look.rating != null ? (
+                  <>
+                    <Star size={compact ? 11 : 14} fill="currentColor" /> {look.rating} · {look.followers.toLocaleString()} subscribers
+                  </>
+                ) : (
+                  <>New store{look.followers ? ` · ${look.followers.toLocaleString()} subscribers` : ""}</>
+                )}
               </p>
             </div>
           </div>
@@ -89,6 +114,14 @@ export function StorefrontView({ look, products, compact = false }: { look: Stor
                 {c}
               </button>
             ))}
+          </div>
+        )}
+        {!shown.length && (
+          <div className={`rounded-2xl text-center ${compact ? "px-4 py-8" : "px-6 py-14"}`} style={{ background: t.surface, color: t.muted }}>
+            <p className={`font-semibold ${compact ? "text-sm" : "text-lg"}`} style={{ color: t.text }}>
+              Your products will show here
+            </p>
+            <p className={compact ? "mt-1 text-[11px]" : "mt-1 text-sm"}>Add products once your store is verified.</p>
           </div>
         )}
         <ul className={`grid gap-2.5 ${look.layout === "large" ? "grid-cols-1" : compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"}`}>

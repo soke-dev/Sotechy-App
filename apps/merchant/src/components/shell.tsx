@@ -19,7 +19,7 @@ interface NavItem {
 export interface ShellStore {
   name: string;
   ticker: string;
-  /** Until a logo is uploaded the card shows the store's initials */
+  /** The store's logo, or the owner's profile picture; initials when there's neither */
   logo?: string | null;
   verified: boolean;
   /** Paused by Sotechy */
@@ -51,6 +51,12 @@ const items = (s: ShellStore): NavItem[][] => [
   ],
 ];
 
+export interface ShellUser {
+  name: string;
+  role: string;
+  avatar?: string | null;
+}
+
 const initials = (name: string) =>
   name
     .split(/\s+/)
@@ -68,7 +74,7 @@ function StoreCard({ store }: { store: ShellStore }) {
       <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand">
         {store.logo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={store.logo} alt="" className="h-9 w-9 object-contain" />
+          <img src={store.logo} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
         ) : (
           <span className="font-display text-base font-extrabold">{initials(store.name)}</span>
         )}
@@ -113,7 +119,7 @@ function NavList({ store, onNavigate }: { store: ShellStore; onNavigate?: () => 
   );
 }
 
-function Sidebar({ store, user, onNavigate }: { store: ShellStore; user: { name: string; role: string }; onNavigate?: () => void }) {
+function Sidebar({ store, user, onNavigate }: { store: ShellStore; user: ShellUser; onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 px-5 pb-4 pt-6">
@@ -132,7 +138,12 @@ function Sidebar({ store, user, onNavigate }: { store: ShellStore; user: { name:
           View my store <ExternalLink size={15} />
         </Link>
         <div className="flex items-center gap-3 px-1 pt-1">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{initials(user.name)}</span>
+          {user.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.avatar} alt="" referrerPolicy="no-referrer" className="h-9 w-9 rounded-full object-cover" />
+          ) : (
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{initials(user.name)}</span>
+          )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{user.name}</p>
             <p className="text-xs text-muted">{user.role}</p>
@@ -182,7 +193,7 @@ function TabBar({ store, onMore }: { store: ShellStore; onMore: () => void }) {
   );
 }
 
-export function MerchantShell({ store, user, children }: { store: ShellStore; user: { name: string; role: string }; children: ReactNode }) {
+export function MerchantShell({ store, user, children }: { store: ShellStore; user: ShellUser; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   // Close the drawer when the page changes

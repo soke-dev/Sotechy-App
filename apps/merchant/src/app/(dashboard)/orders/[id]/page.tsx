@@ -8,7 +8,8 @@ import { Illo } from "@/components/illustrations";
 import { btn, Card, Field, inputClass, Pill, ProductThumb } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens, PLATFORM_FEE } from "@/lib/money";
-import { ORDER_STATUS, orderMoney, orders, store, type OrderStatus } from "@/lib/mock";
+import { ORDER_STATUS, orderMoney, orders, type OrderStatus } from "@/lib/mock";
+import { useAccount } from "@/components/account-context";
 
 const DECLINE_REASONS = ["Out of stock", "Can't deliver to this location", "Price or listing mistake", "Other"];
 
@@ -39,6 +40,7 @@ function MoneyRow({ label, value, strong, tone }: { label: ReactNode; value: Rea
 }
 
 export default function OrderPage() {
+  const { store } = useAccount();
   const { id } = useParams<{ id: string }>();
   const order = orders.find((o) => o.id === id);
   // Demo: actions move the order along locally.

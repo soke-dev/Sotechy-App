@@ -4,8 +4,9 @@ import { Check, ChevronRight, FileUp, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import { IdCheck } from "@/components/id-check";
+import { SellsPicker } from "@/components/sells-picker";
 import { Illo, type IlloName } from "@/components/illustrations";
-import { btn, Field, inputClass } from "@/components/ui";
+import { btn, Field, inputClass, Req } from "@/components/ui";
 import { formatNaira, SOTECHY_CROSS_BONUS, STORE_VALUE_PER_TOKEN } from "@/lib/money";
 
 type Kind = "registered" | "individual";
@@ -29,6 +30,15 @@ const DOCS: Record<Structure, string[]> = {
   PLC: ["CAC certificate", "MEMART", "Status report", "Proof of address"],
   IT: ["CAC certificate", "Constitution", "Proof of address"],
 };
+/** Helpful but not needed to be approved */
+const OPTIONAL_DOCS = ["Proof of address"];
+
+export interface OnboardingStart {
+  storeName: string;
+  ticker: string;
+  ownerName: string;
+  kind: Kind;
+}
 
 const RESERVED = ["SOTECHY", "NGN", "NAIRA", "USD", "USDT", "USDC", "MON", "MONAD", "BTC", "ETH", "CBN", "SEC"];
 const TAKEN = ["COLLINS", "MAXI", "AFRO"];
@@ -42,15 +52,16 @@ function tickerProblem(t: string) {
   return null;
 }
 
-export default function OnboardingView({ initialStep }: { initialStep?: StepId }) {
-  const [kind, setKind] = useState<Kind>("registered");
+export default function OnboardingView({ initialStep, start }: { initialStep?: StepId; start: OnboardingStart }) {
+  const [kind, setKind] = useState<Kind>(start.kind);
   const [structure, setStructure] = useState<Structure>("LTD");
   const [step, setStep] = useState<StepId>(initialStep ?? "setup");
   const [done, setDone] = useState<Set<StepId>>(new Set());
   const [uploaded, setUploaded] = useState<Record<string, string>>({});
-  const [people, setPeople] = useState([{ name: "Ada Okafor", role: "Director and owner", share: 60 }]);
-  const [storeName, setStoreName] = useState("Xena Gadgets");
-  const [ticker, setTicker] = useState("XENA");
+  const [people, setPeople] = useState([{ name: start.ownerName, role: "Director and owner", share: 100 }]);
+  const [storeName, setStoreName] = useState(start.storeName);
+  const [ticker, setTicker] = useState(start.ticker);
+  const [sells, setSells] = useState<string[]>([]);
   const [account, setAccount] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -155,7 +166,7 @@ export default function OnboardingView({ initialStep }: { initialStep?: StepId }
                   ]}
                 />
                 {kind === "registered" && (
-                  <Field label="Type of registration">
+                  <Field label="Type of registration" required>
                     <select value={structure} onChange={(e) => setStructure(e.target.value as Structure)} className={inputClass}>
                       <option value="BN">Business name (BN)</option>
                       <option value="LTD">Private limited company (LTD)</option>
@@ -169,33 +180,27 @@ export default function OnboardingView({ initialStep }: { initialStep?: StepId }
 
             {step === "business" && (
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2"><Field label="Registered business name"><input defaultValue="Xena Gadgets Ltd" className={inputClass} /></Field></div>
-                <Field label={`${structure === "BN" ? "BN" : structure === "IT" ? "IT" : "RC"} number`}><input className={inputClass} placeholder="e.g. 1234567" /></Field>
-                <Field label="Date registered"><input type="date" className={inputClass} /></Field>
-                <Field label="TIN (optional)"><input className={inputClass} /></Field>
-                <Field label="What you sell">
-                  <select className={inputClass}>
-                    <option>Electronics and gadgets</option>
-                    <option>Home and kitchen</option>
-                    <option>Fashion and beauty</option>
-                    <option>Groceries</option>
-                    <option>Other</option>
-                  </select>
-                </Field>
-                <div className="sm:col-span-2"><Field label="Business address"><input className={inputClass} placeholder="Street, city, state" /></Field></div>
+                <div className="sm:col-span-2"><Field label="Registered business name" required hint="Exactly as on your CAC certificate."><input required className={inputClass} placeholder="e.g. Xena Gadgets Ltd" /></Field></div>
+                <Field label={`${structure === "BN" ? "BN" : structure === "IT" ? "IT" : "RC"} number`} required><input required inputMode="numeric" className={inputClass} placeholder="e.g. 1234567" /></Field>
+                <Field label="Date registered" required><input required type="date" className={inputClass} /></Field>
+                <div className="sm:col-span-2"><Field label="TIN" hint="Optional. Your tax ID number, if you have one."><input inputMode="numeric" className={inputClass} /></Field></div>
+                <div className="sm:col-span-2"><Field label="Business address" required><input required className={inputClass} placeholder="Street, city, state" /></Field></div>
               </div>
             )}
 
             {step === "documents" && (
               <div className="flex flex-col gap-3">
-                <p className="text-sm text-muted">PDF, JPG or PNG, up to 10 MB each. Stored encrypted and only seen by Sotechy&apos;s review team.</p>
+                <p className="text-sm text-muted">PDF, JPG or PNG, up to 10 MB each. Stored encrypted and only seen by Sotechy&apos;s review team. Ones marked <Req /> are needed.</p>
                 {DOCS[structure].map((d) => (
                   <label key={d} className={`flex cursor-pointer items-center gap-4 rounded-2xl border-2 border-dashed p-4 transition ${uploaded[d] ? "border-good/40 bg-good-soft" : "border-line hover:border-brand"}`}>
                     <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${uploaded[d] ? "bg-good text-white" : "bg-surface-alt text-muted"}`}>
                       {uploaded[d] ? <Check size={18} /> : <FileUp size={18} />}
                     </span>
                     <span className="flex-1">
-                      <span className="block font-semibold">{d}</span>
+                      <span className="block font-semibold">
+                        {d}
+                        {OPTIONAL_DOCS.includes(d) ? <span className="ml-1.5 text-sm font-normal text-muted">(optional)</span> : <Req />}
+                      </span>
                       <span className="text-sm text-muted">{uploaded[d] ?? "Tap to upload"}</span>
                     </span>
                     <input type="file" accept=".pdf,image/png,image/jpeg" className="hidden" onChange={(e) => e.target.files?.[0] && setUploaded({ ...uploaded, [d]: e.target.files[0].name })} />
@@ -206,7 +211,7 @@ export default function OnboardingView({ initialStep }: { initialStep?: StepId }
 
             {step === "you" && (
               <div className="flex flex-col gap-4">
-                <Field label="Home address"><input className={inputClass} /></Field>
+                <p className="text-sm text-muted">Sotechy checks that every store owner is who they say they are. Your name and date of birth are read from your ID, so there&apos;s nothing to type.</p>
                 <IdCheck />
               </div>
             )}
@@ -236,7 +241,10 @@ export default function OnboardingView({ initialStep }: { initialStep?: StepId }
 
             {step === "token" && (
               <div className="flex flex-col gap-5">
-                <Field label="Store name" hint="Shown on your storefront in the Sotechy app.">
+                <Field label="What you sell" required>
+                  <SellsPicker value={sells} onChange={setSells} />
+                </Field>
+                <Field label="Store name" required hint="Shown on your storefront in the Sotechy app.">
                   <input value={storeName} onChange={(e) => setStoreName(e.target.value)} className={inputClass} />
                 </Field>
 
@@ -250,7 +258,7 @@ export default function OnboardingView({ initialStep }: { initialStep?: StepId }
                   </ul>
                 </div>
 
-                <Field label="Your ticker" hint="3–8 letters or numbers. Usually your store name, e.g. $XENA. You can ask Sotechy to rename it later if you rebrand.">
+                <Field label="Your ticker" required hint="3–8 letters or numbers. Usually your store name, e.g. $XENA. You can ask Sotechy to rename it later if you rebrand.">
                   <div className={`flex items-center rounded-2xl border bg-surface pl-4 ${problem ? "border-line" : "border-good"}`}>
                     <span className="font-display text-xl font-bold text-brand-strong">$</span>
                     <input
@@ -281,20 +289,17 @@ export default function OnboardingView({ initialStep }: { initialStep?: StepId }
 
             {step === "payout" && (
               <div className="flex flex-col gap-4">
-                <p className="text-sm text-muted">Both halves of every order are paid here: 50% when you accept, the rest when delivery is confirmed. The account can be in {kind === "registered" ? "your registered business name" : "your business name"} or your own name (as on your ID).</p>
-                <Field label="Bank">
+                <p className="text-sm text-muted">Every payout for your orders goes to this account. It can be in {kind === "registered" ? "your registered business name" : "your business name"} or your own name, as on your ID.</p>
+                <Field label="Bank" required>
                   <select className={inputClass}>
                     {["GTBank", "Access Bank", "First Bank", "UBA", "Zenith Bank", "Opay", "Moniepoint", "Kuda", "PalmPay"].map((b) => <option key={b}>{b}</option>)}
                   </select>
                 </Field>
-                <Field label="Account number">
+                <Field label="Account number" required>
                   <input value={account} onChange={(e) => setAccount(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" className={`${inputClass} font-mono tracking-wider`} placeholder="10 digits" />
                 </Field>
                 {account.length === 10 && (
-                  <div className="flex items-center gap-3 rounded-2xl bg-good-soft px-4 py-3 text-sm">
-                    <Check size={18} className="text-good" />
-                    <span><b>XENA GADGETS LTD</b><br /><span className="text-good">Matches your business name</span></span>
-                  </div>
+                  <p className="rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">Sotechy checks the account name matches your business or your ID before your first payout.</p>
                 )}
               </div>
             )}
@@ -310,7 +315,7 @@ export default function OnboardingView({ initialStep }: { initialStep?: StepId }
                   </button>
                 ))}
                 <label className="mt-2 flex items-start gap-3 text-sm text-ink-2">
-                  <input type="checkbox" className="mt-0.5" /> I confirm these details are true and I&apos;m allowed to act for this business.
+                  <input type="checkbox" required className="mt-0.5" /> I confirm these details are true and I&apos;m allowed to act for this business.<Req />
                 </label>
               </div>
             )}

@@ -2,6 +2,7 @@
 
 import { Send } from "lucide-react";
 import { useState } from "react";
+import { useAccount } from "@/components/account-context";
 import { btn, Card, Field, inputClass, PageHeader, Pill } from "@/components/ui";
 import { team as initial } from "@/lib/mock";
 
@@ -15,7 +16,10 @@ const ROLES: { name: string; can: string }[] = [
 ];
 
 export default function TeamPage() {
-  const [team, setTeam] = useState(initial);
+  const { user, store } = useAccount();
+  // The owner first, then anyone they've added
+  const [team, setTeam] = useState([{ name: user.fullName || user.email, email: user.email, role: "Owner", status: "active" as const }, ...initial]);
+  const canInvite = store.status === "approved";
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Orders");
 
@@ -48,8 +52,9 @@ export default function TeamPage() {
                   {ROLES.filter((r) => r.name !== "Owner").map((r) => <option key={r.name}>{r.name}</option>)}
                 </select>
               </Field>
+              {!canInvite && <p className="rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">You can invite your team once Sotechy has verified your store.</p>}
               <button
-                disabled={!/\S+@\S+\.\S+/.test(email)}
+                disabled={!canInvite || !/\S+@\S+\.\S+/.test(email)}
                 onClick={() => {
                   setTeam([...team, { name: email, email, role, status: "invited" }]);
                   setEmail("");

@@ -5,7 +5,8 @@ import { useState } from "react";
 import { btn, Card, EmptyState, inputClass, PageHeader, Pill, ProductThumb, Tabs } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatTokens } from "@/lib/money";
-import { reviews as initial, store } from "@/lib/mock";
+import { reviews as initial } from "@/lib/mock";
+import { useAccount } from "@/components/account-context";
 
 const Stars = ({ n, size = 15 }: { n: number; size?: number }) => (
   <span className="inline-flex gap-0.5 text-sun">
@@ -16,6 +17,7 @@ const Stars = ({ n, size = 15 }: { n: number; size?: number }) => (
 );
 
 export default function ReviewsPage() {
+  const { store } = useAccount();
   const [reviews, setReviews] = useState(initial);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const avg = reviews.reduce((n, r) => n + r.rating, 0) / reviews.length;

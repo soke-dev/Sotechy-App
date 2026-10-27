@@ -8,7 +8,8 @@ import type { IlloName } from "@/components/illustrations";
 import { btn, Card, PageHeader, Pill, StatCard } from "@/components/ui";
 import { Sheet } from "@/components/zone-form";
 import { formatNaira } from "@/lib/money";
-import { featured, store } from "@/lib/mock";
+import { featured } from "@/lib/mock";
+import { useAccount } from "@/components/account-context";
 
 const DAY = 86_400_000;
 
@@ -22,6 +23,7 @@ const BENEFITS: { illo: IlloName; title: string; text: string }[] = [
 const fmtDate = (ms: number) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(ms));
 
 export default function FeaturedPage() {
+  const { store } = useAccount();
   const [until, setUntil] = useState(featured.until);
   const [history, setHistory] = useState(featured.history);
   // One month at a time for now; longer plans come later
