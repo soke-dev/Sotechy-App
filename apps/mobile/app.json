@@ -3,7 +3,7 @@
     "name": "Sotechy Shop",
     "slug": "sotechy-shop",
     "owner": "moversdigital",
-    "scheme": "sotechy",
+    "scheme": ["sotechy", "shop.sotechy.app"],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
