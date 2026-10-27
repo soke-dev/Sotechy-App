@@ -7,6 +7,8 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 import { useAccount } from "@/components/account-context";
 import { StorefrontView, type StorefrontLook } from "@/components/storefront-view";
 import { btn, inputClass, PageHeader } from "@/components/ui";
+import { COVER_SPEC, ImageCropper, LOGO_SPEC } from "@/components/image-cropper";
+import { Sheet } from "@/components/zone-form";
 import { saveStorefront, uploadFiles } from "@/lib/market-actions";
 import type { Product } from "@/lib/mock";
 import { THEME_PRESETS, themeWarnings, withColours } from "@/lib/themes";
@@ -37,6 +39,8 @@ export function StorefrontEditor({ products }: { products: Product[] }) {
   const [error, setError] = useState<string | null>(null);
   const [saving, start] = useTransition();
   const [uploading, setUploading] = useState<"logo" | "cover" | null>(null);
+  // A picked picture waiting to be cropped
+  const [cropping, setCropping] = useState<{ key: "logo" | "cover"; file: File } | null>(null);
   const snapshot = JSON.stringify({ presetId, accent, hero, look });
   const [savedSnapshot, setSavedSnapshot] = useState(snapshot);
   const changed = snapshot !== savedSnapshot;
@@ -47,12 +51,16 @@ export function StorefrontEditor({ products }: { products: Product[] }) {
   const isDefault = presetId === DEFAULT_DESIGN.presetId && !accent && !hero && look.header === DEFAULT_DESIGN.header && look.layout === DEFAULT_DESIGN.layout;
   const set = (patch: Partial<Look>) => setLook((l) => ({ ...l, ...patch }));
 
+  /** A picked logo or cover opens the cropper first */
+  const pick = (key: "logo" | "cover") => (files: FileList | null) => {
+    if (files?.[0]) setCropping({ key, file: files[0] });
+  };
   /** Logo and cover upload straight away; saving stores their addresses */
-  const upload = (key: "logo" | "cover") => async (files: FileList | null) => {
-    if (!files?.[0]) return;
+  const upload = async (key: "logo" | "cover", file: File) => {
+    setCropping(null);
     const form = new FormData();
     form.append("kind", "image");
-    form.append("file", files[0]);
+    form.append("file", file);
     setUploading(key);
     const r = await uploadFiles(form);
     setUploading(null);
@@ -97,22 +105,25 @@ export function StorefrontEditor({ products }: { products: Product[] }) {
       />
 
       {error && <p className="mb-4 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
+      <Sheet open={cropping !== null} onClose={() => setCropping(null)} title={cropping?.key === "logo" ? "Your logo" : "Your cover photo"}>
+        {cropping && <ImageCropper file={cropping.file} spec={cropping.key === "logo" ? LOGO_SPEC : COVER_SPEC} onDone={(f) => upload(cropping.key, f)} onCancel={() => setCropping(null)} />}
+      </Sheet>
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
         <div className="min-w-0">
           <div className="divide-y divide-line rounded-2xl border border-line bg-surface">
-            <Section title="Logo" hint="Shown on your store page and next to your products.">
+            <Section title="Logo" hint="Shown on your store page and next to your products. Best at 512 × 512 px, square; it shows as a circle in the app.">
               <ImageSlot
                 kind="logo"
                 url={look.logo}
                 busy={uploading === "logo"}
                 tile={{ background: theme.accent, color: theme.onAccent }}
-                onPick={upload("logo")}
+                onPick={pick("logo")}
                 onRemove={() => set({ logo: null })}
               />
             </Section>
 
-            <Section title="Cover photo" hint="The wide photo at the top of your store. Your shop front or best products work well.">
-              <ImageSlot kind="cover" url={look.cover} busy={uploading === "cover"} onPick={upload("cover")} onRemove={() => set({ cover: null })} />
+            <Section title="Cover photo" hint="The wide photo at the top of your store. Best at 1600 × 800 px (2:1). Your shop front or best products work well.">
+              <ImageSlot kind="cover" url={look.cover} busy={uploading === "cover"} onPick={pick("cover")} onRemove={() => set({ cover: null })} />
             </Section>
 
             <Section title="Palette" hint="Pick a preset to set both colours at once.">
