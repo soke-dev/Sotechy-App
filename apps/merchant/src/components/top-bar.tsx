@@ -94,7 +94,12 @@ export function TopBar({
   return (
     <div className="sticky top-0 z-20 border-b border-line bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:px-6 lg:px-10">
-        <p className="min-w-0 flex-1 truncate font-display text-[15px] font-bold lg:invisible">{storeName}</p>
+        {/* On phones the sidebar (and its logo) is hidden, so the logo sits here */}
+        <span className="min-w-0 flex-1">
+          <Link href="/" aria-label={`${storeName} dashboard`} className="inline-flex lg:invisible">
+            <img src="/brand/light-logo-small.png" alt="SoTechy" className="h-7 w-auto" />
+          </Link>
+        </span>
 
         {/* Money on its way, hidden at a tap */}
         <div className="flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface pl-1.5 pr-1">
