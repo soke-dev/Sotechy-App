@@ -35,17 +35,32 @@ export interface ApiClientOptions {
   baseUrl: string;
   getToken?: () => string | null | undefined | Promise<string | null | undefined>;
   fetch?: typeof fetch;
+  /** Give up on a request after this long (default 20 seconds; uploads may want longer) */
+  timeoutMs?: number;
 }
 
 /** Thin fetch wrapper shared by the mobile app, admin dashboard and landing page. */
-export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }: ApiClientOptions) {
+export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, timeoutMs = 20_000 }: ApiClientOptions) {
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const token = await getToken?.();
     const headers = new Headers(init.headers);
     if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
     if (token) headers.set("Authorization", `Bearer ${token}`);
 
-    const res = await fetchImpl(`${baseUrl.replace(/\/$/, "")}${path}`, { ...init, headers });
+    // A request that hangs (wrong address, bad network) fails after a while instead of spinning forever.
+    // Thrown as a TypeError, like any other network failure, so apps show "can't reach Sotechy".
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    init.signal?.addEventListener("abort", () => controller.abort());
+    let res: Response;
+    try {
+      res = await fetchImpl(`${baseUrl.replace(/\/$/, "")}${path}`, { ...init, headers, signal: controller.signal });
+    } catch (err) {
+      if (controller.signal.aborted && !init.signal?.aborted) throw new TypeError("Network request timed out");
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
     const body = res.status === 204 ? null : await res.json().catch(() => null);
     if (!res.ok) {
       throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`, body?.details);
