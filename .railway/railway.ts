@@ -42,7 +42,8 @@ export default defineRailway(() => {
         "https://www.sotechy.shop",
       ].join(","),
       JWT_SECRET: preserve(),
-      SEED_ADMIN_EMAIL: "admin@sotechy.shop",
+      // The first admin (more are added from the admin dashboard). Their sign-in codes go to this inbox.
+      SEED_ADMIN_EMAIL: "coolexcollins@gmail.com",
       SEED_ADMIN_PASSWORD: preserve(),
       // Adds a few [DEMO] products for testing; set to "false" once real products are in
       SEED_DEMO_PRODUCTS: "true",
