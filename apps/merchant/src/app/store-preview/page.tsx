@@ -2,11 +2,12 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { StorefrontView } from "@/components/storefront-view";
 import { api, getStoreSession } from "@/lib/api";
+import { storefrontFacts } from "@/lib/storefront-facts";
 import { storeTheme } from "@/lib/themes";
 
 export default async function StorePreviewPage() {
-  const { user, store } = await getStoreSession();
-  const products = await api.merchantProducts();
+  const { store } = await getStoreSession();
+  const [products, facts] = await Promise.all([api.merchantProducts(), storefrontFacts(store.slug)]);
   const sf = store.storefront;
   const theme = storeTheme(sf);
   return (
@@ -25,10 +26,11 @@ export default async function StorePreviewPage() {
           name: store.name,
           tagline: store.tagline ?? "",
           announcement: sf?.announcement ?? "",
-          logo: store.logoUrl ?? user.avatarUrl ?? null,
+          logo: store.logoUrl ?? null,
           cover: store.coverUrl ?? null,
           ticker: store.tokenApprovedAt ? store.ticker : null,
-          rating: null,
+          ...facts,
+          verified: store.status === "approved",
           followers: 0,
         }}
         products={products}

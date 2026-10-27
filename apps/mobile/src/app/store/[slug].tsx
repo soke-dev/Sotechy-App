@@ -163,6 +163,11 @@ export default function StoreScreen() {
               </>
             )}
           </View>
+          {store.tagline ? (
+            <T color={t.muted} size={13.5} lines={2} style={{ textAlign: "center" }}>
+              {store.tagline}
+            </T>
+          ) : null}
         </View>
 
         {/* Delivery fee, time and rating */}

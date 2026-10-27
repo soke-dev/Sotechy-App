@@ -9,6 +9,7 @@ import { StorefrontView, type StorefrontLook } from "@/components/storefront-vie
 import { btn, inputClass, PageHeader } from "@/components/ui";
 import { COVER_SPEC, ImageCropper, LOGO_SPEC } from "@/components/image-cropper";
 import { Sheet } from "@/components/zone-form";
+import type { storefrontFacts } from "@/lib/storefront-facts";
 import { saveStorefront, uploadFiles } from "@/lib/market-actions";
 import type { Product } from "@/lib/mock";
 import { THEME_PRESETS, themeWarnings, withColours } from "@/lib/themes";
@@ -16,8 +17,8 @@ import { THEME_PRESETS, themeWarnings, withColours } from "@/lib/themes";
 type Look = Omit<StorefrontLook, "theme">;
 const DEFAULT_DESIGN = { presetId: "sotechy", accent: null as string | null, hero: null as string | null, header: "cover" as const, layout: "grid" as const };
 
-export function StorefrontEditor({ products }: { products: Product[] }) {
-  const { user, store } = useAccount();
+export function StorefrontEditor({ products, facts }: { products: Product[]; facts: Awaited<ReturnType<typeof storefrontFacts>> }) {
+  const { store } = useAccount();
   const router = useRouter();
   const sf = store.storefront;
   const [presetId, setPresetId] = useState(sf?.themeId ?? DEFAULT_DESIGN.presetId);
@@ -29,10 +30,14 @@ export function StorefrontEditor({ products }: { products: Product[] }) {
     name: store.name,
     tagline: store.tagline ?? "",
     announcement: sf?.announcement ?? "",
-    logo: store.logoUrl ?? user.avatarUrl ?? null,
+    logo: store.logoUrl ?? null,
     cover: store.coverUrl ?? null,
     ticker: store.tokenApprovedAt ? store.ticker : null,
-    rating: null,
+    rating: facts.rating,
+    ratingCount: facts.ratingCount,
+    deliveryFrom: facts.deliveryFrom,
+    deliveryTime: facts.deliveryTime,
+    verified: store.status === "approved",
     followers: 0,
   });
   const [device, setDevice] = useState<"phone" | "desktop">("phone");
@@ -72,8 +77,7 @@ export function StorefrontEditor({ products }: { products: Product[] }) {
       setError(null);
       const r = await saveStorefront({
         tagline: look.tagline.trim() || null,
-        // The owner's profile picture stands in until a logo is uploaded; it isn't saved as the logo
-        logoUrl: look.logo && look.logo !== user.avatarUrl ? look.logo : null,
+        logoUrl: look.logo,
         coverUrl: look.cover,
         storefront: { themeId: presetId, accent, hero, header: look.header, layout: look.layout, announcement: look.announcement.trim() || null },
       });
