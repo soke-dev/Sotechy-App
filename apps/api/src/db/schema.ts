@@ -495,6 +495,8 @@ export const orders = pgTable(
       .default(sql`('SOT-' || nextval('order_number_seq')::text)`),
     customerId: uuid().references(() => users.id, { onDelete: "set null" }),
     merchantId: uuid().references(() => merchants.id),
+    /** A store order's delivery area (door delivery) or pickup point */
+    deliveryZoneId: uuid().references(() => deliveryZones.id, { onDelete: "set null" }),
     channel: salesChannelEnum().notNull().default("online"),
     branchId: uuid().references(() => branches.id),
     fulfilmentType: fulfilmentTypeEnum().notNull().default("pickup"),

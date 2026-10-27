@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, View } from "react-native";
-import { formatNaira, formatUsd, type FulfilmentType, type PromoCheck } from "@sotechy/shared";
+import { areaDeliveryFee, deliveryAreaFor, formatNaira, formatUsd, type FulfilmentType, type PromoCheck } from "@sotechy/shared";
 import { AddressCard } from "@/components/address-card";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { PayOptionsLine, useMoneyMoves } from "@/components/money-moves";
@@ -60,6 +60,7 @@ export default function CheckoutScreen() {
   const [idempotencyKey] = useState(newKey);
   const [chosenFulfilment, setFulfilment] = useState<FulfilmentType>("pickup");
   const [branchId, setBranchId] = useState<string | null>(null);
+  const [pickupZoneId, setPickupZoneId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promo, setPromo] = useState<PromoCheck | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
@@ -93,14 +94,31 @@ export default function CheckoutScreen() {
   const promoOn = features.promoCodes;
   // Deliveries go out from the main store; pickup lets the customer choose.
   const selectedBranch = seller?.branchId ?? (fulfilment === "pickup" ? branchId : null) ?? cfg.branches[0]?.id ?? null;
-  const freeDelivery = cfg.delivery.freeOver != null && cart.subtotal >= cfg.delivery.freeOver;
-  const deliveryFee = fulfilment === "delivery" && !freeDelivery ? cfg.delivery.flatFee : 0;
   const discount = features.promoCodes ? (promo?.discount ?? 0) : 0;
-  const total = Math.max(0, cart.subtotal + deliveryFee - discount);
   const savedList = saved.data ?? [];
   const chosenId = addressId ?? savedList.find((a) => a.isDefault)?.id ?? savedList[0]?.id ?? "new";
   const chosen = savedList.find((a) => a.id === chosenId);
   const addressOk = fulfilment === "pickup" || !!chosen || !!(address.recipientName && address.phone && address.line1 && address.city);
+  // A store charges from its own delivery areas (the API works out the same fee)
+  const areas = sellerInfo.data?.areas ?? [];
+  const where = chosen ?? address;
+  const sellerArea = seller && fulfilment === "delivery" ? deliveryAreaFor(areas, where.state, where.city) : null;
+  const pickupPoints = areas.filter((a) => a.pickupPoint);
+  const pickupPoint = pickupPoints.find((a) => a.id === pickupZoneId) ?? pickupPoints[0] ?? null;
+  // The store doesn't deliver to the address (known once its areas have loaded)
+  const outOfArea = !!seller && fulfilment === "delivery" && !!sellerInfo.data && !!where.city && !sellerArea;
+  const freeDelivery = !seller && cfg.delivery.freeOver != null && cart.subtotal >= cfg.delivery.freeOver;
+  const deliveryFee = seller
+    ? fulfilment === "delivery"
+      ? sellerArea
+        ? areaDeliveryFee(sellerArea, cart.subtotal)
+        : 0
+      : (pickupPoint?.pickupFee ?? 0)
+    : fulfilment === "delivery" && !freeDelivery
+      ? cfg.delivery.flatFee
+      : 0;
+  const cheapestDelivery = areas.length ? Math.min(...areas.map((a) => a.homeFee)) : null;
+  const total = Math.max(0, cart.subtotal + deliveryFee - discount);
 
   /** Checks the typed code; the order checks it again with real prices. */
   async function checkPromo(): Promise<PromoCheck | null> {
@@ -150,6 +168,7 @@ export default function CheckoutScreen() {
         paymentMethod: "online",
         promoCode: applied?.code,
         idempotencyKey,
+        pickupZoneId: seller && fulfilment === "pickup" ? (pickupPoint?.id ?? undefined) : undefined,
       });
       cart.clear();
       if (fulfilment === "delivery" && !chosen && saveNew && user) {
@@ -191,11 +210,21 @@ export default function CheckoutScreen() {
             </Txt>
           )}
           <View style={[ui.row, { gap: space.md, alignItems: "stretch" }]}>
-            {features.pickup && <FulfilmentCard illo="store" title="Store pickup" subtitle={seller ? "Collect from the store" : "Free · usually same day"} active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />}
+            {features.pickup && <FulfilmentCard illo="store" title="Store pickup" subtitle={seller ? (pickupPoints.length ? `From ${formatNaira(Math.min(...pickupPoints.map((p) => p.pickupFee ?? 0)))}` : "Collect from the store") : "Free · usually same day"} active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />}
             {features.delivery && <FulfilmentCard
               illo="bike"
               title="Delivery"
-              subtitle={freeDelivery ? "Free for this order" : `${formatNaira(cfg.delivery.flatFee)} · 1–2 days`}
+              subtitle={
+                seller
+                  ? sellerArea
+                    ? `${deliveryFee ? formatNaira(deliveryFee) : "Free"} · ${sellerArea.days}`
+                    : cheapestDelivery != null
+                      ? `From ${formatNaira(cheapestDelivery)}`
+                      : "Not available yet"
+                  : freeDelivery
+                    ? "Free for this order"
+                    : `${formatNaira(cfg.delivery.flatFee)} · 1–2 days`
+              }
               active={fulfilment === "delivery"}
               onPress={() => setFulfilment("delivery")}
             />}
@@ -203,15 +232,22 @@ export default function CheckoutScreen() {
         </Section>
 
         <Section step={2} title={fulfilment === "pickup" ? "Pickup store" : "Delivery details"}>
-          {fulfilment === "pickup" && seller && (
-            <OptionRow
-              illo="store"
-              title={seller.name}
-              subtitle={sellerInfo.data?.delivery.pickup ? `Collect at ${sellerInfo.data.delivery.pickup}` : "The store tells you where and when to collect"}
-              selected
-              onPress={() => {}}
-            />
-          )}
+          {fulfilment === "pickup" &&
+            seller &&
+            (pickupPoints.length ? (
+              pickupPoints.map((p) => (
+                <OptionRow
+                  key={p.id}
+                  illo="store"
+                  title={p.pickupPoint ?? seller.name}
+                  subtitle={`${p.state} · ${p.pickupFee ? formatNaira(p.pickupFee) : "Free"} · ${p.days}`}
+                  selected={pickupPoint?.id === p.id}
+                  onPress={() => setPickupZoneId(p.id)}
+                />
+              ))
+            ) : (
+              <OptionRow illo="store" title={seller.name} subtitle="The store tells you where and when to collect" selected onPress={() => {}} />
+            ))}
           {fulfilment === "pickup" &&
             !seller &&
             cfg.branches.map((b) => (
@@ -255,6 +291,16 @@ export default function CheckoutScreen() {
                   <Txt variant="label" color={colors.brandPressed}>Manage saved addresses</Txt>
                 </Pressable>
               )}
+            </View>
+          )}
+          {outOfArea && (
+            <View style={{ flexDirection: "row", gap: space.sm, padding: space.md, borderRadius: 14, backgroundColor: colors.surfaceAlt }}>
+              <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
+              <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>
+                {seller?.name} doesn&apos;t deliver to {where.city}, {where.state} yet.
+                {sellerInfo.data?.delivery.states.length ? ` They deliver to ${sellerInfo.data.delivery.states.join(", ")}.` : ""}
+                {pickupPoints.length ? " You can collect from them instead." : ""}
+              </Txt>
             </View>
           )}
         </Section>
@@ -318,7 +364,7 @@ export default function CheckoutScreen() {
           ))}
           <Divider style={{ marginVertical: space.sm }} />
           <SummaryRow label="Subtotal" value={formatNaira(cart.subtotal)} />
-          <SummaryRow label="Delivery" value={fulfilment === "pickup" ? "Free" : formatNaira(deliveryFee)} />
+          <SummaryRow label={fulfilment === "pickup" ? "Pickup" : "Delivery"} value={deliveryFee ? formatNaira(deliveryFee) : "Free"} />
           {discount > 0 && <SummaryRow label={`Promo (${promo?.code})`} value={`-${formatNaira(discount)}`} tone={colors.success} />}
           <Divider style={{ marginVertical: space.sm }} />
           <View style={[ui.between, { paddingVertical: 4 }]}>
@@ -346,7 +392,7 @@ export default function CheckoutScreen() {
             variant="dark"
             onPress={proceedToPayment}
             loading={submitting || checkingPromo}
-            disabled={paused || !selectedBranch || cart.lines.length === 0 || !addressOk}
+            disabled={paused || !selectedBranch || cart.lines.length === 0 || !addressOk || outOfArea}
           />
           <PayOptionsLine />
         </View>

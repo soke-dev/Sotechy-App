@@ -8,6 +8,7 @@ import { notFound } from "../lib/errors";
 import { getFeatures, requireFeature } from "../services/features";
 import { getUsdRate } from "../services/moneymoves";
 import { findPromotion } from "../services/promotions";
+import { liveAreas } from "../services/store-delivery";
 import { getSetting, type DeliverySettings } from "../services/settings";
 
 const { products, productVariants, inventory, categories, branches } = schema;
@@ -249,7 +250,7 @@ export const storeRoutes = new Hono()
     const counts = new Map<string, number>();
     const cats = await db.select({ c: products.storeCategory }).from(products).where(and(eq(products.merchantId, store.id), eq(products.isPublished, true)));
     for (const { c: name } of cats) if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
-    return c.json({ ...store, categories: [...counts].sort((a, b) => b[1] - a[1]).map(([name]) => name), products: items });
+    return c.json({ ...store, deliveryAreas: await liveAreas(db, store.id), categories: [...counts].sort((a, b) => b[1] - a[1]).map(([name]) => name), products: items });
   })
   .get("/facets", async (c) => {
     // Brands and price range for the current search / category, to build the filter sheet.

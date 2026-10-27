@@ -9,6 +9,7 @@ import type { AuthUser } from "../lib/auth";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { findPromotion } from "./promotions";
 import { deliveryFeeFor, getSetting, type DeliverySettings } from "./settings";
+import { storeDeliveryCharge } from "./store-delivery";
 
 const { orders, orderItems, payments, inventory, productVariants, products, orderStatusHistory } = schema;
 type OrderRow = typeof orders.$inferSelect;
@@ -175,8 +176,17 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
         merchantId: branch.merchantId,
       });
 
-      const deliveryFee =
-        input.fulfilmentType === "delivery" ? deliveryFeeFor(await getSetting<DeliverySettings>("delivery", tx), subtotal) : 0;
+      // A store charges from its own delivery areas; Sotechy uses its delivery settings
+      const { fee: deliveryFee, zoneId } = branch.merchantId
+        ? await storeDeliveryCharge(tx, branch.merchantId, {
+            fulfilment: input.fulfilmentType,
+            state: input.deliveryAddress?.state,
+            city: input.deliveryAddress?.city,
+            pickupZoneId: input.pickupZoneId,
+            variantIds: lines.map((l) => l.variantId),
+            subtotal,
+          })
+        : { fee: input.fulfilmentType === "delivery" ? deliveryFeeFor(await getSetting<DeliverySettings>("delivery", tx), subtotal) : 0, zoneId: null };
       const { promotion, discount } = await findPromotion(tx, {
         subtotal,
         paymentMethod: input.paymentMethod,
@@ -192,6 +202,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
           channel: "online",
           branchId: input.branchId,
           merchantId: branch.merchantId,
+          deliveryZoneId: zoneId,
           fulfilmentType: input.fulfilmentType,
           deliveryAddress: input.fulfilmentType === "delivery" ? ({ ...input.deliveryAddress } as Record<string, string>) : null,
           paymentMethod: input.paymentMethod,

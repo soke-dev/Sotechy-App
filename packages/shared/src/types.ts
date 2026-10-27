@@ -488,6 +488,8 @@ export interface PlaceOrderInput {
   cryptoAsset?: string;
   promoCode?: string;
   idempotencyKey: string;
+  /** A marketplace store's pickup point (one of its delivery areas), for pickup orders */
+  pickupZoneId?: string;
 }
 
 /** The marketplace store an item comes from (it ships from the store's own branch) */
@@ -544,10 +546,24 @@ export interface MarketStore {
   deliveryFrom: number | null;
 }
 
+/** One of a store's approved delivery areas, as shoppers see it */
+export interface StoreDeliveryArea {
+  id: string;
+  state: string;
+  /** Cities or areas in the state; empty means the whole state */
+  areas: string[];
+  homeFee: number;
+  pickupFee: number | null;
+  pickupPoint: string | null;
+  days: string;
+  freeOver: number | null;
+}
+
 export interface MarketStoreDetail extends MarketStore {
   branchId: string | null;
   /** Where customers can collect pickup orders */
   pickupPoints: string[];
+  deliveryAreas: StoreDeliveryArea[];
   categories: string[];
   products: CatalogProduct[];
 }
@@ -611,6 +627,8 @@ export interface MerchantOrder {
   status: MerchantOrderStatus;
   customer: { name: string; username: string; phone: string; address: string };
   fulfilment: "delivery" | "pickup";
+  /** Where the customer collects a pickup order */
+  pickupPoint?: string;
   items: { name: string; image: string | null; qty: number; price: number; option?: string }[];
   subtotal: number;
   deliveryFee: number;

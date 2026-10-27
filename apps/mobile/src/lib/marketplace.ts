@@ -1,7 +1,7 @@
 // Marketplace stores for the customer app: Sotechy's own store and the stores Sotechy has approved,
 // loaded from the API and drawn in each store's own theme (set in the merchant dashboard).
 import { useCallback, useEffect, useState } from "react";
-import type { CatalogProduct, MarketStore as ApiStore, MarketStoreDetail } from "@sotechy/shared";
+import type { CatalogProduct, MarketStore as ApiStore, MarketStoreDetail, StoreDeliveryArea } from "@sotechy/shared";
 import { api } from "./api";
 
 /** A bundled image (require) or one from the API */
@@ -61,6 +61,8 @@ export interface MarketStore {
   cover?: Img;
   theme: StoreTheme;
   delivery: { states: string[]; homeFrom: number | null; pickup?: string };
+  /** Its delivery areas with fees (on its own page; empty in lists) */
+  areas: StoreDeliveryArea[];
   announcement?: string;
   /** Sotechy's own store: its products are the main catalogue */
   isSotechy?: boolean;
@@ -87,6 +89,7 @@ export const SOTECHY_STORE: MarketStore = {
   theme: THEMES.sotechy,
   delivery: { states: ["Edo", "Delta", "Lagos", "FCT Abuja"], homeFrom: null, pickup: "No. 20 Etete Road, Benin City" },
   isSotechy: true,
+  areas: [],
   productCount: 0,
   products: [],
 };
@@ -109,7 +112,7 @@ export const toStoreProduct = (p: CatalogProduct): StoreProduct => ({
 });
 
 /** An API store in the app's shape */
-export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "branchId" | "products" | "pickupPoints">>): MarketStore {
+export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "branchId" | "products" | "pickupPoints" | "deliveryAreas">>): MarketStore {
   const look = s.storefront;
   const base = THEMES[look?.themeId ?? ""] ?? THEMES.sotechy;
   const theme = look?.accent ? { ...base, accent: look.accent, onAccent: onColour(look.accent) } : base;
@@ -125,6 +128,7 @@ export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "bra
     cover: s.coverUrl ? { uri: s.coverUrl } : undefined,
     theme,
     delivery: { states: s.deliveryStates ?? [], homeFrom: s.deliveryFrom ?? null, pickup: s.pickupPoints?.length ? s.pickupPoints.join(" · ") : undefined },
+    areas: s.deliveryAreas ?? [],
     announcement: look?.announcement ?? undefined,
     featuredUntil: s.featuredUntil ?? undefined,
     productCount: s.productCount ?? s.products?.length ?? 0,

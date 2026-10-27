@@ -217,9 +217,10 @@ const ACCEPT_HOURS = 24;
 
 async function ordersForDashboard(storeId: string, ids?: string[]) {
   const rows = await db
-    .select({ o: orders, name: schema.users.fullName, username: schema.users.username, phone: schema.users.phone })
+    .select({ o: orders, name: schema.users.fullName, username: schema.users.username, phone: schema.users.phone, point: schema.deliveryZones.pickupPoint })
     .from(orders)
     .leftJoin(schema.users, eq(schema.users.id, orders.customerId))
+    .leftJoin(schema.deliveryZones, eq(schema.deliveryZones.id, orders.deliveryZoneId))
     // Unpaid orders aren't the store's business yet
     .where(and(eq(orders.merchantId, storeId), sql`${orders.status} <> 'pending_payment'`, ids ? inArray(orders.id, ids) : undefined))
     .orderBy(desc(orders.createdAt))
@@ -235,7 +236,7 @@ async function ordersForDashboard(storeId: string, ids?: string[]) {
       .where(inArray(orderItems.orderId, orderIds)),
     db.select().from(schema.orderStatusHistory).where(inArray(schema.orderStatusHistory.orderId, orderIds)).orderBy(schema.orderStatusHistory.createdAt),
   ]);
-  return rows.map(({ o, name, username, phone }) => {
+  return rows.map(({ o, name, username, phone, point }) => {
     const a = o.deliveryAddress;
     const paidAt = history.find((h) => h.orderId === o.id && h.toStatus === "paid")?.createdAt ?? o.createdAt;
     return {
@@ -249,6 +250,7 @@ async function ordersForDashboard(storeId: string, ids?: string[]) {
         address: a ? [a.line1, a.line2, a.city, a.state].filter(Boolean).join(", ") : "",
       },
       fulfilment: o.fulfilmentType,
+      pickupPoint: o.fulfilmentType === "pickup" ? (point ?? undefined) : undefined,
       items: items
         .filter((i) => i.item.orderId === o.id)
         .map((i) => ({ name: i.item.productName, image: i.images?.[0] ?? null, qty: i.item.quantity, price: i.item.unitPrice, option: i.item.variantName !== "Standard" ? i.item.variantName : undefined })),

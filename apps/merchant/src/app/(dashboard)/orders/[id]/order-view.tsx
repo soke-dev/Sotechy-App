@@ -78,7 +78,7 @@ export function OrderView({ order }: { order: Order }) {
             <h1 className="text-3xl font-extrabold">{order.number}</h1>
             <Pill tone={ORDER_STATUS[s].tone}>{ORDER_STATUS[s].label}</Pill>
           </div>
-          <p className="mt-1 text-sm text-muted">Placed <RelTime iso={order.createdAt} /> · {order.fulfilment === "pickup" ? "Store pickup" : "Delivery"}</p>
+          <p className="mt-1 text-sm text-muted">Placed <RelTime iso={order.createdAt} /> · {order.fulfilment === "pickup" ? `Store pickup${order.pickupPoint ? ` at ${order.pickupPoint}` : ""}` : "Delivery"}</p>
         </div>
       </div>
 
