@@ -112,40 +112,6 @@ export const customerExtras: Record<string, { tokens: number; subscribed: boolea
 /** Messages this store has sent to its subscribers */
 export const sentNotices: { id: string; title: string; body: string; at: string; sentTo: number; opened: number; link: string }[] = [];
 
-export type OfferStatus = "waiting_you" | "waiting_customer" | "agreed" | "declined" | "expired";
-
-export const OFFER_STATUS: Record<OfferStatus, { label: string; tone: "warn" | "info" | "good" | "bad" | "neutral" }> = {
-  waiting_you: { label: "Needs your answer", tone: "warn" },
-  waiting_customer: { label: "Waiting on customer", tone: "info" },
-  agreed: { label: "Deal agreed", tone: "good" },
-  declined: { label: "Declined", tone: "neutral" },
-  expired: { label: "Deal expired", tone: "neutral" },
-};
-
-export interface OfferMessage {
-  id: string;
-  from: "customer" | "merchant";
-  kind: "text" | "offer" | "counter" | "accepted" | "declined";
-  text?: string;
-  amount?: number;
-  hours?: OfferHours;
-  at: string;
-}
-
-/** One customer negotiating one product with this store */
-export interface OfferThread {
-  id: string;
-  productId: string;
-  customer: { name: string; username: string };
-  qty: number;
-  status: OfferStatus;
-  messages: OfferMessage[];
-  /** When the agreed price stops working */
-  expiresAt?: string;
-  agreedPrice?: number;
-}
-
-export const offerThreads: OfferThread[] = [];
 
 /** Featured placement: the price Sotechy charges (set in admin) and this store's feature, if any */
 export const featured = {

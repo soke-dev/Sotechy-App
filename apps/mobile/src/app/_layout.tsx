@@ -21,7 +21,6 @@ import { AuthProvider } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
 import { StoreConfigProvider, useFeatures } from "@/lib/store-config";
 import { AccountExtrasProvider } from "@/lib/account-extras";
-import { OffersProvider } from "@/lib/offers";
 import { PushNotifications } from "@/lib/push";
 import { StoreNotificationsProvider } from "@/lib/store-notifications";
 import { colors, fonts } from "@/lib/theme";
@@ -121,11 +120,9 @@ export default function RootLayout() {
                     <DialogProvider>
                       <MenuProvider>
                         <StoreNotificationsProvider>
-                          <OffersProvider>
                             <AccountExtrasProvider>
                               <ThemedNavigator />
                             </AccountExtrasProvider>
-                          </OffersProvider>
                         </StoreNotificationsProvider>
                       </MenuProvider>
                     </DialogProvider>

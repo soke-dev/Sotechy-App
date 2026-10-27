@@ -498,6 +498,19 @@ export default function ProductScreen() {
               ) : null}
               {off > 0 && <Pill label={`Save ${off}%`} tone="brand" />}
             </View>
+            {product.negotiable && product.store && variant && available > 0 ? (
+              <Pressable
+                onPress={() =>
+                  user
+                    ? router.push({ pathname: "/offer/[id]", params: { id: "new", variant: variant.id, name: product.name, price: String(variant.price), image: product.images[0] ?? "", store: product.store!.name } })
+                    : router.push("/sign-in")
+                }
+                style={({ pressed }) => [ui.row, { gap: 8, alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 9, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: pressed ? colors.surfaceAlt : colors.surface }]}
+              >
+                <Ionicons name="pricetag-outline" size={16} color={colors.ink} />
+                <Txt variant="label" style={{ fontSize: 14 }}>Make an offer</Txt>
+              </Pressable>
+            ) : null}
             {available > 0 ? (
               <Pill
                 icon="checkmark-circle"

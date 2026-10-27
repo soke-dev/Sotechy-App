@@ -1,6 +1,7 @@
 import type { Bank, PayoutAccount, PayoutPlan, PayoutRow } from "./payouts";
 import type {
   Address,
+  OfferView,
   AddressInput,
   AddressSuggestion,
   AuthResponse,
@@ -165,6 +166,11 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     product: (idOrSlug: string) => get<ProductDetail>(`/store/products/${encodeURIComponent(idOrSlug)}`),
     /** Marketplace stores Sotechy has approved, and one store's page */
     stores: () => get<MarketStore[]>("/store/stores"),
+    /** The customer's price offers */
+    offers: () => get<OfferView[]>("/offers"),
+    offer: (id: string) => get<OfferView>(`/offers/${id}`),
+    makeOffer: (input: { variantId: string; amount: number; text?: string | null }) => send<OfferView>("POST", "/offers", input),
+    answerOffer: (id: string, input: { action: "accept" | "decline" | "counter"; amount?: number; text?: string | null }) => send<OfferView>("POST", `/offers/${id}/answer`, input),
     /** Banks a store can be paid into, its payout account, and its payouts */
     banks: () => get<Bank[]>("/merchant/banks"),
     savePayoutAccount: (input: { bankCode: string; accountNumber: string }) => send<PayoutAccount>("PUT", "/merchant/payout-account", input),

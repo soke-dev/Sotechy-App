@@ -4,7 +4,7 @@
 // storefront and setup. Each returns { error } instead of throwing, so forms can show what went wrong.
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantOrder, MerchantProduct, MerchantProductInput, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
+import type { AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantOrder, MerchantProduct, MerchantProductInput, OfferView, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
 import { api, errorMessage, TOKEN_COOKIE } from "./api";
 
 type Result<T> = { ok: T } | { error: string };
@@ -93,4 +93,9 @@ export async function checkTicker(ticker: string): Promise<{ ticker: string; ava
   } catch {
     return null;
   }
+}
+
+/** Answers a customer's price offer: accept, decline or counter with an amount */
+export async function answerOffer(id: string, input: { action: "accept" | "decline" | "counter"; amount?: number; text?: string | null }): Promise<Result<OfferView>> {
+  return attempt(() => api.post<OfferView>(`/merchant/offers/${id}/answer`, input), ["/offers"]);
 }

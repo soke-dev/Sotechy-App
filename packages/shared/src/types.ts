@@ -696,6 +696,8 @@ export interface MerchantSummary {
   completedOrders: number;
   waiting: number;
   inProgress: number;
+  /** Price offers waiting for the store's answer */
+  offersWaiting: number;
 }
 
 export interface MerchantApplicationInput {
@@ -736,7 +738,7 @@ export interface OfferView {
   createdAt: string;
   updatedAt: string;
   product: { id: string; slug: string; name: string; image: string | null; variantId: string; variantName: string };
-  store: { slug: string; name: string; logoUrl: string | null };
+  store: { slug: string; name: string; logoUrl: string | null; branchId: string | null };
   /** Shown to the store only */
   customer: { name: string; username: string } | null;
   messages: { id: string; from: "customer" | "store"; kind: "offer" | "counter" | "accept" | "decline"; amount: number | null; text: string | null; createdAt: string }[];

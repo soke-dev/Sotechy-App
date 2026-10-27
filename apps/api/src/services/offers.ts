@@ -1,7 +1,7 @@
 // Price offers on negotiable products. The customer offers, the store accepts, declines or counters, and
 // so on (the customer makes at most three offers). An agreed price is held for the customer for the
 // product's offer hours (never more than 24) and used at checkout for one unit.
-import { and, asc, desc, eq, inArray, lt, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import type { OfferView } from "@sotechy/shared";
 import { db, schema, type Tx } from "../db/client";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
@@ -30,7 +30,15 @@ export async function expireOffers(tx: Pick<Tx, "update"> = db) {
 async function views(where: ReturnType<typeof and>, forStore: boolean): Promise<OfferView[]> {
   await expireOffers();
   const rows = await db
-    .select({ o: offers, product: products, variantName: productVariants.name, store: merchants, customerName: users.fullName, customerUsername: users.username })
+    .select({
+      o: offers,
+      product: products,
+      variantName: productVariants.name,
+      store: merchants,
+      customerName: users.fullName,
+      customerUsername: users.username,
+      branchId: sql<string | null>`(select b.id from branches b where b.merchant_id = ${merchants.id} limit 1)`,
+    })
     .from(offers)
     .innerJoin(products, eq(products.id, offers.productId))
     .innerJoin(productVariants, eq(productVariants.id, offers.variantId))
@@ -41,7 +49,7 @@ async function views(where: ReturnType<typeof and>, forStore: boolean): Promise<
     .limit(200);
   if (!rows.length) return [];
   const messages = await db.select().from(offerMessages).where(inArray(offerMessages.offerId, rows.map((r) => r.o.id))).orderBy(asc(offerMessages.createdAt));
-  return rows.map(({ o, product, variantName, store, customerName, customerUsername }) => ({
+  return rows.map(({ o, product, variantName, store, customerName, customerUsername, branchId }) => ({
     id: o.id,
     status: o.status,
     listPrice: o.listPrice,
@@ -52,7 +60,7 @@ async function views(where: ReturnType<typeof and>, forStore: boolean): Promise<
     createdAt: o.createdAt.toISOString(),
     updatedAt: o.updatedAt.toISOString(),
     product: { id: product.id, slug: product.slug, name: product.name, image: product.images?.[0] ?? null, variantId: o.variantId, variantName },
-    store: { slug: store.slug, name: store.name, logoUrl: store.logoUrl },
+    store: { slug: store.slug, name: store.name, logoUrl: store.logoUrl, branchId },
     // Stores see who's asking; customers see only themselves
     customer: forStore ? { name: customerName ?? "Customer", username: customerUsername ?? "" } : null,
     messages: messages

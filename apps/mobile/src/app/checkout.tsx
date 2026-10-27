@@ -156,7 +156,7 @@ export default function CheckoutScreen() {
     setSubmitting(true);
     try {
       const order = await api.placeOrder({
-        items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+        items: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity, ...(l.offerId && { offerId: l.offerId }) })),
         fulfilmentType: fulfilment,
         branchId: selectedBranch,
         deliveryAddress:

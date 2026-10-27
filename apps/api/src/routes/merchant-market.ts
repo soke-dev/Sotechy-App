@@ -662,7 +662,12 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       return { day: d.toLocaleDateString("en-NG", { weekday: "short", day: "numeric", timeZone: "Africa/Lagos" }), amount: row?.amount ?? 0, orders: row?.n ?? 0 };
     });
     const count = (...s: string[]) => counts.filter((r) => s.includes(r.status)).reduce((n, r) => n + r.n, 0);
+    const [offersWaiting] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(schema.offers)
+      .where(and(eq(schema.offers.merchantId, c.get("store").id), eq(schema.offers.status, "waiting_store")));
     return c.json({
+      offersWaiting: offersWaiting?.n ?? 0,
       salesByDay: days,
       completedOrders: count("delivered"),
       waiting: count("paid"),

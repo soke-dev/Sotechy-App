@@ -44,6 +44,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (lines.length && (lines[0].store?.slug ?? null) !== (line.store?.slug ?? null)) return false;
       setLines((prev) => {
         const existing = prev.find((l) => l.variantId === line.variantId);
+        // An agreed price is for one item and replaces the item at the shop price
+        if (line.offerId) return [...prev.filter((l) => l !== existing), { ...line, quantity: 1 }];
+        if (existing?.offerId) return prev;
         if (existing) return prev.map((l) => (l === existing ? { ...l, quantity: l.quantity + quantity } : l));
         return [...prev, { ...line, quantity }];
       });
@@ -51,7 +54,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     },
     startWith: (line, quantity = 1) => setLines([{ ...line, quantity }]),
     setQuantity: (variantId, quantity) =>
-      setLines((prev) => (quantity <= 0 ? prev.filter((l) => l.variantId !== variantId) : prev.map((l) => (l.variantId === variantId ? { ...l, quantity } : l)))),
+      setLines((prev) =>
+        quantity <= 0 ? prev.filter((l) => l.variantId !== variantId) : prev.map((l) => (l.variantId === variantId ? { ...l, quantity: l.offerId ? 1 : quantity } : l)),
+      ),
     remove: (variantId) => setLines((prev) => prev.filter((l) => l.variantId !== variantId)),
     clear: () => setLines([]),
   };
