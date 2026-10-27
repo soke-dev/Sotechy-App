@@ -25,10 +25,12 @@ const schema = z.object({
   GEOAPIFY_API_KEY: z.string().optional(),
   /** Payouts to stores (Flutterwave v3 secret key, FLWSECK-…) and the secret hash set on its webhook */
   /** Which service pays stores */
-  /** Text messages (Termii): admin alerts such as payouts waiting for approval */
-  TERMII_API_KEY: z.string().optional(),
-  TERMII_SENDER_ID: z.string().default("Sotechy"),
-  TERMII_BASE_URL: z.string().url().default("https://v3.api.termii.com"),
+  /** WhatsApp alerts to admins (Meta WhatsApp Cloud API): a permanent token and the sending number's id */
+  WHATSAPP_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  /** The approved template for "a payout needs your approval" and its language */
+  WHATSAPP_PAYOUT_TEMPLATE: z.string().default("payout_approval"),
+  WHATSAPP_TEMPLATE_LANGUAGE: z.string().default("en"),
   /** Extra phone numbers for admin alerts, comma-separated (admins' own phone numbers are used too) */
   ADMIN_ALERT_PHONES: z.string().default(""),
   PAYOUT_PROVIDER: z.enum(["bachs", "flutterwave"]).default("bachs"),

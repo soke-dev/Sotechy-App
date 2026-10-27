@@ -9,7 +9,7 @@ import { audit } from "../lib/audit";
 import { badRequest, HttpError, notFound } from "../lib/errors";
 import { provider, railCheck, railSend, type RailResult } from "./payout-rail";
 import { sendEmailLater } from "../lib/email";
-import { sendSmsLater } from "../lib/sms";
+import { sendWhatsAppLater } from "../lib/whatsapp";
 import { env } from "../env";
 import { payoutApprovalEmail, payoutSentEmail } from "../emails/templates";
 import { sendPushLater } from "./push";
@@ -48,15 +48,15 @@ async function schedule(order: typeof orders.$inferSelect, stage: "first" | "fin
   if (created) void tellAdmins(created, order.orderNumber);
 }
 
-/** Every payout waits for an admin: they get an email and a text when one is set up */
+/** Every payout waits for an admin: they get an email and a WhatsApp message when one is set up */
 async function tellAdmins(p: typeof payouts.$inferSelect, orderNumber: string) {
   const [store] = await db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, p.merchantId));
   const admins = await db.select({ email: schema.users.email, name: schema.users.fullName, phone: schema.users.phone }).from(schema.users).where(eq(schema.users.role, "admin"));
   const stage = p.stage === "first" ? "First payment" : "Final payment";
   for (const a of admins) sendEmailLater(payoutApprovalEmail(a.email, { name: a.name, store: store?.name ?? "A store", orderNumber, stage, amount: p.amount, dueAt: p.dueAt }));
   const phones = [...admins.map((a) => a.phone ?? ""), ...env.ADMIN_ALERT_PHONES.split(",").map((x) => x.trim())];
-  const due = p.dueAt > new Date() ? ` (due ${p.dueAt.toLocaleDateString("en-NG", { day: "numeric", month: "short", timeZone: "Africa/Lagos" })})` : "";
-  sendSmsLater(phones, `Sotechy: ${stage.toLowerCase()} of N${p.amount.toLocaleString("en-NG")} to ${store?.name ?? "a store"} for ${orderNumber} needs your approval${due}. admin.sotechy.shop/merchant-payouts`);
+  // Template: "Sotechy: the {{1}} of {{2}} to {{3}} for order {{4}} needs your approval…"
+  sendWhatsAppLater(phones, env.WHATSAPP_PAYOUT_TEMPLATE, [stage.toLowerCase(), `₦${p.amount.toLocaleString("en-NG")}`, store?.name ?? "a store", orderNumber]);
 }
 
 /** The store hears when money is on its way to its bank */

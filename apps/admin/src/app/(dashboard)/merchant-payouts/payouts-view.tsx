@@ -248,7 +248,7 @@ function SettingsCard({ settings, provider }: { settings: PayoutSettings; provid
     <Card title="Payout settings" description="The plan for every store without its own, applied to orders accepted after you save.">
       {prompt}
       <div className="flex flex-col gap-5">
-        <p className="rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">Every payout waits for an admin to approve it. You get an email and a text when one is ready.</p>
+        <p className="rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">Every payout waits for an admin to approve it. You get an email and a WhatsApp message when one is ready.</p>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-semibold text-ink-2">Sotechy&apos;s fee (%)</span>
