@@ -19,10 +19,6 @@ export function AccountStep({ referral }: { referral?: string }) {
         <span className="h-px flex-1 bg-line" /> or use email <span className="h-px flex-1 bg-line" />
       </div>
       <form action={action} className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="First name" required><input name="firstName" required autoComplete="given-name" className={inputClass} /></Field>
-          <Field label="Last name" required><input name="lastName" required autoComplete="family-name" className={inputClass} /></Field>
-        </div>
         <Field label="Email" required>
           <input name="email" type="email" required autoComplete="email" className={inputClass} placeholder="you@yourstore.ng" />
         </Field>

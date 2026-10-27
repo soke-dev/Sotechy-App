@@ -46,7 +46,6 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
     const res = await api.register({
       email: field(form, "email"),
       password,
-      fullName: [field(form, "firstName"), field(form, "lastName")].filter(Boolean).join(" "),
       referralCode: field(form, "referralCode") || undefined,
     });
     await keepSession(res.token);
@@ -158,14 +157,13 @@ export async function saveStoreDetails(_: SaveState, form: FormData): Promise<Sa
   return { saved: true };
 }
 
-/** The owner's own account: the same name, @username and numbers they have in the Sotechy app */
+/** The owner's own account: the same @username and numbers they have in the Sotechy app (the name comes from the ID check) */
 export async function saveProfile(_: SaveState, form: FormData): Promise<SaveState> {
   const phone = field(form, "phone");
   const whatsapp = field(form, "whatsappPhone");
   const username = field(form, "handle").replace(/^@/, "").toLowerCase();
   try {
     await api.updateProfile({
-      fullName: field(form, "fullName"),
       ...(username && { username }),
       phone: phone || null,
       whatsappPhone: !whatsapp || sameNumber(whatsapp, phone) ? null : whatsapp,

@@ -52,8 +52,8 @@ export function ProfileForm() {
   return (
     <Card title="Your profile" description="The same account you use in the Sotechy app, so changes show there too.">
       <form action={action} className="flex flex-col gap-4">
-        <Field label="Full name" required>
-          <input name="fullName" required defaultValue={user.fullName ?? ""} autoComplete="name" className={inputClass} />
+        <Field label="Full name" hint="Taken from your ID check, so it always matches your ID.">
+          <input value={user.fullName ?? ""} readOnly placeholder="Added after your ID check" className={`${inputClass} bg-surface-alt text-muted`} />
         </Field>
         <UsernameField defaultValue={user.username ?? ""} />
         <div className="grid gap-4 sm:grid-cols-2">

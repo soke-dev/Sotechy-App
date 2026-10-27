@@ -105,16 +105,30 @@ function summarise(diditStatus: string, decision: Node | undefined): KycResult {
   };
 }
 
+/** "ADA  OBI-NWOSU" -> "Ada Obi-Nwosu": IDs often print names in capitals */
+export function nameCase(name: string) {
+  return name
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/(^|[\s'-])\p{L}/gu, (m) => m.toUpperCase());
+}
+
 /** Saves a result from a webhook or a direct check; tells the owner when it's settled */
 export async function applyIdResult(sessionId: string, diditStatus: string, decision: Node | undefined) {
   const [store] = await db.select().from(schema.merchants).where(eq(schema.merchants.kycSessionId, sessionId));
   if (!store) return null;
   const status = statusFrom(diditStatus);
+  const result = summarise(diditStatus, decision);
   const [updated] = await db
     .update(schema.merchants)
-    .set({ kycStatus: status, kycResult: summarise(diditStatus, decision), kycUpdatedAt: new Date() })
+    .set({ kycStatus: status, kycResult: result, kycUpdatedAt: new Date() })
     .where(eq(schema.merchants.id, store.id))
     .returning();
+  // The owner's name is the one on their ID; they don't type it at sign-up and can't change it after
+  if (status === "approved" && result.fullName && store.ownerId) {
+    await db.update(schema.users).set({ fullName: nameCase(result.fullName) }).where(eq(schema.users.id, store.ownerId));
+  }
   if (status !== store.kycStatus) {
     await audit(db, { actorId: null, action: "merchant.kyc", entityType: "merchant", entityId: store.id, details: { from: store.kycStatus, to: status, didit: diditStatus } });
     if ((status === "approved" || status === "declined" || status === "resubmit") && store.contactEmail) {

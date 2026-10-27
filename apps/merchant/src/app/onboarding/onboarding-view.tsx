@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Building2, Check, ChevronRight, CircleHelp, FileText, Loader2, Plus, Trash2, Upload, UserRound, X } from "lucide-react";
+import { ArrowLeft, Building2, Check, ChevronRight, CircleHelp, FileText, Globe, Loader2, Plus, Trash2, Upload, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
@@ -408,13 +408,16 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
 
             {step === "store" && (
               <div className="divide-y divide-line">
+                <Section label="What you sell" required>
+                  <SellsPicker value={sells} onChange={setSells} />
+                </Section>
                 <Section label="About your business" required>
                   <textarea
                     value={description}
                     maxLength={1000}
                     rows={5}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="What you sell, who your customers are, how long you've been trading and where you're based."
+                    placeholder="Who your customers are, how long you've been trading, and what makes your store different."
                     className={`${inputClass} resize-y py-3 leading-relaxed`}
                   />
                   <p className={`mt-1.5 text-xs ${description.trim().length < MIN_BUSINESS_DESCRIPTION ? "text-muted" : "text-good"}`}>
@@ -426,20 +429,6 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                     <AddressInput value={ownAddress} onChange={setOwnAddress} placeholder="Where you work from, if you have a shop or office" />
                   </Section>
                 )}
-                <Section label="Website and social pages">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="sm:col-span-2">
-                      <Handle label="Website" value={website} onChange={setWebsite} placeholder="www.yourstore.com" />
-                    </div>
-                    <Handle label="Instagram" prefix="@" value={socials.instagram} onChange={(instagram) => setSocials({ ...socials, instagram })} placeholder="yourstore" />
-                    <Handle label="X" prefix="@" value={socials.x} onChange={(x) => setSocials({ ...socials, x })} placeholder="yourstore" />
-                    <Handle label="TikTok" prefix="@" value={socials.tiktok} onChange={(tiktok) => setSocials({ ...socials, tiktok })} placeholder="yourstore" />
-                    <Handle label="Facebook" value={socials.facebook} onChange={(facebook) => setSocials({ ...socials, facebook })} placeholder="Page name or link" />
-                  </div>
-                </Section>
-                <Section label="What you sell" required>
-                  <SellsPicker value={sells} onChange={setSells} />
-                </Section>
                 <Section label="Token ticker" required help={<TokenHelp />}>
                   {start.tokenApproved ? (
                     <p className="rounded-xl bg-surface-alt px-4 py-3 text-sm">
@@ -496,6 +485,15 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                       )}
                     </>
                   )}
+                </Section>
+                <Section label="Website and socials">
+                  <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
+                    <Handle icon={<Globe size={17} />} label="Website" value={website} onChange={setWebsite} placeholder="yourstore.com" />
+                    <Handle icon={<Brand name="instagram" />} label="Instagram" prefix="@" value={socials.instagram} onChange={(instagram) => setSocials({ ...socials, instagram })} placeholder="yourstore" />
+                    <Handle icon={<Brand name="x" />} label="X" prefix="@" value={socials.x} onChange={(x) => setSocials({ ...socials, x })} placeholder="yourstore" />
+                    <Handle icon={<Brand name="tiktok" />} label="TikTok" prefix="@" value={socials.tiktok} onChange={(tiktok) => setSocials({ ...socials, tiktok })} placeholder="yourstore" />
+                    <Handle icon={<Brand name="facebook" />} label="Facebook" value={socials.facebook} onChange={(facebook) => setSocials({ ...socials, facebook })} placeholder="Page name or link" />
+                  </div>
                 </Section>
               </div>
             )}
@@ -581,16 +579,47 @@ function Section({ label, required, help, children }: { label: string; required?
   );
 }
 
-/** A short text field with an optional @ in front, for social handles and links */
-function Handle({ label, prefix, value, onChange, placeholder }: { label: string; prefix?: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+/** One row of the socials list: the site's mark, then the handle */
+function Handle({ icon, label, prefix, value, onChange, placeholder }: { icon: ReactNode; label: string; prefix?: string; value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium text-ink-2">{label}</span>
-      <span className="flex items-center overflow-hidden rounded-2xl border border-line bg-surface focus-within:border-ink">
-        {prefix && <span className="pl-4 text-muted">{prefix}</span>}
-        <input value={value} maxLength={200} onChange={(e) => onChange(prefix ? e.target.value.replace(/^@/, "") : e.target.value)} placeholder={placeholder} className={`h-12 min-w-0 flex-1 bg-transparent outline-none ${prefix ? "pl-1 pr-4" : "px-4"}`} />
+    <label className="flex h-11 items-center gap-2.5 px-3.5 text-sm focus-within:bg-surface-alt">
+      <span className="flex w-5 shrink-0 justify-center text-ink-2" title={label}>
+        {icon}
       </span>
+      {prefix && <span className="-mr-1.5 text-muted">{prefix}</span>}
+      <input
+        value={value}
+        maxLength={200}
+        aria-label={label}
+        onChange={(e) => onChange(prefix ? e.target.value.replace(/^@/, "") : e.target.value)}
+        placeholder={placeholder}
+        className="h-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-faint"
+      />
     </label>
+  );
+}
+
+const BRAND_PATHS = {
+  x: "M17.8 3h3l-6.6 7.6L22 21h-6.1l-4.8-6.3L5.6 21h-3l7.1-8.1L2.3 3h6.2l4.3 5.7L17.8 3zm-1 16.2h1.7L7.3 4.7H5.5l11.3 14.5z",
+  tiktok:
+    "M16.6 2h-3.3v13.4a2.9 2.9 0 1 1-2-2.8V9.2a6.3 6.3 0 1 0 5.3 6.2V8.6a7.9 7.9 0 0 0 4.6 1.5V6.8a4.6 4.6 0 0 1-4.6-4.6V2z",
+  facebook: "M14 22v-8.1h2.7l.4-3.2H14V8.7c0-.9.3-1.5 1.6-1.5h1.7V4.3c-.3 0-1.3-.1-2.5-.1-2.5 0-4.2 1.5-4.2 4.3v2.3H7.8v3.2h2.8V22H14z",
+} as const;
+
+/** Small brand marks for the socials list (the icon set has no logos) */
+function Brand({ name }: { name: keyof typeof BRAND_PATHS | "instagram" }) {
+  if (name === "instagram")
+    return (
+      <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+        <rect x="3" y="3" width="18" height="18" rx="5" />
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="17.3" cy="6.7" r="0.6" fill="currentColor" />
+      </svg>
+    );
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden>
+      <path d={BRAND_PATHS[name]} />
+    </svg>
   );
 }
 

@@ -83,7 +83,7 @@ export function PayoutAccountForm({ saved, onSaved }: { saved: SavedAccount | nu
               </p>
             ) : (
               <p className="mt-1 flex items-start gap-1.5 text-sm text-warn">
-                <AlertTriangle size={15} className="mt-0.5 shrink-0" /> This name doesn&apos;t match your business or your own name, so Sotechy checks it before sending you anything.
+                <AlertTriangle size={15} className="mt-0.5 shrink-0" /> This name doesn&apos;t match your business or your own name. You can still save it: we&apos;ll review it when you submit your application.
               </p>
             )}
           </div>

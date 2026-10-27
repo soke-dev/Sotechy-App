@@ -212,6 +212,15 @@ export const authRoutes = new Hono<AppEnv>()
     async (c) => {
       const input = c.req.valid("json");
       const id = c.get("user").id;
+      if (input.fullName !== undefined) {
+        const [verified] = await db
+          .select({ id: schema.merchants.id })
+          .from(schema.merchants)
+          .where(and(eq(schema.merchants.ownerId, id), eq(schema.merchants.kycStatus, "approved")))
+          .limit(1);
+        const [me] = verified ? await db.select({ fullName: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, id)) : [];
+        if (verified && input.fullName.trim() !== (me?.fullName ?? "")) throw forbidden("Your name comes from your ID check, so it can't be changed here. Contact Sotechy if it's wrong.");
+      }
       const patch = {
         ...(input.fullName !== undefined && { fullName: input.fullName }),
         ...(input.avatarStyle !== undefined && { avatarStyle: input.avatarStyle }),
