@@ -69,6 +69,30 @@ export function tickerProblem(raw: string): string | null {
   return null;
 }
 
+// Words that say what kind of business it is, not which one, so they don't make a ticker on their own
+const GENERIC_NAME_WORDS = new Set(["SHOP", "SHOPS", "STORE", "STORES", "LTD", "LIMITED", "ENTERPRISE", "ENTERPRISES", "VENTURES", "VENTURE", "GLOBAL", "INTL", "INTERNATIONAL", "COMPANY", "CO", "AND", "THE", "OF", "NIG", "NIGERIA", "SERVICES", "CONCEPTS", "HUB", "MART", "PLC", "NG"]);
+
+/** Tickers people would recognise from a store name: its name, initials, and the two together (never chopped words) */
+export function tickerIdeas(storeName: string): string[] {
+  const words = storeName.toUpperCase().replace(/&/g, " ").replace(/[^A-Z0-9 ]/g, "").split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const key = words.filter((w) => !GENERIC_NAME_WORDS.has(w));
+  const main = key.length ? key : words;
+  const initialsOf = (ws: string[]) => ws.map((w) => w[0]).join("");
+  // The store's own name: its first word that fits, e.g. XENA from Xena Gadgets, OKORO from JJ Okoro & Sons
+  const name = main.find((w) => w.length >= 3 && w.length <= 8);
+  const lead = name ?? main[0];
+  const ideas = [
+    name,
+    initialsOf(main).length >= 3 ? initialsOf(main) : initialsOf(words),
+    main.length > 1 && (main[0] + main[1]).length <= 8 ? main[0] + main[1] : "",
+    main.length > 1 ? lead + initialsOf(main.filter((w) => w !== lead)) : "",
+    // A long name without its vowels, e.g. ELCTRN from Electronics World
+    main[0].length > 5 ? (main[0][0] + main[0].slice(1).replace(/[AEIOU]/g, "")).slice(0, 6) : "",
+  ];
+  return [...new Set(ideas.filter((t): t is string => !!t && !tickerProblem(t)))].slice(0, 6);
+}
+
 /**
  * Store tokens. Every sale pays Sotechy a 2% fee; half of it goes to the reserve that pays stores when
  * customers spend tokens. A token's value spreads that 1% over the token and the most a review can add.

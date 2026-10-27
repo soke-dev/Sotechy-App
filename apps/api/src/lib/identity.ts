@@ -1,6 +1,7 @@
 // Usernames, phone numbers and store names: shared rules for sign-up, profiles and stores.
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db/client";
+import { tickerIdeas } from "@sotechy/shared";
 import { badRequest, conflict } from "./errors";
 
 /** Names nobody can take: Sotechy's own, and words that could confuse people */
@@ -92,6 +93,8 @@ export const slugify = (name: string) =>
 
 /** "Xena Gadgets" → "XENA", "JB Phones" → "JBPHO": 3–5 capital letters for the store token */
 export function tickerFrom(name: string) {
+  const idea = tickerIdeas(name)[0];
+  if (idea) return idea;
   const words = name.toUpperCase().replace(/[^A-Z0-9 ]/g, " ").split(/\s+/).filter(Boolean);
   const first = words[0] ?? "";
   const t = first.length >= 3 ? first : words.join("");

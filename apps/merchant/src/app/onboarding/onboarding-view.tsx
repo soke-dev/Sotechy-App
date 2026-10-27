@@ -4,7 +4,7 @@ import { ArrowLeft, Building2, Check, ChevronRight, CircleHelp, FileText, Globe,
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
-import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem, type BusinessStructure, type KycStatus, type MerchantApplicationInput } from "@sotechy/shared";
+import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerIdeas, tickerProblem, type BusinessStructure, type KycStatus, type MerchantApplicationInput } from "@sotechy/shared";
 import { checkTicker, saveApplication, uploadFiles } from "@/lib/market-actions";
 import { IdCheck } from "@/components/id-check";
 import { SellsPicker } from "@/components/sells-picker";
@@ -52,30 +52,6 @@ export interface OnboardingStart {
 }
 
 type TickerCheck = { ticker: string; available: boolean; reason: string | null } | null;
-
-// Words that say what kind of business it is, not which one, so they don't make a ticker on their own
-const GENERIC_WORDS = new Set(["SHOP", "SHOPS", "STORE", "STORES", "LTD", "LIMITED", "ENTERPRISE", "ENTERPRISES", "VENTURES", "VENTURE", "GLOBAL", "INTL", "INTERNATIONAL", "COMPANY", "CO", "AND", "THE", "OF", "NIG", "NIGERIA", "SERVICES", "CONCEPTS", "HUB", "MART", "PLC", "NG"]);
-
-/** Tickers people would recognise from the store name: its name, initials, and the two together (never chopped words) */
-function tickerIdeas(storeName: string): string[] {
-  const words = storeName.toUpperCase().replace(/&/g, " ").replace(/[^A-Z0-9 ]/g, "").split(/\s+/).filter(Boolean);
-  if (!words.length) return [];
-  const key = words.filter((w) => !GENERIC_WORDS.has(w));
-  const main = key.length ? key : words;
-  const initialsOf = (ws: string[]) => ws.map((w) => w[0]).join("");
-  // The store's own name: its first word that fits, e.g. XENA from Xena Gadgets, OKORO from JJ Okoro & Sons
-  const name = main.find((w) => w.length >= 3 && w.length <= 8);
-  const lead = name ?? main[0];
-  const ideas = [
-    name,
-    initialsOf(main).length >= 3 ? initialsOf(main) : initialsOf(words),
-    main.length > 1 && (main[0] + main[1]).length <= 8 ? main[0] + main[1] : "",
-    main.length > 1 ? lead + initialsOf(main.filter((w) => w !== lead)) : "",
-    // A long name without its vowels, e.g. ELCTRN from Electronics World
-    main[0].length > 5 ? (main[0][0] + main[0].slice(1).replace(/[AEIOU]/g, "")).slice(0, 6) : "",
-  ];
-  return [...new Set(ideas.filter((t): t is string => !!t && !tickerProblem(t)))].slice(0, 6);
-}
 
 export default function OnboardingView({ initialStep, start }: { initialStep?: StepId; start: OnboardingStart }) {
   const app = start.application;

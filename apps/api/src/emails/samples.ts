@@ -54,7 +54,7 @@ export const SAMPLES: Record<string, ["Customers" | "Merchants", () => Email | n
     "Customers",
     () => T.storeNoticeEmail(to, { name: "Ada Okafor", store: "Xena Gadgets", title: "Weekend sale: 15% off chargers", message: "All chargers and power banks are 15% off until Sunday night. Delivery in Benin City is free on orders over ₦50,000.", url: "https://www.sotechy.shop" }),
   ],
-  "store-opened": ["Merchants", () => T.storeOpenedEmail(to, { name: "Kemi Bello", store: "Kemi Phones", ticker: "KEMI" })],
+  "store-opened": ["Merchants", () => T.storeOpenedEmail(to, { name: "Kemi Bello", store: "Kemi Phones" })],
   "new-order": ["Merchants", () => T.newOrderEmail(to, { store: "Xena Gadgets", order: delivery, customer: "Chidi O. (@chidi)", respondBy: inHours(24) })],
   "offer-received": [
     "Merchants",

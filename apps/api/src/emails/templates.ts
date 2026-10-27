@@ -151,23 +151,23 @@ export function storeNoticeEmail(to: string, d: { name: string | null; store: st
 // ---------------------------------------------------------------------------
 // Merchants
 // ---------------------------------------------------------------------------
-export function storeOpenedEmail(to: string, d: { name: string | null; store: string; ticker: string }) {
+export function storeOpenedEmail(to: string, d: { name: string | null; store: string }) {
   return build(to, `${d.store} is open on Sotechy`, {
     preheader: "Explore your dashboard now. You can start selling once Sotechy verifies your store.",
     hero: "store-opened",
     eyebrow: "Sotechy for merchants",
     heading: `${d.store} is open`,
     blocks: [
-      { kind: "text", text: `Welcome, ${first(d.name)}. Your store and its token **$${d.ticker}** are ready. Explore your dashboard and get set up now; adding products and taking orders unlock once Sotechy verifies your store.` },
+      { kind: "text", text: `Welcome, ${first(d.name)}. Your store is open. Finish setup and send it to Sotechy for review: once it's verified, your store token is created and you can add products and take orders.` },
       {
         kind: "checklist",
         items: [
           { done: true, text: "Open your store" },
           { done: false, text: "Verify your identity (ID and a quick selfie)" },
           { done: false, text: "Add your business details" },
+          { done: false, text: "Choose your store token's ticker" },
           { done: false, text: "Add a payout bank account" },
-          { done: false, text: "Choose where you deliver" },
-          { done: false, text: "Add your first products" },
+          { done: false, text: "Send your store for review" },
         ],
       },
       { kind: "button", label: "Continue setup", url: merchantLink("/onboarding") },

@@ -74,7 +74,7 @@ export const merchantRoutes = new Hono<AppEnv>()
       const username = !user.username && input.username ? await claimUsername(input.username, id) : undefined;
       const referredById = !user.referredById ? await referrerFor(input.referralCode, id) : undefined;
       const slug = input.slug ? await claimStoreHandle(input.slug) : await firstFree(slugify(input.name), schema.merchants.slug, "-", 40);
-      const ticker = await firstFree(tickerFrom(input.name), schema.merchants.ticker, "", 6);
+      const ticker = await firstFree(tickerFrom(input.name), schema.merchants.ticker, "", 8);
 
       const store = await db.transaction(async (tx) => {
         const [row] = await tx
@@ -87,7 +87,7 @@ export const merchantRoutes = new Hono<AppEnv>()
         return row;
       });
       const [fresh] = await db.select().from(schema.users).where(eq(schema.users.id, id));
-      sendEmailLater(storeOpenedEmail(fresh.email, { name: fresh.fullName, store: store.name, ticker: store.ticker }));
+      sendEmailLater(storeOpenedEmail(fresh.email, { name: fresh.fullName, store: store.name }));
       return c.json({ user: publicUser(fresh), store }, 201);
     },
   )
