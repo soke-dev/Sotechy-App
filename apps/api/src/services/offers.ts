@@ -6,6 +6,8 @@ import type { OfferView } from "@sotechy/shared";
 import { db, schema, type Tx } from "../db/client";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { sendPushLater } from "./push";
+import { sendEmailLater } from "../lib/email";
+import { offerAcceptedEmail, offerReceivedEmail, offerUpdateEmail } from "../emails/templates";
 
 const { offers, offerMessages, products, productVariants, merchants, users } = schema;
 const MAX_CUSTOMER_OFFERS = 3;
@@ -77,6 +79,23 @@ async function notifyStore(merchantId: string, title: string, body: string, offe
   if (store?.ownerId) sendPushLater([store.ownerId], { title, body, data: { url: `/offers/${offerId}` } });
 }
 const notifyCustomer = (customerId: string, title: string, body: string, offerId: string) => sendPushLater([customerId], { title, body, data: { url: `/offer/${offerId}` } });
+
+// Who to email about an offer: the store (its contact email, or the owner's) and the customer
+async function offerPeople(merchantId: string, customerId: string) {
+  const [store] = await db.select({ name: merchants.name, contactEmail: merchants.contactEmail, ownerId: merchants.ownerId }).from(merchants).where(eq(merchants.id, merchantId));
+  const [owner] = store?.ownerId ? await db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.id, store.ownerId)) : [];
+  const [customer] = await db.select({ email: schema.users.email, name: schema.users.fullName, username: schema.users.username }).from(schema.users).where(eq(schema.users.id, customerId));
+  return {
+    storeName: store?.name ?? "The store",
+    storeEmail: store?.contactEmail ?? owner?.email ?? null,
+    customerEmail: customer?.email ?? null,
+    customerName: customer?.name ?? null,
+    // Stores know customers by @username
+    customerLabel: customer?.username ? `@${customer.username}` : (customer?.name ?? "A customer"),
+  };
+}
+const STORE_OFFERS_URL = "https://merchant.sotechy.shop/offers";
+const customerOfferUrl = (id: string) => `https://www.sotechy.shop/offer/${id}`;
 const naira = (n: number) => `₦${n.toLocaleString("en-NG")}`;
 
 /** A customer offers a price for one unit of a product option */
@@ -110,7 +129,13 @@ export async function makeOffer(customerId: string, input: { variantId: string; 
     if (tooLow) await tx.insert(offerMessages).values({ offerId: o.id, from: "store", kind: "decline", text: "That's lower than we can go. Try a higher offer." });
     return o;
   });
-  if (!tooLow) void notifyStore(row.store.id, "New price offer", `${naira(input.amount)} for ${row.product.name}`, offer.id);
+  if (!tooLow) {
+    void notifyStore(row.store.id, "New price offer", `${naira(input.amount)} for ${row.product.name}`, offer.id);
+    void offerPeople(row.store.id, customerId).then((p) => {
+      if (p.storeEmail)
+        sendEmailLater(offerReceivedEmail(p.storeEmail, { store: p.storeName, customer: p.customerLabel, product: row.product.name, listPrice: price, offer: input.amount, message: input.text?.trim() || null, url: STORE_OFFERS_URL }));
+    });
+  }
   return (await customerOffers(customerId, offer.id))[0];
 }
 
@@ -159,6 +184,21 @@ export async function answerOffer(
 
   const [product] = await db.select({ name: products.name }).from(products).where(eq(products.id, result.productId));
   const what = product?.name ?? "your item";
+  // Email the other side too, so nobody misses an answer
+  void offerPeople(result.merchantId, result.customerId).then((p) => {
+    const message = input.text?.trim() || null;
+    if (by.side === "store" && p.customerEmail) {
+      if (input.action === "accept" && result.agreedUntil) {
+        const hours = Math.max(1, Math.round((result.agreedUntil.getTime() - Date.now()) / 3_600_000));
+        sendEmailLater(offerAcceptedEmail(p.customerEmail, { name: p.customerName, store: p.storeName, product: what, listPrice: result.listPrice, agreedPrice: result.agreedPrice ?? result.lastAmount, hours, expiresAt: result.agreedUntil, url: customerOfferUrl(result.id) }));
+      } else {
+        sendEmailLater(offerUpdateEmail(p.customerEmail, { side: "customer", name: p.customerName, store: p.storeName, customer: p.customerLabel, product: what, listPrice: result.listPrice, amount: input.action === "counter" ? result.lastAmount : null, action: input.action, message, url: customerOfferUrl(result.id) }));
+      }
+    }
+    if (by.side === "customer" && p.storeEmail) {
+      sendEmailLater(offerUpdateEmail(p.storeEmail, { side: "store", name: null, store: p.storeName, customer: p.customerLabel, product: what, listPrice: result.listPrice, amount: input.action === "decline" ? null : result.lastAmount, action: input.action, message, url: STORE_OFFERS_URL }));
+    }
+  });
   if (by.side === "store") {
     const text =
       input.action === "accept" ? `Your price of ${naira(result.lastAmount)} is agreed. Buy it before it runs out.` : input.action === "decline" ? `The store declined your offer` : `The store countered with ${naira(result.lastAmount)}`;

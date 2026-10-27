@@ -413,7 +413,11 @@ export default function ProductScreen() {
   if (loading && !product) return <Loading />;
   if (error || !product) return <ErrorView message={error ?? "Product not found"} onRetry={reload} />;
 
-  const variant = product.variants.find((v) => v.id === variantId) ?? product.variants[0];
+  // A price the store agreed for this customer, still held: its option opens first
+  const agreedOffer = (offers.data ?? []).find((o) => o.product.id === product.id && o.status === "agreed" && o.agreedPrice != null && (!o.agreedUntil || new Date(o.agreedUntil).getTime() > now));
+  const variant = product.variants.find((v) => v.id === (variantId ?? agreedOffer?.product.variantId)) ?? product.variants[0];
+  /** The agreed price applies to this option, one unit, for this customer only */
+  const deal = agreedOffer && agreedOffer.product.variantId === variant?.id ? agreedOffer : null;
   const stock = product.stock.filter((s) => s.variantId === variant?.id);
   const available = stock.reduce((n, s) => n + s.quantity - s.reserved, 0);
   const storesWithStock = stock.filter((s) => s.quantity - s.reserved > 0);
@@ -437,6 +441,22 @@ export default function ProductScreen() {
 
   async function addCurrent() {
     if (!variant || !product) return;
+    if (deal?.agreedPrice != null) {
+      // One at the agreed price; more can be added at the normal price afterwards
+      const line = {
+        variantId: variant.id,
+        productId: product.id,
+        productName: product.name,
+        variantName: variant.name,
+        unitPrice: deal.agreedPrice,
+        imageUrl: product.images[0] ?? null,
+        offerId: deal.id,
+        store: sellerOf(product.store),
+      };
+      if (!(await addToCart(line, 1))) return;
+      showAdded({ name: product.name, variant: product.variants.length > 1 ? variant.name : undefined, imageUrl: product.images[0] ?? null, quantity: 1, unitPrice: deal.agreedPrice });
+      return;
+    }
     const line = {
       variantId: variant.id,
       productId: product.id,
@@ -532,7 +552,7 @@ export default function ProductScreen() {
             <Txt variant="title">{product.name}</Txt>
             {/* Price, its dollar value, the saving and stock, all centred on one line */}
             <View style={[ui.row, { marginTop: 4, flexWrap: "wrap", rowGap: 6 }]}>
-              <Price amount={variant?.price ?? 0} compareAt={variant?.compareAtPrice} size="lg" />
+              <Price amount={deal?.agreedPrice ?? variant?.price ?? 0} compareAt={deal ? variant?.price : variant?.compareAtPrice} size="lg" />
               {features.usdPrices && fx.data && variant ? (
                 <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 3 }}>
                   <Txt variant="label" color={colors.ink2} style={{ fontSize: 12, lineHeight: 16 }}>≈ {formatUsd(variant.price, fx.data.rate)}</Txt>
@@ -626,8 +646,8 @@ export default function ProductScreen() {
           size={48}
           onPress={() => config.data?.support.phone && Linking.openURL(`tel:${config.data.support.phone.replace(/[^\d+]/g, "")}`)}
         />
-        <QtyStepper value={qty} onChange={setQty} max={Math.max(1, available)} />
-        <Button title={available > 0 ? `Add · ${formatNaira((variant?.price ?? 0) * qty)}` : "Out of stock"} icon="bag-add-outline" onPress={addCurrent} disabled={available <= 0} style={{ flex: 1 }} />
+        {!deal && <QtyStepper value={qty} onChange={setQty} max={Math.max(1, available)} />}
+        <Button title={available <= 0 ? "Out of stock" : deal?.agreedPrice != null ? `Buy at ${formatNaira(deal.agreedPrice)}` : `Add · ${formatNaira((variant?.price ?? 0) * qty)}`} icon="bag-add-outline" onPress={addCurrent} disabled={available <= 0} style={{ flex: 1 }} />
       </BottomBar>
 
       <ReviewSheet visible={reviewOpen} productName={product.name} initial={mine} onClose={() => setReviewOpen(false)} onSubmit={submitReview} />

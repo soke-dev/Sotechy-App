@@ -383,3 +383,43 @@ export function teamInviteEmail(to: string, d: { store: string; from: string | n
     reason: "You're getting this because a Sotechy store invited this email address.",
   });
 }
+
+/** A move in a price offer: a counter, the customer accepting the store's price, or either side walking away */
+export function offerUpdateEmail(
+  to: string,
+  d: { side: "customer" | "store"; name: string | null; store: string; customer: string; product: string; listPrice: number; amount: number | null; action: "counter" | "accept" | "decline"; message?: string | null; url: string },
+) {
+  const toCustomer = d.side === "customer";
+  const who = toCustomer ? d.store : d.customer;
+  const copy =
+    d.action === "counter"
+      ? { subject: `${who} offered ${formatNaira(d.amount ?? 0)} for ${d.product}`, heading: toCustomer ? "The store made you an offer" : "They made a new offer", button: toCustomer ? "See the offer" : "Answer the offer" }
+      : d.action === "accept"
+        ? { subject: `${who} accepted ${formatNaira(d.amount ?? 0)} for ${d.product}`, heading: "Your price was accepted", button: "See the offer" }
+        : { subject: toCustomer ? `${who} declined your offer for ${d.product}` : `${who} walked away from the offer`, heading: toCustomer ? "Your offer was declined" : "The offer is closed", button: "See the offer" };
+  return build(to, copy.subject, {
+    preheader: d.action === "counter" ? `Accept, counter or decline.` : copy.heading,
+    hero: d.action === "accept" ? "offer-accepted" : "offer",
+    eyebrow: toCustomer ? d.store : `${d.store} · Price offer`,
+    heading: copy.heading,
+    blocks: [
+      {
+        kind: "text",
+        text:
+          d.action === "decline"
+            ? toCustomer
+              ? `Hi ${first(d.name)}, **${d.store}** didn't accept your offer for **${d.product}**. You can still buy it at ${formatNaira(d.listPrice)}, or try a new offer.`
+              : `**${d.customer}** walked away from their offer for **${d.product}**.`
+            : d.action === "accept"
+              ? `**${d.customer}** accepted your price for **${d.product}**. They have until the hold runs out to pay.`
+              : toCustomer
+                ? `Hi ${first(d.name)}, **${d.store}** came back with a price for **${d.product}**.`
+                : `**${d.customer}** came back with a new price for **${d.product}**.`,
+      },
+      ...(d.amount != null && d.action !== "decline" ? [{ kind: "price" as const, was: d.listPrice, now: d.amount, caption: d.action === "accept" ? "Agreed price" : "Their offer" }] : []),
+      ...(d.message ? [{ kind: "note" as const, icon: "chat" as const, text: `"${d.message}"` }] : []),
+      { kind: "button", label: copy.button, url: d.url },
+    ],
+    reason: toCustomer ? "You're getting this because you made an offer on Sotechy." : "You're getting this because a customer made an offer on one of your products.",
+  });
+}
