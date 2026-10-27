@@ -522,6 +522,8 @@ export interface Paginated<T> {
 export interface StorefrontSettings {
   themeId: string;
   accent?: string | null;
+  /** The store's brand colour, used for its header */
+  hero?: string | null;
   header: "cover" | "band";
   layout: "grid" | "large";
   announcement?: string | null;

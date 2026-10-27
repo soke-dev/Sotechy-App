@@ -43,11 +43,23 @@ export function contrast(a: string, b: string) {
   return (x + 0.05) / (y + 0.05);
 }
 
+/** White or dark text, whichever reads better on a colour */
+const readableOn = (colour: string) => (contrast(colour, "#FFFFFF") >= contrast(colour, "#17120E") ? "#FFFFFF" : "#17120E");
+
 /** A preset with the merchant's own accent; text on the accent flips to stay readable. */
 export function withAccent(base: StoreTheme, accent: string): StoreTheme {
-  const onAccent = contrast(accent, "#FFFFFF") >= contrast(accent, "#17120E") ? "#FFFFFF" : "#17120E";
-  return { ...base, id: "custom", accent, onAccent };
+  return { ...base, id: "custom", accent, onAccent: readableOn(accent) };
 }
+
+/** A preset with the merchant's own brand (header) colour and accent */
+export function withColours(base: StoreTheme, colours: { accent?: string | null; hero?: string | null }): StoreTheme {
+  const t = colours.accent ? withAccent(base, colours.accent) : base;
+  return colours.hero ? { ...t, id: "custom", hero: colours.hero, onHero: readableOn(colours.hero) } : t;
+}
+
+/** A store's saved look */
+export const storeTheme = (sf: { themeId?: string; accent?: string | null; hero?: string | null } | null | undefined) =>
+  withColours(THEME_PRESETS.find((p) => p.id === sf?.themeId) ?? THEME_PRESETS[0], { accent: sf?.accent, hero: sf?.hero });
 
 /** Readability check for a merchant's own accent (the presets are already checked). */
 export function themeWarnings(t: StoreTheme) {

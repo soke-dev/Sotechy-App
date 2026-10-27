@@ -345,6 +345,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
           .object({
             themeId: z.string().max(30),
             accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
+            hero: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
             header: z.enum(["cover", "band"]),
             layout: z.enum(["grid", "large"]),
             announcement: z.string().trim().max(80).nullable().optional(),

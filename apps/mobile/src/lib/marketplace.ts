@@ -115,7 +115,8 @@ export const toStoreProduct = (p: CatalogProduct): StoreProduct => ({
 export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "branchId" | "products" | "pickupPoints" | "deliveryAreas">>): MarketStore {
   const look = s.storefront;
   const base = THEMES[look?.themeId ?? ""] ?? THEMES.sotechy;
-  const theme = look?.accent ? { ...base, accent: look.accent, onAccent: onColour(look.accent) } : base;
+  const withAccent = look?.accent ? { ...base, accent: look.accent, onAccent: onColour(look.accent) } : base;
+  const theme = look?.hero ? { ...withAccent, hero: look.hero, onHero: onColour(look.hero) } : withAccent;
   return {
     slug: s.slug,
     name: s.name,

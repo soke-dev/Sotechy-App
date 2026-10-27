@@ -1,23 +1,27 @@
 "use client";
 
-import { AlertTriangle, Check, ExternalLink, ImagePlus } from "lucide-react";
+import { AlertTriangle, ExternalLink, ImagePlus, Monitor, Smartphone, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useAccount } from "@/components/account-context";
 import { StorefrontView, type StorefrontLook } from "@/components/storefront-view";
-import { btn, Card, Field, inputClass, PageHeader } from "@/components/ui";
+import { btn, inputClass, PageHeader } from "@/components/ui";
 import { saveStorefront, uploadFiles } from "@/lib/market-actions";
 import type { Product } from "@/lib/mock";
-import { THEME_PRESETS, themeWarnings, withAccent } from "@/lib/themes";
+import { THEME_PRESETS, themeWarnings, withColours } from "@/lib/themes";
+
+type Look = Omit<StorefrontLook, "theme">;
+const DEFAULT_DESIGN = { presetId: "sotechy", accent: null as string | null, hero: null as string | null, header: "cover" as const, layout: "grid" as const };
 
 export function StorefrontEditor({ products }: { products: Product[] }) {
   const { user, store } = useAccount();
   const router = useRouter();
   const sf = store.storefront;
-  const [presetId, setPresetId] = useState(sf?.themeId ?? "sotechy");
+  const [presetId, setPresetId] = useState(sf?.themeId ?? DEFAULT_DESIGN.presetId);
   const [accent, setAccent] = useState<string | null>(sf?.accent ?? null);
-  const [look, setLook] = useState<Omit<StorefrontLook, "theme">>({
+  const [hero, setHero] = useState<string | null>(sf?.hero ?? null);
+  const [look, setLook] = useState<Look>({
     header: sf?.header ?? "cover",
     layout: sf?.layout ?? "grid",
     name: store.name,
@@ -29,17 +33,20 @@ export function StorefrontEditor({ products }: { products: Product[] }) {
     rating: null,
     followers: 0,
   });
-  const [saved, setSaved] = useState(false);
+  const [device, setDevice] = useState<"phone" | "desktop">("phone");
   const [error, setError] = useState<string | null>(null);
   const [saving, start] = useTransition();
   const [uploading, setUploading] = useState<"logo" | "cover" | null>(null);
+  const snapshot = JSON.stringify({ presetId, accent, hero, look });
+  const [savedSnapshot, setSavedSnapshot] = useState(snapshot);
+  const changed = snapshot !== savedSnapshot;
+
   const preset = THEME_PRESETS.find((p) => p.id === presetId) ?? THEME_PRESETS[0];
-  const theme = accent ? withAccent(preset, accent) : preset;
+  const theme = withColours(preset, { accent, hero });
   const warnings = themeWarnings(theme);
-  const set = (patch: Partial<typeof look>) => {
-    setSaved(false);
-    setLook((l) => ({ ...l, ...patch }));
-  };
+  const isDefault = presetId === DEFAULT_DESIGN.presetId && !accent && !hero && look.header === DEFAULT_DESIGN.header && look.layout === DEFAULT_DESIGN.layout;
+  const set = (patch: Partial<Look>) => setLook((l) => ({ ...l, ...patch }));
+
   /** Logo and cover upload straight away; saving stores their addresses */
   const upload = (key: "logo" | "cover") => async (files: FileList | null) => {
     if (!files?.[0]) return;
@@ -60,145 +67,256 @@ export function StorefrontEditor({ products }: { products: Product[] }) {
         // The owner's profile picture stands in until a logo is uploaded; it isn't saved as the logo
         logoUrl: look.logo && look.logo !== user.avatarUrl ? look.logo : null,
         coverUrl: look.cover,
-        storefront: { themeId: presetId, accent, header: look.header, layout: look.layout, announcement: look.announcement.trim() || null },
+        storefront: { themeId: presetId, accent, hero, header: look.header, layout: look.layout, announcement: look.announcement.trim() || null },
       });
       if ("error" in r) setError(r.error);
       else {
-        setSaved(true);
+        setSavedSnapshot(snapshot);
         router.refresh();
       }
     });
+  /** Back to Sotechy's colours and layout; the logo, cover and words stay */
+  const reset = () => {
+    setPresetId(DEFAULT_DESIGN.presetId);
+    setAccent(null);
+    setHero(null);
+    set({ header: DEFAULT_DESIGN.header, layout: DEFAULT_DESIGN.layout });
+  };
 
   return (
     <>
       <PageHeader
         illo="store"
         title="Storefront"
-        description="Make your store page yours. Customers see it in the Sotechy app when they open your store."
+        description="Choose how your store looks to customers in the Sotechy app."
         actions={
-          <>
-            <Link href="/store-preview" className={btn.outline}>
-              View full page <ExternalLink size={15} />
-            </Link>
-            <button disabled={saving || uploading !== null} onClick={save} className={btn.primary}>
-              {saving ? "Saving…" : saved ? <><Check size={16} /> Saved</> : "Save storefront"}
-            </button>
-          </>
+          <Link href="/store-preview" className={btn.outline}>
+            View full page <ExternalLink size={15} />
+          </Link>
         }
       />
 
       {error && <p className="mb-4 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-        <div className="flex flex-col gap-6">
-          <Card title="Theme" description="Start from a theme, then pick your own colour if you like.">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {THEME_PRESETS.map((p) => {
-                const on = p.id === presetId && !accent;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      setPresetId(p.id);
-                      setAccent(null);
-                      setSaved(false);
-                    }}
-                    className={`overflow-hidden rounded-2xl border-2 text-left transition ${on ? "border-ink" : "border-line hover:border-faint"}`}
-                  >
-                    <div className="flex h-16 items-end gap-1.5 p-2" style={{ background: p.hero }}>
-                      <span className="h-6 w-6 rounded-lg" style={{ background: p.accent }} />
-                      <span className="h-2 w-10 rounded-full bg-white/40" />
-                    </div>
-                    <div className="flex items-center justify-between p-2.5" style={{ background: p.background, color: p.text }}>
-                      <span className="text-sm font-semibold">{p.name}</span>
-                      {on && <Check size={15} />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-5 flex flex-wrap items-end gap-3">
-              <Field label="Your own accent colour">
-                <div className="flex items-center gap-2">
-                  <input type="color" value={accent ?? preset.accent} onChange={(e) => { setAccent(e.target.value.toUpperCase()); setSaved(false); }} className="h-12 w-14 cursor-pointer rounded-2xl border border-line bg-surface p-1" />
-                  <input value={accent ?? preset.accent} onChange={(e) => /^#[0-9a-f]{6}$/i.test(e.target.value) && setAccent(e.target.value.toUpperCase())} className={`${inputClass} w-32 font-mono`} />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+        <div className="min-w-0">
+          <div className="divide-y divide-line rounded-2xl border border-line bg-surface">
+            <Section title="Logo" hint="Shown on your store page and next to your products.">
+              <ImageSlot
+                kind="logo"
+                url={look.logo}
+                busy={uploading === "logo"}
+                tile={{ background: theme.accent, color: theme.onAccent }}
+                onPick={upload("logo")}
+                onRemove={() => set({ logo: null })}
+              />
+            </Section>
+
+            <Section title="Cover photo" hint="The wide photo at the top of your store. Your shop front or best products work well.">
+              <ImageSlot kind="cover" url={look.cover} busy={uploading === "cover"} onPick={upload("cover")} onRemove={() => set({ cover: null })} />
+            </Section>
+
+            <Section title="Palette" hint="Pick a preset to set both colours at once.">
+              <div className="flex flex-wrap gap-2.5">
+                {THEME_PRESETS.map((p) => {
+                  const on = p.id === presetId && !accent && !hero;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      title={p.name}
+                      aria-label={`${p.name} palette`}
+                      aria-pressed={on}
+                      onClick={() => {
+                        setPresetId(p.id);
+                        setAccent(null);
+                        setHero(null);
+                      }}
+                      className={`h-11 w-11 rounded-full border border-line transition ${on ? "ring-2 ring-ink ring-offset-2 ring-offset-surface" : "hover:scale-105"}`}
+                      style={{ background: `linear-gradient(135deg, ${p.hero} 50%, ${p.accent} 50%)` }}
+                    />
+                  );
+                })}
+              </div>
+            </Section>
+
+            <Section title="Colours">
+              <div className="flex flex-col gap-3">
+                <ColourRow label="Brand colour" hint="Your header" value={theme.hero} onChange={setHero} />
+                <ColourRow label="Accent" hint="Buttons and highlights" value={theme.accent} onChange={setAccent} />
+              </div>
+              {warnings.map((w) => (
+                <p key={w} className="mt-3 flex items-start gap-2 rounded-xl bg-warn-soft px-3 py-2.5 text-sm text-warn">
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {w}
+                </p>
+              ))}
+            </Section>
+
+            <Section title="Tagline" hint="A line under your store name.">
+              <Counted value={look.tagline} max={90} onChange={(tagline) => set({ tagline })} placeholder="e.g. Phones and gadgets, delivered across Benin City" />
+            </Section>
+
+            <Section title="Announcement" hint="Optional. A strip across your page for a sale or delivery news.">
+              <Counted value={look.announcement} max={80} onChange={(announcement) => set({ announcement })} placeholder="e.g. 10% off all fans this week" />
+            </Section>
+
+            <Section title="Layout">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm text-ink-2">Header</span>
+                  <Segment value={look.header} onChange={(header) => set({ header })} options={[["cover", "Cover photo"], ["band", "Colour band"]]} />
                 </div>
-              </Field>
-              {accent && (
-                <button onClick={() => setAccent(null)} className={btn.ghost}>
-                  Use theme colour
-                </button>
-              )}
-            </div>
-            {warnings.map((w) => (
-              <p key={w} className="mt-3 flex items-start gap-2 rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn">
-                <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {w}
-              </p>
-            ))}
-          </Card>
-
-          <Card title="Branding">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Logo" hint="Square, PNG with a clear background works best.">
-                <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-line p-3 hover:border-brand">
-                  <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl" style={{ background: theme.accent }}>
-                    {look.logo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={look.logo} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
-                    ) : (
-                      <ImagePlus size={20} style={{ color: theme.onAccent }} />
-                    )}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-sm font-semibold text-ink-2"><ImagePlus size={16} /> {uploading === "logo" ? "Uploading…" : look.logo ? "Change logo" : "Add a logo"}</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => upload("logo")(e.target.files)} />
-                </label>
-              </Field>
-              <Field label="Cover photo" hint="Wide photo of your shop or products.">
-                <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-line p-3 hover:border-brand">
-                  {look.cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={look.cover} alt="" className="h-14 w-20 rounded-xl object-cover" />
-                  ) : (
-                    <span className="flex h-14 w-20 items-center justify-center rounded-xl bg-surface-alt text-muted">
-                      <ImagePlus size={20} />
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1.5 text-sm font-semibold text-ink-2"><ImagePlus size={16} /> {uploading === "cover" ? "Uploading…" : look.cover ? "Change cover" : "Add a cover"}</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => upload("cover")(e.target.files)} />
-                </label>
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label="Tagline">
-                  <input value={look.tagline} maxLength={90} onChange={(e) => set({ tagline: e.target.value })} className={inputClass} placeholder="e.g. Phones and gadgets, delivered across Benin City" />
-                </Field>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm text-ink-2">Products</span>
+                  <Segment value={look.layout} onChange={(layout) => set({ layout })} options={[["grid", "Grid"], ["large", "Large cards"]]} />
+                </div>
               </div>
-              <div className="sm:col-span-2">
-                <Field label="Announcement strip" hint="Optional. Shown under your header, e.g. a sale or delivery news.">
-                  <input value={look.announcement} maxLength={80} onChange={(e) => set({ announcement: e.target.value })} className={inputClass} placeholder="e.g. 10% off all fans this week" />
-                </Field>
-              </div>
-            </div>
-          </Card>
+            </Section>
+          </div>
 
-          <Card title="Layout">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Header">
-                <Segment value={look.header} onChange={(header) => set({ header })} options={[["cover", "Cover photo"], ["band", "Colour band"]]} />
-              </Field>
-              <Field label="Products">
-                <Segment value={look.layout} onChange={(layout) => set({ layout })} options={[["grid", "Grid"], ["large", "Large cards"]]} />
-              </Field>
-            </div>
-          </Card>
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <button disabled={!changed || saving || uploading !== null} onClick={save} className={btn.primary}>
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+            <button type="button" disabled={isDefault} onClick={reset} className={`${btn.ghost} disabled:opacity-40`}>
+              Reset to default
+            </button>
+            {changed ? <span className="text-sm text-muted">Unsaved changes</span> : null}
+          </div>
         </div>
 
-        {/* Live phone preview */}
-        <div className="lg:sticky lg:top-8 lg:self-start">
-          <p className="mb-3 text-center text-sm font-semibold text-muted">Live preview</p>
-          <Phone background={theme.background} statusInk={theme.onHero}>
-            <StorefrontView look={{ ...look, theme }} products={products} compact />
-          </Phone>
+        {/* Live preview, tinted with the store's colour */}
+        <div className="min-w-0 rounded-3xl p-4 sm:p-6 lg:sticky lg:top-6" style={{ background: `color-mix(in srgb, ${theme.accent} 13%, var(--color-surface))` }}>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <span className="text-sm font-semibold text-ink-2">Live preview</span>
+            <div className="flex rounded-full bg-surface p-1 shadow-sm">
+              {(
+                [
+                  ["phone", Smartphone, "Phone"],
+                  ["desktop", Monitor, "Desktop"],
+                ] as const
+              ).map(([key, Icon, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-label={`${label} preview`}
+                  aria-pressed={device === key}
+                  onClick={() => setDevice(key)}
+                  className={`flex h-9 w-11 items-center justify-center rounded-full transition ${device === key ? "bg-surface-alt text-ink" : "text-muted hover:text-ink"}`}
+                >
+                  <Icon size={17} />
+                </button>
+              ))}
+            </div>
+          </div>
+          {device === "phone" ? (
+            <Phone background={theme.background} statusInk={theme.onHero}>
+              <StorefrontView look={{ ...look, theme }} products={products} compact />
+            </Phone>
+          ) : (
+            <Desktop background={theme.background} label={store.name}>
+              <StorefrontView look={{ ...look, theme }} products={products} />
+            </Desktop>
+          )}
         </div>
       </div>
+    </>
+  );
+}
+
+function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <section className="p-5">
+      <h2 className="font-semibold">{title}</h2>
+      {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
+      <div className="mt-3.5">{children}</div>
+    </section>
+  );
+}
+
+/** A logo or cover: what's there now, with Replace and Remove */
+function ImageSlot({ kind, url, busy, tile, onPick, onRemove }: { kind: "logo" | "cover"; url: string | null; busy: boolean; tile?: { background: string; color: string }; onPick: (files: FileList | null) => void; onRemove: () => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const noun = kind === "logo" ? "Logo" : "Cover photo";
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface-alt p-3">
+      <span className={`flex shrink-0 items-center justify-center overflow-hidden ${kind === "logo" ? "h-16 w-16 rounded-2xl" : "h-16 w-24 rounded-xl bg-surface"}`} style={kind === "logo" ? tile : undefined}>
+        {url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+        ) : (
+          <ImagePlus size={20} className={kind === "cover" ? "text-muted" : undefined} />
+        )}
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{busy ? "Uploading…" : url ? `${noun} added` : `No ${noun.toLowerCase()} yet`}</p>
+        <div className="mt-1 flex items-center gap-4 text-sm font-semibold">
+          <button type="button" disabled={busy} onClick={() => input.current?.click()} className="text-brand-strong hover:underline disabled:opacity-50">
+            {url ? "Replace" : "Upload"}
+          </button>
+          {url && (
+            <button type="button" disabled={busy} onClick={onRemove} className="inline-flex items-center gap-1 text-muted hover:text-bad disabled:opacity-50">
+              <Trash2 size={14} /> Remove
+            </button>
+          )}
+        </div>
+      </div>
+      <input
+        ref={input}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          onPick(e.target.files);
+          e.target.value = "";
+        }}
+      />
+    </div>
+  );
+}
+
+/** A colour with its swatch picker and hex code */
+function ColourRow({ label, hint, value, onChange }: { label: string; hint: string; value: string; onChange: (hex: string) => void }) {
+  const [text, setText] = useState(value);
+  // Follow palette picks and the swatch
+  const [following, setFollowing] = useState(value);
+  if (value !== following) {
+    setFollowing(value);
+    setText(value);
+  }
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-sm text-ink">{label}</p>
+        <p className="text-xs text-muted">{hint}</p>
+      </div>
+      <div className="flex h-11 shrink-0 items-stretch overflow-hidden rounded-xl border border-line bg-surface">
+        <label className="relative w-11 cursor-pointer border-r border-line" style={{ background: value }}>
+          <span className="sr-only">Pick {label.toLowerCase()}</span>
+          <input type="color" value={value} onChange={(e) => onChange(e.target.value.toUpperCase())} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+        </label>
+        <input
+          value={text}
+          maxLength={7}
+          aria-label={`${label} hex code`}
+          onChange={(e) => {
+            const v = e.target.value.startsWith("#") ? e.target.value : `#${e.target.value}`;
+            setText(v.toUpperCase());
+            if (/^#[0-9a-f]{6}$/i.test(v)) onChange(v.toUpperCase());
+          }}
+          className="w-[6.5rem] bg-transparent px-3 font-mono text-sm outline-none"
+        />
+      </div>
+    </div>
+  );
+}
+
+function Counted({ value, max, onChange, placeholder }: { value: string; max: number; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <>
+      <textarea value={value} maxLength={max} rows={2} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={`${inputClass} min-h-[76px] resize-none py-3`} />
+      <p className="mt-1.5 text-right text-xs text-muted">
+        {value.length}/{max}
+      </p>
     </>
   );
 }
@@ -211,11 +329,43 @@ function Segment<T extends string>({ value, onChange, options }: { value: T; onC
           key={v}
           type="button"
           onClick={() => onChange(v)}
-          className={`whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition ${value === v ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}
+          className={`whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-semibold transition ${value === v ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"}`}
         >
           {label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** The full-size store page in a browser window, scaled down to fit */
+function Desktop({ background, label, children }: { background: string; label: string; children: ReactNode }) {
+  const PAGE = 1100;
+  const HEIGHT = 560;
+  const frame = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.5);
+  useEffect(() => {
+    const el = frame.current;
+    if (!el) return;
+    const watch = new ResizeObserver(([entry]) => setScale(entry.contentRect.width / PAGE));
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, []);
+  return (
+    <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_24px_60px_-24px_rgba(23,18,14,0.35)]">
+      <div className="flex items-center gap-3 border-b border-line px-4 py-2.5">
+        <span className="flex gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+        </span>
+        <span className="min-w-0 flex-1 truncate rounded-full bg-surface-alt px-3 py-1 text-center text-xs text-muted">{label} · Sotechy</span>
+      </div>
+      <div ref={frame} className="relative overflow-hidden" style={{ height: HEIGHT, background }}>
+        <div className="no-scrollbar absolute left-0 top-0 overflow-y-auto" style={{ width: PAGE, height: HEIGHT / scale, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+          {children}
+        </div>
+      </div>
     </div>
   );
 }
@@ -225,7 +375,7 @@ function Phone({ background, statusInk, children }: { background: string; status
   // The status bar sits over the store's header, so it takes the header's text colour
   const ink = statusInk;
   return (
-    <div className="relative mx-auto w-[330px]">
+    <div className="relative mx-auto w-full max-w-[330px]">
       {/* Side buttons */}
       <span className="absolute -left-[3px] top-[118px] h-8 w-[3px] rounded-l bg-[#2b2520]" />
       <span className="absolute -left-[3px] top-[166px] h-14 w-[3px] rounded-l bg-[#2b2520]" />
