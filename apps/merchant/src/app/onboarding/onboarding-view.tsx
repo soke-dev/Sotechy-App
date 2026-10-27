@@ -53,22 +53,28 @@ export interface OnboardingStart {
 
 type TickerCheck = { ticker: string; available: boolean; reason: string | null } | null;
 
-/** Tickers made from the store name: its first word, initials, and mixes of the two */
+// Words that say what kind of business it is, not which one, so they don't make a ticker on their own
+const GENERIC_WORDS = new Set(["SHOP", "SHOPS", "STORE", "STORES", "LTD", "LIMITED", "ENTERPRISE", "ENTERPRISES", "VENTURES", "VENTURE", "GLOBAL", "INTL", "INTERNATIONAL", "COMPANY", "CO", "AND", "THE", "OF", "NIG", "NIGERIA", "SERVICES", "CONCEPTS", "HUB", "MART", "PLC", "NG"]);
+
+/** Tickers people would recognise from the store name: its name, initials, and the two together (never chopped words) */
 function tickerIdeas(storeName: string): string[] {
   const words = storeName.toUpperCase().replace(/&/g, " ").replace(/[^A-Z0-9 ]/g, "").split(/\s+/).filter(Boolean);
   if (!words.length) return [];
-  const [first, second = ""] = words;
-  const initials = words.map((w) => w[0]).join("");
+  const key = words.filter((w) => !GENERIC_WORDS.has(w));
+  const main = key.length ? key : words;
+  const initialsOf = (ws: string[]) => ws.map((w) => w[0]).join("");
+  // The store's own name: its first word that fits, e.g. XENA from Xena Gadgets, OKORO from JJ Okoro & Sons
+  const name = main.find((w) => w.length >= 3 && w.length <= 8);
+  const lead = name ?? main[0];
   const ideas = [
-    first.slice(0, 6),
-    first.slice(0, 4),
-    first.slice(0, 4) + second.slice(0, 2),
-    first.slice(0, 3) + second.slice(0, 1),
-    initials.length >= 3 ? initials.slice(0, 5) : initials + first.slice(1, 4 - initials.length + 1),
-    first.slice(0, 5) + "S",
-    words.join("").slice(0, 8),
+    name,
+    initialsOf(main).length >= 3 ? initialsOf(main) : initialsOf(words),
+    main.length > 1 && (main[0] + main[1]).length <= 8 ? main[0] + main[1] : "",
+    main.length > 1 ? lead + initialsOf(main.filter((w) => w !== lead)) : "",
+    // A long name without its vowels, e.g. ELCTRN from Electronics World
+    main[0].length > 5 ? (main[0][0] + main[0].slice(1).replace(/[AEIOU]/g, "")).slice(0, 6) : "",
   ];
-  return [...new Set(ideas.filter((t) => !tickerProblem(t)))].slice(0, 6);
+  return [...new Set(ideas.filter((t): t is string => !!t && !tickerProblem(t)))].slice(0, 6);
 }
 
 export default function OnboardingView({ initialStep, start }: { initialStep?: StepId; start: OnboardingStart }) {
@@ -442,7 +448,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                           value={ticker}
                           maxLength={8}
                           onChange={(e) => setTicker(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-                          placeholder={start.ticker}
+                          placeholder={ideas[0] ?? start.ticker}
                           className="h-12 min-w-0 flex-1 bg-transparent px-1.5 font-display text-lg font-bold tracking-wide outline-none placeholder:text-faint"
                           aria-label="Token ticker"
                         />
@@ -461,7 +467,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                       <p className={`mt-1.5 text-xs ${cleanTicker && (tickerLocal || tickerCheck?.available === false) ? "text-bad" : "text-muted"}`}>
                         {cleanTicker
                           ? (tickerLocal ?? (tickerCheck?.ticker === cleanTicker && !tickerCheck.available ? (tickerCheck.reason ?? "Taken") : "3 to 8 letters or numbers. It's fixed once Sotechy approves your store."))
-                          : `3 to 8 letters or numbers, e.g. ${start.ticker}. It's fixed once Sotechy approves your store.`}
+                          : `3 to 8 letters or numbers, e.g. ${ideas[0] ?? start.ticker}. It's fixed once Sotechy approves your store.`}
                       </p>
                       {ideas.length > 0 && (
                         <div className="mt-3 flex flex-wrap items-center gap-2">
