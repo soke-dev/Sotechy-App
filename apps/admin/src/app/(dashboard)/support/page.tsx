@@ -1,40 +1,55 @@
 import { LifeBuoy } from "lucide-react";
 import { formatDate } from "@sotechy/shared";
-import { ActionForm } from "@/components/action-form";
-import { Card, DataTable, ErrorNote, PageHeader, StatusBadge, inputClass } from "@/components/ui";
+import { AutoRefresh } from "@/components/auto-refresh";
+import { Card, DataTable, ErrorNote, PageHeader, StatusBadge } from "@/components/ui";
 import { load } from "@/lib/api";
 import type { SupportTicketRow } from "@/lib/types";
-import { updateTicket } from "../actions";
 
 export default async function SupportPage() {
   const { data, error } = await load<SupportTicketRow[]>("/admin/support");
   return (
     <>
-      <PageHeader icon={LifeBuoy} title="Support requests" description="Messages sent from the customer app" />
+      <PageHeader icon={LifeBuoy} title="Support" description="Live chats and messages from the customer app. Open one to read it and reply; the customer sees your answer in the app." />
+      {/* New messages show up without reloading */}
+      <AutoRefresh seconds={10} />
       <Card>
         <ErrorNote error={error} />
         <DataTable
           rows={data ?? []}
+          rowHref={(t) => `/support/${t.id}`}
+          empty="No messages yet"
           columns={[
-            { header: "When", cell: (t) => formatDate(t.createdAt) },
-            { header: "Customer", cell: (t) => t.customerEmail ?? "—" },
-            { header: "Subject", cell: (t) => <span className="font-medium">{t.subject}</span> },
-            { header: "Message", cell: (t) => <p className="max-w-md whitespace-pre-wrap text-muted">{t.message}</p> },
             {
-              header: "Status",
+              header: "Customer",
               cell: (t) => (
-                <ActionForm action={updateTicket} submitLabel="Set">
-                  <input type="hidden" name="id" value={t.id} />
-                  <StatusBadge status={t.status} />
-                  <select name="status" defaultValue={t.status} className={inputClass}>
-                    <option value="open">Open</option>
-                    <option value="pending">Pending</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                  </select>
-                </ActionForm>
+                <span className="block min-w-0">
+                  <span className="block font-semibold">{t.customerName ?? t.customerEmail ?? "Customer"}</span>
+                  <span className="block text-xs text-muted">{t.username ? `@${t.username}` : t.customerEmail}</span>
+                </span>
               ),
             },
+            { header: "Subject", hideOnPhone: true, cell: (t) => <span className="font-medium">{t.subject}</span> },
+            {
+              header: "Last message",
+              cell: (t) => (
+                <p className="max-w-md truncate text-muted">
+                  {t.lastFromStaff ? <span className="font-semibold text-ink-2">You: </span> : null}
+                  {t.lastMessage}
+                </p>
+              ),
+            },
+            {
+              header: "Waiting on",
+              cell: (t) =>
+                t.status === "open" ? (
+                  <span className="font-semibold text-bad">You</span>
+                ) : t.status === "pending" ? (
+                  <span className="text-muted">Customer</span>
+                ) : (
+                  <StatusBadge status={t.status} />
+                ),
+            },
+            { header: "When", hideOnPhone: true, cell: (t) => formatDate(t.lastMessageAt ?? t.createdAt) },
           ]}
         />
       </Card>

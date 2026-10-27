@@ -241,7 +241,7 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
                 </View>
               ))}
               <View style={[ui.row, { gap: space.sm }]}>
-                <Button title="Call" icon="call-outline" variant="outline" size="sm" style={{ flex: 1 }} disabled={!support?.phone} onPress={() => Linking.openURL(`tel:${support?.phone?.replace(/[^\d+]/g, "")}`)} />
+                <Button title="Live chat" icon="chatbubbles-outline" variant="outline" size="sm" style={{ flex: 1 }} onPress={() => go("/support?chat=1")} />
                 <Button
                   title="WhatsApp"
                   icon="logo-whatsapp"

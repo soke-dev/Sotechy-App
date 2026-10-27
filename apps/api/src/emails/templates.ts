@@ -338,6 +338,21 @@ export function payoutApprovalEmail(to: string, d: { name: string | null; store:
   });
 }
 
+export function supportChatEmail(to: string, d: { name: string | null; customer: string; message: string; ticketId: string; isNew: boolean }) {
+  return build(to, `${d.isNew ? "New chat" : "New message"} from ${d.customer}`, {
+    preheader: d.message.slice(0, 110),
+    hero: "store-notice",
+    eyebrow: "Sotechy admin · Live chat",
+    heading: d.isNew ? "A customer started a chat" : "A customer is waiting for a reply",
+    blocks: [
+      { kind: "text", text: `Hi ${first(d.name)}, **${d.customer}** wrote in the app's live chat:` },
+      { kind: "note", tone: "brand", icon: "chat", text: d.message.slice(0, 600) },
+      { kind: "button", label: "Reply in admin", url: `https://admin.sotechy.shop/support/${d.ticketId}` },
+    ],
+    reason: "You're getting this because you're a Sotechy admin.",
+  });
+}
+
 export function orderNotReceivedEmail(to: string, d: { name: string | null; store: string; orderNumber: string; customer: string; note: string | null; orderId: string }) {
   return build(to, `${d.orderNumber}: customer says it didn't arrive`, {
     preheader: `${d.store} marked it delivered, but ${d.customer} says they didn't get it.`,

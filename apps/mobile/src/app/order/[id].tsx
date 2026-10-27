@@ -16,6 +16,7 @@ import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { LinearGradient } from "expo-linear-gradient";
+import { SupportChatModal } from "@/components/support-chat";
 import { ProductImage } from "@/components/product-image";
 
 function Section({ title, illo, right, children }: { title: string; illo: IlloName; right?: ReactNode; children: ReactNode }) {
@@ -135,6 +136,7 @@ export default function OrderScreen() {
   const [cancelling, setCancelling] = useState(false);
   const [paying, setPaying] = useState(false);
   const [allUpdates, setAllUpdates] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [confirming, setConfirming] = useState<"yes" | "no" | null>(null);
   const moneyMoves = useMoneyMoves();
   const [payOpen, setPayOpen] = useState(false);
@@ -447,9 +449,10 @@ export default function OrderScreen() {
         </View>
         <View style={[ui.row, { gap: space.sm }]}>
           <Button title="WhatsApp" icon="logo-whatsapp" variant="dark" size="sm" style={{ flex: 1 }} onPress={() => openWhatsApp(support?.whatsapp, `Hello Sotechy, I need help with order ${order.orderNumber}.`)} />
-          <Button title="Call us" icon="call-outline" variant="outline" size="sm" style={{ flex: 1 }} disabled={!support?.phone} onPress={() => Linking.openURL(`tel:${(support?.phone ?? "").replace(/[^\d+]/g, "")}`)} />
+          <Button title="Live chat" icon="chatbubbles-outline" variant="outline" size="sm" style={{ flex: 1 }} onPress={() => setChatOpen(true)} />
         </View>
       </View>
+      <SupportChatModal visible={chatOpen} onClose={() => setChatOpen(false)} orderId={order.id} />
 
       {order.status === "pending_payment" && <Button title="Cancel order" variant="danger" icon="close-circle-outline" onPress={cancel} loading={cancelling} />}
       {moneyMoves.sheet}

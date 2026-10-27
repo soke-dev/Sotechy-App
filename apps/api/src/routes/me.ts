@@ -8,6 +8,7 @@ import { badRequest, notFound } from "../lib/errors";
 import { publicApiUrl } from "../env";
 import { requireFeature } from "../services/features";
 import { noRecipient, receiptFor, recipientFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
+import { chatFor, postChatMessage } from "../services/support-chat";
 import { CHAINS, currentContract } from "../services/chain";
 import { catalogQuery } from "./store";
 
@@ -260,6 +261,13 @@ export const meRoutes = new Hono<AppEnv>()
       return c.json({ ...row, bonus }, 201);
     },
   )
+  /** The customer's live chat with Sotechy: their open conversation and its messages */
+  .get("/support/chat", async (c) => c.json(await chatFor(c.get("user").id)))
+  .post("/support/chat", zValidator("json", z.object({ message: z.string().trim().min(1).max(2000), orderId: z.uuid().optional() })), async (c) => {
+    const { message, orderId } = c.req.valid("json");
+    await postChatMessage(c.get("user").id, message, orderId);
+    return c.json(await chatFor(c.get("user").id), 201);
+  })
   .post(
     "/support",
     zValidator("json", z.object({ subject: z.string().min(3).max(150), message: z.string().min(5).max(5000), orderId: z.uuid().optional() })),

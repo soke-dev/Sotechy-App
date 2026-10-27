@@ -705,8 +705,26 @@ export const supportTickets = pgTable("support_tickets", {
   subject: text().notNull(),
   message: text().notNull(),
   status: ticketStatusEnum().notNull().default("open"),
+  /** Last message either way, so the newest conversations list first */
+  lastMessageAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   createdAt: createdAt(),
 });
+
+/** Messages in a live-chat conversation, from the customer or from Sotechy staff */
+export const supportMessages = pgTable(
+  "support_messages",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    ticketId: uuid()
+      .notNull()
+      .references(() => supportTickets.id, { onDelete: "cascade" }),
+    fromStaff: boolean().notNull().default(false),
+    authorId: uuid().references(() => users.id, { onDelete: "set null" }),
+    body: text().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.ticketId, t.createdAt)],
+);
 
 export const auditLogs = pgTable(
   "audit_logs",

@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { SupportChatModal } from "@/components/support-chat";
 import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, View } from "react-native";
 import { BUSINESS } from "@sotechy/shared";
 import { useToast } from "@/components/toast";
@@ -31,6 +32,9 @@ export default function SupportScreen() {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  // A "Sotechy Support replied" notification opens the chat straight away
+  const { chat } = useLocalSearchParams<{ chat?: string }>();
+  const [chatOpen, setChatOpen] = useState(chat === "1");
   const support = config.data?.support;
   const digits = (n: string) => n.replace(/[^\d+]/g, "");
 
@@ -50,6 +54,7 @@ export default function SupportScreen() {
 
   return (
     <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90}>
+      <SupportChatModal visible={chatOpen} onClose={() => setChatOpen(false)} />
       <ScrollView contentContainerStyle={{ padding: gutter, gap: space.xl, paddingBottom: space.xxl * 2 }} keyboardShouldPersistTaps="handled">
         <View style={{ gap: 4 }}>
           <Txt variant="title">How can we help?</Txt>
@@ -57,8 +62,8 @@ export default function SupportScreen() {
         </View>
 
         <View style={[ui.row, { gap: space.md }]}>
-          <ContactTile illo="phone" label="Call" disabled={!support?.phone} onPress={() => Linking.openURL(`tel:${digits(support!.phone!)}`)} />
-          <ContactTile illo="chat" label="WhatsApp" disabled={!support?.whatsapp} onPress={() => Linking.openURL(`https://wa.me/${digits(support!.whatsapp!).replace("+", "")}`)} />
+          <ContactTile illo="chat" label="Live chat" onPress={() => (user ? setChatOpen(true) : router.push("/sign-in"))} />
+          <ContactTile illo="phone" label="WhatsApp" disabled={!support?.whatsapp} onPress={() => Linking.openURL(`https://wa.me/${digits(support!.whatsapp!).replace("+", "")}`)} />
           <ContactTile illo="mail" label="Email" disabled={!support?.email} onPress={() => Linking.openURL(`mailto:${support!.email}`)} />
         </View>
 

@@ -379,7 +379,12 @@ export async function setReviewPublished(_: Prev, f: FormData) {
 }
 
 export async function updateTicket(_: Prev, f: FormData) {
-  return run(() => api.patch(`/admin/support/${str(f, "id")}`, { status: str(f, "status") }), ["/support"]);
+  return run(() => api.patch(`/admin/support/${str(f, "id")}`, { status: str(f, "status") }), ["/support", `/support/${str(f, "id")}`]);
+}
+
+/** A staff reply in a live-chat conversation; the customer sees it in the app */
+export async function replyToTicket(_: Prev, f: FormData) {
+  return run(() => api.post(`/admin/support/${str(f, "id")}/reply`, { message: str(f, "message") }), ["/support", `/support/${str(f, "id")}`], "Sent");
 }
 
 // --- App switches, banners, exchange rate, customers ---------------------------

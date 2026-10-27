@@ -16,6 +16,7 @@ import { adjustStock } from "../../services/inventory";
 import { salesSummary } from "../../services/reports";
 import { paymentMethodSchema } from "../orders";
 import { orderCases } from "../../services/order-cases";
+import { replyToTicket, ticketThread } from "../../services/support-chat";
 
 const { users, branches, promotions, paymentMethods, cryptoAssets, appSettings, suppliers, purchaseOrders, purchaseOrderItems, supportTickets, auditLogs } =
   schema;
@@ -291,13 +292,31 @@ export const adminManagementRoutes = new Hono<AppEnv>()
   // --- Support tickets ---
   .get("/support", async (c) => {
     const rows = await db
-      .select({ ticket: supportTickets, customerEmail: users.email })
+      .select({ ticket: supportTickets, customerEmail: users.email, customerName: users.fullName, username: users.username })
       .from(supportTickets)
       .leftJoin(users, eq(users.id, supportTickets.customerId))
-      .orderBy(desc(supportTickets.createdAt))
+      .orderBy(desc(supportTickets.lastMessageAt))
       .limit(200);
-    return c.json(rows.map((r) => ({ ...r.ticket, customerEmail: r.customerEmail })));
+    // The latest message in each conversation, for the list
+    const ids = rows.map((r) => r.ticket.id);
+    const latest = ids.length
+      ? await db
+          .selectDistinctOn([schema.supportMessages.ticketId], { ticketId: schema.supportMessages.ticketId, body: schema.supportMessages.body, fromStaff: schema.supportMessages.fromStaff })
+          .from(schema.supportMessages)
+          .where(inArray(schema.supportMessages.ticketId, ids))
+          .orderBy(schema.supportMessages.ticketId, desc(schema.supportMessages.createdAt))
+      : [];
+    return c.json(
+      rows.map((r) => {
+        const last = latest.find((m) => m.ticketId === r.ticket.id);
+        return { ...r.ticket, customerEmail: r.customerEmail, customerName: r.customerName, username: r.username, lastMessage: last?.body ?? r.ticket.message, lastFromStaff: last?.fromStaff ?? false };
+      }),
+    );
   })
+  .get("/support/:id", async (c) => c.json(await ticketThread(c.req.param("id"))))
+  .post("/support/:id/reply", zValidator("json", z.object({ message: z.string().trim().min(1).max(2000) })), async (c) =>
+    c.json(await replyToTicket(c.req.param("id"), c.get("user").id, c.req.valid("json").message)),
+  )
   .patch("/support/:id", zValidator("json", z.object({ status: z.enum(["open", "pending", "resolved", "closed"]) })), async (c) => {
     const [row] = await db.update(supportTickets).set(c.req.valid("json")).where(eq(supportTickets.id, c.req.param("id"))).returning();
     return c.json(row);

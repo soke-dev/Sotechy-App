@@ -141,6 +141,13 @@
       "when": 1793133779158,
       "tag": "0019_user_wallet_address",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793134183204,
+      "tag": "0020_live_chat",
+      "breakpoints": true
     }
   ]
 }

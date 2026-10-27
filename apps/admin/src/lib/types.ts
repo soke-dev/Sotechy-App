@@ -143,7 +143,23 @@ export interface SupportTicketRow {
   message: string;
   status: "open" | "pending" | "resolved" | "closed";
   customerEmail: string | null;
+  customerName: string | null;
+  username: string | null;
+  lastMessage: string;
+  lastFromStaff: boolean;
+  lastMessageAt: string;
   createdAt: string;
+}
+
+/** One conversation with every message, for replying */
+export interface SupportThread {
+  id: string;
+  subject: string;
+  status: SupportTicketRow["status"];
+  orderId: string | null;
+  createdAt: string;
+  customer: { id: string | null; email: string | null; fullName: string | null; username: string | null; phone: string | null };
+  messages: { id: string; fromStaff: boolean; body: string; createdAt: string }[];
 }
 
 export interface ReviewRow {

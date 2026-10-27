@@ -853,3 +853,9 @@ export interface MerchantNotice {
   sentTo: number;
   createdAt: string;
 }
+
+/** A customer's live chat with Sotechy */
+export interface SupportChat {
+  ticketId: string | null;
+  messages: { id: string; fromStaff: boolean; body: string; createdAt: string }[];
+}

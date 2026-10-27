@@ -41,7 +41,7 @@ await db
     { key: "delivery", value: { flatFee: 0, freeOver: null, note: "Configure delivery policy in Admin → Settings" } },
     { key: "reservation_hold", value: { minutes: 30 } },
     { key: "bank_transfer", value: { bankName: null, accountName: null, accountNumber: null } },
-    { key: "support", value: { phone: null, email: null, whatsapp: null } },
+    { key: "support", value: { phone: "+2348071473936", email: "support@sotechy.shop", whatsapp: "+2348071473936" } },
   ])
   .onConflictDoNothing();
 

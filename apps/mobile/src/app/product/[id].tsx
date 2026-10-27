@@ -8,6 +8,7 @@ import { formatNaira, formatUsd, type CatalogProduct, type OfferView, type Produ
 import { useCartFeedback } from "@/components/cart-feedback";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { ProductCard } from "@/components/product-card";
+import { SupportChatModal } from "@/components/support-chat";
 import { ProductImage } from "@/components/product-image";
 import { ReviewSheet } from "@/components/review-sheet";
 import { Stars } from "@/components/stars";
@@ -375,6 +376,7 @@ export default function ProductScreen() {
   // ?tab=about or ?tab=reviews opens straight on that tab (e.g. from "Rate your purchase")
   const [tab, setTab] = useState<Tab>(tabParam === "about" || tabParam === "reviews" ? tabParam : "overview");
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const galleryRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const cart = useCart();
   const addToCart = useAddToCart();
@@ -641,15 +643,12 @@ export default function ProductScreen() {
       </ScrollView>
 
       <BottomBar>
-        <IconButton
-          icon="call-outline"
-          size={48}
-          onPress={() => config.data?.support.phone && Linking.openURL(`tel:${config.data.support.phone.replace(/[^\d+]/g, "")}`)}
-        />
+        <IconButton icon="chatbubbles-outline" size={48} onPress={() => (user ? setChatOpen(true) : router.push("/sign-in"))} />
         {!deal && <QtyStepper value={qty} onChange={setQty} max={Math.max(1, available)} />}
         <Button title={available <= 0 ? "Out of stock" : deal?.agreedPrice != null ? `Buy at ${formatNaira(deal.agreedPrice)}` : `Add · ${formatNaira((variant?.price ?? 0) * qty)}`} icon="bag-add-outline" onPress={addCurrent} disabled={available <= 0} style={{ flex: 1 }} />
       </BottomBar>
 
+      <SupportChatModal visible={chatOpen} onClose={() => setChatOpen(false)} />
       <ReviewSheet visible={reviewOpen} productName={product.name} initial={mine} onClose={() => setReviewOpen(false)} onSubmit={submitReview} />
     </View>
   );

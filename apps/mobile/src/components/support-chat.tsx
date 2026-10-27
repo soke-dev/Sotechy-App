@@ -1,6 +1,6 @@
-// Floating support button with a dismissible "need help?" pop-up and a chat sheet.
-// Messages are sent to the support inbox (Admin → Support) when signed in; instant replies go via WhatsApp.
-// A real-time agent chat (agent replies inside the app) still needs a backend/inbox — see README.
+// Floating support button with a dismissible "need help?" pop-up and the live chat sheet.
+// Signed in, messages go to the customer's conversation in Admin → Support, and staff replies show
+// here (checked every few seconds while the chat is open). Quick topics answer straight away.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
@@ -30,13 +30,17 @@ import { Chip, tap, Txt } from "./ui";
 
 type Action = { label: string; kind: "whatsapp"; message: string } | { label: string; kind: "route"; href: Href };
 interface Message {
-  id: number;
+  id: string;
   from: "agent" | "user";
   text: string;
   actions?: Action[];
+  /** When it was written, so quick answers and the saved conversation interleave */
+  at: number;
+  /** Sent but not saved yet */
+  sending?: boolean;
 }
 
-const TOPICS: { label: string; reply: Omit<Message, "id" | "from"> }[] = [
+const TOPICS: { label: string; reply: Omit<Message, "id" | "from" | "at"> }[] = [
   {
     label: "Track my order",
     reply: { text: "You can follow every order step by step under Orders, including payment status and pickup details.", actions: [{ label: "Open my orders", kind: "route", href: "/orders" }] },
@@ -54,7 +58,10 @@ const TOPICS: { label: string; reply: Omit<Message, "id" | "from"> }[] = [
   },
   {
     label: "Talk to a person",
-    reply: { text: "Our team is ready to help on WhatsApp.", actions: [{ label: "Continue on WhatsApp", kind: "whatsapp", message: "Hello Sotechy, I need some help." }] },
+    reply: {
+      text: "Type your message below and someone from our team will answer right here. Prefer WhatsApp? That works too.",
+      actions: [{ label: "Chat on WhatsApp", kind: "whatsapp", message: "Hello Sotechy, I need some help." }],
+    },
   },
 ];
 
@@ -176,14 +183,23 @@ export function SupportChat({ teaser = false, bottomOffset = 0 }: { teaser?: boo
 
       <ChatLauncher onPress={openChat} bottom={bottomOffset + 16} />
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <ChatSheet onClose={() => setOpen(false)} />
-      </Modal>
+      <SupportChatModal visible={open} onClose={() => setOpen(false)} />
     </>
   );
 }
 
-export function ChatSheet({ onClose }: { onClose: () => void }) {
+/** The live chat in its own sheet, for "Need help" buttons anywhere in the app */
+export function SupportChatModal({ visible, onClose, orderId }: { visible: boolean; onClose: () => void; orderId?: string }) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <ChatSheet onClose={onClose} orderId={orderId} />
+    </Modal>
+  );
+}
+
+const POLL_MS = 4000;
+
+export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?: string }) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const { user } = useAuth();
@@ -192,9 +208,36 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, from: "agent", text: `Hi${user?.fullName ? ` ${user.fullName.split(" ")[0]}` : ""} 👋 Welcome to Sotechy.` },
-    { id: 2, from: "agent", text: "How can we help you today? Pick a topic or type your question." },
+    { id: "hello", from: "agent", text: `Hi${user?.fullName ? ` ${user.fullName.split(" ")[0]}` : ""} 👋 Welcome to Sotechy.`, at: 0 },
+    { id: "ask", from: "agent", text: "How can we help you today? Pick a topic or type your question.", at: 1 },
   ]);
+  // The saved conversation with the team, checked every few seconds while the chat is open
+  const [thread, setThread] = useState<Message[]>([]);
+  const fromServer = (chat: { messages: { id: string; fromStaff: boolean; body: string; createdAt: string }[] }) =>
+    chat.messages.map((m): Message => ({ id: m.id, from: m.fromStaff ? "agent" : "user", text: m.body, at: Date.parse(m.createdAt) }));
+  useEffect(() => {
+    if (!user) return;
+    let live = true;
+    const load = () =>
+      api
+        .supportChat()
+        .then((chat) => {
+          if (!live) return;
+          setThread((prev) => {
+            const next = fromServer(chat);
+            if (next.length > prev.length) setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
+            return next;
+          });
+        })
+        .catch(() => {});
+    void load();
+    const t = setInterval(load, POLL_MS);
+    return () => {
+      live = false;
+      clearInterval(t);
+    };
+  }, [user]);
+  const shown = [...messages, ...thread].sort((a, b) => a.at - b.at);
   const whatsapp = config.data?.support.whatsapp;
   const sheetHeight = Math.min(height * 0.78, 640);
   const close = () => {
@@ -202,8 +245,9 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
     onClose();
   };
 
-  const push = (...m: Omit<Message, "id">[]) => {
-    setMessages((prev) => [...prev, ...m.map((x, i) => ({ ...x, id: prev.length + i + 1 }))]);
+  const push = (...m: Omit<Message, "id" | "at">[]) => {
+    const now = Date.now();
+    setMessages((prev) => [...prev, ...m.map((x, i) => ({ ...x, id: `local-${now}-${i}`, at: now + i }))]);
     setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
   };
 
@@ -226,17 +270,19 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
     const message = text.trim();
     if (!message) return;
     setText("");
-    push({ from: "user", text: message });
     setSending(true);
     try {
       if (user) {
-        await api.createSupportTicket({ subject: "In-app chat", message });
-        push({
-          from: "agent",
-          text: "Thanks! Your message has reached our support team and we'll get back to you shortly. Need an instant answer? Continue on WhatsApp.",
-          actions: [{ label: "Continue on WhatsApp", kind: "whatsapp", message }],
-        });
+        const first = thread.length === 0;
+        // Shown straight away; replaced by the saved copy when it comes back
+        const pending: Message = { id: `pending-${Date.now()}`, from: "user", text: message, at: Date.now(), sending: true };
+        setThread((prev) => [...prev, pending]);
+        setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
+        const chat = await api.sendSupportChat(message, orderId);
+        setThread(fromServer(chat));
+        if (first) push({ from: "agent", text: "Thanks! Someone from our team will reply right here. You'll get a notification when they do, so you can close this for now." });
       } else {
+        push({ from: "user", text: message });
         push({
           from: "agent",
           text: "Thanks! For the fastest reply, send this to us on WhatsApp, or sign in so our team can follow up with you.",
@@ -247,7 +293,8 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
         });
       }
     } catch {
-      push({ from: "agent", text: "Sorry, that didn't send. Please try WhatsApp instead.", actions: [{ label: "Open WhatsApp", kind: "whatsapp", message }] });
+      setThread((prev) => prev.filter((m) => !m.sending));
+      push({ from: "agent", text: "Sorry, that didn't send. Check your connection and try again, or use WhatsApp.", actions: [{ label: "Open WhatsApp", kind: "whatsapp", message }] });
     } finally {
       setSending(false);
     }
@@ -287,8 +334,8 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
 
           {/* Conversation */}
           <ScrollView ref={scroll} contentContainerStyle={{ padding: space.lg, gap: space.sm }} keyboardShouldPersistTaps="handled">
-            {messages.map((m) => (
-              <View key={m.id} style={{ alignItems: m.from === "user" ? "flex-end" : "flex-start", gap: 6 }}>
+            {shown.map((m) => (
+              <View key={m.id} style={{ alignItems: m.from === "user" ? "flex-end" : "flex-start", gap: 6, opacity: m.sending ? 0.6 : 1 }}>
                 <View
                   style={{
                     maxWidth: "84%",
@@ -316,7 +363,7 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
                 ))}
               </View>
             ))}
-            {messages.length <= 2 && (
+            {messages.length <= 2 && thread.length === 0 && (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.sm }}>
                 {TOPICS.map((t) => (
                   <Chip key={t.label} label={t.label} onPress={() => pickTopic(t)} />

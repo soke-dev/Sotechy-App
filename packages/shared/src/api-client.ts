@@ -27,6 +27,7 @@ import type {
   MerchantStore,
   Order,
   OrderDetail,
+  SupportChat,
   OrderSummary,
   PlaceOrderInput,
   ProductDetail,
@@ -215,6 +216,9 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
       send<{ checkoutUrl: string }>("POST", `/payments/online/initialize`, { orderId }),
     wishlist: () => get<CatalogProduct[]>("/me/wishlist"),
     toggleWishlist: (productId: string) => send<{ saved: boolean }>("POST", `/me/wishlist/${productId}`),
+    /** Live chat with Sotechy: the open conversation, and sending to it */
+    supportChat: () => get<SupportChat>("/me/support/chat"),
+    sendSupportChat: (message: string, orderId?: string) => send<SupportChat>("POST", "/me/support/chat", { message, orderId }),
     createSupportTicket: (input: { subject: string; message: string; orderId?: string }) =>
       send<{ id: string }>("POST", "/me/support", input),
   };
