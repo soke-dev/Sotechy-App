@@ -7,7 +7,7 @@ import { RelTime } from "@/components/rel-time";
 import { EmptyState, PageHeader, Pill, StatCard } from "@/components/ui";
 import { Sheet } from "@/components/zone-form";
 import { formatNaira, formatTokens } from "@/lib/money";
-import { customerExtras, ORDER_STATUS, type Order } from "@/lib/mock";
+import { ORDER_STATUS, type Order } from "@/lib/mock";
 import { useAccount } from "@/components/account-context";
 
 /** Customers who follow the store; following comes with the marketplace backend */
@@ -28,7 +28,7 @@ interface Customer {
 }
 
 /** One entry per person, built from the orders they placed with this store */
-const customersFrom = (orders: Order[]): Customer[] =>
+const customersFrom = (orders: Order[], following: Set<string>): Customer[] =>
   Object.values(
     orders.reduce<Record<string, Order[]>>((m, o) => {
       const key = o.customer.username || o.customer.phone || o.customer.name;
@@ -36,7 +36,8 @@ const customersFrom = (orders: Order[]): Customer[] =>
     }, {}),
   ).map((list) => {
   const c = list[0].customer;
-  const extra = customerExtras[c.username] ?? { tokens: 0, subscribed: false, reviews: 0, since: list[list.length - 1].createdAt };
+  // Tokens and reviews per customer come with the token contract; following is real
+  const extra = { tokens: 0, subscribed: following.has(c.username), reviews: 0, since: list.map((o) => o.createdAt).sort()[0] };
   return {
     name: c.name,
     username: c.username,
@@ -67,12 +68,12 @@ function Initials({ name, size = 44 }: { name: string; size?: number }) {
   );
 }
 
-export function CustomersView({ orders }: { orders: Order[] }) {
+export function CustomersView({ orders, following = [] }: { orders: Order[]; following?: string[] }) {
   const { store } = useAccount();
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<keyof typeof SORTS>("spent");
   const [open, setOpen] = useState<Customer | null>(null);
-  const customers = customersFrom(orders);
+  const customers = customersFrom(orders, new Set(following));
   const term = q.trim().toLowerCase();
   const shown = customers.filter((c) => !term || `${c.name} ${c.username} ${c.phone}`.toLowerCase().includes(term)).sort(SORTS[sort].fn);
   const repeat = customers.filter((c) => c.orders.length > 1).length;
@@ -145,7 +146,7 @@ export function CustomersView({ orders }: { orders: Order[] }) {
                   Customer since <RelTime iso={open.since} />
                 </p>
                 <div className="mt-1 flex flex-wrap gap-1.5">
-                  {open.subscribed ? <Pill tone="brand">Gets your updates</Pill> : <Pill tone="neutral">Not subscribed</Pill>}
+                  {open.subscribed ? <Pill tone="brand">Follows your store</Pill> : <Pill tone="neutral">Doesn&apos;t follow you</Pill>}
                   {open.reviews > 0 && <Pill tone="good">{open.reviews} review{open.reviews === 1 ? "" : "s"}</Pill>}
                 </div>
               </div>

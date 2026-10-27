@@ -84,6 +84,10 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
     businessAddress: app?.businessAddress ?? "",
   });
   const [description, setDescription] = useState(app?.description ?? "");
+  // Freelancers can give a business address too; registered businesses give theirs under Business details
+  const [ownAddress, setOwnAddress] = useState(app?.businessAddress ?? "");
+  const [website, setWebsite] = useState(app?.website ?? "");
+  const [socials, setSocials] = useState({ instagram: app?.socials?.instagram ?? "", x: app?.socials?.x ?? "", facebook: app?.socials?.facebook ?? "", tiktok: app?.socials?.tiktok ?? "" });
   const [sells, setSells] = useState<string[]>(start.sells);
   // A ticker made from the store name is only a suggestion until the store saves its own
   const [ticker, setTicker] = useState(app?.tickerChosen ? start.ticker : "");
@@ -174,7 +178,9 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
     sellerKind: kind,
     sells,
     structure: kind === "registered" ? structure : null,
-    ...(kind === "registered" ? business : { registeredName: null, registrationNumber: null, registeredOn: null, tin: null, businessAddress: null }),
+    ...(kind === "registered" ? business : { registeredName: null, registrationNumber: null, registeredOn: null, tin: null, businessAddress: ownAddress.trim() || null }),
+    website: website.trim() || null,
+    socials: Object.values(socials).some((v) => v.trim()) ? { instagram: socials.instagram.trim() || null, x: socials.x.trim() || null, facebook: socials.facebook.trim() || null, tiktok: socials.tiktok.trim() || null } : null,
     documents: uploaded,
     people: kind === "registered" ? people.map((p) => ({ ...p, name: p.name.trim(), share: Number(p.share) || 0 })) : [],
     bank,
@@ -415,6 +421,22 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                     {description.trim().length < MIN_BUSINESS_DESCRIPTION ? `${MIN_BUSINESS_DESCRIPTION - description.trim().length} more characters needed` : "Good"} · {description.length}/1000
                   </p>
                 </Section>
+                {kind === "individual" && (
+                  <Section label="Business address">
+                    <AddressInput value={ownAddress} onChange={setOwnAddress} placeholder="Where you work from, if you have a shop or office" />
+                  </Section>
+                )}
+                <Section label="Website and social pages">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <Handle label="Website" value={website} onChange={setWebsite} placeholder="www.yourstore.com" />
+                    </div>
+                    <Handle label="Instagram" prefix="@" value={socials.instagram} onChange={(instagram) => setSocials({ ...socials, instagram })} placeholder="yourstore" />
+                    <Handle label="X" prefix="@" value={socials.x} onChange={(x) => setSocials({ ...socials, x })} placeholder="yourstore" />
+                    <Handle label="TikTok" prefix="@" value={socials.tiktok} onChange={(tiktok) => setSocials({ ...socials, tiktok })} placeholder="yourstore" />
+                    <Handle label="Facebook" value={socials.facebook} onChange={(facebook) => setSocials({ ...socials, facebook })} placeholder="Page name or link" />
+                  </div>
+                </Section>
                 <Section label="What you sell" required>
                   <SellsPicker value={sells} onChange={setSells} />
                 </Section>
@@ -556,6 +578,19 @@ function Section({ label, required, help, children }: { label: string; required?
       </div>
       {children}
     </section>
+  );
+}
+
+/** A short text field with an optional @ in front, for social handles and links */
+function Handle({ label, prefix, value, onChange, placeholder }: { label: string; prefix?: string; value: string; onChange: (v: string) => void; placeholder: string }) {
+  return (
+    <label className="flex flex-col gap-1.5 text-sm">
+      <span className="font-medium text-ink-2">{label}</span>
+      <span className="flex items-center overflow-hidden rounded-2xl border border-line bg-surface focus-within:border-ink">
+        {prefix && <span className="pl-4 text-muted">{prefix}</span>}
+        <input value={value} maxLength={200} onChange={(e) => onChange(prefix ? e.target.value.replace(/^@/, "") : e.target.value)} placeholder={placeholder} className={`h-12 min-w-0 flex-1 bg-transparent outline-none ${prefix ? "pl-1 pr-4" : "px-4"}`} />
+      </span>
+    </label>
   );
 }
 

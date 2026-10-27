@@ -268,6 +268,12 @@ function ReviewItem({ review }: { review: Review }) {
       </View>
       {review.title ? <Txt variant="label">{review.title}</Txt> : null}
       <Txt variant="body" color={colors.ink2}>{review.body}</Txt>
+      {review.storeReply ? (
+        <View style={{ marginTop: 6, padding: space.md, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, gap: 2 }}>
+          <Txt variant="caption" style={{ fontWeight: "700" }}>Reply from the store</Txt>
+          <Txt variant="small" color={colors.ink2}>{review.storeReply}</Txt>
+        </View>
+      ) : null}
     </View>
   );
 }

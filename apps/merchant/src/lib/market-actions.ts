@@ -4,7 +4,7 @@
 // storefront and setup. Each returns { error } instead of throwing, so forms can show what went wrong.
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantOrder, MerchantProduct, MerchantProductInput, OfferView, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
+import type { AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantNotice, MerchantOrder, MerchantProduct, MerchantProductInput, OfferView, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
 import { api, errorMessage, TOKEN_COOKIE } from "./api";
 
 type Result<T> = { ok: T } | { error: string };
@@ -98,4 +98,14 @@ export async function checkTicker(ticker: string): Promise<{ ticker: string; ava
 /** Answers a customer's price offer: accept, decline or counter with an amount */
 export async function answerOffer(id: string, input: { action: "accept" | "decline" | "counter"; amount?: number; text?: string | null }): Promise<Result<OfferView>> {
   return attempt(() => api.post<OfferView>(`/merchant/offers/${id}/answer`, input), ["/offers"]);
+}
+
+/** Replies publicly to a review of one of the store's products */
+export async function replyToReview(id: string, text: string): Promise<Result<{ ok: true }>> {
+  return attempt(() => api.post<{ ok: true }>(`/merchant/reviews/${id}/reply`, { text }), ["/reviews"]);
+}
+
+/** Sends a message to everyone following the store */
+export async function sendNotice(input: { title: string; body: string; productId?: string | null }): Promise<Result<MerchantNotice>> {
+  return attempt(() => api.post<MerchantNotice>("/merchant/notices", input), ["/notifications"]);
 }

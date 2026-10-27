@@ -14,6 +14,7 @@ import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem } from "@so
 import { accountNameMatch, slugify } from "../lib/identity";
 import { railBanks, railRecipient, railResolve } from "../services/payout-rail";
 import { answerOffer, storeOffers } from "../services/offers";
+import { sendPushLater } from "../services/push";
 import { payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
 import { answerSchema } from "./offers";
 import { cancelOrder, updateOrderStatus } from "../services/orders";
@@ -337,6 +338,63 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     return c.body(new Uint8Array(row.data), 200, { "Content-Type": row.contentType, "Cache-Control": "private, no-store" });
   })
 
+  // --- Reviews of the store's products, and its replies ---
+  .get("/reviews", async (c) => {
+    const r = schema.productReviews;
+    const rows = await db
+      .select({ id: r.id, rating: r.rating, title: r.title, body: r.body, verified: r.verified, createdAt: r.createdAt, reply: r.storeReply, repliedAt: r.storeRepliedAt, product: products.name, productImage: products.images, customer: schema.users.fullName })
+      .from(r)
+      .innerJoin(products, eq(products.id, r.productId))
+      .innerJoin(schema.users, eq(schema.users.id, r.userId))
+      .where(and(eq(products.merchantId, c.get("store").id), eq(r.isPublished, true)))
+      .orderBy(desc(r.createdAt))
+      .limit(300);
+    return c.json(rows.map(({ productImage, ...x }) => ({ ...x, productImage: productImage?.[0] ?? null })));
+  })
+  .post("/reviews/:id/reply", zValidator("json", z.object({ text: z.string().trim().min(2).max(600) })), async (c) => {
+    const r = schema.productReviews;
+    const [review] = await db.select({ id: r.id, merchantId: products.merchantId }).from(r).innerJoin(products, eq(products.id, r.productId)).where(eq(r.id, c.req.param("id")));
+    if (!review || review.merchantId !== c.get("store").id) throw notFound("Review not found");
+    await db.update(r).set({ storeReply: c.req.valid("json").text, storeRepliedAt: new Date() }).where(eq(r.id, review.id));
+    return c.json({ ok: true });
+  })
+
+  // --- Messages to followers ---
+  .get("/notices", async (c) => {
+    const store = c.get("store");
+    const [followers] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.storeFollows).where(eq(schema.storeFollows.merchantId, store.id));
+    const rows = await db.select().from(schema.storeNotices).where(eq(schema.storeNotices.merchantId, store.id)).orderBy(desc(schema.storeNotices.createdAt)).limit(100);
+    return c.json({ followers: followers?.n ?? 0, notices: rows });
+  })
+  .post(
+    "/notices",
+    zValidator("json", z.object({ title: z.string().trim().min(3).max(60), body: z.string().trim().min(5).max(240), productId: z.uuid().nullable().optional() })),
+    async (c) => {
+      const store = c.get("store");
+      assertVerified(store);
+      const input = c.req.valid("json");
+      // A few messages a day keeps followers following
+      const [recent] = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(schema.storeNotices)
+        .where(and(eq(schema.storeNotices.merchantId, store.id), gte(schema.storeNotices.createdAt, new Date(Date.now() - 86_400_000))));
+      if ((recent?.n ?? 0) >= 3) throw badRequest("You can send three messages a day. Try again tomorrow.");
+      let productSlug: string | null = null;
+      if (input.productId) {
+        const [p] = await db.select({ slug: products.slug, merchantId: products.merchantId }).from(products).where(eq(products.id, input.productId));
+        if (!p || p.merchantId !== store.id) throw badRequest("Choose one of your products");
+        productSlug = p.slug;
+      }
+      const followers = await db.select({ userId: schema.storeFollows.userId }).from(schema.storeFollows).where(eq(schema.storeFollows.merchantId, store.id));
+      const [notice] = await db.insert(schema.storeNotices).values({ merchantId: store.id, title: input.title, body: input.body, productId: input.productId ?? null, sentTo: followers.length }).returning();
+      sendPushLater(
+        followers.map((f) => f.userId),
+        { title: `${store.name}: ${input.title}`, body: input.body, data: { url: productSlug ? `/product/${productSlug}` : `/store/${store.slug}` } },
+      );
+      return c.json(notice, 201);
+    },
+  )
+
   // --- Price offers from customers ---
   .get("/offers", async (c) => c.json(await storeOffers(c.get("store").id)))
   .get("/offers/:id", async (c) => {
@@ -456,6 +514,11 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
         people: z.array(z.object({ name: z.string().trim().min(1).max(120), role: z.string().max(60), share: z.number().min(0).max(100) })).max(20).default([]),
         bank: z.object({ bankName: z.string().min(2).max(60), accountNumber: z.string().regex(/^\d{10}$/, "Account numbers have 10 digits") }).nullable().optional(),
         description: z.string().trim().max(1000).nullable().optional(),
+        website: z.string().trim().max(200).nullable().optional(),
+        socials: z
+          .object({ instagram: z.string().trim().max(100).nullable().optional(), x: z.string().trim().max(100).nullable().optional(), facebook: z.string().trim().max(200).nullable().optional(), tiktok: z.string().trim().max(100).nullable().optional() })
+          .nullable()
+          .optional(),
         ticker: z.string().trim().max(9).nullable().optional(),
         submit: z.boolean().default(false),
       }),
@@ -629,6 +692,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
         spent: sql<number>`coalesce(sum(${orders.total}), 0)::float`,
         lastOrderAt: sql<string>`max(${orders.createdAt})`,
         firstOrderAt: sql<string>`min(${orders.createdAt})`,
+        following: sql<boolean>`exists (select 1 from store_follows f where f.user_id = ${orders.customerId} and f.merchant_id = ${c.get("store").id})`,
       })
       .from(orders)
       .innerJoin(schema.users, eq(schema.users.id, orders.customerId))

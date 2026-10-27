@@ -83,6 +83,9 @@ export interface MerchantApplication {
   bank?: { bankName: string; accountNumber: string } | null;
   /** What the business does and who it sells to */
   description?: string | null;
+  /** The business online: its website and social pages */
+  website?: string | null;
+  socials?: { instagram?: string | null; x?: string | null; facebook?: string | null; tiktok?: string | null } | null;
   /** The store picked its own ticker */
   tickerChosen?: boolean;
 }

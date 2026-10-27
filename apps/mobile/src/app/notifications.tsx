@@ -1,7 +1,9 @@
 // Messages from the stores you're subscribed to, and which stores you get updates from.
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { router } from "expo-router";
 import { useEffect } from "react";
 import { Pressable, ScrollView, Switch, View } from "react-native";
+import { Illo } from "@/components/illustrations";
 import { openStore, StoreLogo } from "@/components/store-bits";
 import { Divider, EmptyState, Txt, ui } from "@/components/ui";
 import { ago, SOTECHY_STORE, storeBySlug, useStores } from "@/lib/marketplace";
@@ -22,18 +24,21 @@ export default function NotificationsScreen() {
     <View style={ui.screen}>
       <ScrollView contentContainerStyle={{ padding: gutter, paddingBottom: space.xxl * 2, gap: space.lg }}>
         {inbox.length === 0 ? (
-          <EmptyState illo="chat" title="No messages yet" message="Subscribe to a store below and its deals and news show up here." />
+          <EmptyState illo="chat" title="No messages yet" message="Follow a store below and its deals and news show up here." />
         ) : (
           <View style={{ gap: space.sm }}>
             {inbox.map((n) => {
-              const store = storeBySlug(n.store);
-              if (!store) return null;
+              const store = storeBySlug(n.storeSlug);
               return (
-                <Pressable key={n.id} onPress={() => openStore(store.slug)} style={({ pressed }) => [ui.card, { flexDirection: "row", gap: space.md, opacity: pressed ? 0.85 : 1 }]}>
-                  <StoreLogo store={store} size={44} />
+                <Pressable
+                  key={n.id}
+                  onPress={() => (n.productSlug ? router.push({ pathname: "/product/[id]", params: { id: n.productSlug } }) : openStore(n.storeSlug))}
+                  style={({ pressed }) => [ui.card, { flexDirection: "row", gap: space.md, opacity: pressed ? 0.85 : 1 }]}
+                >
+                  {store ? <StoreLogo store={store} size={44} /> : <Illo name="store" size={44} />}
                   <View style={{ flex: 1, gap: 2 }}>
                     <Txt variant="caption">
-                      {store.name} · {ago(n.minsAgo)}
+                      {n.storeName} · {ago(Math.max(0, Math.round((Date.now() - new Date(n.createdAt).getTime()) / 60_000)))}
                     </Txt>
                     <Txt variant="label" style={{ fontSize: 15 }}>{n.title}</Txt>
                     <Txt variant="small" color={colors.ink2}>{n.body}</Txt>

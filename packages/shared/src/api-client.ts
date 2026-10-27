@@ -2,6 +2,7 @@ import type { Bank, PayoutAccount, PayoutPlan, PayoutRow } from "./payouts";
 import type {
   Address,
   OfferView,
+  StoreNoticeView,
   AddressInput,
   AddressSuggestion,
   AuthResponse,
@@ -166,6 +167,11 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     product: (idOrSlug: string) => get<ProductDetail>(`/store/products/${encodeURIComponent(idOrSlug)}`),
     /** Marketplace stores Sotechy has approved, and one store's page */
     stores: () => get<MarketStore[]>("/store/stores"),
+    /** Stores this account follows, following and unfollowing, and their messages */
+    follows: () => get<string[]>("/me/follows"),
+    follow: (slug: string) => send<{ following: boolean }>("POST", `/me/follows/${encodeURIComponent(slug)}`),
+    unfollow: (slug: string) => send<{ following: boolean }>("DELETE", `/me/follows/${encodeURIComponent(slug)}`),
+    storeNotices: () => get<StoreNoticeView[]>("/me/store-notices"),
     /** The customer's price offers */
     offers: () => get<OfferView[]>("/offers"),
     offer: (id: string) => get<OfferView>(`/offers/${id}`),

@@ -144,6 +144,9 @@ export interface Review {
   /** reviewer bought this product */
   verified: boolean;
   createdAt: string;
+  /** The store's public answer */
+  storeReply?: string | null;
+  storeRepliedAt?: string | null;
 }
 
 export interface ProductReviews {
@@ -689,6 +692,8 @@ export interface MerchantCustomer {
   spent: number;
   lastOrderAt: string;
   firstOrderAt: string;
+  /** Follows the store in the app */
+  following?: boolean;
 }
 
 export interface MerchantSummary {
@@ -714,6 +719,9 @@ export interface MerchantApplicationInput {
   bank?: { bankName: string; accountNumber: string } | null;
   /** What the business does and who it sells to, for Sotechy's review */
   description?: string | null;
+  /** The business online: its website and social pages */
+  website?: string | null;
+  socials?: { instagram?: string | null; x?: string | null; facebook?: string | null; tiktok?: string | null } | null;
   /** The ticker the store chose for its token (until Sotechy approves the store, it can change it) */
   ticker?: string | null;
   /** Set once the store has picked its ticker itself */
@@ -742,4 +750,42 @@ export interface OfferView {
   /** Shown to the store only */
   customer: { name: string; username: string } | null;
   messages: { id: string; from: "customer" | "store"; kind: "offer" | "counter" | "accept" | "decline"; amount: number | null; text: string | null; createdAt: string }[];
+}
+
+/** A message a followed store sent */
+export interface StoreNoticeView {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  storeSlug: string;
+  storeName: string;
+  storeLogo: string | null;
+  /** The product it points to */
+  productSlug: string | null;
+}
+
+/** A review of one of the store's products, as the store sees it */
+export interface MerchantReview {
+  id: string;
+  rating: number;
+  title: string | null;
+  body: string;
+  verified: boolean;
+  createdAt: string;
+  reply: string | null;
+  repliedAt: string | null;
+  product: string;
+  productImage: string | null;
+  customer: string | null;
+}
+
+/** A message the store sent its followers */
+export interface MerchantNotice {
+  id: string;
+  title: string;
+  body: string;
+  productId: string | null;
+  sentTo: number;
+  createdAt: string;
 }

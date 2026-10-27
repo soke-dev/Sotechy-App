@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../db/client";
@@ -19,8 +19,48 @@ const addressSchema = z.object({
   isDefault: z.boolean().optional(),
 });
 
+/** The store a follow points at, if it's open */
+async function liveStore(slug: string) {
+  const [store] = await db.select({ id: schema.merchants.id }).from(schema.merchants).where(and(eq(schema.merchants.slug, slug), eq(schema.merchants.status, "approved")));
+  if (!store) throw notFound("Store not found");
+  return store;
+}
+
 export const meRoutes = new Hono<AppEnv>()
   .use(requireAuth)
+  /** Stores this account follows (their slugs) */
+  .get("/follows", async (c) => {
+    const rows = await db
+      .select({ slug: schema.merchants.slug })
+      .from(schema.storeFollows)
+      .innerJoin(schema.merchants, eq(schema.merchants.id, schema.storeFollows.merchantId))
+      .where(eq(schema.storeFollows.userId, c.get("user").id));
+    return c.json(rows.map((r) => r.slug));
+  })
+  .post("/follows/:slug", async (c) => {
+    const store = await liveStore(c.req.param("slug"));
+    await db.insert(schema.storeFollows).values({ userId: c.get("user").id, merchantId: store.id }).onConflictDoNothing();
+    return c.json({ following: true });
+  })
+  .delete("/follows/:slug", async (c) => {
+    const store = await liveStore(c.req.param("slug"));
+    await db.delete(schema.storeFollows).where(and(eq(schema.storeFollows.userId, c.get("user").id), eq(schema.storeFollows.merchantId, store.id)));
+    return c.json({ following: false });
+  })
+  /** Messages from stores this account follows, newest first (last 60 days) */
+  .get("/store-notices", async (c) => {
+    const n = schema.storeNotices;
+    const rows = await db
+      .select({ id: n.id, title: n.title, body: n.body, createdAt: n.createdAt, storeSlug: schema.merchants.slug, storeName: schema.merchants.name, storeLogo: schema.merchants.logoUrl, productSlug: schema.products.slug })
+      .from(n)
+      .innerJoin(schema.storeFollows, and(eq(schema.storeFollows.merchantId, n.merchantId), eq(schema.storeFollows.userId, c.get("user").id)))
+      .innerJoin(schema.merchants, eq(schema.merchants.id, n.merchantId))
+      .leftJoin(schema.products, eq(schema.products.id, n.productId))
+      .where(gte(n.createdAt, new Date(Date.now() - 60 * 86_400_000)))
+      .orderBy(desc(n.createdAt))
+      .limit(100);
+    return c.json(rows);
+  })
   /** This phone wants push notifications for the signed-in account */
   .post(
     "/push-devices",

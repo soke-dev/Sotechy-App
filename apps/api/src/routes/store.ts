@@ -51,6 +51,8 @@ export async function loadReviews(productId: string) {
       body: r.body,
       verified: r.verified,
       createdAt: r.createdAt,
+      storeReply: r.storeReply,
+      storeRepliedAt: r.storeRepliedAt,
       fullName: schema.users.fullName,
       avatarStyle: schema.users.avatarStyle,
     })

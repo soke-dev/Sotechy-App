@@ -2,5 +2,6 @@ import { api } from "@/lib/api";
 import { CustomersView } from "./customers-view";
 
 export default async function CustomersPage() {
-  return <CustomersView orders={await api.merchantOrders()} />;
+  const [orders, customers] = await Promise.all([api.merchantOrders(), api.merchantCustomers()]);
+  return <CustomersView orders={orders} following={customers.filter((c) => c.following && c.username).map((c) => c.username!)} />;
 }
