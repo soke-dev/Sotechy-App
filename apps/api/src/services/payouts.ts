@@ -154,6 +154,11 @@ export async function sendPayout(id: string, opts: { actorId: string | null; for
       reference: row.reference,
       group: claimed.orderNumber,
       narration: `Sotechy ${claimed.orderNumber} ${row.stage === "first" ? "first" : "final"} payment`,
+      transferId: row.transferId,
+      // Kept the moment the money moves, so a retry days later can't move it again
+      onTransfer: async (transferId) => {
+        await db.update(payouts).set({ transferId }).where(eq(payouts.id, id));
+      },
     });
   } catch (err) {
     // Safe to retry: the payout service won't accept the same reference twice

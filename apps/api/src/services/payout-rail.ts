@@ -35,13 +35,13 @@ const fromFlutterwave = (t: Transfer): RailResult => ({
   failureReason: t.status === "FAILED" ? (t.completeMessage ?? "The bank didn't accept the transfer") : null,
 });
 
-export async function railSend(input: { recipientId: string | null; bankCode: string; accountNumber: string; amount: number; cover: number; reference: string; group: string; narration: string }): Promise<RailResult & { provider: PayoutProvider }> {
+export async function railSend(input: { recipientId: string | null; bankCode: string; accountNumber: string; amount: number; cover: number; reference: string; group: string; narration: string; transferId: string | null; onTransfer: (id: string) => Promise<void> }): Promise<RailResult & { provider: PayoutProvider }> {
   if (provider() === "flutterwave") {
     const t = await sendTransfer({ bankCode: input.bankCode, accountNumber: input.accountNumber, amount: input.amount, reference: input.reference, narration: input.narration });
     return { ...fromFlutterwave(t), provider: "flutterwave" };
   }
   if (!input.recipientId) throw new HttpError(400, "The store needs to save its payout account again before it can be paid");
-  const { transferId, payout } = await bachsSend({ recipientId: input.recipientId, amount: input.amount, cover: input.cover, reference: input.reference, group: input.group, narration: input.narration });
+  const { transferId, payout } = await bachsSend({ ...input, recipientId: input.recipientId });
   return {
     provider: "bachs",
     providerId: payout.id,

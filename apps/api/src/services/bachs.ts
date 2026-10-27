@@ -123,23 +123,51 @@ const toPayout = (p: Json): BachsPayout => ({
   failureReason: (p.failure_reason as string) ?? null,
 });
 
+/** A transfer already made to the store for this payout. Bachs keeps idempotency keys for 24 hours only,
+ *  so a later retry looks for it first rather than moving the money again. */
+async function earlierTransfer(input: { recipientId: string; total: string; group: string; narration: string }): Promise<string | null> {
+  const list = itemsOf(await call("GET", `/v1/transfers?connected_account_id=${encodeURIComponent(input.recipientId)}&limit=100`));
+  const found = list.find(
+    (t) =>
+      String(t.transfer_group ?? "") === input.group &&
+      Number(t.amount) === Number(input.total) &&
+      (t.destination == null || String(t.destination) === input.recipientId) &&
+      (t.description == null || String(t.description) === input.narration),
+  );
+  return found ? String(found.id) : null;
+}
+
 /** Moves the store's share to its Bachs account, then to its bank. `cover` is the bank fee Sotechy pays on top.
- *  Both steps carry idempotency keys from the payout's reference, so a retry never pays twice. */
-export async function bachsSend(input: { recipientId: string; amount: number; cover: number; reference: string; group: string; narration: string }) {
+ *  Nothing moves until the store's bank account is approved. Both steps carry idempotency keys from the payout's
+ *  reference, and a transfer that already went (`transferId`, or found on Bachs) is never made again. */
+export async function bachsSend(input: { recipientId: string; amount: number; cover: number; reference: string; group: string; narration: string; transferId: string | null; onTransfer: (id: string) => Promise<void> }) {
   if (standIn()) return { transferId: `tr_standin_${input.reference}`, payout: { id: `po_standin_${input.reference}`, status: "completed" as BachsStatus, reference: input.reference, failureReason: null } };
-  const transfer = await call("POST", "/v1/transfers", {
-    idempotencyKey: `${input.reference}-transfer`,
-    body: { destination: input.recipientId, amount: naira(input.amount + input.cover), currency: "NGN", transfer_group: input.group, description: input.narration },
-  });
   const destinations = itemsOf(await call("GET", "/v1/payouts/destinations", { account: input.recipientId }));
   const destination = destinations.find((d) => d.is_usable && d.is_default) ?? destinations.find((d) => d.is_usable);
-  if (!destination) throw new HttpError(400, "Sent to the store's Bachs balance, but Bachs is still checking its bank account. Retry once it's approved.");
+  const total = naira(input.amount + input.cover);
+  let transferId = input.transferId ?? (await earlierTransfer({ recipientId: input.recipientId, total, group: input.group, narration: input.narration }));
+  if (!destination) {
+    throw new HttpError(
+      400,
+      transferId
+        ? "The money is in the store's Bachs balance, but Bachs is still checking its bank account. Retry once it's approved; it won't be sent twice."
+        : "Bachs is still checking the store's bank account. Nothing was sent; retry once it's approved.",
+    );
+  }
+  if (!transferId) {
+    const transfer = await call("POST", "/v1/transfers", {
+      idempotencyKey: `${input.reference}-transfer`,
+      body: { destination: input.recipientId, amount: total, currency: "NGN", transfer_group: input.group, description: input.narration },
+    });
+    transferId = String(transfer.id);
+  }
+  await input.onTransfer(transferId);
   const payout = await call("POST", "/v1/payouts", {
     account: input.recipientId,
     idempotencyKey: `${input.reference}-payout`,
     body: { destination: destination.id, amount: naira(input.amount), reference: input.reference, narration: input.narration.slice(0, 100) },
   });
-  return { transferId: String(transfer.id), payout: toPayout(payout) };
+  return { transferId, payout: toPayout(payout) };
 }
 
 /** A payout as Bachs has it now (webhooks are checked against this before anything changes) */
