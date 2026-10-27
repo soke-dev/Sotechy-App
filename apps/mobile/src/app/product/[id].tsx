@@ -530,23 +530,30 @@ export default function ProductScreen() {
           <View style={{ gap: 6 }}>
             {product.brand ? <Txt variant="overline">{product.brand}{product.model ? ` · ${product.model}` : ""}</Txt> : null}
             <Txt variant="title">{product.name}</Txt>
-            <View style={[ui.row, { marginTop: 4, flexWrap: "wrap" }]}>
+            {/* Price, its dollar value, the saving and stock, all centred on one line */}
+            <View style={[ui.row, { marginTop: 4, flexWrap: "wrap", rowGap: 6 }]}>
               <Price amount={variant?.price ?? 0} compareAt={variant?.compareAtPrice} size="lg" />
               {features.usdPrices && fx.data && variant ? (
-                <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Txt variant="label" color={colors.ink2} style={{ fontSize: 13 }}>≈ {formatUsd(variant.price, fx.data.rate)}</Txt>
+                <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 3 }}>
+                  <Txt variant="label" color={colors.ink2} style={{ fontSize: 12, lineHeight: 16 }}>≈ {formatUsd(variant.price, fx.data.rate)}</Txt>
                 </View>
               ) : null}
-              {off > 0 && <Pill label={`Save ${off}%`} tone="brand" />}
-              {available > 0 ? (
-                <Pill
-                  icon="checkmark-circle"
-                  tone={lowStock ? "warning" : "success"}
-                  label={lowStock ? `Only ${available} left` : `In stock at ${storesWithStock.length} store${storesWithStock.length === 1 ? "" : "s"}`}
-                />
-              ) : (
-                <Pill icon="close-circle" tone="danger" label="Out of stock" />
+              {off > 0 && (
+                <View>
+                  <Pill label={`Save ${off}%`} tone="brand" />
+                </View>
               )}
+              <View>
+                {available > 0 ? (
+                  <Pill
+                    icon="checkmark-circle"
+                    tone={lowStock ? "warning" : "success"}
+                    label={lowStock ? `Only ${available} left` : `In stock at ${storesWithStock.length} store${storesWithStock.length === 1 ? "" : "s"}`}
+                  />
+                ) : (
+                  <Pill icon="close-circle" tone="danger" label="Out of stock" />
+                )}
+              </View>
             </View>
             {/* The offer, under the price */}
             <View style={[ui.row, { gap: space.sm, flexWrap: "wrap" }]}>
