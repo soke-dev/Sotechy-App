@@ -74,6 +74,9 @@ export const SAMPLES: Record<string, ["Customers" | "Merchants", () => Email | n
         ],
       }),
   ],
+  "id-check-passed": ["Merchants", () => T.idCheckEmail(to, { name: "Kemi Bello", store: "Kemi Phones", outcome: "approved" })],
+  "id-check-retry": ["Merchants", () => T.idCheckEmail(to, { name: "Kemi Bello", store: "Kemi Phones", outcome: "resubmit" })],
+  "id-check-declined": ["Merchants", () => T.idCheckEmail(to, { name: "Kemi Bello", store: "Kemi Phones", outcome: "declined" })],
   "store-verified": ["Merchants", () => T.storeVerifiedEmail(to, { name: "Kemi Bello", store: "Kemi Phones" })],
   featured: ["Merchants", () => T.featuredEmail(to, { store: "Xena Gadgets", until: inHours(24 * 30), price: 2_000 })],
 };

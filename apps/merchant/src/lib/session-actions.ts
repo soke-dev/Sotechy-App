@@ -164,3 +164,20 @@ export async function saveProfile(_: SaveState, form: FormData): Promise<SaveSta
   revalidatePath("/", "layout");
   return { saved: true };
 }
+
+/** Starts the owner's ID + liveness check with Didit; the browser then goes to the returned page */
+export async function startIdCheck(): Promise<{ url: string } | { error: string }> {
+  try {
+    return await api.startIdCheck();
+  } catch (err) {
+    return { error: errorMessage(err) };
+  }
+}
+
+export async function idCheckStatus() {
+  try {
+    return await api.idCheckStatus();
+  } catch {
+    return null;
+  }
+}

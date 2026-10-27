@@ -34,10 +34,10 @@ const mmServer = await startFakeMoneyMoves({
   ...fake,
 });
 
-// Google sign-in and Resend settings are taken from apps/api/.env (everything else here is local)
+// Google sign-in, Resend and Didit settings are taken from apps/api/.env (everything else here is local)
 const envFile = join(apiDir, ".env");
 const fromFile = existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")) : {};
-const passThrough = Object.fromEntries(["GOOGLE_CLIENT_IDS", "RESEND_API_KEY", "EMAIL_FROM"].filter((k) => fromFile[k]).map((k) => [k, fromFile[k]]));
+const passThrough = Object.fromEntries(["GOOGLE_CLIENT_IDS", "RESEND_API_KEY", "EMAIL_FROM", "DIDIT_API_KEY", "DIDIT_WORKFLOW_ID", "DIDIT_WEBHOOK_SECRET"].filter((k) => fromFile[k]).map((k) => [k, fromFile[k]]));
 
 const env = {
   ...process.env,
@@ -50,6 +50,8 @@ const env = {
   JWT_SECRET: "local-development-secret-not-for-production",
   CORS_ORIGINS: "http://localhost:3000,http://localhost:3001,http://localhost:8081",
   PUBLIC_API_URL: `http://${lanIp}:${API_PORT}`,
+  // Didit sends merchants back here after their ID check
+  MERCHANT_APP_URL: "http://localhost:3002",
   SEED_ADMIN_EMAIL: "admin@local.test",
   SEED_ADMIN_PASSWORD: "password123",
   SEED_DEMO_PRODUCTS: "true",

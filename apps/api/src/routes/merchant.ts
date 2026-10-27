@@ -9,6 +9,7 @@ import { claimUsername, phoneField, slugify, tickerFrom } from "../lib/identity"
 import { publicUser } from "../lib/serialize";
 import { sendEmailLater } from "../lib/email";
 import { storeOpenedEmail } from "../emails/templates";
+import { diditConfigured, refreshIdCheck, startIdCheck } from "../services/didit";
 
 const storeOf = async (ownerId: string) => (await db.select().from(schema.merchants).where(eq(schema.merchants.ownerId, ownerId)))[0] ?? null;
 
@@ -73,6 +74,23 @@ export const merchantRoutes = new Hono<AppEnv>()
       return c.json({ user: publicUser(fresh), store }, 201);
     },
   )
+  /** Starts (or restarts) the owner's ID + liveness check; returns Didit's page to send them to */
+  .post("/verification", async (c) => {
+    const store = await storeOf(c.get("user").id);
+    if (!store) throw notFound("You don't have a store yet");
+    if (store.kycStatus === "approved") throw conflict("Your ID is already verified");
+    if (store.kycStatus === "in_review") throw conflict("Your ID check is being reviewed. We'll email you the result.");
+    return c.json({ url: await startIdCheck(store) });
+  })
+  /** The check's status; while it's open, asks Didit for news (so it works even before webhooks reach us) */
+  .get("/verification", async (c) => {
+    let store = await storeOf(c.get("user").id);
+    if (!store) throw notFound("You don't have a store yet");
+    if (store.kycSessionId && (store.kycStatus === "in_progress" || store.kycStatus === "in_review") && diditConfigured()) {
+      store = (await refreshIdCheck(store.kycSessionId).catch(() => null)) ?? store;
+    }
+    return c.json({ status: store.kycStatus, updatedAt: store.kycUpdatedAt, available: diditConfigured() });
+  })
   .patch(
     "/store",
     zValidator(

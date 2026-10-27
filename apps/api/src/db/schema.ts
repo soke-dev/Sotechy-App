@@ -59,6 +59,24 @@ export const discountTypeEnum = pgEnum("discount_type", ["percentage", "fixed"])
 export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", ["draft", "ordered", "received", "cancelled"]);
 export const merchantStatusEnum = pgEnum("merchant_status", ["pending", "approved", "suspended"]);
 export const sellerKindEnum = pgEnum("seller_kind", ["registered", "individual"]);
+/** The owner's identity check (ID document + liveness, through Didit) */
+export const kycStatusEnum = pgEnum("kyc_status", ["not_started", "in_progress", "in_review", "approved", "declined", "resubmit", "expired"]);
+
+/** What Didit found, kept for admin review (no document images or full ID numbers) */
+export interface KycResult {
+  diditStatus: string;
+  documentType?: string | null;
+  documentStatus?: string | null;
+  issuingCountry?: string | null;
+  fullName?: string | null;
+  dateOfBirth?: string | null;
+  documentNumberEnding?: string | null;
+  livenessStatus?: string | null;
+  livenessScore?: number | null;
+  faceMatchStatus?: string | null;
+  faceMatchScore?: number | null;
+  warnings?: string[];
+}
 export const ticketStatusEnum = pgEnum("ticket_status", ["open", "pending", "resolved", "closed"]);
 
 // ---------------------------------------------------------------------------
@@ -146,6 +164,11 @@ export const merchants = pgTable("merchants", {
   /** WhatsApp number for order alerts when it differs from contactPhone, as +234… */
   contactWhatsapp: text(),
   commissionRate: numeric({ precision: 5, scale: 2, mode: "number" }),
+  /** Owner's ID + liveness check through Didit; admin still approves the store itself */
+  kycStatus: kycStatusEnum().notNull().default("not_started"),
+  kycSessionId: text().unique(),
+  kycResult: jsonb().$type<KycResult>(),
+  kycUpdatedAt: timestamp({ withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

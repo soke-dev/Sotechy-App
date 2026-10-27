@@ -5,6 +5,7 @@ import type {
   CatalogProduct,
   Category,
   ExchangeRate,
+  KycStatus,
   MerchantSession,
   MerchantStore,
   Order,
@@ -85,6 +86,9 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
     openStore: (input: { name: string; sellerKind: "registered" | "individual"; phone: string; whatsappPhone?: string | null; username?: string }) =>
       send<MerchantSession>("POST", "/merchant/store", input),
     updateStore: (input: { name?: string; contactPhone?: string; contactWhatsapp?: string | null }) => send<MerchantStore>("PATCH", "/merchant/store", input),
+    /** Starts the owner's ID + liveness check; open the returned URL */
+    startIdCheck: () => send<{ url: string }>("POST", "/merchant/verification"),
+    idCheckStatus: () => get<{ status: KycStatus; updatedAt: string | null; available: boolean }>("/merchant/verification"),
 
     // Saved addresses
     addresses: () => get<Address[]>("/me/addresses"),

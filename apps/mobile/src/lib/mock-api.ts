@@ -518,6 +518,8 @@ export const mockApi: ApiClient = {
   merchantMe: unsupported,
   openStore: unsupported,
   updateStore: unsupported,
+  startIdCheck: unsupported,
+  idCheckStatus: unsupported,
 };
 
 /** Demo only: does what the Money Moves webhook does when a payment succeeds. */

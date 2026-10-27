@@ -255,3 +255,43 @@ export function featuredEmail(to: string, d: { store: string; until: Date; price
     reason: "You're getting this because you paid to feature your store.",
   });
 }
+
+const ID_CHECK = {
+  approved: {
+    subject: "Your ID check passed",
+    heading: "Your ID check passed",
+    lead: "Your ID and selfie matched.",
+    note: { tone: "good" as const, text: "Next, Sotechy reviews the rest of your setup. We'll email you as soon as your store is live." },
+    button: "Continue setup",
+  },
+  resubmit: {
+    subject: "Your ID check needs another try",
+    heading: "Let's try your ID check again",
+    lead: "Some photos weren't clear enough to check.",
+    note: { tone: "warn" as const, text: "Use good light, keep the whole ID in the frame with no glare, and hold still for the selfie." },
+    button: "Try again",
+  },
+  declined: {
+    subject: "We couldn't verify your ID",
+    heading: "We couldn't verify your ID",
+    lead: "Your ID check didn't pass.",
+    note: { tone: "bad" as const, text: "If you think this is a mistake, reply to this email and our team will look at it with you." },
+    button: "Open your setup",
+  },
+};
+
+export function idCheckEmail(to: string, d: { name: string | null; store: string; outcome: keyof typeof ID_CHECK }) {
+  const c = ID_CHECK[d.outcome];
+  return build(to, c.subject, {
+    preheader: `${c.lead} ${c.note.text}`,
+    hero: "verified",
+    eyebrow: `${d.store} · ID check`,
+    heading: c.heading,
+    blocks: [
+      { kind: "text", text: `Hi ${first(d.name)}, ${c.lead.charAt(0).toLowerCase()}${c.lead.slice(1)}` },
+      { kind: "note", tone: c.note.tone, icon: "shield", text: c.note.text },
+      { kind: "button", label: c.button, url: merchantLink("/onboarding?step=you") },
+    ],
+    reason: "You're getting this because you verified your identity to sell on Sotechy.",
+  });
+}

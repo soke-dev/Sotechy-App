@@ -52,6 +52,12 @@ export default defineRailway(() => {
       // Email through Resend; the sotechy.shop domain must be verified there
       RESEND_API_KEY: preserve(),
       EMAIL_FROM: "Sotechy <hello@sotechy.shop>",
+      // Merchant ID + liveness checks through Didit; webhook URL: https://<api>/webhooks/didit
+      DIDIT_API_KEY: preserve(),
+      DIDIT_WORKFLOW_ID: preserve(),
+      DIDIT_WEBHOOK_SECRET: preserve(),
+      // Where Didit sends merchants back to (switch to https://merchant.sotechy.shop once its DNS works)
+      MERCHANT_APP_URL: "https://${{merchant.RAILWAY_PUBLIC_DOMAIN}}",
     },
   });
 

@@ -349,8 +349,12 @@ export interface MerchantStore {
   contactEmail: string | null;
   contactPhone: string | null;
   contactWhatsapp: string | null;
+  /** The owner's ID + liveness check (Didit) */
+  kycStatus: KycStatus;
   createdAt: string;
 }
+
+export type KycStatus = "not_started" | "in_progress" | "in_review" | "approved" | "declined" | "resubmit" | "expired";
 
 export interface MerchantSession {
   user: User;

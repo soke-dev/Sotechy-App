@@ -23,6 +23,12 @@ const schema = z.object({
   RESEND_API_KEY: z.string().optional(),
   /** Sender for all emails; the domain must be verified in Resend */
   EMAIL_FROM: z.string().default("Sotechy <hello@sotechy.shop>"),
+  /** Didit identity checks for merchants (ID document + liveness): Console → API keys / Workflows / Webhooks */
+  DIDIT_API_KEY: z.string().optional(),
+  DIDIT_WORKFLOW_ID: z.string().optional(),
+  DIDIT_WEBHOOK_SECRET: z.string().optional(),
+  /** The merchant dashboard, where Didit sends people back after their check */
+  MERCHANT_APP_URL: z.string().default("https://merchant.sotechy.shop"),
 });
 
 export const env = schema.parse(process.env);

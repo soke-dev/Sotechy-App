@@ -18,6 +18,7 @@ import { meRoutes } from "./routes/me";
 import { orderRoutes } from "./routes/orders";
 import { paymentRoutes } from "./routes/payments";
 import { storeRoutes } from "./routes/store";
+import { webhookRoutes } from "./routes/webhooks";
 
 const admin = new Hono<AppEnv>()
   .use(requireAuth, requireRole(...STAFF))
@@ -42,6 +43,7 @@ export const app = new Hono()
   .route("/merchant", merchantRoutes)
   .route("/payments", paymentRoutes)
   .route("/media", mediaRoutes)
+  .route("/webhooks", webhookRoutes)
   .route("/admin", admin);
 
 // Every email with sample data, for designing them (never on the live server)
