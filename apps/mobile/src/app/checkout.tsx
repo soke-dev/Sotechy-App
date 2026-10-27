@@ -1,11 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, View } from "react-native";
 import { areaDeliveryFee, deliveryAreaFor, formatNaira, formatUsd, nairaToTokens, TOKEN_RULES, tokensToNaira, type FulfilmentType, type PromoCheck } from "@sotechy/shared";
 import { AddressCard } from "@/components/address-card";
 import { Illo, type IlloName } from "@/components/illustrations";
-import { PayOptionsLine, useMoneyMoves } from "@/components/money-moves";
+import { PayChoiceSheet, useMoneyMoves } from "@/components/money-moves";
+import { Sheet } from "@/components/shop-filters";
 import { useToast } from "@/components/toast";
 import { BottomBar, Button, Divider, ErrorView, Input, Loading, OptionRow, SummaryRow, tap, Txt, PhoneInput, ui } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -34,25 +35,29 @@ function Section({ step, title, children }: { step: number; title: string; child
   );
 }
 
-function FulfilmentCard({ illo, title, subtitle, active, onPress }: { illo: IlloName; title: string; subtitle: string; active: boolean; onPress: () => void }) {
+function FulfilmentCard({ illo, title, subtitle, active, locked, onPress }: { illo: IlloName; title: string; subtitle: string; active: boolean; locked?: boolean; onPress: () => void }) {
   return (
     <Pressable
+      disabled={locked}
       onPress={() => {
         tap();
         onPress();
       }}
-      style={{ flex: 1, padding: space.lg, borderRadius: radius.lg, borderWidth: active ? 1.5 : 1, borderColor: active ? colors.ink : colors.line, backgroundColor: active ? colors.surface : colors.bg, gap: 6 }}
+      style={{ flex: 1, padding: space.lg, borderRadius: radius.lg, borderWidth: active ? 1.5 : 1, borderColor: active ? colors.ink : colors.line, backgroundColor: active ? colors.surface : colors.bg, gap: 6, opacity: locked ? 0.55 : 1 }}
     >
-      <Illo name={illo} size={38} />
-      <Txt variant="label">{title}</Txt>
-      <Txt variant="caption">{subtitle}</Txt>
+      <View style={[ui.row, { gap: space.sm }]}>
+        <Illo name={illo} size={30} />
+        <Txt variant="label" style={{ flex: 1 }}>{title}</Txt>
+        {locked && <Ionicons name="lock-closed" size={16} color={colors.muted} />}
+      </View>
+      <Txt variant="caption">{locked ? "Not available for this order" : subtitle}</Txt>
     </Pressable>
   );
 }
 
 export default function CheckoutScreen() {
   const cart = useCart();
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const toast = useToast();
   const moneyMoves = useMoneyMoves();
   const features = useFeatures();
@@ -60,7 +65,7 @@ export default function CheckoutScreen() {
   const fx = useAsync(() => api.exchangeRate());
   // One key per checkout attempt so a double tap or retry can't create two orders.
   const [idempotencyKey] = useState(newKey);
-  const [chosenFulfilment, setFulfilment] = useState<FulfilmentType>("pickup");
+  const [chosenFulfilment, setFulfilment] = useState<FulfilmentType>("delivery");
   const [branchId, setBranchId] = useState<string | null>(null);
   const [pickupZoneId, setPickupZoneId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
@@ -75,10 +80,24 @@ export default function CheckoutScreen() {
   const sellerInfo = useAsync(async () => (seller ? loadStore(seller.slug) : null), [seller?.slug]);
   // null = use the default saved address; "new" = type a new one; otherwise a saved address id
   const [addressId, setAddressId] = useState<string | null>(null);
-  const [saveNew, setSaveNew] = useState(true);
   // Tokens the customer can pay with here: this store's own and $SOTECHY
   const wallet = useAsync(async () => (user ? api.wallet() : null), [user?.id]);
   const [useTokens, setUseTokens] = useState<Record<string, boolean>>({});
+  // Each item says whether it can be delivered, collected, or both
+  const productIds = [...new Set(cart.lines.map((l) => l.productId))];
+  const products = useAsync(() => Promise.all(productIds.map((id) => api.product(id))), [productIds.join(",")]);
+  const [pickingAddress, setPickingAddress] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [phone, setPhone] = useState(user?.phone ?? "");
+  // An address added from checkout is picked as soon as the customer comes back
+  const knownIds = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!saved.data) return;
+    const ids = saved.data.map((a) => a.id);
+    const added = knownIds.current ? ids.find((id) => !knownIds.current!.has(id)) : undefined;
+    if (added) setAddressId(added);
+    knownIds.current = new Set(ids);
+  }, [saved.data]);
 
   useFocusEffect(
     useCallback(() => {
@@ -92,10 +111,15 @@ export default function CheckoutScreen() {
   if (config.error || !config.data) return <ErrorView message={config.error ?? "Could not load checkout"} onRetry={config.reload} />;
 
   const cfg = config.data;
-  // Switches from admin: fall back to whichever of delivery/pickup is still on.
-  const fulfilment: FulfilmentType =
-    chosenFulfilment === "pickup" && !features.pickup ? "delivery" : chosenFulfilment === "delivery" && !features.delivery ? "pickup" : chosenFulfilment;
+  // Switches from admin and each item's own rules: fall back to whichever is still allowed.
+  const itemsPickup = (products.data ?? []).every((p) => p.allowPickup);
+  const itemsDelivery = (products.data ?? []).every((p) => p.allowDelivery);
+  const canPickup = features.pickup && itemsPickup;
+  const canDelivery = features.delivery && itemsDelivery;
+  const fulfilment: FulfilmentType = chosenFulfilment === "pickup" && !canPickup && canDelivery ? "delivery" : chosenFulfilment === "delivery" && !canDelivery && canPickup ? "pickup" : chosenFulfilment;
+  const onlyOne = canPickup !== canDelivery && !!products.data;
   const paused = !features.ordering || (!features.delivery && !features.pickup);
+  const mixedItems = !!products.data && !canPickup && !canDelivery && !paused;
   const promoOn = features.promoCodes;
   // Deliveries go out from the main store; pickup lets the customer choose.
   const selectedBranch = seller?.branchId ?? (fulfilment === "pickup" ? branchId : null) ?? cfg.branches[0]?.id ?? null;
@@ -103,7 +127,9 @@ export default function CheckoutScreen() {
   const savedList = saved.data ?? [];
   const chosenId = addressId ?? savedList.find((a) => a.isDefault)?.id ?? savedList[0]?.id ?? "new";
   const chosen = savedList.find((a) => a.id === chosenId);
-  const addressOk = fulfilment === "pickup" || !!chosen || !!(address.recipientName && address.phone && address.line1 && address.city);
+  // Pickup needs a phone so the store can call; delivery needs an address (which has one)
+  const phoneOk = !!user?.phone || phone.replace(/\D/g, "").length >= 10;
+  const addressOk = fulfilment === "pickup" ? phoneOk : !!chosen || (!user && !!(address.recipientName && address.phone && address.line1 && address.city));
   // A store charges from its own delivery areas (the API works out the same fee)
   const areas = sellerInfo.data?.areas ?? [];
   const where = chosen ?? address;
@@ -160,6 +186,14 @@ export default function CheckoutScreen() {
   async function proceedToPayment() {
     if (!selectedBranch) return;
     setError(null);
+    if (fulfilment === "pickup" && user && !user.phone) {
+      try {
+        await updateProfile({ phone });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save your phone number");
+        return;
+      }
+    }
     // A typed but unapplied code is checked first so it can't fail after payment opens.
     let applied = promoOn ? promo : null;
     if (promoOn && !applied && promoCode.trim()) {
@@ -181,7 +215,7 @@ export default function CheckoutScreen() {
             : chosen
               ? { recipientName: chosen.recipientName, phone: chosen.phone, line1: chosen.line1, line2: chosen.line2 ?? undefined, city: chosen.city, state: chosen.state }
               : address,
-        // Money Moves handles every method (bank transfer, crypto, its app) in its own window.
+        // Stablecoin through Money Moves, in its own window
         paymentMethod: "online",
         promoCode: applied?.code,
         idempotencyKey,
@@ -190,10 +224,6 @@ export default function CheckoutScreen() {
       });
       cart.clear();
       if (order.tokensValue > 0) void refreshHeldTokens();
-      if (fulfilment === "delivery" && !chosen && saveNew && user) {
-        // Remember the new address for next time; the order already succeeded, so ignore failures.
-        api.addAddress({ ...address, label: savedList.length ? "Other" : "Home", line2: address.line2 || null }).catch(() => {});
-      }
       let paid = false;
       try {
         paid = await moneyMoves.pay({ id: order.id, orderNumber: order.orderNumber, total: order.total });
@@ -229,7 +259,7 @@ export default function CheckoutScreen() {
             </Txt>
           )}
           <View style={[ui.row, { gap: space.md, alignItems: "stretch" }]}>
-            {features.pickup && <FulfilmentCard illo="store" title="Store pickup" subtitle={seller ? (pickupPoints.length ? `From ${formatNaira(Math.min(...pickupPoints.map((p) => p.pickupFee ?? 0)))}` : "Collect from the store") : "Free · usually same day"} active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />}
+            {features.pickup && <FulfilmentCard illo="store" title="Store pickup" subtitle={seller ? (pickupPoints.length ? `From ${formatNaira(Math.min(...pickupPoints.map((p) => p.pickupFee ?? 0)))}` : "Collect from the store") : "Free · usually same day"} active={fulfilment === "pickup" && canPickup} locked={!itemsPickup} onPress={() => setFulfilment("pickup")} />}
             {features.delivery && <FulfilmentCard
               illo="bike"
               title="Delivery"
@@ -244,10 +274,21 @@ export default function CheckoutScreen() {
                     ? "Free for this order"
                     : `${formatNaira(cfg.delivery.flatFee)} · 1–2 days`
               }
-              active={fulfilment === "delivery"}
+              active={fulfilment === "delivery" && canDelivery}
+              locked={!itemsDelivery}
               onPress={() => setFulfilment("delivery")}
             />}
           </View>
+          {onlyOne && (
+            <Txt variant="small" color={colors.ink2}>
+              {canDelivery ? "Items in this order are for delivery only." : "Items in this order are for pickup only."}
+            </Txt>
+          )}
+          {mixedItems && (
+            <Txt variant="small" color={colors.danger}>
+              Some items are delivery only and others pickup only. Order them separately.
+            </Txt>
+          )}
         </Section>
 
         <Section step={2} title={fulfilment === "pickup" ? "Pickup store" : "Delivery details"}>
@@ -272,44 +313,58 @@ export default function CheckoutScreen() {
             cfg.branches.map((b) => (
               <OptionRow key={b.id} illo="store" title={b.name} subtitle={`${b.address}, ${b.city}`} selected={selectedBranch === b.id} onPress={() => setBranchId(b.id)} />
             ))}
-          {fulfilment === "delivery" && (
-            <View style={{ gap: space.md }}>
-              {savedList.map((a) => (
-                <AddressCard key={a.id} address={a} selected={chosenId === a.id} onPress={() => setAddressId(a.id)} />
-              ))}
-              {savedList.length > 0 && (
-                <OptionRow illo="pin" title="Use a different address" subtitle="Enter a new delivery address" selected={chosenId === "new"} onPress={() => setAddressId("new")} />
-              )}
-              {chosenId === "new" && (
-                <View style={{ gap: space.md }}>
-                  <Input label="Full name" icon="person-outline" value={address.recipientName} onChangeText={(v) => setAddress({ ...address, recipientName: v })} />
-                  <PhoneInput label="Phone number" value={address.phone} onChange={(v) => setAddress({ ...address, phone: v })} />
-                  <AddressSearch value={address.line1} onChangeText={(v) => setAddress({ ...address, line1: v })} onPick={(s) => setAddress({ ...address, line1: s.line1, city: s.city || address.city, state: s.state || address.state })} />
-                  <Input label="Landmark or apartment (optional)" value={address.line2} onChangeText={(v) => setAddress({ ...address, line2: v })} />
-                  <View style={[ui.row, { gap: space.md }]}>
-                    <View style={{ flex: 1 }}>
-                      <Input label="City" value={address.city} onChangeText={(v) => setAddress({ ...address, city: v })} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Input label="State" value={address.state} onChangeText={(v) => setAddress({ ...address, state: v })} />
+          {fulfilment === "pickup" && user && !user.phone && (
+            <View style={[ui.card, { gap: space.md }]}>
+              <View style={{ gap: 2 }}>
+                <Txt variant="label">Add your phone number</Txt>
+                <Txt variant="small">The store calls this number when your order is ready. We save it to your account.</Txt>
+              </View>
+              <PhoneInput label="Phone number" value={phone} onChange={setPhone} />
+            </View>
+          )}
+          {fulfilment === "delivery" && user && chosen && (
+            <View style={{ gap: space.sm }}>
+              <AddressCard
+                address={chosen}
+                onPress={() => setPickingAddress(true)}
+                footer={
+                  <View style={[ui.between, { gap: space.sm }]}>
+                    <Txt variant="small">{savedList.length > 1 ? `${savedList.length} saved addresses` : "Deliver here"}</Txt>
+                    <View style={[ui.row, { gap: 4 }]}>
+                      <Txt variant="label" color={colors.brandPressed}>Change</Txt>
+                      <Ionicons name="chevron-down" size={16} color={colors.brandPressed} />
                     </View>
                   </View>
-                  {user && (
-                    <View style={[ui.card, ui.between, { paddingVertical: space.md }]}>
-                      <View style={{ flex: 1, gap: 2 }}>
-                        <Txt variant="label">Save this address</Txt>
-                        <Txt variant="small">Pick it in one tap next time</Txt>
-                      </View>
-                      <Switch value={saveNew} onValueChange={setSaveNew} trackColor={{ true: colors.brand, false: colors.line }} thumbColor={colors.white} />
-                    </View>
-                  )}
+                }
+              />
+            </View>
+          )}
+          {fulfilment === "delivery" && user && !chosen && !saved.loading && (
+            <View style={[ui.card, { gap: space.md, alignItems: "flex-start" }]}>
+              <View style={[ui.row, { gap: space.md }]}>
+                <Illo name="pin" size={34} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Txt variant="label">Add a delivery address</Txt>
+                  <Txt variant="small">Where should we bring it? Add your address and phone number.</Txt>
                 </View>
-              )}
-              {savedList.length > 0 && (
-                <Pressable onPress={() => router.push("/addresses")} style={{ alignSelf: "flex-start" }} hitSlop={8}>
-                  <Txt variant="label" color={colors.brandPressed}>Manage saved addresses</Txt>
-                </Pressable>
-              )}
+              </View>
+              <Button title="Add address" icon="add" variant="outline" onPress={() => router.push({ pathname: "/address/[id]", params: { id: "new" } })} />
+            </View>
+          )}
+          {fulfilment === "delivery" && !user && (
+            <View style={{ gap: space.md }}>
+              <Input label="Full name" icon="person-outline" value={address.recipientName} onChangeText={(v) => setAddress({ ...address, recipientName: v })} />
+              <PhoneInput label="Phone number" value={address.phone} onChange={(v) => setAddress({ ...address, phone: v })} />
+              <AddressSearch value={address.line1} onChangeText={(v) => setAddress({ ...address, line1: v })} onPick={(s) => setAddress({ ...address, line1: s.line1, city: s.city || address.city, state: s.state || address.state })} />
+              <Input label="Landmark or apartment (optional)" value={address.line2} onChangeText={(v) => setAddress({ ...address, line2: v })} />
+              <View style={[ui.row, { gap: space.md }]}>
+                <View style={{ flex: 1 }}>
+                  <Input label="City" value={address.city} onChangeText={(v) => setAddress({ ...address, city: v })} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Input label="State" value={address.state} onChangeText={(v) => setAddress({ ...address, state: v })} />
+                </View>
+              </View>
             </View>
           )}
           {outOfArea && (
@@ -324,17 +379,8 @@ export default function CheckoutScreen() {
           )}
         </Section>
 
-        <Section step={3} title="Payment">
-          <View style={[ui.card, { flexDirection: "row", gap: space.md, alignItems: "center" }]}>
-            <Illo name="wallet" size={38} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="label">Secure payment with Money Moves</Txt>
-              <Txt variant="small">The Money Moves window opens when you tap Proceed to payment. Nothing is charged until you confirm there.</Txt>
-            </View>
-            <Ionicons name="lock-closed" size={18} color={colors.success} />
-          </View>
-
-          {!promoOn ? null : promo ? (
+        {promoOn && <Section step={3} title="Promo code">
+          {promo ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.successSoft, borderRadius: radius.md, padding: space.md }}>
               <Ionicons name="checkmark-circle" size={20} color={colors.success} />
               <View style={{ flex: 1 }}>
@@ -374,7 +420,7 @@ export default function CheckoutScreen() {
               {promoError && <Txt variant="small" color={colors.danger}>{promoError}</Txt>}
             </View>
           )}
-        </Section>
+        </Section>}
 
         {tokenPlan.length > 0 && (
           <View style={[ui.card, { gap: space.md }]}>
@@ -441,13 +487,50 @@ export default function CheckoutScreen() {
             title={paused ? "Ordering paused" : `Proceed to payment · ${formatNaira(due)}`}
             icon="lock-closed"
             variant="dark"
-            onPress={proceedToPayment}
+            onPress={() => {
+              tap();
+              setPayOpen(true);
+            }}
             loading={submitting || checkingPromo}
-            disabled={paused || !selectedBranch || cart.lines.length === 0 || !addressOk || outOfArea}
+            disabled={paused || mixedItems || !products.data || !selectedBranch || cart.lines.length === 0 || !addressOk || outOfArea}
           />
-          <PayOptionsLine />
         </View>
       </BottomBar>
+      <Sheet visible={pickingAddress} title="Deliver to" onClose={() => setPickingAddress(false)}>
+        <View style={{ gap: space.md }}>
+          {savedList.map((a) => (
+            <AddressCard
+              key={a.id}
+              address={a}
+              selected={chosenId === a.id}
+              onPress={() => {
+                setAddressId(a.id);
+                setPickingAddress(false);
+              }}
+            />
+          ))}
+          <Button
+            title="Add new address"
+            icon="add"
+            variant="outline"
+            onPress={() => {
+              setPickingAddress(false);
+              router.push({ pathname: "/address/[id]", params: { id: "new" } });
+            }}
+          />
+          <Pressable
+            onPress={() => {
+              setPickingAddress(false);
+              router.push("/addresses");
+            }}
+            style={{ alignSelf: "center" }}
+            hitSlop={8}
+          >
+            <Txt variant="label" color={colors.brandPressed}>Manage saved addresses</Txt>
+          </Pressable>
+        </View>
+      </Sheet>
+      <PayChoiceSheet visible={payOpen} amount={due} onClose={() => setPayOpen(false)} onPay={() => void proceedToPayment()} />
       {moneyMoves.sheet}
     </KeyboardAvoidingView>
   );

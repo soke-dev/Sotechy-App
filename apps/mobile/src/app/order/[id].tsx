@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderDetail } from "@sotechy/shared";
 import { useDialog } from "@/components/dialog";
-import { PayOptionsLine, useMoneyMoves } from "@/components/money-moves";
+import { PayChoiceSheet, useMoneyMoves } from "@/components/money-moves";
 import { useToast } from "@/components/toast";
 import { Button, Divider, ErrorView, Loading, SummaryRow, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -134,6 +134,7 @@ export default function OrderScreen() {
   const [cancelling, setCancelling] = useState(false);
   const [paying, setPaying] = useState(false);
   const moneyMoves = useMoneyMoves();
+  const [payOpen, setPayOpen] = useState(false);
   // After Money Moves closes, look for the payment for a minute (the webhook can take a few seconds).
   const [watchUntil, setWatchUntil] = useState(checking ? Date.now() + 60_000 : 0);
   const watching = !!order && order.status === "pending_payment" && watchUntil > Date.now();
@@ -256,8 +257,17 @@ export default function OrderScreen() {
           </View>
           {pi.method === "online" ? (
             <>
-              <Button title="Proceed to payment" icon="lock-closed" variant="dark" loading={paying} onPress={payNow} />
-              <PayOptionsLine />
+              <Button
+                title="Proceed to payment"
+                icon="lock-closed"
+                variant="dark"
+                loading={paying}
+                onPress={() => {
+                  tap();
+                  setPayOpen(true);
+                }}
+              />
+              <PayChoiceSheet visible={payOpen} amount={order.total} onClose={() => setPayOpen(false)} onPay={() => void payNow()} />
             </>
           ) : (
             <>

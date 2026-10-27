@@ -1,33 +1,47 @@
-// Money Moves checkout: opens the provider's payment window, where the customer pays by bank
-// transfer, crypto or the Money Moves app.
+// Money Moves checkout: opens the provider's payment window, where the customer sends stablecoin.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useState } from "react";
-import { Modal, Pressable, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useCallback } from "react";
+import { Pressable, View } from "react-native";
 import { formatNaira } from "@sotechy/shared";
 import { api } from "@/lib/api";
-import { colors, gutter, radius, space } from "@/lib/theme";
+import { colors, space } from "@/lib/theme";
 import { Illo, type IlloName } from "./illustrations";
-import { Button, OptionRow, Pill, Txt } from "./ui";
+import { Sheet } from "./shop-filters";
+import { Pill, tap, Txt, ui } from "./ui";
 
-export const PAY_OPTIONS: { key: string; label: string; subtitle: string; illo: IlloName }[] = [
-  { key: "bank", label: "Bank transfer", subtitle: "Transfer from any Nigerian bank", illo: "bank" },
-  { key: "crypto", label: "Crypto", subtitle: "$MOVE and other supported coins", illo: "coin" },
-  { key: "app", label: "Money Moves app", subtitle: "Approve the payment in the app", illo: "wallet" },
+// Stablecoin goes through Money Moves; bank transfer comes later
+const PAY_CHOICES: { id: string; illo: IlloName; title: string; subtitle: string; live: boolean }[] = [
+  { id: "stablecoin", illo: "coin", title: "Send stablecoin", subtitle: "Pay with USDT or USDC through Money Moves", live: true },
+  { id: "bank", illo: "bank", title: "Bank transfer", subtitle: "Pay from any Nigerian bank", live: false },
 ];
 
-/** "Bank transfer · Crypto · Money Moves app" line shown under payment buttons. */
-export function PayOptionsLine() {
+/** Bottom sheet of ways to pay; picking a live one calls `onPay`. */
+export function PayChoiceSheet({ visible, amount, onClose, onPay }: { visible: boolean; amount: number; onClose: () => void; onPay: () => void }) {
   return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: space.md }}>
-      {PAY_OPTIONS.map((o) => (
-        <View key={o.key} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Illo name={o.illo} size={16} />
-          <Txt variant="caption">{o.label}</Txt>
-        </View>
-      ))}
-    </View>
+    <Sheet visible={visible} title={`Pay ${formatNaira(amount)}`} onClose={onClose}>
+      <View style={{ gap: space.md }}>
+        {PAY_CHOICES.map((c) => (
+          <Pressable
+            key={c.id}
+            disabled={!c.live}
+            onPress={() => {
+              tap();
+              onClose();
+              onPay();
+            }}
+            style={[ui.card, { flexDirection: "row", alignItems: "center", gap: space.md, opacity: c.live ? 1 : 0.55 }]}
+          >
+            <Illo name={c.illo} size={38} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt variant="label">{c.title}</Txt>
+              <Txt variant="small">{c.subtitle}</Txt>
+            </View>
+            {c.live ? <Ionicons name="chevron-forward" size={18} color={colors.ink2} /> : <Pill label="Coming soon" />}
+          </Pressable>
+        ))}
+      </View>
+    </Sheet>
   );
 }
 
