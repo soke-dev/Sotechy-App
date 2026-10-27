@@ -368,6 +368,8 @@ export const productReviews = pgTable(
     rating: integer().notNull(),
     title: text(),
     body: text().notNull(),
+    /** Photos of what they bought; a review with one earns the full review bonus */
+    photos: text().array().notNull().default(sql`'{}'::text[]`),
     /** true when the reviewer has a completed order containing this product */
     verified: boolean().notNull().default(false),
     /** admins can hide a review */
@@ -537,6 +539,10 @@ export const orders = pgTable(
     subtotal: money().notNull().default(0),
     discountTotal: money().notNull().default(0),
     deliveryFee: money().notNull().default(0),
+    /** Naira value of the tokens the customer paid with (taken off the total; the reserve covers it for the store) */
+    tokensValue: money().notNull().default(0),
+    /** Which tokens paid for it: [{ tokenId, ticker, amount }] */
+    tokensUsed: jsonb().$type<{ tokenId: number; ticker: string; amount: number }[]>(),
     total: money().notNull().default(0),
     currency: text().notNull().default("NGN"),
     paymentMethod: paymentMethodEnum().notNull(),
@@ -928,6 +934,8 @@ export const tokenEntries = pgTable(
     reason: text().notNull(),
     orderId: uuid(),
     note: text(),
+    /** What it came from, e.g. "earn:<order>:<token>", so the same thing is never recorded twice */
+    sourceKey: text().unique(),
     createdBy: uuid(),
     createdAt: createdAt(),
   },
@@ -935,10 +943,75 @@ export const tokenEntries = pgTable(
     index().on(t.toUserId, t.createdAt),
     index().on(t.fromUserId, t.createdAt),
     index().on(t.tokenId),
-    // An order earns (or gives back) each token once
-    unique().on(t.orderId, t.reason, t.tokenId),
+    index().on(t.orderId),
     check("token_entries_amount_positive", sql`${t.amount} > 0`),
   ],
+);
+
+/** The naira that backs tokens: 1% of every sale comes in, tokens spent at stores go out */
+export const reserveEntries = pgTable(
+  "reserve_entries",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** "fee_share", "walk_in_fee", "spent", "returned" or "adjusted" */
+    kind: text().notNull(),
+    /** Positive in, negative out */
+    amount: money().notNull(),
+    orderId: uuid(),
+    walkInId: uuid(),
+    note: text(),
+    sourceKey: text().notNull().unique(),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.createdAt)],
+);
+
+/** A sale in a store's own shop: the customer gets tokens once the store pays Sotechy's fee */
+export const walkInSales = pgTable(
+  "walk_in_sales",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    customerId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amount: money().notNull(),
+    fee: money().notNull(),
+    note: text(),
+    /** "pending" until the fee is paid, then "paid" */
+    status: text().notNull().default("pending"),
+    checkoutId: text(),
+    paidAt: timestamp({ withTimezone: true }),
+    createdBy: uuid(),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.merchantId, t.createdAt)],
+);
+
+/** People who help run a store, each with their own sign-in and a role */
+export const merchantMembers = pgTable(
+  "merchant_members",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    /** Set when they accept; one store per account */
+    userId: uuid()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: text().notNull(),
+    /** "admin", "orders", "catalogue", "finance" or "viewer" */
+    role: text().notNull(),
+    /** sha256 of the invite link's token */
+    inviteHash: text().unique(),
+    invitedBy: uuid(),
+    acceptedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [unique().on(t.merchantId, t.email)],
 );
 
 /** Receipts for completed orders. The full receipt stays here; the chain gets its fingerprint. */

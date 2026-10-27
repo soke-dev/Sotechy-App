@@ -35,6 +35,7 @@ const placeOrderSchema = z.object({
   promoCode: z.string().max(40).optional(),
   idempotencyKey: z.string().min(8).max(100),
   pickupZoneId: z.uuid().optional(),
+  tokens: z.array(z.object({ ticker: z.string().min(1).max(12), amount: z.number().int().min(0).max(1_000_000_000) })).max(2).optional(),
 });
 
 /** Full order with items, payments, history and how-to-pay instructions. */

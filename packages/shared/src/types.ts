@@ -503,6 +503,8 @@ export interface PlaceOrderInput {
   idempotencyKey: string;
   /** A marketplace store's pickup point (one of its delivery areas), for pickup orders */
   pickupZoneId?: string;
+  /** Tokens to pay with: the store's own and/or $SOTECHY */
+  tokens?: { ticker: string; amount: number }[];
 }
 
 /** The marketplace store an item comes from (it ships from the store's own branch) */

@@ -7,7 +7,7 @@ import { audit } from "../../lib/audit";
 import { requirePassword, requireRole, type AppEnv } from "../../lib/auth";
 import { HttpError } from "../../lib/errors";
 import { CHAINS, currentContract, publicClient, queueStats, retryStuck, sendBaseBatch, type ChainName } from "../../services/chain";
-import { CROSS_BONUS, latestActivity, tokenRegistry } from "../../services/tokens";
+import { CROSS_BONUS, latestActivity, reserveSummary, tokenRegistry } from "../../services/tokens";
 import { db } from "../../db/client";
 
 const ADMIN = requireRole("admin");
@@ -74,7 +74,7 @@ async function chainStatus(chain: ChainName) {
 
 export const adminChainRoutes = new Hono<AppEnv>()
   .get("/chain", async (c) => {
-    const [chains, queue, tokens, activity] = await Promise.all([Promise.all((["monad", "base"] as const).map(chainStatus)), queueStats(), tokenRegistry(), latestActivity()]);
+    const [chains, queue, tokens, activity, reserve] = await Promise.all([Promise.all((["monad", "base"] as const).map(chainStatus)), queueStats(), tokenRegistry(), latestActivity(), reserveSummary()]);
     const tokensContract = currentContract("tokens", "monad");
     const explorer = CHAINS.monad.explorer;
     return c.json({
@@ -84,6 +84,7 @@ export const adminChainRoutes = new Hono<AppEnv>()
       tokensUrl: tokensContract ? `${explorer}/address/${tokensContract.address}` : null,
       activity: activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
       rules: { perNaira: 1, crossBonus: CROSS_BONUS },
+      reserve,
     });
   })
   /** Copies everything Monad has onto Base, only when an admin asks */

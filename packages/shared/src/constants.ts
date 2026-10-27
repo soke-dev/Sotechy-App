@@ -68,3 +68,28 @@ export function tickerProblem(raw: string): string | null {
   if (/SOTECHY|S0TECHY|SOTECHI|^MON$|^ETH$|^BTC$|^USD|^NGN$/.test(t)) return "That ticker is kept for Sotechy or a currency";
   return null;
 }
+
+/**
+ * Store tokens. Every sale pays Sotechy a 2% fee; half of it goes to the reserve that pays stores when
+ * customers spend tokens. A token's value spreads that 1% over the token and the most a review can add.
+ */
+export const TOKEN_RULES = {
+  feeRate: 0.02,
+  reserveShare: 0.5,
+  /** $SOTECHY on top, for orders at other stores */
+  crossBonus: 0.1,
+  /** Reviewing a delivered item: this much of its price, or the photo rate with a photo */
+  reviewBonus: 0.05,
+  photoReviewBonus: 0.1,
+  /** Tokens can't pay for all of an order: at least this much is paid in money */
+  minCashPerOrder: 100,
+} as const;
+
+/** Naira value of one token at the store that issued it (₦0.00909) */
+export const TOKEN_VALUE = (TOKEN_RULES.feeRate * TOKEN_RULES.reserveShare) / (1 + TOKEN_RULES.photoReviewBonus);
+
+/** What a number of tokens is worth, rounded down to the kobo */
+export const tokensToNaira = (tokens: number) => Math.floor(tokens * TOKEN_VALUE * 100) / 100;
+
+/** Most tokens that can be used for an amount of naira */
+export const nairaToTokens = (naira: number) => Math.floor(naira / TOKEN_VALUE);

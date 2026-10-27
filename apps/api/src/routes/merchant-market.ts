@@ -14,6 +14,9 @@ import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem } from "@so
 import { accountNameMatch, slugify } from "../lib/identity";
 import { railBanks, railRecipient, railResolve } from "../services/payout-rail";
 import { buyFeaturing, featuredCount, featuringSettings, purchasesOf } from "../services/featuring";
+import { findCustomer, startWalkIn, walkInsOf } from "../services/walk-in";
+import { storeTokenStats } from "../services/tokens";
+import { CHAINS, currentContract } from "../services/chain";
 import { answerOffer, storeOffers } from "../services/offers";
 import { sendPushLater } from "../services/push";
 import { payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
@@ -348,6 +351,19 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
   .post("/featuring", zValidator("json", z.object({ months: z.number().int().min(1).max(3) })), async (c) => {
     const [owner] = await db.select({ email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
     return c.json(await buyFeaturing(c.get("store"), c.req.valid("json").months, { email: owner.email, name: owner.name }));
+  })
+
+  // --- The store's token, and walk-in sales that earn it ---
+  .get("/token", async (c) => {
+    const stats = await storeTokenStats(c.get("store").id);
+    const contract = currentContract("tokens", "monad");
+    return c.json(stats ? { ...stats, contractUrl: contract ? `${CHAINS.monad.explorer}/address/${contract.address}` : null } : null);
+  })
+  .get("/walk-in/customer", async (c) => c.json(await findCustomer(c.req.query("q") ?? "")))
+  .get("/walk-in", async (c) => c.json(await walkInsOf(c.get("store").id)))
+  .post("/walk-in", zValidator("json", z.object({ customer: z.string().min(3).max(60), amount: z.number().positive().max(100_000_000), note: z.string().max(200).optional() })), async (c) => {
+    const [me] = await db.select({ id: schema.users.id, email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
+    return c.json(await startWalkIn(c.get("store"), me, c.req.valid("json")), 201);
   })
 
   // --- Reviews of the store's products, and its replies ---

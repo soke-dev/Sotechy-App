@@ -1,10 +1,11 @@
 // People, branches, promotions, settings, suppliers, support, reports and audit logs.
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../../db/client";
-import { ensureStoreTokens } from "../../services/tokens";
+import { ensureStoreTokens, walletFor } from "../../services/tokens";
+import { CHAINS } from "../../services/chain";
 import { audit } from "../../lib/audit";
 import { hashPassword, MANAGERS, requireRole, type AppEnv, requirePassword } from "../../lib/auth";
 import { notFound } from "../../lib/errors";
@@ -59,8 +60,56 @@ export const adminManagementRoutes = new Hono<AppEnv>()
 
   // --- Customers & staff ---
   .get("/customers", async (c) => {
-    const rows = await db.select().from(users).where(eq(users.role, "customer")).orderBy(desc(users.createdAt)).limit(500);
-    return c.json(rows.map(publicUser));
+    const q = c.req.query("q")?.trim().replace(/^@/, "");
+    const term = q ? `%${q}%` : null;
+    const rows = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.role, "customer"), term ? or(ilike(users.email, term), ilike(users.fullName, term), ilike(users.username, term), ilike(users.phone, term)) : undefined))
+      .orderBy(desc(users.createdAt))
+      .limit(500);
+    const ids = rows.map((r) => r.id);
+    const counts = ids.length
+      ? await db
+          .select({ id: schema.orders.customerId, orders: sql<number>`count(*)::int`, spent: sql<number>`coalesce(sum(case when ${schema.orders.status} in ('paid','processing','ready_for_pickup','dispatched','delivered') then ${schema.orders.total} end), 0)::float` })
+          .from(schema.orders)
+          .where(inArray(schema.orders.customerId, ids))
+          .groupBy(schema.orders.customerId)
+      : [];
+    return c.json(rows.map((u) => ({ ...publicUser(u), orders: counts.find((x) => x.id === u.id)?.orders ?? 0, spent: Number(counts.find((x) => x.id === u.id)?.spent ?? 0) })));
+  })
+  /** One customer: their details, orders, addresses, tokens and token history */
+  .get("/customers/:id", async (c) => {
+    const [user] = await db.select().from(users).where(eq(users.id, c.req.param("id")));
+    if (!user) throw notFound("Customer not found");
+    const o = schema.orders;
+    const [orderRows, addresses, [reviews], [tickets], wallet, [referrer]] = await Promise.all([
+      db
+        .select({ id: o.id, number: o.orderNumber, status: o.status, total: o.total, tokensValue: o.tokensValue, channel: o.channel, createdAt: o.createdAt, store: schema.merchants.name })
+        .from(o)
+        .leftJoin(schema.merchants, eq(schema.merchants.id, o.merchantId))
+        .where(eq(o.customerId, user.id))
+        .orderBy(desc(o.createdAt))
+        .limit(100),
+      db.select().from(schema.addresses).where(eq(schema.addresses.userId, user.id)),
+      db.select({ n: sql<number>`count(*)::int` }).from(schema.productReviews).where(eq(schema.productReviews.userId, user.id)),
+      db.select({ n: sql<number>`count(*)::int` }).from(schema.supportTickets).where(eq(schema.supportTickets.customerId, user.id)),
+      walletFor(user.id),
+      user.referredById ? db.select({ username: users.username, email: users.email }).from(users).where(eq(users.id, user.referredById)) : Promise.resolve([undefined]),
+    ]);
+    const paid = orderRows.filter((x) => ["paid", "processing", "ready_for_pickup", "dispatched", "delivered"].includes(x.status));
+    const explorer = CHAINS.monad.explorer;
+    return c.json({
+      user: { ...publicUser(user), isActive: user.isActive, referredBy: referrer ? (referrer.username ? `@${referrer.username}` : referrer.email) : null },
+      stats: { orders: orderRows.length, delivered: orderRows.filter((x) => x.status === "delivered").length, spent: paid.reduce((n, x) => n + x.total, 0), reviews: reviews?.n ?? 0, tickets: tickets?.n ?? 0 },
+      orders: orderRows.map((x) => ({ ...x, store: x.store ?? "Sotechy" })),
+      addresses,
+      wallet: {
+        ...wallet,
+        addressUrl: `${explorer}/address/${wallet.address}`,
+        activity: wallet.activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
+      },
+    });
   })
   .get("/staff", async (c) => {
     const rows = await db.select().from(users).where(ne(users.role, "customer")).orderBy(asc(users.email));

@@ -99,6 +99,13 @@
       "when": 1793112010490,
       "tag": "0013_chain_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793114147419,
+      "tag": "0014_token_spending_team",
+      "breakpoints": true
     }
   ]
 }

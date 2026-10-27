@@ -11,7 +11,7 @@ import { findPromotion } from "./promotions";
 import { deliveryFeeFor, getSetting, type DeliverySettings } from "./settings";
 import { agreedPriceFor, releaseOffers } from "./offers";
 import { payoutsForStatus } from "./payouts";
-import { tokensForStatus } from "./tokens";
+import { spendForOrder, tokensForStatus } from "./tokens";
 import { storeDeliveryCharge } from "./store-delivery";
 
 const { orders, orderItems, payments, inventory, productVariants, products, orderStatusHistory } = schema;
@@ -231,12 +231,20 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
         })
         .returning();
 
+      // Tokens pay for part of it; the store is still paid in full (the reserve covers the tokens)
+      const spent = await spendForOrder(tx, { userId, orderId: order.id, merchantId: branch.merchantId, total, tokens: input.tokens ?? [] });
+      const due = round2(total - spent.value);
+      if (spent.value > 0) {
+        const [withTokens] = await tx.update(orders).set({ tokensValue: spent.value, tokensUsed: spent.used, total: due }).where(eq(orders.id, order.id)).returning();
+        Object.assign(order, withTokens);
+      }
+
       await tx.insert(orderItems).values(items.map((i) => ({ ...i, orderId: order.id })));
       if (agreed.length) await tx.update(schema.offers).set({ status: "used", orderId: order.id }).where(inArray(schema.offers.id, agreed.map((o) => o!.id)));
       await tx.insert(payments).values({
         orderId: order.id,
         method: input.paymentMethod,
-        amount: total,
+        amount: due,
         cryptoAsset: asset?.symbol ?? null,
         cryptoNetwork: asset?.network ?? null,
       });
@@ -486,6 +494,7 @@ export async function cancelOrder(actor: AuthUser, orderId: string, note?: strin
   // Customers who cancel their own unpaid order don't need telling
   if (actor.id !== updated.customerId) void notifyOrderStatus(orderId, "cancelled");
   if (updated.merchantId) await payoutsForStatus(orderId, "cancelled");
+  await tokensForStatus(orderId, "cancelled");
   return updated;
 }
 
@@ -508,7 +517,10 @@ export async function releaseExpiredReservations() {
       await recordStatus(tx, id, "pending_payment", "cancelled", null, "Payment window expired");
       return true;
     });
-    if (cancelled) void notifyOrderStatus(id, "cancelled");
+    if (cancelled) {
+      void notifyOrderStatus(id, "cancelled");
+      await tokensForStatus(id, "cancelled");
+    }
   }
   return expired.length;
 }

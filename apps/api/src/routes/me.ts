@@ -6,7 +6,7 @@ import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
-import { receiptFor, sendTokens, walletFor } from "../services/tokens";
+import { receiptFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
 import { CHAINS, currentContract } from "../services/chain";
 import { catalogQuery } from "./store";
 
@@ -175,7 +175,14 @@ export const meRoutes = new Hono<AppEnv>()
     "/reviews",
     zValidator(
       "json",
-      z.object({ productId: z.uuid(), rating: z.number().int().min(1).max(5), title: z.string().max(120).nullable().optional(), body: z.string().min(3).max(3000) }),
+      z.object({
+        productId: z.uuid(),
+        rating: z.number().int().min(1).max(5),
+        title: z.string().max(120).nullable().optional(),
+        body: z.string().min(3).max(3000),
+        /** Uploaded photo URLs (from /media); one earns the full review bonus */
+        photos: z.array(z.string().url().max(500)).max(4).optional(),
+      }),
     ),
     async (c) => {
       await requireFeature("reviews", "Reviews are turned off right now");
@@ -191,13 +198,15 @@ export const meRoutes = new Hono<AppEnv>()
         .innerJoin(schema.productVariants, eq(schema.productVariants.id, schema.orderItems.variantId))
         .where(and(eq(schema.orders.customerId, userId), eq(schema.orders.status, "delivered"), eq(schema.productVariants.productId, input.productId)))
         .limit(1);
-      const values = { rating: input.rating, title: input.title ?? null, body: input.body, verified: purchased.length > 0 };
+      const values = { rating: input.rating, title: input.title ?? null, body: input.body, photos: input.photos ?? [], verified: purchased.length > 0 };
       const [row] = await db
         .insert(schema.productReviews)
         .values({ ...values, productId: input.productId, userId })
         .onConflictDoUpdate({ target: [schema.productReviews.productId, schema.productReviews.userId], set: { ...values, isPublished: true } })
         .returning();
-      return c.json(row, 201);
+      // Reviewing something they had delivered earns a bonus in the store's token
+      const bonus = row.verified ? await reviewBonus(userId, input.productId, row.photos.length > 0).catch(() => null) : null;
+      return c.json({ ...row, bonus }, 201);
     },
   )
   .post(
