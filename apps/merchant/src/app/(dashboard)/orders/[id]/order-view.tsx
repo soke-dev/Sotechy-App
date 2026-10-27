@@ -258,13 +258,18 @@ export function OrderView({ order }: { order: Order }) {
           </Card>
 
           <Card title="Customer's tokens">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between rounded-2xl bg-brand-soft px-4 py-3">
-                <span className="flex items-center gap-2 text-sm font-semibold"><Illo name="coin" size={22} /> {formatTokens(m.tokens)} ${store.ticker}</span>
+            {/* The store's token and the $SOTECHY bonus side by side */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex min-w-0 flex-col gap-1.5 rounded-2xl bg-brand-soft px-3 py-3">
+                <span className="flex items-center gap-1.5 text-sm font-semibold">
+                  <Illo name="coin" size={20} /> <span className="truncate">{formatTokens(m.tokens)} ${store.ticker}</span>
+                </span>
                 <Pill tone={s === "completed" ? "good" : s === "declined" ? "neutral" : "warn"}>{s === "completed" ? "Released" : s === "declined" ? "Cancelled" : "Pending"}</Pill>
               </div>
-              <div className="flex items-center justify-between rounded-2xl bg-surface-alt px-4 py-3">
-                <span className="flex items-center gap-2 text-sm font-semibold"><Illo name="sparkle" size={22} /> {formatTokens(m.sotechyBonus)} $SOTECHY</span>
+              <div className="flex min-w-0 flex-col gap-1.5 rounded-2xl bg-surface-alt px-3 py-3">
+                <span className="flex items-center gap-1.5 text-sm font-semibold">
+                  <Illo name="sparkle" size={20} /> <span className="truncate">{formatTokens(m.sotechyBonus)} $SOTECHY</span>
+                </span>
                 <span className="text-xs text-muted">Sotechy bonus</span>
               </div>
             </div>
