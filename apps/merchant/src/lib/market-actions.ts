@@ -4,7 +4,7 @@
 // storefront and setup. Each returns { error } instead of throwing, so forms can show what went wrong.
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantOrder, MerchantProduct, MerchantProductInput, StorefrontSettings } from "@sotechy/shared";
+import type { AddressSuggestion, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantOrder, MerchantProduct, MerchantProductInput, StorefrontSettings } from "@sotechy/shared";
 import { api, errorMessage, TOKEN_COOKIE } from "./api";
 
 type Result<T> = { ok: T } | { error: string };
@@ -65,4 +65,13 @@ export async function saveApplication(input: MerchantApplicationInput) {
     await api.saveApplication(input);
     return true;
   }, ["/onboarding", "/settings", "/"]);
+}
+
+/** Address suggestions while typing; empty when lookups aren't set up or fail */
+export async function suggestAddresses(q: string): Promise<AddressSuggestion[]> {
+  try {
+    return await api.addressSuggestions(q);
+  } catch {
+    return [];
+  }
 }

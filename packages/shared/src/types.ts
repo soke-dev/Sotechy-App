@@ -548,6 +548,17 @@ export interface MarketStore {
   deliveryFrom: number | null;
 }
 
+/** An address suggested while typing */
+export interface AddressSuggestion {
+  /** The whole address, for showing in the list */
+  label: string;
+  /** House number and street (or place name) */
+  line1: string;
+  city: string;
+  state: string;
+  postcode: string | null;
+}
+
 /** One of a store's approved delivery areas, as shoppers see it */
 export interface StoreDeliveryArea {
   id: string;

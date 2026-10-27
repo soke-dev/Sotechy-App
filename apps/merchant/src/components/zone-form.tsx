@@ -6,6 +6,7 @@ import { btn, Field, inputClass } from "./ui";
 import { formatNaira } from "@/lib/money";
 import { NIGERIAN_STATES, type DeliveryZone } from "@/lib/mock";
 import { removeZone, saveZone } from "@/lib/market-actions";
+import { AddressInput } from "./address-input";
 
 const TIMES = ["Same day", "Same day – 1 day", "1–2 days", "2–3 days", "3–5 days", "5–7 days"];
 
@@ -128,7 +129,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
               <input type="number" inputMode="numeric" min={0} value={pickupFee || ""} onChange={(e) => setPickupFee(Number(e.target.value))} className={inputClass} placeholder="0 = free" />
             </Field>
             <Field required label="Pickup point">
-              <input value={point} onChange={(e) => setPoint(e.target.value)} className={inputClass} placeholder="e.g. GIG Logistics hub, Ekpoma" />
+              <AddressInput value={point} onChange={setPoint} placeholder="e.g. GIG Logistics hub, Ekpoma" />
             </Field>
             {cheaper && <p className="text-xs text-warn">Pickup usually costs less than home delivery ({formatNaira(homeFee)}).</p>}
           </div>

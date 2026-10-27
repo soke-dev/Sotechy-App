@@ -11,6 +11,7 @@ import { SellsPicker } from "@/components/sells-picker";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { btn, Field, inputClass, Req } from "@/components/ui";
 import { formatNaira, SOTECHY_CROSS_BONUS, STORE_VALUE_PER_TOKEN } from "@/lib/money";
+import { AddressInput } from "@/components/address-input";
 
 type Kind = "registered" | "individual";
 type Structure = "BN" | "LTD" | "PLC" | "IT";
@@ -237,7 +238,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                 <Field label={`${structure === "BN" ? "BN" : structure === "IT" ? "IT" : "RC"} number`} required><input value={business.registrationNumber} onChange={(e) => setBusiness({ ...business, registrationNumber: e.target.value })} required inputMode="numeric" className={inputClass} placeholder="e.g. 1234567" /></Field>
                 <Field label="Date registered"><input value={business.registeredOn} onChange={(e) => setBusiness({ ...business, registeredOn: e.target.value })} type="date" className={inputClass} /></Field>
                 <div className="sm:col-span-2"><Field label="TIN" hint="Optional. Your tax ID number, if you have one."><input value={business.tin} onChange={(e) => setBusiness({ ...business, tin: e.target.value })} inputMode="numeric" className={inputClass} /></Field></div>
-                <div className="sm:col-span-2"><Field label="Business address" required><input value={business.businessAddress} onChange={(e) => setBusiness({ ...business, businessAddress: e.target.value })} required className={inputClass} placeholder="Street, city, state" /></Field></div>
+                <div className="sm:col-span-2"><Field label="Business address" required><AddressInput value={business.businessAddress} onChange={(businessAddress) => setBusiness({ ...business, businessAddress })} required placeholder="Start typing: street, city, state" /></Field></div>
               </div>
             )}
 

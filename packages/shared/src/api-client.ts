@@ -1,6 +1,7 @@
 import type {
   Address,
   AddressInput,
+  AddressSuggestion,
   AuthResponse,
   CatalogProduct,
   Category,
@@ -163,6 +164,8 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     product: (idOrSlug: string) => get<ProductDetail>(`/store/products/${encodeURIComponent(idOrSlug)}`),
     /** Marketplace stores Sotechy has approved, and one store's page */
     stores: () => get<MarketStore[]>("/store/stores"),
+    /** Address suggestions while typing (Nigeria only); empty when lookups aren't set up */
+    addressSuggestions: (q: string) => get<AddressSuggestion[]>(`/geo/address?q=${encodeURIComponent(q)}`),
     store: (slug: string) => get<MarketStoreDetail>(`/store/stores/${encodeURIComponent(slug)}`),
     productReviews: (idOrSlug: string) => get<ProductReviews>(`/store/products/${encodeURIComponent(idOrSlug)}/reviews`),
     submitReview: (input: { productId: string; rating: number; title?: string | null; body: string }) => send<{ id: string }>("POST", "/me/reviews", input),

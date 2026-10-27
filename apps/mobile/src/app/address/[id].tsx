@@ -7,6 +7,7 @@ import { BottomBar, Button, Chip, Input, Loading, Txt, PhoneInput, ui } from "@/
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, gutter, space } from "@/lib/theme";
+import { AddressSearch } from "@/components/address-search";
 
 const LABELS = ["Home", "Office", "Other"];
 
@@ -72,7 +73,7 @@ export default function AddressFormScreen() {
         </View>
         <Input label="Full name" icon="person-outline" value={form.recipientName} onChangeText={(v) => set({ recipientName: v })} autoComplete="name" />
         <PhoneInput label="Phone number" value={form.phone} onChange={(v) => set({ phone: v })} />
-        <Input label="Street address" icon="home-outline" value={form.line1} onChangeText={(v) => set({ line1: v })} placeholder="House number and street" />
+        <AddressSearch value={form.line1} onChangeText={(v) => set({ line1: v })} onPick={(s) => set({ line1: s.line1, ...(s.city && { city: s.city }), ...(s.state && { state: s.state }) })} />
         <Input label="Landmark or apartment (optional)" value={form.line2 ?? ""} onChangeText={(v) => set({ line2: v })} placeholder="e.g. Opposite the filling station" />
         <View style={[ui.row, { gap: space.md }]}>
           <View style={{ flex: 1 }}>

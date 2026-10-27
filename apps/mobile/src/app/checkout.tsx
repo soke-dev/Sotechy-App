@@ -15,6 +15,7 @@ import { useFeatures } from "@/lib/store-config";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { loadStore } from "@/lib/marketplace";
+import { AddressSearch } from "@/components/address-search";
 
 const newKey = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 
@@ -265,7 +266,7 @@ export default function CheckoutScreen() {
                 <View style={{ gap: space.md }}>
                   <Input label="Full name" icon="person-outline" value={address.recipientName} onChangeText={(v) => setAddress({ ...address, recipientName: v })} />
                   <PhoneInput label="Phone number" value={address.phone} onChange={(v) => setAddress({ ...address, phone: v })} />
-                  <Input label="Street address" icon="home-outline" value={address.line1} onChangeText={(v) => setAddress({ ...address, line1: v })} />
+                  <AddressSearch value={address.line1} onChangeText={(v) => setAddress({ ...address, line1: v })} onPick={(s) => setAddress({ ...address, line1: s.line1, city: s.city || address.city, state: s.state || address.state })} />
                   <Input label="Landmark or apartment (optional)" value={address.line2} onChangeText={(v) => setAddress({ ...address, line2: v })} />
                   <View style={[ui.row, { gap: space.md }]}>
                     <View style={{ flex: 1 }}>
