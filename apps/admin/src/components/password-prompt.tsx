@@ -20,7 +20,10 @@ export function usePasswordPrompt() {
   const ask = (title: string, detail?: ReactNode) =>
     new Promise<string | null>((res) => {
       resolve.current = res;
-      setOpen({ title, detail });
+      // Callers ask from inside startTransition, where React holds state updates back until the
+      // transition ends; but it can't end until the password is given. Opening on the next tick
+      // makes it an ordinary update, so the sheet shows straight away.
+      setTimeout(() => setOpen({ title, detail }), 0);
     });
 
   const prompt = (

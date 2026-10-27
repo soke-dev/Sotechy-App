@@ -767,7 +767,7 @@ export interface WalletBalance {
 
 export interface WalletActivity {
   id: string;
-  kind: "earned" | "bonus" | "spent" | "sent" | "received" | "refunded";
+  kind: "earned" | "bonus" | "review" | "walk_in" | "spent" | "returned" | "sent" | "received" | "refunded";
   ticker: string;
   store: string;
   /** Negative when tokens left the wallet */
