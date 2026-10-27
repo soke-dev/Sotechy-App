@@ -1,7 +1,7 @@
 // One customer: who they are, their orders, their tokens and everything that happened to them.
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { formatDate, formatNaira, ORDER_STATUS_LABELS, TOKEN_VALUE, type OrderStatus, type User, type WalletView } from "@sotechy/shared";
+import { formatDate, formatNaira, TOKEN_VALUE, type OrderStatus, type User, type WalletView } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { RelTime } from "@/components/rel-time";
 import { LiveSwitch } from "@/components/switch";

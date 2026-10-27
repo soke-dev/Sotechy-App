@@ -1,6 +1,6 @@
 import { load } from "@/lib/api";
 import { ChainCards, type ChainStatus, type QueueStats } from "./chain-card";
-import { TokensView, type TokenActivity, type TokenRow } from "./tokens-view";
+import { TokensView, type ReserveSummary, type TokenActivity, type TokenRow } from "./tokens-view";
 
 interface ChainResponse {
   chains: ChainStatus[];
@@ -9,6 +9,7 @@ interface ChainResponse {
   tokensUrl: string | null;
   activity: TokenActivity[];
   rules: { perNaira: number; crossBonus: number };
+  reserve: ReserveSummary;
 }
 
 export default async function TokensPage() {
@@ -20,6 +21,7 @@ export default async function TokensPage() {
       tokensUrl={data?.tokensUrl ?? null}
       activity={data?.activity ?? []}
       rules={data?.rules ?? { perNaira: 1, crossBonus: 0.1 }}
+      reserve={data?.reserve ?? { balance: 0, tokensHeld: 0, owed: 0, cover: null, recyclePool: 0, inThisMonth: 0, outThisMonth: 0, walkInFeesThisMonth: 0 }}
     />
   );
 }

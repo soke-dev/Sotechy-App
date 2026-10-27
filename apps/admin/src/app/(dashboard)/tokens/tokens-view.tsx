@@ -6,7 +6,8 @@ import { formatNaira } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { RelTime } from "@/components/rel-time";
 import { Card, DataTable, PageHeader, Pill, StatCard } from "@/components/ui";
-import { formatTokens, reserve, reserveHealth, TOKEN_VALUE } from "@/lib/marketplace";
+import { TOKEN_VALUE } from "@sotechy/shared";
+import { formatTokens } from "@/lib/marketplace";
 
 export interface TokenRow {
   tokenId: number;
@@ -16,6 +17,17 @@ export interface TokenRow {
   minted: number;
   holders: number;
   onChain: boolean;
+}
+
+export interface ReserveSummary {
+  balance: number;
+  tokensHeld: number;
+  owed: number;
+  cover: number | null;
+  recyclePool: number;
+  inThisMonth: number;
+  outThisMonth: number;
+  walkInFeesThisMonth: number;
 }
 
 export interface TokenActivity {
@@ -60,14 +72,15 @@ export function TokensView({
   tokensUrl,
   activity,
   rules,
+  reserve,
 }: {
+  reserve: ReserveSummary;
   chain: ReactNode;
   tokens: TokenRow[];
   tokensUrl: string | null;
   activity: TokenActivity[];
   rules: { perNaira: number; crossBonus: number };
 }) {
-  const health = reserveHealth();
 
   return (
     <>
@@ -81,18 +94,18 @@ export function TokensView({
       <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_1.6fr]">
         <Card title="Reserve cover">
           <div className="flex flex-col items-center text-center">
-            <CoverGauge cover={health.cover ?? 1} />
-            <p className={`font-display -mt-2 text-4xl font-extrabold ${health.cover === null || health.cover >= 1 ? "text-good" : "text-brand-strong"}`}>{health.cover === null ? "—" : `${Math.round(health.cover * 100)}%`}</p>
+            <CoverGauge cover={reserve.cover ?? 1} />
+            <p className={`font-display -mt-2 text-4xl font-extrabold ${reserve.cover === null || reserve.cover >= 1 ? "text-good" : "text-brand-strong"}`}>{reserve.cover === null ? "—" : `${Math.round(reserve.cover * 100)}%`}</p>
             <p className="mt-1 max-w-xs text-sm text-muted">
-              The reserve holds {formatNaira(reserve.walletNaira)} against {formatNaira(Math.round(health.outstanding))} of tokens customers could spend. Above 100% means every token is backed.
+              The reserve holds {formatNaira(reserve.balance)} against {formatNaira(Math.round(reserve.owed))} of tokens customers could spend. Above 100% means every token is backed.
             </p>
           </div>
         </Card>
         <div className="grid grid-cols-2 gap-3">
-          <StatCard illo="bank" tone="brand" label="Reserve wallet" value={formatNaira(reserve.walletNaira)} hint={reserve.wallet} />
-          <StatCard illo="coin" label="Tokens owed, at store value" value={formatNaira(Math.round(health.outstanding))} hint={`1 token = ₦${TOKEN_VALUE.toFixed(5)}`} />
-          <StatCard illo="sparkle" tone="info" label="Recycling pool" value={formatTokens(reserve.recyclingPool)} hint="Half of every spent token" />
-          <StatCard illo="receipt" tone="good" label="Walk-in mints this month" value={formatTokens(reserve.posMintsThisMonth)} hint="Only after the merchant pays 2%" />
+          <StatCard illo="bank" tone="brand" label="Reserve" value={formatNaira(reserve.balance)} hint={`+${formatNaira(reserve.inThisMonth)} in, −${formatNaira(reserve.outThisMonth)} out this month`} />
+          <StatCard illo="coin" label="Tokens owed, at store value" value={formatNaira(Math.round(reserve.owed))} hint={`${formatTokens(reserve.tokensHeld)} tokens · 1 = ₦${TOKEN_VALUE.toFixed(5)}`} />
+          <StatCard illo="sparkle" tone="info" label="Recycling pool" value={formatTokens(reserve.recyclePool)} hint="Half of every spent token; pays review bonuses" />
+          <StatCard illo="receipt" tone="good" label="Walk-in fees this month" value={formatNaira(reserve.walkInFeesThisMonth)} hint="The reserve's half of stores' 2%" />
         </div>
       </div>
 
@@ -140,7 +153,13 @@ export function TokensView({
             <li className="rounded-2xl bg-surface-alt px-4 py-3">
               <b>{Math.round(rules.crossBonus * 100)}% more in $SOTECHY</b> on orders from other stores.
             </li>
-            <li className="rounded-2xl bg-surface-alt px-4 py-3">A refunded order takes back what it earned. Customers can send tokens to each other by @username.</li>
+            <li className="rounded-2xl bg-surface-alt px-4 py-3">
+              <b>5% for a review</b> of a delivered item, 10% with a photo, paid from the recycling pool first.
+            </li>
+            <li className="rounded-2xl bg-surface-alt px-4 py-3">
+              Customers <b>pay with tokens</b> at the store that issued them ($SOTECHY anywhere). The store is still paid in full; the reserve covers the tokens. At least ₦100 of every order is paid in money.
+            </li>
+            <li className="rounded-2xl bg-surface-alt px-4 py-3">Walk-in sales earn tokens once the store pays its 2%. A refunded order takes back what it earned. Customers can send tokens to each other by @username.</li>
           </ul>
           <p className="mt-3 text-xs text-muted">Store value per token: ₦{TOKEN_VALUE.toFixed(5)}.</p>
         </Card>

@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, PackagePlus, ScanBarcode } from "lucide-react";
-import { formatNaira, type AppFeatures } from "@sotechy/shared";
+import { formatNaira, TOKEN_RULES, type AppFeatures } from "@sotechy/shared";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { Card, ErrorNote, Pill, StatCard } from "@/components/ui";
 import type { Queue } from "@/components/queue-context";
 import { fromApiOrder, OrderList } from "@/components/order-list";
 import { getCurrentUser, load } from "@/lib/api";
-import { FEE, reserve, reserveHealth } from "@/lib/marketplace";
 import type { AdminOrderRow, SalesSummary } from "@/lib/types";
 
 function StatusDot({ on, label }: { on: boolean; label: string }) {
@@ -41,7 +40,7 @@ function marketplaceSales(rows: AdminOrderRow[]) {
 }
 
 export default async function DashboardPage() {
-  const [summary, orders, switches, user, waiting, stores, failed] = await Promise.all([
+  const [summary, orders, switches, user, waiting, stores, failed, reserveRes] = await Promise.all([
     load<SalesSummary>("/admin/reports/summary"),
     load<AdminOrderRow[]>("/admin/orders"),
     load<{ features: AppFeatures }>("/admin/features"),
@@ -49,6 +48,7 @@ export default async function DashboardPage() {
     load<Queue>("/admin/queue"),
     load<{ status: string }[]>("/admin/merchants"),
     load<{ payouts: { status: string }[] }>("/admin/payouts?status=failed"),
+    load<{ balance: number; owed: number; cover: number | null; feesThisMonth: { total: number; reserve: number; revenue: number } }>("/admin/reserve"),
   ]);
   const queue = waiting.data ?? { merchants: 0, zones: 0, cases: 0 };
   const s = summary.data;
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const firstName = (user.fullName ?? user.email).split(/[\s@]/)[0];
   const decisions = queue.merchants + queue.zones + queue.cases;
-  const health = reserveHealth();
+  const health = reserveRes.data ?? { balance: 0, owed: 0, cover: null, feesThisMonth: { total: 0, reserve: 0, revenue: 0 } };
   const failedPayouts = failed.data?.payouts.length ?? 0;
   const liveMerchants = (stores.data ?? []).filter((m) => m.status === "approved");
   const gmv = marketplaceSales(orders.data ?? []);
@@ -203,10 +203,10 @@ export default async function DashboardPage() {
             <div className="flex items-center gap-3 rounded-2xl bg-brand-soft p-4">
               <Illo name="coin" size={40} />
               <div>
-                <p className="text-xs text-muted">Fees this month ({FEE.rate * 100}%)</p>
-                <p className="font-display text-xl font-bold sm:text-2xl">{formatNaira(reserve.feesThisMonth.total)}</p>
+                <p className="text-xs text-muted">Fees this month ({TOKEN_RULES.feeRate * 100}%)</p>
+                <p className="font-display text-xl font-bold sm:text-2xl">{formatNaira(health.feesThisMonth.total)}</p>
                 <p className="text-xs text-muted">
-                  {formatNaira(reserve.feesThisMonth.reserve)} to the reserve · {formatNaira(reserve.feesThisMonth.revenue)} revenue
+                  {formatNaira(health.feesThisMonth.reserve)} to the reserve · {formatNaira(health.feesThisMonth.revenue)} revenue
                 </p>
               </div>
             </div>
@@ -217,11 +217,11 @@ export default async function DashboardPage() {
               </div>
               <div>
                 <dt className="text-muted">Reserve wallet</dt>
-                <dd className="font-semibold">{formatNaira(reserve.walletNaira)}</dd>
+                <dd className="font-semibold">{formatNaira(health.balance)}</dd>
               </div>
               <div>
                 <dt className="text-muted">Tokens owed at store value</dt>
-                <dd className="font-semibold">{formatNaira(Math.round(health.outstanding))}</dd>
+                <dd className="font-semibold">{formatNaira(Math.round(health.owed))}</dd>
               </div>
               <div>
                 <dt className="text-muted">Cover</dt>
