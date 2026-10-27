@@ -63,11 +63,7 @@ export const PAYOUT_MATCH_LABEL = { business: "Matches your business name", owne
 export const reviews: { id: string; product: string; customer: string; rating: number; text: string; photo: string | null; bonus: number; at: string; reply: string | null }[] = [];
 
 
-export const NIGERIAN_STATES = [
-  "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu",
-  "FCT Abuja", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos", "Nasarawa", "Niger", "Ogun", "Ondo",
-  "Osun", "Oyo", "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara",
-];
+export { NIGERIAN_STATES } from "@sotechy/shared";
 
 /** Sotechy checks every new area (and any change to its state or cities) before customers see it. */
 type ZoneReview = DeliveryZone["review"];

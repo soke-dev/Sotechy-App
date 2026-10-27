@@ -1,12 +1,14 @@
 "use client";
 
-import { Clock, Home, Plus, Store, X } from "lucide-react";
+import { Check, Clock, Home, Plus, Store, X } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
 import { btn, Field, inputClass } from "./ui";
 import { formatNaira } from "@/lib/money";
-import { NIGERIAN_STATES, type DeliveryZone } from "@/lib/mock";
+import { STATE_CITIES } from "@sotechy/shared";
+import type { DeliveryZone } from "@/lib/mock";
 import { removeZone, saveZone } from "@/lib/market-actions";
 import { AddressInput } from "./address-input";
+import { StatePicker } from "./state-picker";
 
 const TIMES = ["Same day", "Same day – 1 day", "1–2 days", "2–3 days", "3–5 days", "5–7 days"];
 
@@ -46,8 +48,17 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
 
   const addArea = () => {
     const a = area.trim();
-    if (a && !areas.includes(a)) setAreas([...areas, a]);
+    if (a && !areas.some((x) => x.toLowerCase() === a.toLowerCase())) setAreas([...areas, a]);
     setArea("");
+  };
+  const toggleCity = (c: string) => setAreas(areas.includes(c) ? areas.filter((x) => x !== c) : [...areas, c]);
+  const cities = STATE_CITIES[state] ?? [];
+  // Places the store typed that aren't in the list
+  const ownAreas = areas.filter((a) => !cities.includes(a));
+  const changeState = (s: string) => {
+    if (s === state) return;
+    setState(s);
+    setAreas([]);
   };
   const placeChanged = !zone || zone.state !== state || (whole ? zone.areas.length > 0 : zone.areas.join("|") !== areas.join("|"));
   const valid = (whole || areas.length > 0) && (!hasPickup || point.trim().length > 0);
@@ -62,9 +73,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
         </p>
       )}
       <Field required label="State">
-        <select value={state} onChange={(e) => setState(e.target.value)} className={inputClass}>
-          {NIGERIAN_STATES.map((s) => <option key={s}>{s}</option>)}
-        </select>
+        <StatePicker value={state} onChange={changeState} />
       </Field>
 
       <div className="flex rounded-full bg-surface-alt p-1">
@@ -76,16 +85,36 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
       </div>
 
       {!whole && (
-        <Field required label="Cities or areas" hint="Press Enter after each one.">
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface p-2">
-            {areas.map((a) => (
-              <span key={a} className="inline-flex items-center gap-1 rounded-full bg-brand-soft py-1 pl-3 pr-1.5 text-sm font-semibold">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-semibold text-ink-2">
+            Cities and towns in {state} <span className="text-bad">*</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {cities.map((c) => {
+              const on = areas.includes(c);
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleCity(c)}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-medium transition ${on ? "border-ink bg-ink text-white" : "border-line bg-surface hover:border-ink"}`}
+                >
+                  {on && <Check size={13} strokeWidth={3} />}
+                  {c}
+                </button>
+              );
+            })}
+            {ownAreas.map((a) => (
+              <span key={a} className="inline-flex items-center gap-1 rounded-full border border-ink bg-ink py-1.5 pl-3 pr-1.5 text-sm font-medium text-white">
                 {a}
-                <button type="button" onClick={() => setAreas(areas.filter((x) => x !== a))} aria-label={`Remove ${a}`} className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-surface">
+                <button type="button" onClick={() => setAreas(areas.filter((x) => x !== a))} aria-label={`Remove ${a}`} className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-white/15">
                   <X size={12} />
                 </button>
               </span>
             ))}
+          </div>
+          <div className="flex gap-2">
             <input
               value={area}
               onChange={(e) => setArea(e.target.value)}
@@ -95,33 +124,52 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
                   addArea();
                 }
               }}
-              onBlur={addArea}
-              className="min-h-9 min-w-32 flex-1 bg-transparent px-2 text-[15px] outline-none"
-              placeholder={areas.length ? "Add another" : "e.g. Benin City"}
+              className={`${inputClass} flex-1`}
+              placeholder="Somewhere not listed? Type it"
             />
+            <button type="button" onClick={addArea} disabled={!area.trim()} className={`${btn.outline} shrink-0`}>
+              <Plus size={16} /> Add
+            </button>
           </div>
-        </Field>
+          <p className="text-xs text-muted">{areas.length ? `${areas.length} chosen` : "Tap every place you deliver to."}</p>
+        </div>
       )}
 
       <div className="rounded-2xl border border-line p-4">
         <p className="mb-3 flex items-center gap-2 text-sm font-semibold"><Home size={16} className="text-brand-strong" /> Home delivery</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-3">
           <Field required label="Price (₦)">
             <input type="number" inputMode="numeric" min={0} value={homeFee || ""} onChange={(e) => setHomeFee(Number(e.target.value))} className={inputClass} placeholder="0 = free" />
           </Field>
-          <Field required label="Takes">
-            <select value={days} onChange={(e) => setDays(e.target.value)} className={inputClass}>
-              {TIMES.map((t) => <option key={t}>{t}</option>)}
-            </select>
-          </Field>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-sm font-semibold text-ink-2">
+              Takes <span className="text-bad">*</span>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {TIMES.map((t) => (
+                <button key={t} type="button" aria-pressed={days === t} onClick={() => setDays(t)} className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${days === t ? "border-ink bg-ink text-white" : "border-line bg-surface hover:border-ink"}`}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="rounded-2xl border border-line p-4">
-        <label className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-2 text-sm font-semibold"><Store size={16} className="text-brand-strong" /> Pickup in this area</span>
-          <input type="checkbox" checked={hasPickup} onChange={(e) => setHasPickup(e.target.checked)} />
-        </label>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={hasPickup}
+            aria-label="Pickup in this area"
+            onClick={() => setHasPickup(!hasPickup)}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition ${hasPickup ? "bg-brand" : "bg-line"}`}
+          >
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${hasPickup ? "left-6" : "left-1"}`} />
+          </button>
+        </div>
         <p className="mt-1 text-xs text-muted">Customers collect from a park, courier office or your shop. Usually cheaper than home delivery.</p>
         {hasPickup && (
           <div className="mt-3 flex flex-col gap-3">
