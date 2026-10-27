@@ -181,9 +181,9 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     /** Token balances, activity and the wallet's Monad address; sending tokens by @username */
     wallet: () => get<WalletView>("/me/wallet"),
     /** Who an @username is, before sending them tokens */
-    walletRecipient: (username: string) =>
-      get<{ username: string; name: string | null; avatarStyle: string | null; seed: string; isYou: boolean }>(`/me/wallet/recipient?username=${encodeURIComponent(username)}`),
-    sendTokens: (input: { to: string; ticker: string; amount: number }) => send<{ id: string; to: string; ticker: string; amount: number }>("POST", "/me/wallet/send", input),
+    walletRecipient: (to: string) =>
+      get<{ username: string | null; name: string | null; avatarStyle: string | null; seed: string; isYou: boolean }>(`/me/wallet/recipient?to=${encodeURIComponent(to)}`),
+    sendTokens: (input: { to: string; ticker: string; amount: number }) => send<{ id: string; to: string | null; ticker: string; amount: number }>("POST", "/me/wallet/send", input),
     orderReceipt: (orderId: string) => get<OrderReceipt>(`/me/orders/${orderId}/receipt`),
     /** The customer's price offers */
     offers: () => get<OfferView[]>("/offers"),

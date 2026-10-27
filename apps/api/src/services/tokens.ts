@@ -410,11 +410,36 @@ export async function activityFor(userId: string, limit = 50) {
   });
 }
 
-/** Sends tokens to another Sotechy account by @username */
+/** The account behind a Sotechy wallet address. Addresses are worked out from user ids, so any account
+ *  that hasn't had its address saved yet gets it saved here before looking again. */
+async function userByWallet(address: string) {
+  const wanted = getAddress(address);
+  const find = () => db.select({ id: users.id }).from(users).where(eq(users.walletAddress, wanted));
+  const [found] = await find();
+  if (found) return found;
+  const missing = await db.select({ id: users.id }).from(users).where(isNull(users.walletAddress));
+  for (const u of missing) await db.update(users).set({ walletAddress: walletAddress(u.id) }).where(eq(users.id, u.id));
+  return missing.length ? (await find())[0] : undefined;
+}
+
+export const isWalletAddress = (s: string) => /^0x[0-9a-f]{40}$/i.test(s.trim());
+
+/** Who "@username" or "0x…" (a Sotechy wallet address) is, or undefined */
+export async function recipientFor(to: string) {
+  const value = to.trim();
+  const found = isWalletAddress(value) ? await userByWallet(value) : (await db.select({ id: users.id }).from(users).where(eq(users.username, value.replace(/^@/, "").toLowerCase())))[0];
+  if (!found) return undefined;
+  const [u] = await db.select({ id: users.id, username: users.username, fullName: users.fullName, avatarStyle: users.avatarStyle, isActive: users.isActive }).from(users).where(eq(users.id, found.id));
+  return u?.isActive ? u : undefined;
+}
+
+/** What to say when no account matches */
+export const noRecipient = (to: string) => (isWalletAddress(to) ? "No Sotechy wallet has that address" : `No one on Sotechy is @${to.trim().replace(/^@/, "").toLowerCase()}`);
+
+/** Sends tokens to another Sotechy account by @username or Sotechy wallet address */
 export async function sendTokens(fromUserId: string, input: { to: string; ticker: string; amount: number }) {
-  const username = input.to.trim().replace(/^@/, "").toLowerCase();
-  const [to] = await db.select({ id: users.id }).from(users).where(eq(users.username, username));
-  if (!to) throw notFound(`No one on Sotechy is @${username}`);
+  const to = await recipientFor(input.to);
+  if (!to) throw notFound(noRecipient(input.to));
   if (to.id === fromUserId) throw badRequest("You can't send tokens to yourself");
   const ticker = input.ticker.toUpperCase().replace(/^\$/, "");
   const tokenId = ticker === SOTECHY_TOKEN.ticker ? SOTECHY_TOKEN.id : (await db.select({ id: merchants.tokenId }).from(merchants).where(eq(merchants.ticker, ticker)))[0]?.id;
@@ -424,7 +449,7 @@ export async function sendTokens(fromUserId: string, input: { to: string; ticker
     const has = await balanceOf(tx, fromUserId, tokenId);
     if (input.amount > has) throw badRequest(`You have ${has.toLocaleString("en-NG")} $${ticker}`);
     const row = await record(tx, { tokenId, kind: "move", fromUserId, toUserId: to.id, amount: input.amount, reason: "sent", createdBy: fromUserId });
-    return { id: row!.id, to: username, ticker, amount: input.amount };
+    return { id: row!.id, to: to.username, ticker, amount: input.amount };
   });
 }
 

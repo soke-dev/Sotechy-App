@@ -130,6 +130,8 @@ export const users = pgTable("users", {
   email: text().notNull().unique(),
   passwordHash: text(), // null for accounts that only use Google sign-in
   googleId: text().unique(),
+  /** The Sotechy wallet address (worked out from the id), kept so a wallet can be found by its address. Filled on first need. */
+  walletAddress: text().unique(),
   avatarUrl: text(),
   /** Chosen illustrated avatar (m1–m3, f1–f3); null = generated from the user id */
   avatarStyle: text(),

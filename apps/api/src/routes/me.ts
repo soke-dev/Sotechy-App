@@ -7,7 +7,7 @@ import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, notFound } from "../lib/errors";
 import { publicApiUrl } from "../env";
 import { requireFeature } from "../services/features";
-import { receiptFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
+import { noRecipient, receiptFor, recipientFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
 import { CHAINS, currentContract } from "../services/chain";
 import { catalogQuery } from "./store";
 
@@ -60,15 +60,11 @@ export const meRoutes = new Hono<AppEnv>()
       activity: wallet.activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
     });
   })
-  /** Who an @username is, shown before sending tokens: first name and last initial only */
-  .get("/wallet/recipient", zValidator("query", z.object({ username: z.string().min(1).max(60) })), async (c) => {
-    const username = c.req.valid("query").username.trim().replace(/^@/, "").toLowerCase();
-    const u = schema.users;
-    const [found] = await db
-      .select({ id: u.id, username: u.username, fullName: u.fullName, avatarStyle: u.avatarStyle })
-      .from(u)
-      .where(and(eq(u.username, username), eq(u.isActive, true)));
-    if (!found) throw notFound(`No one on Sotechy is @${username}`);
+  /** Who an @username or Sotechy wallet address is, shown before sending tokens: first name and last initial only */
+  .get("/wallet/recipient", zValidator("query", z.object({ to: z.string().min(1).max(60) })), async (c) => {
+    const to = c.req.valid("query").to;
+    const found = await recipientFor(to);
+    if (!found) throw notFound(noRecipient(to));
     const [first, ...rest] = (found.fullName ?? "").trim().split(/\s+/).filter(Boolean);
     return c.json({
       username: found.username,

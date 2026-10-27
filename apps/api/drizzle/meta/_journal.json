@@ -134,6 +134,13 @@
       "when": 1793132894042,
       "tag": "0018_customer_issue",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793133779158,
+      "tag": "0019_user_wallet_address",
+      "breakpoints": true
     }
   ]
 }

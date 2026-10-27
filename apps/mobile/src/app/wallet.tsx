@@ -71,7 +71,8 @@ export default function WalletScreen() {
   const [recipient, setRecipient] = useState<{ state: "idle" | "looking" | "found" | "missing"; who?: Awaited<ReturnType<typeof api.walletRecipient>>; message?: string }>({ state: "idle" });
   useEffect(() => {
     const name = to.trim().replace(/^@/, "");
-    if (!/^[a-z0-9._]{3,}$/i.test(name)) {
+    // An @username, or a Sotechy wallet address (0x and 40 characters)
+    if (!/^[a-z0-9._]{3,}$/i.test(name) && !/^0x[0-9a-f]{40}$/i.test(name)) {
       setRecipient({ state: "idle" });
       return;
     }
@@ -81,7 +82,7 @@ export default function WalletScreen() {
       api
         .walletRecipient(name)
         .then((who) => live && setRecipient({ state: "found", who }))
-        .catch((err) => live && setRecipient({ state: "missing", message: err instanceof Error ? err.message : `No one on Sotechy is @${name}` }));
+        .catch((err) => live && setRecipient({ state: "missing", message: err instanceof Error ? err.message : "No one on Sotechy matches that" }));
     }, 400);
     return () => {
       live = false;
@@ -91,7 +92,8 @@ export default function WalletScreen() {
   const { data, loading, error, reload } = useAsync(() => api.wallet(), []);
   const wallet = data ?? { address: null, addressUrl: null, balances: [], activity: [] };
   const held = wallet.balances.filter((b) => b.amount > 0);
-  const ticker = picked ?? held[0]?.ticker ?? "SOTECHY";
+  // Nothing is picked until the customer chooses a token
+  const ticker = picked;
 
   const total = wallet.balances.reduce((n, b) => n + tokenNaira(b.amount), 0);
   const pending = wallet.balances.reduce((n, b) => n + b.pending, 0);
@@ -113,11 +115,13 @@ export default function WalletScreen() {
   const send = async () => {
     setSending(true);
     try {
+      if (!ticker) return;
       const r = await api.sendTokens({ to: to.trim(), ticker, amount: value });
-      toast(`Sent ${formatTokens(r.amount)} $${r.ticker} to @${r.to}`);
+      toast(`Sent ${formatTokens(r.amount)} $${r.ticker} to ${r.to ? `@${r.to}` : "their wallet"}`);
       setSheet(null);
       setTo("");
       setAmount("");
+      setTicker(null);
       reload();
       void refreshHeldTokens();
     } catch (err) {
@@ -241,7 +245,7 @@ export default function WalletScreen() {
         onClose={() => setSheet(null)}
         footer={
           <Button
-            title={value ? `Send ${formatTokens(value)} $${ticker}` : "Send"}
+            title={value && ticker ? `Send ${formatTokens(value)} $${ticker}` : "Send"}
             icon="arrow-up"
             disabled={!recipientOk || !value || value > balance || sending}
             onPress={send}
@@ -254,18 +258,18 @@ export default function WalletScreen() {
             value={to}
             onChangeText={setTo}
             autoCapitalize="none"
-            placeholder="@username"
+            placeholder="Username or Sotechy wallet address"
             placeholderTextColor={colors.faint}
             style={{ height: 50, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: space.lg, fontFamily: fonts.medium, fontSize: 15, color: colors.ink }}
           />
-          {recipient.state === "looking" && <Txt variant="caption">Looking up @{to.trim().replace(/^@/, "")}…</Txt>}
+          {recipient.state === "looking" && <Txt variant="caption">Looking them up…</Txt>}
           {recipient.state === "missing" && <Txt variant="caption" color={colors.danger}>{recipient.message}</Txt>}
           {recipient.state === "found" && recipient.who && (
             <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderRadius: radius.lg, backgroundColor: recipient.who.isYou ? colors.dangerSoft : colors.successSoft }}>
               <UserAvatar seed={recipient.who.seed} preset={recipient.who.avatarStyle} size={40} />
               <View style={{ flex: 1 }}>
-                <Txt variant="label">{recipient.who.name ?? `@${recipient.who.username}`}</Txt>
-                <Txt variant="caption">{recipient.who.isYou ? "That's you. Pick someone else." : `@${recipient.who.username} · on Sotechy`}</Txt>
+                <Txt variant="label">{recipient.who.name ?? (recipient.who.username ? `@${recipient.who.username}` : "Sotechy user")}</Txt>
+                <Txt variant="caption">{recipient.who.isYou ? "That's you. Pick someone else." : `${recipient.who.username ? `@${recipient.who.username}` : "Sotechy wallet"} · on Sotechy`}</Txt>
               </View>
               <Ionicons name={recipient.who.isYou ? "close-circle" : "checkmark-circle"} size={22} color={recipient.who.isYou ? colors.danger : colors.success} />
             </View>
@@ -279,13 +283,17 @@ export default function WalletScreen() {
             style={{ flexDirection: "row", alignItems: "center", gap: space.md, height: 56, borderRadius: radius.lg, borderWidth: 1, borderColor: choosingToken ? colors.ink : colors.line, backgroundColor: colors.surface, paddingHorizontal: space.md }}
           >
             {chosen?.logoUrl ? <Image source={{ uri: chosen.logoUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} /> : <Illo name="coin" size={32} />}
-            <View style={{ flex: 1 }}>
-              <Txt variant="label" numberOfLines={1}>
-                <Text style={{ fontFamily: fonts.bold, color: colors.brandPressed }}>${ticker}</Text>
-                <Text style={{ fontFamily: fonts.medium, color: colors.ink2 }}> · {ticker === "SOTECHY" ? "Sotechy" : (chosen?.store ?? "")}</Text>
-              </Txt>
-              <Txt variant="caption">You have {formatTokens(balance)}</Txt>
-            </View>
+            {chosen ? (
+              <View style={{ flex: 1 }}>
+                <Txt variant="label" numberOfLines={1}>
+                  <Text style={{ fontFamily: fonts.bold, color: colors.brandPressed }}>${chosen.ticker}</Text>
+                  <Text style={{ fontFamily: fonts.medium, color: colors.ink2 }}> · {chosen.ticker === "SOTECHY" ? "Sotechy" : chosen.store}</Text>
+                </Txt>
+                <Txt variant="caption">You have {formatTokens(balance)}</Txt>
+              </View>
+            ) : (
+              <Txt variant="label" color={colors.muted} style={{ flex: 1 }}>Select token</Txt>
+            )}
             <Ionicons name={choosingToken ? "chevron-up" : "chevron-down"} size={18} color={colors.ink2} />
           </Pressable>
           {choosingToken && (
@@ -327,7 +335,7 @@ export default function WalletScreen() {
             style={{ height: 60, borderRadius: radius.lg, borderWidth: 1, borderColor: value > balance ? colors.danger : colors.line, backgroundColor: colors.surface, paddingHorizontal: space.lg, fontFamily: fonts.displayHeavy, fontSize: 26, color: colors.ink }}
           />
           <Txt variant="caption" color={value > balance ? colors.danger : colors.muted}>
-            {value > balance ? "More than you have" : `≈ ${formatNaira(Math.round(tokenNaira(value)))} · you have ${formatTokens(balance)} $${ticker}`}
+            {!chosen ? "Select a token first" : value > balance ? "More than you have" : `≈ ${formatNaira(Math.round(tokenNaira(value)))} · you have ${formatTokens(balance)} $${chosen.ticker}`}
           </Txt>
         </View>
       </Sheet>
