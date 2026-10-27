@@ -59,8 +59,9 @@ const RETURN_SCHEME = "sotechy://";
 export function useMoneyMoves() {
   const pay = useCallback(async (order: Pending["order"]) => {
     const { checkoutUrl } = await api.startOnlinePayment(order.id);
-    // An auth session closes by itself when the page hands back to sotechy://
-    await WebBrowser.openAuthSessionAsync(checkoutUrl, RETURN_SCHEME);
+    // An auth session closes by itself when the page hands back to sotechy://.
+    // Ephemeral skips iOS's "wants to use … to sign in" prompt (no cookies are shared, none are needed).
+    await WebBrowser.openAuthSessionAsync(checkoutUrl, RETURN_SCHEME, { preferEphemeralSession: true });
     return false;
   }, []);
 
