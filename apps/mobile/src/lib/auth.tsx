@@ -1,3 +1,4 @@
+import { clearHeldTokens, refreshHeldTokens } from "./held-tokens";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { AuthResponse, User } from "@sotechy/shared";
 import { api, setApiToken } from "./api";
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setApiToken(res.token);
     await tokenStore.set(res.token);
     setUser(res.user);
+    void refreshHeldTokens();
   }
 
   const value: AuthState = {
@@ -64,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setApiToken(null);
       await tokenStore.clear();
       setUser(null);
+      clearHeldTokens();
     },
   };
 

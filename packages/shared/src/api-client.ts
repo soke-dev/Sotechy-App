@@ -191,7 +191,9 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     addressSuggestions: (q: string) => get<AddressSuggestion[]>(`/geo/address?q=${encodeURIComponent(q)}`),
     store: (slug: string) => get<MarketStoreDetail>(`/store/stores/${encodeURIComponent(slug)}`),
     productReviews: (idOrSlug: string) => get<ProductReviews>(`/store/products/${encodeURIComponent(idOrSlug)}/reviews`),
-    submitReview: (input: { productId: string; rating: number; title?: string | null; body: string }) => send<{ id: string }>("POST", "/me/reviews", input),
+    /** A photo makes a review earn the full bonus; `bonus` is what this review just earned */
+    submitReview: (input: { productId: string; rating: number; title?: string | null; body: string; photos?: string[] }) =>
+      send<{ id: string; bonus: { tokenId: number; amount: number } | null }>("POST", "/me/reviews", input),
 
     // Customer
     placeOrder: (input: PlaceOrderInput) => send<Order>("POST", "/orders", input),

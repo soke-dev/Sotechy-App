@@ -10,7 +10,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
 import { Illo } from "@/components/illustrations";
-import { heldTokens, openProduct, StoreLogo } from "@/components/store-bits";
+import { openProduct, StoreLogo } from "@/components/store-bits";
+import { useHeldTokens } from "@/lib/held-tokens";
 import { EmptyState, ErrorView, IconButton, Loading, tap } from "@/components/ui";
 import { CROSS_BONUS, formatTokens, loadStore, tileColor, tokenNaira, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { ProductArt, StoreCover } from "@/components/store-brand";
@@ -70,6 +71,7 @@ export default function StoreScreen() {
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>("products");
   const subs = useStoreNotifications();
+  const held = useHeldTokens(loaded.data?.ticker ?? "");
 
   if (loaded.loading && !loaded.data) return <Loading />;
   if (loaded.error) return <ErrorView message={loaded.error} onRetry={loaded.reload} />;
@@ -79,7 +81,6 @@ export default function StoreScreen() {
 
   const t = store.theme;
   const following = subs.isSubscribed(store.slug);
-  const held = heldTokens(store.ticker);
   const tileWidth = (Math.min(width, 720) - gutter * 2 - space.md) / 2;
 
   return (

@@ -4,7 +4,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
-import { notFound } from "../lib/errors";
+import { badRequest, notFound } from "../lib/errors";
+import { publicApiUrl } from "../env";
 import { requireFeature } from "../services/features";
 import { receiptFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
 import { CHAINS, currentContract } from "../services/chain";
@@ -30,6 +31,23 @@ async function liveStore(slug: string) {
 
 export const meRoutes = new Hono<AppEnv>()
   .use(requireAuth)
+  /** A photo for a review (JPG, PNG or WebP, up to 5 MB each) */
+  .post("/media", async (c) => {
+    const body = await c.req.parseBody({ all: true });
+    const files = [body.file].flat().filter((f): f is File => f instanceof File);
+    if (!files.length) throw badRequest("Choose a photo to upload");
+    const saved = [];
+    for (const file of files.slice(0, 4)) {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw badRequest("Use a JPG, PNG or WebP photo");
+      if (file.size > 5 * 1024 * 1024) throw badRequest("That photo is too large (max 5 MB)");
+      const [row] = await db
+        .insert(schema.media)
+        .values({ filename: file.name.slice(0, 200), contentType: file.type, size: file.size, data: Buffer.from(await file.arrayBuffer()), isPrivate: false, createdBy: c.get("user").id })
+        .returning({ id: schema.media.id });
+      saved.push({ id: row.id, url: `${publicApiUrl || new URL(c.req.url).origin}/media/${row.id}` });
+    }
+    return c.json(saved, 201);
+  })
   /** Token balances (held and on the way), activity, and the wallet's address on Monad */
   .get("/wallet", async (c) => {
     const wallet = await walletFor(c.get("user").id);

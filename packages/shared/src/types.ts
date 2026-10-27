@@ -234,6 +234,8 @@ export interface Order {
   subtotal: number;
   discountTotal: number;
   deliveryFee: number;
+  /** Naira value of tokens the customer paid with (already taken off the total) */
+  tokensValue: number;
   total: number;
   currency: string;
   paymentMethod: PaymentMethodCode;

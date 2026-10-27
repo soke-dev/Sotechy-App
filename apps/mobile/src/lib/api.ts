@@ -13,3 +13,16 @@ export const setApiToken = (value: string | null) => {
 };
 
 export const api: ApiClient = DEMO_MODE ? mockApi : createApiClient({ baseUrl: API_URL, getToken: () => token });
+
+/** Uploads a photo from the phone (e.g. for a review) and returns its public URL */
+export async function uploadPhoto(photo: { uri: string; mimeType?: string | null; fileName?: string | null }) {
+  if (DEMO_MODE) return photo.uri;
+  const form = new FormData();
+  const type = photo.mimeType ?? "image/jpeg";
+  // React Native's FormData takes a { uri, name, type } file
+  form.append("file", { uri: photo.uri, name: photo.fileName ?? `photo.${type.split("/")[1] ?? "jpg"}`, type } as unknown as Blob);
+  const res = await fetch(`${API_URL}/me/media`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form });
+  const body = (await res.json().catch(() => null)) as { url: string }[] | { error?: string } | null;
+  if (!res.ok || !Array.isArray(body)) throw new Error((body as { error?: string } | null)?.error ?? "Couldn't upload the photo");
+  return body[0].url;
+}

@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, View } from "react-native";
-import { areaDeliveryFee, deliveryAreaFor, formatNaira, formatUsd, type FulfilmentType, type PromoCheck } from "@sotechy/shared";
+import { areaDeliveryFee, deliveryAreaFor, formatNaira, formatUsd, nairaToTokens, TOKEN_RULES, tokensToNaira, type FulfilmentType, type PromoCheck } from "@sotechy/shared";
 import { AddressCard } from "@/components/address-card";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { PayOptionsLine, useMoneyMoves } from "@/components/money-moves";
@@ -15,6 +15,7 @@ import { useFeatures } from "@/lib/store-config";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { loadStore } from "@/lib/marketplace";
+import { refreshHeldTokens } from "@/lib/held-tokens";
 import { AddressSearch } from "@/components/address-search";
 
 const newKey = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
@@ -75,6 +76,9 @@ export default function CheckoutScreen() {
   // null = use the default saved address; "new" = type a new one; otherwise a saved address id
   const [addressId, setAddressId] = useState<string | null>(null);
   const [saveNew, setSaveNew] = useState(true);
+  // Tokens the customer can pay with here: this store's own and $SOTECHY
+  const wallet = useAsync(async () => (user ? api.wallet() : null), [user?.id]);
+  const [useTokens, setUseTokens] = useState<Record<string, boolean>>({});
 
   useFocusEffect(
     useCallback(() => {
@@ -120,6 +124,18 @@ export default function CheckoutScreen() {
       : 0;
   const cheapestDelivery = areas.length ? Math.min(...areas.map((a) => a.homeFee)) : null;
   const total = Math.max(0, cart.subtotal + deliveryFee - discount);
+  // Each switched-on token covers as much as it can, up to all but ₦100 of the order
+  const storeTicker = seller ? sellerInfo.data?.ticker : null;
+  const spendable = (wallet.data?.balances ?? []).filter((b) => b.amount > 0 && (b.ticker === "SOTECHY" || b.ticker === storeTicker)).sort((a) => (a.ticker === "SOTECHY" ? 1 : -1));
+  let room = Math.max(0, total - TOKEN_RULES.minCashPerOrder);
+  const tokenPlan = spendable.map((b) => {
+    const amount = useTokens[b.ticker] ? Math.min(b.amount, nairaToTokens(room)) : 0;
+    const value = tokensToNaira(amount);
+    room -= value;
+    return { ticker: b.ticker, balance: b.amount, amount, value, most: Math.min(b.amount, nairaToTokens(Math.max(0, total - TOKEN_RULES.minCashPerOrder))) };
+  });
+  const tokensValue = Math.round(tokenPlan.reduce((n, t) => n + t.value, 0) * 100) / 100;
+  const due = Math.max(0, Math.round((total - tokensValue) * 100) / 100);
 
   /** Checks the typed code; the order checks it again with real prices. */
   async function checkPromo(): Promise<PromoCheck | null> {
@@ -170,8 +186,10 @@ export default function CheckoutScreen() {
         promoCode: applied?.code,
         idempotencyKey,
         pickupZoneId: seller && fulfilment === "pickup" ? (pickupPoint?.id ?? undefined) : undefined,
+        tokens: tokenPlan.filter((t) => t.amount > 0).map((t) => ({ ticker: t.ticker, amount: t.amount })),
       });
       cart.clear();
+      if (order.tokensValue > 0) void refreshHeldTokens();
       if (fulfilment === "delivery" && !chosen && saveNew && user) {
         // Remember the new address for next time; the order already succeeded, so ignore failures.
         api.addAddress({ ...address, label: savedList.length ? "Other" : "Home", line2: address.line2 || null }).catch(() => {});
@@ -358,6 +376,37 @@ export default function CheckoutScreen() {
           )}
         </Section>
 
+        {tokenPlan.length > 0 && (
+          <View style={[ui.card, { gap: space.md }]}>
+            <View style={ui.row}>
+              <Illo name="coin" size={30} />
+              <View style={{ flex: 1 }}>
+                <Txt variant="heading">Pay with tokens</Txt>
+                <Txt variant="caption">At least ₦{TOKEN_RULES.minCashPerOrder} is paid in money.</Txt>
+              </View>
+            </View>
+            {tokenPlan.map((t) => (
+              <View key={t.ticker} style={[ui.between, { gap: space.md }]}>
+                <View style={{ flex: 1 }}>
+                  <Txt variant="label">
+                    {t.ticker === "SOTECHY" ? "$SOTECHY" : `$${t.ticker}`} · {t.balance.toLocaleString("en-NG")}
+                  </Txt>
+                  <Txt variant="caption">{useTokens[t.ticker] ? `Using ${t.amount.toLocaleString("en-NG")} · −${formatNaira(t.value)}` : `Worth up to ${formatNaira(tokensToNaira(t.most))} here`}</Txt>
+                </View>
+                <Switch
+                  value={!!useTokens[t.ticker]}
+                  onValueChange={(on) => {
+                    tap();
+                    setUseTokens({ ...useTokens, [t.ticker]: on });
+                  }}
+                  trackColor={{ true: colors.brand, false: colors.line }}
+                  thumbColor="#fff"
+                />
+              </View>
+            ))}
+          </View>
+        )}
+
         <View style={ui.card}>
           <Txt variant="heading" style={{ marginBottom: space.sm }}>Order summary</Txt>
           {cart.lines.map((l) => (
@@ -367,12 +416,13 @@ export default function CheckoutScreen() {
           <SummaryRow label="Subtotal" value={formatNaira(cart.subtotal)} />
           <SummaryRow label={fulfilment === "pickup" ? "Pickup" : "Delivery"} value={deliveryFee ? formatNaira(deliveryFee) : "Free"} />
           {discount > 0 && <SummaryRow label={`Promo (${promo?.code})`} value={`-${formatNaira(discount)}`} tone={colors.success} />}
+          {tokensValue > 0 && <SummaryRow label="Paid with tokens" value={`-${formatNaira(tokensValue)}`} tone={colors.success} />}
           <Divider style={{ marginVertical: space.sm }} />
           <View style={[ui.between, { paddingVertical: 4 }]}>
             <Txt variant="label">Total</Txt>
             <View style={[ui.row, { gap: space.sm }]}>
-              {features.usdPrices && fx.data ? <Txt variant="small">≈ {formatUsd(total, fx.data.rate)}</Txt> : null}
-              <Txt variant="price">{formatNaira(total)}</Txt>
+              {features.usdPrices && fx.data ? <Txt variant="small">≈ {formatUsd(due, fx.data.rate)}</Txt> : null}
+              <Txt variant="price">{formatNaira(due)}</Txt>
             </View>
           </View>
           <Txt variant="caption" style={{ marginTop: space.sm }}>Final amount is confirmed by Sotechy when the order is placed.</Txt>
@@ -388,7 +438,7 @@ export default function CheckoutScreen() {
       <BottomBar>
         <View style={{ flex: 1, gap: space.sm }}>
           <Button
-            title={paused ? "Ordering paused" : `Proceed to payment · ${formatNaira(total)}`}
+            title={paused ? "Ordering paused" : `Proceed to payment · ${formatNaira(due)}`}
             icon="lock-closed"
             variant="dark"
             onPress={proceedToPayment}

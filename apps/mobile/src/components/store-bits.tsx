@@ -5,7 +5,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { formatNaira } from "@sotechy/shared";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { formatTokens, isFeatured, tileColor, wallet, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { formatTokens, isFeatured, tileColor, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { useHeldTokens } from "@/lib/held-tokens";
 import { Illo } from "./illustrations";
 import { BrandMark, ProductArt, StoreCover } from "./store-brand";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
@@ -16,7 +17,7 @@ export const openStore = (slug: string) => router.push({ pathname: "/store/[slug
 export const openProduct = (slug: string) => router.push({ pathname: "/product/[id]", params: { id: slug } });
 
 /** How many of this store's tokens the customer holds */
-export const heldTokens = (ticker: string) => wallet.balances.find((b) => b.ticker === ticker)?.amount ?? 0;
+export const heldTokens = useHeldTokens;
 
 export function StoreLogo({ store, size = 52, ring }: { store: MarketStore; size?: number; ring?: string }) {
   return (
@@ -68,7 +69,7 @@ function Rating({ store, color }: { store: MarketStore; color?: string }) {
 
 /** Big card for the "Stores on Sotechy" carousel on Home */
 export function FeaturedStoreCard({ store, width }: { store: MarketStore; width: number }) {
-  const held = heldTokens(store.ticker);
+  const held = useHeldTokens(store.ticker);
   return (
     <Pressable onPress={() => openStore(store.slug)} style={({ pressed }) => ({ width, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, overflow: "hidden", opacity: pressed ? 0.9 : 1 })}>
       <View style={{ height: 112 }}>
@@ -107,7 +108,7 @@ export function FeaturedStoreCard({ store, width }: { store: MarketStore; width:
 
 /** One store in the Stores tab */
 export function StoreRow({ store }: { store: MarketStore }) {
-  const held = heldTokens(store.ticker);
+  const held = useHeldTokens(store.ticker);
   return (
     <Pressable
       onPress={() => openStore(store.slug)}

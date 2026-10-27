@@ -7,7 +7,7 @@ import { formatNaira, type WalletActivity } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { Sheet } from "@/components/shop-filters";
 import { openStore } from "@/components/store-bits";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useToast } from "@/components/toast";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -15,12 +15,16 @@ import { Button, Chip, Divider, Txt, ui, type IconName } from "@/components/ui";
 import { formatTokens, shortAddress, tokenNaira } from "@/lib/marketplace";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+import { refreshHeldTokens } from "@/lib/held-tokens";
 
 const EVENT: Record<WalletActivity["kind"], { icon: IconName; tone: string; title: (e: WalletActivity) => string }> = {
   earned: { icon: "arrow-down", tone: colors.success, title: (e) => `Earned at ${e.store}${e.order ? ` · ${e.order}` : ""}` },
   bonus: { icon: "star", tone: colors.brandPressed, title: (e) => `$SOTECHY bonus${e.order ? ` · ${e.order}` : ""}` },
   received: { icon: "arrow-down", tone: colors.success, title: (e) => `From @${e.who ?? "someone"}` },
-  spent: { icon: "bag-handle-outline", tone: colors.ink2, title: (e) => `Spent at ${e.store}` },
+  review: { icon: "chatbubble-ellipses-outline", tone: colors.brandPressed, title: (e) => `Review bonus${e.order ? ` · ${e.order}` : ""}` },
+  walk_in: { icon: "storefront-outline", tone: colors.success, title: (e) => `Bought in store at ${e.store}` },
+  spent: { icon: "bag-handle-outline", tone: colors.ink2, title: (e) => `Paid at ${e.store}${e.order ? ` · ${e.order}` : ""}` },
+  returned: { icon: "return-up-back-outline", tone: colors.success, title: (e) => `Given back${e.order ? ` · ${e.order} cancelled` : ""}` },
   sent: { icon: "arrow-up", tone: colors.ink2, title: (e) => `To @${e.who ?? "someone"}` },
   refunded: { icon: "return-up-back-outline", tone: colors.ink2, title: (e) => `Refunded order${e.order ? ` · ${e.order}` : ""}` },
 };
@@ -86,6 +90,7 @@ export default function WalletScreen() {
       setTo("");
       setAmount("");
       reload();
+      void refreshHeldTokens();
     } catch (err) {
       toast(err instanceof Error ? err.message : "Couldn't send the tokens");
     } finally {
@@ -129,7 +134,7 @@ export default function WalletScreen() {
         <View style={{ flexDirection: "row", gap: space.sm }}>
           <ActionButton primary icon="arrow-up" label="Send" onPress={() => (held.length ? setSheet("send") : toast("You don't have tokens to send yet"))} />
           <ActionButton icon="arrow-down" label="Receive" onPress={() => setSheet("receive")} />
-          <ActionButton icon="storefront-outline" label="Spend" onPress={() => toast("Paying with tokens at checkout is coming soon")} />
+          <ActionButton icon="storefront-outline" label="Spend" onPress={() => router.push("/stores")} />
         </View>
 
         {/* Tokens */}
@@ -195,7 +200,7 @@ export default function WalletScreen() {
           </Pressable>
         </View>
         <Txt variant="caption" style={{ textAlign: "center" }}>
-          You earn 1 token per ₦1 at each store when your order is delivered, plus 10% in $SOTECHY at other stores. Every token and receipt is recorded on Monad.
+          You earn 1 token per ₦1 at each store when your order is delivered, plus 10% in $SOTECHY at other stores and a bonus for reviews. Spend them at checkout. Every token and receipt is recorded on Monad.
         </Txt>
       </ScrollView>
 
@@ -263,13 +268,13 @@ export default function WalletScreen() {
               title: "How you get them",
               icon: "add-circle-outline" as IconName,
               tone: colors.success,
-              items: ["1 token for every ₦1 you spend at a store", "10% extra in $SOTECHY when you buy from other stores", "Released when your order is delivered", "Coming soon: up to 10% more for reviewing what you bought"],
+              items: ["1 token for every ₦1 you spend at a store", "10% extra in $SOTECHY when you buy from other stores", "Released when your order is delivered", "5% more for reviewing what you bought, 10% with a photo", "Buying in a store's own shop too, when they reward you with your @username"],
             },
             {
               title: "What you can do with them",
               icon: "checkmark-circle-outline" as IconName,
               tone: colors.success,
-              items: ["Send them to other Sotechy users by @username", "Coming soon: pay at the store that gave them, like cash", "Coming soon: mix tokens and money in one payment, and spend $SOTECHY at any Sotechy store"],
+              items: ["Pay at the store that gave them, at checkout", "Mix tokens and money in one payment (at least ₦100 in money)", "Spend $SOTECHY at any Sotechy store", "Send them to other Sotechy users by @username"],
             },
             {
               title: "What they are not",

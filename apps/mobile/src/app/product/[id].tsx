@@ -31,6 +31,7 @@ import {
   type IconName,
 } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
+import { refreshHeldTokens } from "@/lib/held-tokens";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
@@ -407,12 +408,15 @@ export default function ProductScreen() {
     setReviewOpen(true);
   }
 
-  async function submitReview(input: { rating: number; title: string; body: string }) {
-    await api.submitReview({ productId: product!.id, rating: input.rating, title: input.title || null, body: input.body });
+  async function submitReview(input: { rating: number; title: string; body: string; photos: string[] }) {
+    const r = await api.submitReview({ productId: product!.id, rating: input.rating, title: input.title || null, body: input.body, photos: input.photos });
     setReviewOpen(false);
     setTab("reviews");
     reviews.reload();
-    toast(mine ? "Review updated" : "Thanks for your review!", { icon: "star" });
+    if (r.bonus) {
+      void refreshHeldTokens();
+      toast(`Thanks! You earned ${r.bonus.amount.toLocaleString("en-NG")} tokens for your review`, { icon: "star" });
+    } else toast(mine ? "Review updated" : "Thanks for your review!", { icon: "star" });
   }
 
   return (

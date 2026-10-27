@@ -129,6 +129,8 @@ export default function OrderScreen() {
   const { id, checking } = useLocalSearchParams<{ id: string; checking?: string }>();
   const { data: order, error, loading, reload } = useAsync(() => api.order(id), [id]);
   const config = useAsync(() => api.storeConfig());
+  // Delivered orders have a receipt, recorded on Monad (none before then)
+  const receipt = useAsync(() => api.orderReceipt(id).catch(() => null), [id]);
   const [cancelling, setCancelling] = useState(false);
   const [paying, setPaying] = useState(false);
   const moneyMoves = useMoneyMoves();
@@ -339,12 +341,31 @@ export default function OrderScreen() {
           <SummaryRow label="Subtotal" value={formatNaira(order.subtotal)} />
           {order.discountTotal > 0 && <SummaryRow label="Discount" value={`-${formatNaira(order.discountTotal)}`} tone={colors.success} />}
           <SummaryRow label="Delivery" value={order.deliveryFee ? formatNaira(order.deliveryFee) : "Free"} />
+          {order.tokensValue > 0 && <SummaryRow label="Paid with tokens" value={`-${formatNaira(order.tokensValue)}`} tone={colors.success} />}
           <Divider style={{ marginVertical: space.sm }} />
-          <SummaryRow label="Total" value={formatNaira(order.total)} strong />
+          <SummaryRow label={order.tokensValue > 0 ? "Paid in money" : "Total"} value={formatNaira(order.total)} strong />
           <SummaryRow label="Paid with" value={`${PAYMENT_METHOD_LABELS[order.paymentMethod]}${order.cryptoAsset ? ` (${order.cryptoAsset})` : ""}`} />
           <SummaryRow label="Placed" value={formatDate(order.createdAt)} />
         </View>
       </Section>
+
+      {order.status === "delivered" && receipt.data && (
+        <Pressable
+          disabled={!receipt.data.nftUrl && !receipt.data.txUrl}
+          onPress={() => {
+            const url = receipt.data?.nftUrl ?? receipt.data?.txUrl;
+            if (url) Linking.openURL(url);
+          }}
+          style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, padding: space.lg, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, backgroundColor: pressed ? colors.surfaceAlt : colors.surface })}
+        >
+          <Illo name="receipt" size={40} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Txt variant="label">Receipt #{receipt.data.id}</Txt>
+            <Txt variant="caption">{receipt.data.txUrl ? "Recorded on Monad. Tap to see it. Only a fingerprint is public, never your details or what you paid." : "Being recorded on Monad…"}</Txt>
+          </View>
+          {receipt.data.txUrl && <Ionicons name="open-outline" size={18} color={colors.muted} />}
+        </Pressable>
+      )}
 
       <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.xl, padding: space.lg, gap: space.md }}>
         <View style={{ gap: 2 }}>

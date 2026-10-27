@@ -310,6 +310,7 @@ function makeOrder(input: PlaceOrderInput, status: Order["status"] = "pending_pa
     subtotal,
     discountTotal: discount,
     deliveryFee,
+    tokensValue: 0,
     total: subtotal - discount + deliveryFee,
     currency: "NGN",
     paymentMethod: input.paymentMethod,
@@ -468,7 +469,7 @@ export const mockApi: ApiClient = {
       createdAt: now(),
     };
     reviewsByProduct.set(input.productId, [review, ...list.filter((r) => r.userId !== demoUser.id)]);
-    return wait({ id: review.id });
+    return wait({ id: review.id, bonus: null });
   },
 
   checkPromo: async ({ code, subtotal }) => {
