@@ -5,7 +5,8 @@ import { db, pool } from "./client";
 import * as s from "./schema";
 
 // Demo products: `--demo`, or SEED_DEMO_PRODUCTS=true on a test deployment (they are marked [DEMO]).
-const withDemo = process.argv.includes("--demo") || process.env.SEED_DEMO_PRODUCTS === "true";
+// Never on the live site, whatever SEED_DEMO_PRODUCTS says: customers would see them as real products
+const withDemo = process.env.NODE_ENV !== "production" && (process.argv.includes("--demo") || process.env.SEED_DEMO_PRODUCTS === "true");
 
 await db
   .insert(s.paymentMethods)

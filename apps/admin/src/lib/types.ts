@@ -84,6 +84,21 @@ export interface PosSearchRow {
 }
 
 export interface SalesSummary {
+  marketplace: {
+    orders: number;
+    storeSales: number;
+    delivery: number;
+    sotechyFees: number;
+    walkIns: { count: number; sales: number; fees: number };
+    paidToStores: number;
+    payoutsPaid: number;
+    owedToStores: number;
+    payoutsOwed: number;
+    topStores: { store: string; slug: string; orders: number; goods: number }[];
+    stores: { live: number; new: number; waiting: number };
+  };
+  tokens: { earned: number; spent: number; spentValue: number };
+  people: { newCustomers: number; customers: number; buyers: number };
   period: { from: string; to: string };
   orders: number;
   revenue: number;

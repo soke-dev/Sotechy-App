@@ -32,13 +32,6 @@ function Decision({ href, illo, count, title, hint }: { href: string; illo: Illo
 }
 
 /** Marketplace stores' paid orders in the last 30 days */
-function marketplaceSales(rows: AdminOrderRow[]) {
-  const monthAgo = Date.now() - 30 * 86_400_000;
-  return rows
-    .filter((o) => o.merchantId && ["paid", "processing", "ready_for_pickup", "dispatched", "delivered"].includes(o.status) && new Date(o.createdAt).getTime() > monthAgo)
-    .reduce((n, o) => n + o.total, 0);
-}
-
 export default async function DashboardPage() {
   const [summary, orders, switches, user, waiting, stores, failed, reserveRes] = await Promise.all([
     load<SalesSummary>("/admin/reports/summary"),
@@ -60,7 +53,6 @@ export default async function DashboardPage() {
   const health = reserveRes.data ?? { balance: 0, owed: 0, cover: null, feesThisMonth: { total: 0, reserve: 0, revenue: 0 } };
   const failedPayouts = failed.data?.payouts.length ?? 0;
   const liveMerchants = (stores.data ?? []).filter((m) => m.status === "approved");
-  const gmv = marketplaceSales(orders.data ?? []);
   const cover = health.cover === null ? "—" : `${Math.round(health.cover * 100)}%`;
   const channelMax = Math.max(1, ...(s?.byChannel ?? []).map((c) => c.revenue));
 
@@ -97,16 +89,16 @@ export default async function DashboardPage() {
           {s && (
             <div className="relative grid w-full grid-cols-2 gap-x-6 gap-y-3 rounded-3xl bg-panel-2 p-5 text-sm ring-1 ring-white/10 sm:w-auto sm:gap-x-8">
               <div>
-                <p className="text-white/50">Sotechy revenue, 30 days</p>
-                <p className="font-display text-xl font-bold sm:text-2xl">{formatNaira(s.revenue)}</p>
+                <p className="text-white/50">Sotechy&apos;s fees, 30 days</p>
+                <p className="font-display text-xl font-bold sm:text-2xl">{formatNaira(s.marketplace.sotechyFees + s.marketplace.walkIns.fees)}</p>
               </div>
               <div>
-                <p className="text-white/50">Paid orders</p>
-                <p className="font-display text-xl font-bold sm:text-2xl">{s.orders}</p>
+                <p className="text-white/50">Store orders</p>
+                <p className="font-display text-xl font-bold sm:text-2xl">{s.marketplace.orders}</p>
               </div>
               <div>
                 <p className="text-white/50">Marketplace sales</p>
-                <p className="font-display text-xl font-bold sm:text-2xl">{formatNaira(gmv)}</p>
+                <p className="font-display text-xl font-bold sm:text-2xl">{formatNaira(s.marketplace.storeSales)}</p>
               </div>
               <div>
                 <p className="text-white/50">Reserve cover</p>
@@ -150,7 +142,7 @@ export default async function DashboardPage() {
       {summary.error && <ErrorNote error={`Sales summary: ${summary.error}`} />}
       {s && (
         <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <StatCard illo="wallet" tone="brand" label="Revenue, 30 days" value={formatNaira(s.revenue)} hint={`${s.orders} paid orders`} />
+          <StatCard illo="wallet" tone="brand" label="Own shop sales, 30 days" value={formatNaira(s.revenue)} hint={`${s.orders} paid order${s.orders === 1 ? "" : "s"} · Sotechy's own products`} />
           <StatCard illo="receipt" label="Average order" value={formatNaira(s.averageOrderValue)} />
           <StatCard illo="card" tone="warn" label="Awaiting payment" value={s.pendingPayments.count} hint={formatNaira(s.pendingPayments.value)} />
           <StatCard illo="box" tone={s.lowStockItems ? "warn" : "neutral"} label="Low-stock items" value={s.lowStockItems} />
