@@ -349,7 +349,7 @@ export default function HomeScreen() {
           { illo: "store" as const, label: "Pick up\nin store" },
           { illo: "bike" as const, label: "Fast local\ndelivery" },
           { illo: "shield" as const, label: "Genuine\nwarranty" },
-          { illo: "wallet" as const, label: "Bank, online\n& crypto" },
+          { illo: "wallet" as const, label: "Pay by bank,\napp or tokens" },
         ].map((item) => (
           <View key={item.label} style={{ alignItems: "center", gap: 6, flex: 1 }}>
             <Illo name={item.illo} size={34} />
