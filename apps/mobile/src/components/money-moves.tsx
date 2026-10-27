@@ -12,7 +12,7 @@ import { Pill, tap, Txt, ui } from "./ui";
 
 // Stablecoin goes through Money Moves; bank transfer comes later
 const PAY_CHOICES: { id: string; illo: IlloName; title: string; subtitle: string; live: boolean }[] = [
-  { id: "stablecoin", illo: "coin", title: "Send stablecoin", subtitle: "Pay with USDT or USDC through Money Moves", live: true },
+  { id: "stablecoin", illo: "coin", title: "Pay with stablecoin", subtitle: "Pay with USDT or USDC through Money Moves", live: true },
   { id: "bank", illo: "bank", title: "Bank transfer", subtitle: "Pay from any Nigerian bank", live: false },
 ];
 
