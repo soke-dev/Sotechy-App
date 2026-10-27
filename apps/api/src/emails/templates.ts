@@ -1,0 +1,257 @@
+// Every email Sotechy sends. Each builder takes plain data and returns what sendEmail needs.
+// Preview them all with sample data at /dev/emails on a local API.
+import type { OrderStatus } from "@sotechy/shared";
+import { formatNaira } from "@sotechy/shared";
+import type { Email } from "../lib/email";
+import { renderEmail, type Block, type EmailContent, type Hero, type LineItem } from "./layout";
+
+const first = (name?: string | null) => name?.trim().split(/\s+/)[0] || "there";
+const build = (to: string, subject: string, content: EmailContent): Email => ({ to, subject, ...renderEmail(content) });
+const appLink = (path: string) => `https://www.sotechy.shop${path}`;
+const merchantLink = (path: string) => `https://merchant.sotechy.shop${path}`;
+const when = (d: Date) => d.toLocaleString("en-NG", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Africa/Lagos" });
+
+// ---------------------------------------------------------------------------
+// Customers
+// ---------------------------------------------------------------------------
+export function welcomeEmail(to: string, d: { name: string | null }) {
+  return build(to, "Welcome to Sotechy", {
+    preheader: "Shop from stores across Nigeria and earn tokens on every order.",
+    hero: "welcome",
+    heading: `Welcome, ${first(d.name)}`,
+    blocks: [
+      { kind: "text", text: "Your Sotechy account is ready. Here's how it works:" },
+      {
+        kind: "rows",
+        rows: [
+          { icon: "store", label: "Many stores, one app", value: "Phones, gadgets, fashion, food and more from stores across Nigeria." },
+          { icon: "coin", label: "Earn as you shop", value: "Every completed order earns you the store's tokens: **1 token for every ₦1**." },
+          { icon: "tag", label: "Make an offer", value: "On items marked negotiable, send the store a price and chat it out." },
+        ],
+      },
+      { kind: "button", label: "Start shopping", url: appLink("/") },
+    ],
+    reason: "You're getting this because you created a Sotechy account.",
+  });
+}
+
+export function passwordCodeEmail(to: string, d: { code: string; minutes: number }) {
+  return build(to, `${d.code} is your Sotechy code`, {
+    preheader: `Use it to choose a new password. It works for ${d.minutes} minutes.`,
+    hero: "code",
+    heading: "Reset your password",
+    blocks: [
+      { kind: "text", text: "Enter this code in Sotechy to choose a new password." },
+      { kind: "code", code: d.code, caption: `Works once, for ${d.minutes} minutes` },
+      { kind: "note", tone: "warn", icon: "shield", text: "Sotechy will never ask for this code by phone, WhatsApp or chat. If you didn't ask for it, ignore this email; your password stays the same." },
+    ],
+    reason: "You're getting this because someone asked to reset the password on your Sotechy account.",
+  });
+}
+
+export interface OrderEmailData {
+  id: string;
+  number: string;
+  store: string;
+  fulfilment: "delivery" | "pickup";
+  items: LineItem[];
+  subtotal: number;
+  discount: number;
+  deliveryFee: number;
+  total: number;
+  /** "14 Airport Road, Benin City, Edo" */
+  address?: string | null;
+  pickup?: { place: string; hours?: string | null } | null;
+}
+
+const STEPS = { delivery: ["Paid", "Packed", "On its way", "Delivered"], pickup: ["Paid", "Packed", "Ready", "Picked up"] };
+const STEP_AT: Partial<Record<OrderStatus, number>> = { paid: 0, processing: 1, dispatched: 2, ready_for_pickup: 2, delivered: 3 };
+
+const ORDER_COPY: Partial<Record<OrderStatus, (o: OrderEmailData) => { hero: Hero; subject: string; heading: string; lead: string }>> = {
+  paid: (o) => ({ hero: "paid", subject: `Payment received for ${o.number}`, heading: "Payment received", lead: `**${o.store}** has your order and will start packing it soon.` }),
+  processing: (o) => ({ hero: "processing", subject: `${o.number} is being packed`, heading: "Your order is being packed", lead: `**${o.store}** is getting your items ready.` }),
+  ready_for_pickup: (o) => ({ hero: "ready", subject: `${o.number} is ready for pickup`, heading: "Ready for pickup", lead: "Your order is waiting for you. Bring your order number when you come." }),
+  dispatched: (o) => ({ hero: "dispatched", subject: `${o.number} is on its way`, heading: "Your order is on its way", lead: `It's left **${o.store}** and is heading to you. Keep your phone close; the rider may call.` }),
+  delivered: (o) => ({
+    hero: "delivered",
+    subject: `${o.number} ${o.fulfilment === "pickup" ? "picked up" : "delivered"}`,
+    heading: o.fulfilment === "pickup" ? "Picked up. Enjoy!" : "Delivered. Enjoy!",
+    lead: `Thanks for shopping with **${o.store}**. Your tokens arrive once the order is complete.`,
+  }),
+  cancelled: (o) => ({ hero: "cancelled", subject: `${o.number} was cancelled`, heading: "Your order was cancelled", lead: `**${o.store}** couldn't complete this order. If you paid, your refund is being processed and we'll email you when it's sent.` }),
+  refunded: (o) => ({ hero: "refunded", subject: `Refund sent for ${o.number}`, heading: "Your refund is on its way", lead: `We've sent back **${formatNaira(o.total)}** for this order. Bank transfers can take up to 24 hours to show.` }),
+};
+
+export const ORDER_EMAIL_STATUSES = Object.keys(ORDER_COPY) as OrderStatus[];
+
+export function orderUpdateEmail(to: string, status: OrderStatus, d: { name: string | null; order: OrderEmailData }) {
+  const o = d.order;
+  const copy = ORDER_COPY[status]?.(o);
+  if (!copy) return null;
+  const at = STEP_AT[status];
+  const blocks: Block[] = [
+    { kind: "text", text: `Hi ${first(d.name)}, ${copy.lead.charAt(0).toLowerCase()}${copy.lead.slice(1)}` },
+    ...(at !== undefined ? [{ kind: "tracker" as const, steps: STEPS[o.fulfilment], at }] : []),
+    {
+      kind: "items",
+      items: o.items,
+      totals: [
+        { label: "Subtotal", amount: o.subtotal },
+        ...(o.discount ? [{ label: "Discount", amount: -o.discount }] : []),
+        ...(o.fulfilment === "delivery" ? [{ label: "Delivery", amount: o.deliveryFee }] : []),
+        { label: "Total", amount: o.total, strong: true },
+      ],
+    },
+    {
+      kind: "rows",
+      rows:
+        o.fulfilment === "pickup" && o.pickup
+          ? [
+              { icon: "store", label: "Pick up at", value: o.pickup.place },
+              ...(o.pickup.hours ? [{ icon: "receipt" as const, label: "Opening hours", value: o.pickup.hours }] : []),
+            ]
+          : [{ icon: "pin", label: "Delivering to", value: o.address ?? "Your saved address" }],
+    },
+    ...(status === "delivered" ? [{ kind: "note" as const, tone: "good" as const, icon: "heart" as const, text: "Happy with it? A quick review helps other shoppers and earns you a bonus of up to 10% in tokens." }] : []),
+    { kind: "button", label: status === "delivered" ? "Rate your order" : "Track your order", url: appLink(`/order/${o.id}`) },
+  ];
+  return build(to, copy.subject, { preheader: copy.lead.replace(/\*\*/g, ""), hero: copy.hero, eyebrow: `Order ${o.number}`, heading: copy.heading, blocks, reason: "You're getting this because you placed this order on Sotechy." });
+}
+
+export function offerAcceptedEmail(to: string, d: { name: string | null; store: string; product: string; listPrice: number; agreedPrice: number; hours: number; expiresAt: Date; url: string }) {
+  return build(to, `${d.store} accepted your offer`, {
+    preheader: `Pay ${formatNaira(d.agreedPrice)} for ${d.product} within ${d.hours} hours.`,
+    hero: "offer-accepted",
+    eyebrow: d.store,
+    heading: "Your offer was accepted",
+    blocks: [
+      { kind: "text", text: `Good news, ${first(d.name)}. **${d.store}** agreed to your price for **${d.product}**.` },
+      { kind: "price", was: d.listPrice, now: d.agreedPrice, caption: `Held for you until ${when(d.expiresAt)}` },
+      { kind: "note", tone: "warn", icon: "sparkle", text: `This price is only for you and lasts **${d.hours} hours**. After that it goes back to ${formatNaira(d.listPrice)}.` },
+      { kind: "button", label: "Buy at this price", url: d.url },
+    ],
+    reason: "You're getting this because you made an offer on Sotechy.",
+  });
+}
+
+export function storeNoticeEmail(to: string, d: { name: string | null; store: string; title: string; message: string; url: string }) {
+  return build(to, `${d.store}: ${d.title}`, {
+    preheader: d.message,
+    hero: "store-notice",
+    eyebrow: `From ${d.store}`,
+    heading: d.title,
+    blocks: [
+      { kind: "text", text: d.message },
+      { kind: "button", label: `Visit ${d.store}`, url: d.url },
+    ],
+    reason: `You're getting this because you follow ${d.store} on Sotechy. Unfollow the store in the app to stop these.`,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Merchants
+// ---------------------------------------------------------------------------
+export function storeOpenedEmail(to: string, d: { name: string | null; store: string; ticker: string }) {
+  return build(to, `${d.store} is open on Sotechy`, {
+    preheader: "You're in test mode. Finish setup to start selling for real.",
+    hero: "store-opened",
+    eyebrow: "Sotechy for merchants",
+    heading: `${d.store} is open`,
+    blocks: [
+      { kind: "text", text: `Welcome, ${first(d.name)}. Your store and its token **$${d.ticker}** are ready. You're in **test mode** until Sotechy verifies your store.` },
+      {
+        kind: "checklist",
+        items: [
+          { done: true, text: "Open your store" },
+          { done: false, text: "Add your business details and ID" },
+          { done: false, text: "Add a payout bank account" },
+          { done: false, text: "Choose where you deliver" },
+          { done: false, text: "Add your first products" },
+        ],
+      },
+      { kind: "button", label: "Continue setup", url: merchantLink("/onboarding") },
+    ],
+    reason: "You're getting this because you opened a store on Sotechy.",
+  });
+}
+
+export function newOrderEmail(to: string, d: { store: string; order: OrderEmailData; customer: string; respondBy: Date }) {
+  const o = d.order;
+  return build(to, `New order ${o.number}: ${formatNaira(o.total)}`, {
+    preheader: `Accept it by ${when(d.respondBy)}.`,
+    hero: "new-order",
+    eyebrow: `${d.store} · New order`,
+    heading: `New order from ${d.customer}`,
+    blocks: [
+      { kind: "note", tone: "warn", icon: "sparkle", text: `Accept or decline by **${when(d.respondBy)}**. Orders not answered in time are cancelled and refunded.` },
+      { kind: "items", items: o.items, totals: [{ label: o.fulfilment === "pickup" ? "Total (pickup)" : "Total (with delivery)", amount: o.total, strong: true }] },
+      { kind: "rows", rows: o.fulfilment === "pickup" ? [{ icon: "store", label: "Customer picks up", value: o.pickup?.place ?? "At your store" }] : [{ icon: "bike", label: "Deliver to", value: o.address ?? "" }] },
+      { kind: "button", label: "Review the order", url: merchantLink(`/orders/${o.id}`) },
+    ],
+    reason: "New-order emails can't be turned off, so you never miss a sale.",
+  });
+}
+
+export function offerReceivedEmail(to: string, d: { store: string; customer: string; product: string; listPrice: number; offer: number; message?: string | null; url: string }) {
+  const off = Math.round(((d.listPrice - d.offer) / d.listPrice) * 100);
+  return build(to, `${d.customer} offered ${formatNaira(d.offer)} for ${d.product}`, {
+    preheader: `${off}% below your price. Accept, counter or decline.`,
+    hero: "offer",
+    eyebrow: `${d.store} · Price offer`,
+    heading: "You have a new offer",
+    blocks: [
+      { kind: "text", text: `**${d.customer}** wants **${d.product}**.` },
+      { kind: "price", was: d.listPrice, now: d.offer, caption: `${off}% below your price` },
+      ...(d.message ? [{ kind: "note" as const, icon: "chat" as const, text: `"${d.message}"` }] : []),
+      { kind: "text", text: "If you accept, you choose how long they get to pay at that price: 6, 12 or 24 hours." },
+      { kind: "button", label: "Answer the offer", url: d.url },
+    ],
+    reason: "You're getting this because a customer made an offer on one of your products.",
+  });
+}
+
+export function payoutSentEmail(to: string, d: { store: string; amount: number; bank: string; account: string; reference: string; orders: { number: string; amount: number; stage: string }[] }) {
+  return build(to, `${formatNaira(d.amount)} is on its way to your bank`, {
+    preheader: `${d.orders.length} order${d.orders.length === 1 ? "" : "s"} paid out to ${d.bank}.`,
+    hero: "payout",
+    eyebrow: `${d.store} · Payout`,
+    heading: `${formatNaira(d.amount)} sent`,
+    blocks: [
+      { kind: "rows", rows: [{ icon: "bank", label: "Paid to", value: `${d.bank} · ${d.account}` }, { icon: "receipt", label: "Reference", value: d.reference }] },
+      { kind: "items", items: d.orders.map((o) => ({ name: o.number, detail: o.stage, quantity: 1, amount: o.amount })), totals: [{ label: "Total", amount: d.amount, strong: true }] },
+      { kind: "text", text: "Bank transfers usually arrive within minutes, and can take up to 24 hours." },
+      { kind: "button", label: "See payouts", url: merchantLink("/payouts") },
+    ],
+    reason: "You're getting this because Sotechy sent money to your store's bank account.",
+  });
+}
+
+export function storeVerifiedEmail(to: string, d: { name: string | null; store: string }) {
+  return build(to, `${d.store} is verified. You're live!`, {
+    preheader: "Customers can now buy from your store.",
+    hero: "verified",
+    eyebrow: d.store,
+    heading: "You're verified and live",
+    blocks: [
+      { kind: "text", text: `Congratulations, ${first(d.name)}. Sotechy has checked your details, and **${d.store}** now takes real orders.` },
+      { kind: "note", tone: "good", icon: "shield", text: "Your store shows the verified badge to customers." },
+      { kind: "button", label: "Open your dashboard", url: merchantLink("/") },
+    ],
+    reason: "You're getting this because your store's verification was approved.",
+  });
+}
+
+export function featuredEmail(to: string, d: { store: string; until: Date; price: number }) {
+  return build(to, `${d.store} is featured`, {
+    preheader: `Shown on the Sotechy home page until ${when(d.until)}.`,
+    hero: "featured",
+    eyebrow: `${d.store} · Featured`,
+    heading: "Your store is featured",
+    blocks: [
+      { kind: "text", text: `Thanks for your payment of **${formatNaira(d.price)}**. **${d.store}** now appears in the featured stores on the Sotechy home page, and your products show first in search.` },
+      { kind: "rows", rows: [{ icon: "sparkle", label: "Featured until", value: when(d.until) }] },
+      { kind: "button", label: "See how it's doing", url: merchantLink("/featured") },
+    ],
+    reason: "You're getting this because you paid to feature your store.",
+  });
+}

@@ -7,6 +7,8 @@ import { requireAuth, type AppEnv } from "../lib/auth";
 import { conflict, notFound } from "../lib/errors";
 import { claimUsername, phoneField, slugify, tickerFrom } from "../lib/identity";
 import { publicUser } from "../lib/serialize";
+import { sendEmailLater } from "../lib/email";
+import { storeOpenedEmail } from "../emails/templates";
 
 const storeOf = async (ownerId: string) => (await db.select().from(schema.merchants).where(eq(schema.merchants.ownerId, ownerId)))[0] ?? null;
 
@@ -67,6 +69,7 @@ export const merchantRoutes = new Hono<AppEnv>()
         return row;
       });
       const [fresh] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+      sendEmailLater(storeOpenedEmail(fresh.email, { name: fresh.fullName, store: store.name, ticker: store.ticker }));
       return c.json({ user: publicUser(fresh), store }, 201);
     },
   )

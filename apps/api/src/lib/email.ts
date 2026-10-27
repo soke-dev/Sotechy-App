@@ -27,20 +27,3 @@ export async function sendEmail(email: Email): Promise<void> {
 export function sendEmailLater(email: Email) {
   sendEmail(email).catch((err) => console.error("Email failed:", err instanceof Error ? err.message : err));
 }
-
-const escape = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-
-/** Sotechy's simple email layout: cream page, white card, orange accent */
-export function layout(opts: { heading: string; paragraphs: string[]; code?: string; footer?: string }) {
-  const p = (t: string) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:#4a4039">${escape(t)}</p>`;
-  return `<!doctype html><html><body style="margin:0;background:#faf6f1;font-family:Arial,Helvetica,sans-serif">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf6f1;padding:32px 16px"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:20px;padding:32px">
-<tr><td>
-<p style="margin:0 0 24px;font-size:20px;font-weight:800;color:#f7931e">SoTechy</p>
-<h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;color:#1a1410">${escape(opts.heading)}</h1>
-${opts.paragraphs.map(p).join("")}
-${opts.code ? `<p style="margin:20px 0;font-size:34px;font-weight:800;letter-spacing:8px;color:#1a1410">${escape(opts.code)}</p>` : ""}
-<p style="margin:24px 0 0;font-size:12px;line-height:1.5;color:#9a8f86">${escape(opts.footer ?? "Sotechy Shop · Benin City, Nigeria")}</p>
-</td></tr></table></td></tr></table></body></html>`;
-}

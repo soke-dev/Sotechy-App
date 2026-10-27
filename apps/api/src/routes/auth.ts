@@ -7,7 +7,8 @@ import { db, schema } from "../db/client";
 import { checkPassword, hashPassword, issueToken, requireAuth, type AppEnv } from "../lib/auth";
 import { env } from "../env";
 import { badRequest, conflict, forbidden, HttpError, unauthorized } from "../lib/errors";
-import { layout, sendEmail, sendEmailLater } from "../lib/email";
+import { sendEmail, sendEmailLater } from "../lib/email";
+import { passwordCodeEmail, welcomeEmail } from "../emails/templates";
 import { getFeatures, requireFeature } from "../services/features";
 import { publicUser } from "../lib/serialize";
 import { claimUsername, normaliseUsername, phoneField, usernameRule } from "../lib/identity";
@@ -19,31 +20,6 @@ const credentials = z.object({
 
 const RESET_MINUTES = 15;
 const hashCode = (code: string) => createHmac("sha256", env.JWT_SECRET).update(code).digest("hex");
-
-const welcomeEmail = (to: string, name: string | null) => ({
-  to,
-  subject: "Welcome to Sotechy",
-  text: `Hi ${name?.split(" ")[0] ?? "there"}, your Sotechy account is ready. Shop from stores across Nigeria and earn tokens on every order.`,
-  html: layout({
-    heading: `Welcome${name ? `, ${name.split(" ")[0]}` : ""}`,
-    paragraphs: [
-      "Your Sotechy account is ready.",
-      "Shop from stores across Nigeria, earn tokens on every completed order, and spend them at the store you earned them from.",
-    ],
-  }),
-});
-
-const resetEmail = (to: string, code: string) => ({
-  to,
-  subject: `${code} is your Sotechy code`,
-  text: `Your code to reset your Sotechy password is ${code}. It works for ${RESET_MINUTES} minutes. If you didn't ask for it, ignore this email.`,
-  html: layout({
-    heading: "Reset your password",
-    paragraphs: [`Enter this code to choose a new password. It works for ${RESET_MINUTES} minutes.`],
-    code,
-    footer: "Didn't ask for this? You can ignore this email; your password stays the same.",
-  }),
-});
 
 /** Signing in takes an email or an @username */
 const signInFields = z.object({
@@ -81,7 +57,7 @@ export const authRoutes = new Hono<AppEnv>()
           whatsappPhone: phoneField(input.whatsappPhone, "WhatsApp number") ?? null,
         })
         .returning();
-      sendEmailLater(welcomeEmail(user.email, user.fullName));
+      sendEmailLater(welcomeEmail(user.email, { name: user.fullName }));
       return c.json({ token: await issueToken(user), user: publicUser(user) }, 201);
     },
   )
@@ -97,7 +73,7 @@ export const authRoutes = new Hono<AppEnv>()
         const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
         await db.delete(schema.passwordResets).where(eq(schema.passwordResets.userId, user.id));
         await db.insert(schema.passwordResets).values({ userId: user.id, codeHash: hashCode(code), expiresAt: new Date(Date.now() + RESET_MINUTES * 60_000) });
-        await sendEmail(resetEmail(user.email, code));
+        await sendEmail(passwordCodeEmail(user.email, { code, minutes: RESET_MINUTES }));
       }
     }
     return c.json({ ok: true });

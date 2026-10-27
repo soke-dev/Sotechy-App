@@ -1,8 +1,9 @@
+import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
-import { corsOrigins } from "./env";
+import { corsOrigins, env } from "./env";
 import { requireAuth, requireRole, STAFF, type AppEnv } from "./lib/auth";
 import { HttpError } from "./lib/errors";
 import { adminCatalogRoutes } from "./routes/admin/catalog";
@@ -10,6 +11,7 @@ import { adminContentRoutes } from "./routes/admin/content";
 import { adminManagementRoutes } from "./routes/admin/management";
 import { adminOperationsRoutes } from "./routes/admin/operations";
 import { authRoutes } from "./routes/auth";
+import { devEmailRoutes } from "./routes/dev-emails";
 import { mediaRoutes } from "./routes/media";
 import { merchantRoutes } from "./routes/merchant";
 import { meRoutes } from "./routes/me";
@@ -31,6 +33,8 @@ export const app = new Hono()
   .use(cors({ origin: corsOrigins, credentials: true }))
   .get("/", (c) => c.json({ name: "Sotechy API", status: "ok" }))
   .get("/health", (c) => c.json({ ok: true }))
+  // Pictures used in emails (logo, illustrations), from apps/api/public/email
+  .use("/email-assets/*", serveStatic({ root: "./public/email", rewriteRequestPath: (p) => p.replace(/^\/email-assets/, "") }))
   .route("/auth", authRoutes)
   .route("/store", storeRoutes)
   .route("/orders", orderRoutes)
@@ -39,6 +43,9 @@ export const app = new Hono()
   .route("/payments", paymentRoutes)
   .route("/media", mediaRoutes)
   .route("/admin", admin);
+
+// Every email with sample data, for designing them (never on the live server)
+if (env.NODE_ENV !== "production") app.route("/dev/emails", devEmailRoutes);
 
 app.onError((err, c) => {
   if (err instanceof HttpError) return c.json({ error: err.message, details: err.details }, err.status);
