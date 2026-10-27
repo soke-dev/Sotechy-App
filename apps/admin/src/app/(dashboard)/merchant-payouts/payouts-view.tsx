@@ -53,22 +53,25 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
   const owed = list.filter((p) => p.status === "owed");
 
   const { ask, prompt } = usePasswordPrompt();
-  const act = (id: string, action: "send" | "hold" | "release" | "settle") =>
+  // The password is asked before the transition starts: inside it, closing the confirm sheet is
+  // held back, and that sheet would cover the password prompt.
+  const act = async (id: string, action: "send" | "hold" | "release" | "settle") => {
+    setError(null);
+    let password = "";
+    if (action !== "hold") {
+      const p = list.find((x) => x.id === id);
+      setConfirm(null);
+      const given = await ask(action === "send" ? "Confirm this payout" : action === "release" ? "Release this payout?" : "Mark as repaid?", p ? `${formatNaira(p.amount)} · ${p.storeName} · ${p.orderNumber}` : undefined);
+      if (!given) return;
+      password = given;
+    }
     start(async () => {
-      setError(null);
-      let password = "";
-      if (action !== "hold") {
-        const p = list.find((x) => x.id === id);
-        setConfirm(null);
-        const given = await ask(action === "send" ? "Confirm this payout" : action === "release" ? "Release this payout?" : "Mark as repaid?", p ? `${formatNaira(p.amount)} · ${p.storeName} · ${p.orderNumber}` : undefined);
-        if (!given) return;
-        password = given;
-      }
       const r = await payoutAction(id, action, password);
       if ("error" in r) setError(r.error);
       setConfirm(null);
       router.refresh();
     });
+  };
 
   return (
     <>

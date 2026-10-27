@@ -127,13 +127,13 @@ export function OrderReviews({ cases }: { cases: OrderCase[] }) {
               {current.kind === "payback" && current.payoutId && (
                 <button
                   disabled={busy}
-                  onClick={() =>
-                    act(async () => {
-                      setCurrent(null);
-                      const password = await ask("Mark this payback repaid?", `${current.merchant} · ${current.order}`);
-                      return password ? markRepaid(current.payoutId!, password) : { error: "" };
-                    })
-                  }
+                  onClick={async () => {
+                    // Asked outside the transition, so this sheet closes and doesn't cover the prompt
+                    const payoutId = current.payoutId!;
+                    setCurrent(null);
+                    const password = await ask("Mark this payback repaid?", `${current.merchant} · ${current.order}`);
+                    if (password) act(() => markRepaid(payoutId, password));
+                  }}
                   className={`${primaryButtonClass} w-full`}
                 >
                   Mark it repaid
