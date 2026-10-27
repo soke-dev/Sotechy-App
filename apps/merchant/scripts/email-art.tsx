@@ -2,7 +2,7 @@
 // dashboard. Writes to apps/api/public/email. Run again after changing an illustration:
 //   node --import tsx scripts/email-art.tsx   (from apps/merchant)
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import sharp from "sharp";
 import { Illo, type IlloName } from "../src/components/illustrations";
