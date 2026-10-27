@@ -204,7 +204,7 @@ function OverviewTab({
         {product.allowPickup && (
           <InfoRow
             illo="store"
-            title={pickupBranch ? `Pick up at ${pickupBranch}` : "Store pickup"}
+            title={pickupBranch ? `Pick up at ${pickupBranch}` : "Pickup location"}
             subtitle={pickupBranch ? "Usually ready the same day" : "Currently unavailable"}
           />
         )}

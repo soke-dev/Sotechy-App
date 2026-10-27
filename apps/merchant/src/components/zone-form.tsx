@@ -30,7 +30,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
 }
 
 /** Add or edit a delivery area: state, optional cities, home and pickup prices, time and free-delivery amount.
- *  New areas, and changes to the state or cities, go to Sotechy for approval. */
+ *  New areas, and changes to the state, cities or pickup location, go to Sotechy for approval. */
 /** Saves to the store's delivery areas, then hands back the saved area */
 export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSave: (z: DeliveryZone) => void; onDelete?: () => void }) {
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +60,11 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
     setState(s);
     setAreas([]);
   };
-  const placeChanged = !zone || zone.state !== state || (whole ? zone.areas.length > 0 : zone.areas.join("|") !== areas.join("|"));
+  const placeChanged =
+    !zone ||
+    zone.state !== state ||
+    (whole ? zone.areas.length > 0 : zone.areas.join("|") !== areas.join("|")) ||
+    (zone.pickup?.point ?? "").trim() !== (hasPickup ? point.trim() : "");
   const valid = (whole || areas.length > 0) && (!hasPickup || point.trim().length > 0);
   const cheaper = hasPickup && homeFee > 0 && pickupFee >= homeFee;
 
@@ -69,7 +73,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
       {placeChanged && (
         <p className="flex items-start gap-2 rounded-2xl bg-warn-soft px-3 py-2.5 text-sm text-warn">
           <Clock size={16} className="mt-0.5 shrink-0" />
-          {zone ? "Changing the state or cities sends this area back to Sotechy for approval." : "Sotechy checks you can really deliver here before customers see it. Usually within a day."}
+          {zone ? "Changing the state, cities or pickup location sends this area back to Sotechy for approval." : "Sotechy checks you can really deliver here before customers see it. Usually within a day."}
         </p>
       )}
       <Field required label="State">

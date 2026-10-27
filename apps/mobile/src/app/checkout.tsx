@@ -259,7 +259,7 @@ export default function CheckoutScreen() {
             </Txt>
           )}
           <View style={[ui.row, { gap: space.md, alignItems: "stretch" }]}>
-            {features.pickup && <FulfilmentCard illo="store" title="Store pickup" subtitle={seller ? (pickupPoints.length ? `From ${formatNaira(Math.min(...pickupPoints.map((p) => p.pickupFee ?? 0)))}` : "Collect from the store") : "Free · usually same day"} active={fulfilment === "pickup" && canPickup} locked={!itemsPickup} onPress={() => setFulfilment("pickup")} />}
+            {features.pickup && <FulfilmentCard illo="pin" title="Pickup location" subtitle={seller ? (pickupPoints.length ? `From ${formatNaira(Math.min(...pickupPoints.map((p) => p.pickupFee ?? 0)))}` : "Collect it yourself") : "Free · usually same day"} active={fulfilment === "pickup" && canPickup} locked={!itemsPickup} onPress={() => setFulfilment("pickup")} />}
             {features.delivery && <FulfilmentCard
               illo="bike"
               title="Delivery"
@@ -291,14 +291,14 @@ export default function CheckoutScreen() {
           )}
         </Section>
 
-        <Section step={2} title={fulfilment === "pickup" ? "Pickup store" : "Delivery details"}>
+        <Section step={2} title={fulfilment === "pickup" ? "Pickup location" : "Delivery details"}>
           {fulfilment === "pickup" &&
             seller &&
             (pickupPoints.length ? (
               pickupPoints.map((p) => (
                 <OptionRow
                   key={p.id}
-                  illo="store"
+                  illo="pin"
                   title={p.pickupPoint ?? seller.name}
                   subtitle={`${p.state} · ${p.pickupFee ? formatNaira(p.pickupFee) : "Free"} · ${p.days}`}
                   selected={pickupPoint?.id === p.id}
@@ -306,7 +306,7 @@ export default function CheckoutScreen() {
                 />
               ))
             ) : (
-              <OptionRow illo="store" title={seller.name} subtitle="The store tells you where and when to collect" selected onPress={() => {}} />
+              <OptionRow illo="pin" title={seller.name} subtitle="The store tells you where and when to collect it" selected onPress={() => {}} />
             ))}
           {fulfilment === "pickup" &&
             !seller &&

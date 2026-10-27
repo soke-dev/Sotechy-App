@@ -645,8 +645,9 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     const z = c.req.valid("json");
     const [before] = await db.select().from(deliveryZones).where(and(eq(deliveryZones.id, c.req.param("id")), eq(deliveryZones.merchantId, c.get("store").id)));
     if (!before) throw notFound("Delivery area not found");
-    // A different state or list of areas needs checking again; prices and days don't
-    const coverageChanged = before.state !== z.state || before.areas.join("|") !== z.areas.join("|");
+    // A different state, list of areas or pickup location needs checking again; prices and days don't
+    const coverageChanged =
+      before.state !== z.state || before.areas.join("|") !== z.areas.join("|") || (before.pickupPoint ?? "").trim() !== (z.pickup?.point ?? "").trim();
     const [row] = await db
       .update(deliveryZones)
       .set({ state: z.state, areas: z.areas, homeFee: z.homeFee, pickupFee: z.pickup?.fee ?? null, pickupPoint: z.pickup?.point ?? null, days: z.days, freeOver: z.freeOver ?? null, isActive: z.active, ...(coverageChanged && { review: "pending" as const, reviewNote: null }) })
