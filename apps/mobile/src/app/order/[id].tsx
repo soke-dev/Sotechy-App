@@ -18,6 +18,9 @@ import { Illo, type IlloName } from "@/components/illustrations";
 import { LinearGradient } from "expo-linear-gradient";
 import { SupportChatModal } from "@/components/support-chat";
 import { ProductImage } from "@/components/product-image";
+import { ReviewSheet } from "@/components/review-sheet";
+import { Sheet } from "@/components/shop-filters";
+import { refreshHeldTokens } from "@/lib/held-tokens";
 
 function Section({ title, illo, right, children }: { title: string; illo: IlloName; right?: ReactNode; children: ReactNode }) {
   return (
@@ -137,6 +140,9 @@ export default function OrderScreen() {
   const [paying, setPaying] = useState(false);
   const [allUpdates, setAllUpdates] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  // Reviewing from the order: pick the item first when there's more than one
+  const [pickingReview, setPickingReview] = useState(false);
+  const [reviewing, setReviewing] = useState<{ productId: string; name: string } | null>(null);
   const [confirming, setConfirming] = useState<"yes" | "no" | null>(null);
   const moneyMoves = useMoneyMoves();
   const [payOpen, setPayOpen] = useState(false);
@@ -224,6 +230,21 @@ export default function OrderScreen() {
     } finally {
       setPaying(false);
     }
+  }
+
+  const reviewable = [...new Map(order.items.filter((i) => i.productId).map((i) => [i.productId!, { productId: i.productId!, name: i.productName, imageUrl: i.imageUrl ?? null }])).values()];
+  function startReview() {
+    tap();
+    if (reviewable.length === 1) setReviewing(reviewable[0]);
+    else setPickingReview(true);
+  }
+  async function submitReview(input: { rating: number; title: string; body: string; photos: string[] }) {
+    const r = await api.submitReview({ productId: reviewing!.productId, rating: input.rating, title: input.title || null, body: input.body, photos: input.photos });
+    setReviewing(null);
+    if (r.bonus) {
+      void refreshHeldTokens();
+      toast(`Thanks! You earned ${r.bonus.amount.toLocaleString("en-NG")} tokens for your review`, { icon: "star" });
+    } else toast("Thanks for your review!", { icon: "star" });
   }
 
   function buyAgain() {
@@ -367,7 +388,16 @@ export default function OrderScreen() {
         )}
       </Section>
 
-      <Section title={`Items (${order.items.reduce((n, i) => n + i.quantity, 0)})`} illo="box" right={finished ? <Button title="Buy again" size="sm" variant="outline" icon="refresh" onPress={buyAgain} /> : undefined}>
+      <Section title={`Items (${order.items.reduce((n, i) => n + i.quantity, 0)})`} illo="box"
+        right={
+          finished ? (
+            <View style={[ui.row, { gap: space.xs }]}>
+              {order.status === "delivered" && reviewable.length > 0 && <Button title="Review" size="sm" variant="outline" icon="star-outline" onPress={startReview} />}
+              <Button title="Buy again" size="sm" variant="outline" icon="refresh" onPress={buyAgain} />
+            </View>
+          ) : undefined
+        }
+      >
         {order.items.map((i, idx) => (
           <View key={i.id}>
             {idx > 0 && <Divider style={{ marginBottom: space.md }} />}
@@ -453,6 +483,25 @@ export default function OrderScreen() {
         </View>
       </View>
       <SupportChatModal visible={chatOpen} onClose={() => setChatOpen(false)} orderId={order.id} />
+      <Sheet visible={pickingReview} title="Which item?" onClose={() => setPickingReview(false)}>
+        <View style={{ gap: space.sm }}>
+          {reviewable.map((it) => (
+            <Pressable
+              key={it.productId}
+              onPress={() => {
+                setPickingReview(false);
+                setReviewing(it);
+              }}
+              style={({ pressed }) => [ui.card, ui.row, { gap: space.md, padding: space.md, backgroundColor: pressed ? colors.surfaceAlt : colors.surface }]}
+            >
+              <ProductImage uri={it.imageUrl} name={it.name} style={{ width: 48, height: 48 }} radius={10} iconSize={20} />
+              <Txt variant="label" numberOfLines={2} style={{ flex: 1 }}>{it.name}</Txt>
+              <Ionicons name="star-outline" size={18} color={colors.brandPressed} />
+            </Pressable>
+          ))}
+        </View>
+      </Sheet>
+      <ReviewSheet visible={!!reviewing} productName={reviewing?.name ?? ""} onClose={() => setReviewing(null)} onSubmit={submitReview} />
 
       {order.status === "pending_payment" && <Button title="Cancel order" variant="danger" icon="close-circle-outline" onPress={cancel} loading={cancelling} />}
       {moneyMoves.sheet}
