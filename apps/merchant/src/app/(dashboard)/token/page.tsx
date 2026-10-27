@@ -84,7 +84,7 @@ export default async function TokenPage() {
           <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
             {token && s.contractUrl ? (
               <a href={s.contractUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-white/15">
-                Token #{token.tokenId} on Monad <ExternalLink size={14} />
+                View ${t} on Monad explorer <ExternalLink size={14} />
               </a>
             ) : (
               <span className="rounded-full bg-white/10 px-3 py-1.5">Being created on Monad</span>
