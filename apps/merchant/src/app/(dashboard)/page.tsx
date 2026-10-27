@@ -106,6 +106,26 @@ export default async function HomePage() {
         </Link>
       )}
 
+      {/* Orders on their way come next, before the numbers */}
+      {active.length > 0 && (
+        <Card className="mb-6" title="Orders in progress" actions={<Link href="/orders" className="text-sm font-semibold text-brand-strong hover:underline">All orders</Link>}>
+          <ul className="flex flex-col divide-y divide-line">
+            {active.map((o) => (
+              <li key={o.id}>
+                <Link href={`/orders/${o.id}`} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                  <ProductThumb src={o.items[0].image} size={44} rounded="rounded-xl" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{o.items[0].name}{o.items.length > 1 ? ` +${o.items.length - 1}` : ""}</p>
+                    <p className="text-xs text-muted">{o.number} · <RelTime iso={o.createdAt} /></p>
+                  </div>
+                  <Pill tone={ORDER_STATUS[o.status].tone}>{ORDER_STATUS[o.status].label}</Pill>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard accent illo="wallet" label="Sales, last 14 days" value={formatNaira(sales14)} hint={`${orders.filter((o) => o.status === "completed").length} completed orders`} />
         <StatCard illo="bank" label="Owed to you" value={formatNaira(owedSecondHalf)} hint={`From ${active.length} order${active.length === 1 ? "" : "s"} in progress`} />
@@ -161,24 +181,7 @@ export default async function HomePage() {
         </Card>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Card title="Orders in progress" actions={<Link href="/orders" className="text-sm font-semibold text-brand-strong hover:underline">All orders</Link>}>
-          {!active.length && <p className="text-sm text-muted">No orders in progress. Orders you accept show here until they&apos;re delivered.</p>}
-          <ul className="flex flex-col divide-y divide-line">
-            {active.map((o) => (
-              <li key={o.id}>
-                <Link href={`/orders/${o.id}`} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                  <ProductThumb src={o.items[0].image} size={44} rounded="rounded-xl" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{o.items[0].name}{o.items.length > 1 ? ` +${o.items.length - 1}` : ""}</p>
-                    <p className="text-xs text-muted">{o.number} · <RelTime iso={o.createdAt} /></p>
-                  </div>
-                  <Pill tone={ORDER_STATUS[o.status].tone}>{ORDER_STATUS[o.status].label}</Pill>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Card>
+      <div className="mt-6">
         <Card title="Running low" actions={<Link href="/products" className="text-sm font-semibold text-brand-strong hover:underline">Products</Link>}>
           {lowStock.length ? (
             <ul className="flex flex-col divide-y divide-line">
