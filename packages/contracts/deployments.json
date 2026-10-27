@@ -1,0 +1,14 @@
+{
+  "monad": [
+    {
+      "chainId": 143,
+      "address": "0x04779caedcc9ecfd28a6a51cf85536be67db01db",
+      "version": 1,
+      "owner": "0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89",
+      "operator": "0x5AFD0A521E022904fD61B741CDd3Fc335936804c",
+      "txHash": "0xa1df999f60e37efd869e438f5f0e465ebbec77eb056d1546a58130dd73929f5f",
+      "block": 117064332,
+      "deployedAt": "2026-10-27T14:23:24.636Z"
+    }
+  ]
+}
