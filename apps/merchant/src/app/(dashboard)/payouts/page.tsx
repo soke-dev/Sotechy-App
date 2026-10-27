@@ -3,16 +3,19 @@ import { Illo } from "@/components/illustrations";
 import { btn, Card, PageHeader, StatCard } from "@/components/ui";
 import { PayoutHistory } from "@/components/payout-history";
 import { formatNaira } from "@/lib/money";
-import { bank, orderMoney, orders, payouts } from "@/lib/mock";
+import { api, getStoreSession } from "@/lib/api";
+import { orderMoney, payouts } from "@/lib/mock";
 
-export default function PayoutsPage() {
+export default async function PayoutsPage() {
+  const [{ store }, orders] = await Promise.all([getStoreSession(), api.merchantOrders()]);
+  const bank = store.application?.bank ?? null;
   const paid = payouts.filter((p) => p.status === "paid").reduce((n, p) => n + p.amount, 0);
   const onTheWay = orders.filter((o) => ["accepted", "shipped", "delivered"].includes(o.status)).reduce((n, o) => n + orderMoney(o).second, 0);
   const payback = orders.filter((o) => o.status === "payback").reduce((n, o) => n + orderMoney(o).first, 0);
 
   return (
     <>
-      <PageHeader illo="bank" title="Payouts" description="Sent automatically to your bank: 50% when you accept an order, 50% when the customer confirms delivery. Sotechy's 2% fee is taken first." />
+      <PageHeader illo="bank" title="Payouts" description="Money for your orders is sent to your bank on your payout plan, after Sotechy's fee." />
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <StatCard accent illo="wallet" label="Paid to you, last 30 days" value={formatNaira(paid)} hint={`${payouts.length} payouts`} />
@@ -29,8 +32,8 @@ export default function PayoutsPage() {
               <div className="flex items-center gap-4 rounded-2xl bg-surface-alt p-4">
                 <Illo name="bank" size={44} />
                 <div>
-                  <p className="font-semibold">{bank.accountName}</p>
-                  <p className="text-sm text-muted">{bank.bankName} · ••••{bank.accountNumber.slice(-4)}</p>
+                  <p className="font-semibold">{bank.bankName}</p>
+                  <p className="text-sm text-muted">Account ••••{bank.accountNumber.slice(-4)}</p>
                 </div>
               </div>
             ) : (

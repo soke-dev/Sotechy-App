@@ -1,8 +1,9 @@
 // The merchant dashboard's data. Orders, products, payouts and the rest come with the marketplace backend;
 // until then every store starts empty (no sample data), with the shared types and labels kept here.
+import type { DeliveryZone, MerchantOrder, MerchantOrderStatus, MerchantProduct, OfferHours } from "@sotechy/shared";
 import { splitOrder, SOTECHY_CROSS_BONUS, STORE_VALUE_PER_TOKEN } from "./money";
 
-export type OrderStatus = "new" | "accepted" | "shipped" | "delivered" | "completed" | "declined" | "payback";
+export type OrderStatus = MerchantOrderStatus;
 
 export const ORDER_STATUS: Record<OrderStatus, { label: string; tone: "brand" | "good" | "warn" | "bad" | "neutral" | "info" }> = {
   new: { label: "Needs your answer", tone: "brand" },
@@ -14,27 +15,8 @@ export const ORDER_STATUS: Record<OrderStatus, { label: string; tone: "brand" | 
   payback: { label: "Payback requested", tone: "bad" },
 };
 
-export interface OrderItem {
-  name: string;
-  image: string;
-  qty: number;
-  price: number;
-  option?: string;
-}
-
-export interface Order {
-  id: string;
-  number: string;
-  status: OrderStatus;
-  customer: { name: string; username: string; phone: string; address: string };
-  fulfilment: "delivery" | "pickup";
-  items: OrderItem[];
-  /** Part of the total the customer paid with $XENA (naira value) */
-  paidWithTokens: number;
-  createdAt: string;
-  acceptBy?: string;
-  history: { at: string; label: string; note?: string }[];
-}
+export type Order = MerchantOrder;
+export type OrderItem = MerchantOrder["items"][number];
 
 export const orders: Order[] = [];
 
@@ -50,23 +32,10 @@ export function orderMoney(o: Order) {
   return { total, ...split, firstPaid, secondPaid, tokens, sotechyBonus: Math.round(total * SOTECHY_CROSS_BONUS), tokensReleased: o.status === "completed" };
 }
 
-export interface Product {
-  id: string;
-  name: string;
-  image: string;
-  category: string;
-  price: number;
-  compareAt?: number;
-  stock: number;
-  status: "live" | "draft" | "hidden";
-  sold: number;
-  options?: string[];
-  /** Customers can make an offer. `floor` is the lowest price the merchant will consider (only they see it). */
-  negotiable?: { floor?: number; hours: OfferHours };
-}
+export type Product = MerchantProduct;
 
 /** How long an agreed price lasts: never more than 24 hours */
-export type OfferHours = 6 | 12 | 24;
+export type { OfferHours };
 export const OFFER_HOURS: OfferHours[] = [6, 12, 24];
 
 export const products: Product[] = [];
@@ -126,25 +95,10 @@ export const NIGERIAN_STATES = [
 ];
 
 /** Sotechy checks every new area (and any change to its state or cities) before customers see it. */
-export type ZoneReview = "pending" | "approved" | "declined";
+type ZoneReview = DeliveryZone["review"];
 
 /** A saved delivery area: set up once, then ticked on any product. */
-export interface DeliveryZone {
-  id: string;
-  state: string;
-  /** Empty = the whole state */
-  areas: string[];
-  /** Delivered to the customer's door */
-  homeFee: number;
-  /** Collected from a pickup point in the area. Cheaper; unset = no pickup there. */
-  pickup?: { fee: number; point: string };
-  days: string;
-  freeOver?: number;
-  active: boolean;
-  review: ZoneReview;
-  reviewNote?: string;
-}
-
+export type { DeliveryZone, ZoneReview };
 export const deliveryZones: DeliveryZone[] = [];
 
 /** Customers only see areas that are approved and switched on. */

@@ -1,13 +1,14 @@
 "use client";
 
 import { Check, Lock } from "lucide-react";
-import { use, useState } from "react";
+import { useRouter } from "next/navigation";
+import { use, useState, useTransition } from "react";
 import { btn, Card, Field, inputClass, PageHeader, Tabs } from "@/components/ui";
 import { useAccount } from "@/components/account-context";
-import { bank } from "@/lib/mock";
+import { saveApplication } from "@/lib/market-actions";
 import { ProfileForm, StoreDetailsForm } from "./account-forms";
 
-const BANKS = ["Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank", "Opay", "Moniepoint", "Kuda", "PalmPay", "Wema Bank"];
+const BANKS = ["Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank", "Fidelity Bank", "Union Bank", "Sterling Bank", "Wema Bank", "Opay", "Moniepoint", "Kuda", "PalmPay"];
 
 /** `locked`: always on and can't be switched off */
 function Toggle({ on, onChange, label, hint, locked }: { on: boolean; onChange: (v: boolean) => void; label: string; hint?: string; locked?: boolean }) {
@@ -50,8 +51,20 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
   const [notify, setNotify] = useState({ newOrderSms: true, whatsapp: true, payouts: true, reviews: true, weekly: false });
   const [waNumber, setWaNumber] = useState(store.contactWhatsapp ?? store.contactPhone ?? "");
   const [waTest, setWaTest] = useState(false);
+  const bank = store.application?.bank ?? null;
+  const [bankName, setBankName] = useState(bank?.bankName ?? "");
   const [accountNumber, setAccountNumber] = useState(bank?.accountNumber ?? "");
-  const resolved = accountNumber.length === 10;
+  const resolved = accountNumber.length === 10 && !!bankName;
+  const router = useRouter();
+  const [payoutSaving, startPayout] = useTransition();
+  const [payoutMsg, setPayoutMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  /** The payout account lives with the store's setup details; the rest of them are kept as they are */
+  const savePayout = () =>
+    startPayout(async () => {
+      const r = await saveApplication({ sellerKind: store.sellerKind, sells: store.sells ?? [], ...(store.application ?? {}), bank: { bankName, accountNumber }, submit: false });
+      setPayoutMsg("error" in r ? { ok: false, text: r.error } : { ok: true, text: "Payout account saved" });
+      if ("ok" in r) router.refresh();
+    });
 
   return (
     <>
@@ -72,7 +85,7 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
           >
             <div id="payout" className="flex flex-col gap-4">
               <Field label="Bank">
-                <select defaultValue={bank?.bankName ?? ""} className={inputClass}>
+                <select value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputClass}>
                   <option value="" disabled>
                     Choose your bank
                   </option>
@@ -94,8 +107,9 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
                   Sotechy checks the name on this account matches your business or your ID before your first payout.
                 </p>
               )}
-              <button disabled={!resolved} className={btn.dark}>
-                Save payout account
+              {payoutMsg && <p className={`rounded-2xl px-4 py-3 text-sm ${payoutMsg.ok ? "bg-good-soft text-good" : "bg-bad-soft text-bad"}`}>{payoutMsg.text}</p>}
+              <button disabled={!resolved || payoutSaving} onClick={savePayout} className={btn.dark}>
+                {payoutSaving ? "Saving…" : "Save payout account"}
               </button>
             </div>
           </Card>

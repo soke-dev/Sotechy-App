@@ -129,8 +129,10 @@ export function StorefrontView({ look, products, compact = false }: { look: Stor
             <li key={p.id} className={`overflow-hidden rounded-2xl ${look.layout === "large" ? "flex items-center" : ""}`} style={{ background: t.surface }}>
               <div className={`relative flex items-center justify-center ${look.layout === "large" ? (compact ? "h-24 w-24 shrink-0" : "h-40 w-40 shrink-0") : "aspect-square"}`} style={{ background: t.accent }}>
                 <span className="absolute inset-[18%] rounded-full bg-white/25" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.image} alt="" className="relative h-[75%] w-[75%] object-contain" />
+                {p.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.image} alt="" className="relative h-[75%] w-[75%] object-contain" />
+                )}
               </div>
               <div className={compact ? "p-2" : "p-3"}>
                 <p className={`line-clamp-2 font-semibold leading-snug ${compact ? "text-[11px]" : "text-sm"}`}>{p.name}</p>

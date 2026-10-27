@@ -3,25 +3,34 @@
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, ImagePlus, Lightbulb, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useState, useTransition, type ReactNode } from "react";
 import { CategoryPicker } from "./category-picker";
 import { Illo } from "./illustrations";
 import { btn, Card, Field, inputClass, ProductThumb, Req } from "./ui";
 import { Sheet, ZoneForm, ZonePrices } from "./zone-form";
 import { formatNaira, formatTokens, SOTECHY_CROSS_BONUS } from "@/lib/money";
-import { isStandardCategory } from "@/lib/categories";
 import { hintsFor } from "@/lib/category-hints";
-import { deliveryZones, OFFER_HOURS, pickup as storePickup, products, zoneLabel, type DeliveryZone, type OfferHours, type Product } from "@/lib/mock";
+import { saveProduct, uploadFiles } from "@/lib/market-actions";
+import { OFFER_HOURS, zoneLabel, type DeliveryZone, type OfferHours, type Product } from "@/lib/mock";
 import { useAccount } from "@/components/account-context";
-
-// Categories this store made up itself under "Other", offered first next time
-const OWN_CATEGORIES = [...new Set(products.map((p) => p.category).filter((c) => !isStandardCategory(c)))];
 
 interface Option {
   name: string;
   stock: number;
-  price?: number;
 }
+
+const CONDITIONS = [
+  ["new", "New"],
+  ["used", "Used, like new"],
+  ["refurbished", "Refurbished"],
+] as const;
+const WARRANTIES = [
+  [null, "No warranty"],
+  [3, "3 months"],
+  [6, "6 months"],
+  [12, "12 months"],
+  [24, "24 months"],
+] as const;
 
 /** One block of the review sheet */
 function Review({ title, children }: { title: string; children: ReactNode }) {
@@ -33,8 +42,15 @@ function Review({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export function ProductForm({ product }: { product?: Product }) {
+/**
+ * Add or edit a product. `zones` are the store's delivery areas; `ownCategories` are categories the store
+ * named itself under "Other", offered first.
+ */
+export function ProductForm({ product, zones: initialZones, ownCategories }: { product?: Product; zones: DeliveryZone[]; ownCategories: string[] }) {
   const { store } = useAccount();
+  const [saving, startSaving] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(0);
   const [name, setName] = useState(product?.name ?? "");
   const [category, setCategory] = useState(product?.category ?? "");
   const [price, setPrice] = useState(product?.price ?? 0);
@@ -43,28 +59,29 @@ export function ProductForm({ product }: { product?: Product }) {
   const [negotiable, setNegotiable] = useState(Boolean(product?.negotiable));
   const [floor, setFloor] = useState(product?.negotiable?.floor ?? 0);
   const [offerHours, setOfferHours] = useState<OfferHours>(product?.negotiable?.hours ?? 12);
-  const [photos, setPhotos] = useState<string[]>(product ? [product.image] : []);
+  const [photos, setPhotos] = useState<string[]>(product?.images ?? []);
   // Photo being arranged (tap to pick on a phone; drag on a computer)
   const [picked, setPicked] = useState<number | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [tried, setTried] = useState(false);
   const router = useRouter();
-  const [options, setOptions] = useState<Option[]>(product?.options?.map((o) => ({ name: o, stock: Math.ceil(product.stock / product.options!.length) })) ?? []);
+  const [options, setOptions] = useState<Option[]>(product?.options ?? []);
   const [stock, setStock] = useState(product?.stock ?? 0);
-  const [brand, setBrand] = useState("");
-  const [condition, setCondition] = useState("New");
-  const [warranty, setWarranty] = useState("No warranty");
-  const [inBox, setInBox] = useState("");
-  const [about, setAbout] = useState("");
+  const [brand, setBrand] = useState(product?.brand ?? "");
+  const [condition, setCondition] = useState<Product["condition"]>(product?.condition ?? "new");
+  const [warranty, setWarranty] = useState<number | null>(product?.warrantyMonths ?? null);
+  const [inBox, setInBox] = useState(product?.inTheBox.join(", ") ?? "");
+  const [about, setAbout] = useState(product?.description ?? "");
   // Review sheet shown before the product is saved
   const [confirming, setConfirming] = useState(false);
-  const [features, setFeatures] = useState<string[]>(["", ""]);
-  const [specs, setSpecs] = useState<[string, string][]>([["", ""]]);
+  const [features, setFeatures] = useState<string[]>(product?.highlights.length ? product.highlights : ["", ""]);
+  const [specs, setSpecs] = useState<[string, string][]>(product && Object.keys(product.specifications).length ? Object.entries(product.specifications) : [["", ""]]);
   const [status, setStatus] = useState<Product["status"]>(product?.status ?? "live");
   // Delivery: tick saved areas (all of them by default) or add a new one here
-  const [zones, setZones] = useState<DeliveryZone[]>(deliveryZones.filter((z) => z.active && z.review !== "declined"));
-  const [ticked, setTicked] = useState<Set<string>>(new Set(deliveryZones.filter((z) => z.active && z.review !== "declined").map((z) => z.id)));
-  const [pickup, setPickup] = useState(storePickup.enabled);
+  const usable = initialZones.filter((z) => z.active && z.review !== "declined");
+  const [zones, setZones] = useState<DeliveryZone[]>(usable);
+  const [ticked, setTicked] = useState<Set<string>>(new Set(product ? product.deliveryZoneIds : usable.map((z) => z.id)));
+  const [pickup, setPickup] = useState(product?.pickup ?? true);
   const [editingZone, setEditingZone] = useState<DeliveryZone | "new" | null>(null);
 
   const hints = hintsFor(category);
@@ -84,11 +101,56 @@ export function ProductForm({ product }: { product?: Product }) {
     !specs.some(([k, v]) => k.trim() && v.trim()) && "at least one specification",
     options.some((o) => !o.name.trim()) && "a name for each option",
     !ticked.size && !pickup && "a delivery area or shop pickup",
+    uploading > 0 && "photos to finish uploading",
   ].filter(Boolean) as string[];
 
-  function addPhotos(files: FileList | null) {
-    if (!files) return;
-    setPhotos((p) => [...p, ...Array.from(files).map((f) => URL.createObjectURL(f))].slice(0, 8));
+  /** Photos upload as soon as they're picked, so saving only sends their addresses */
+  async function addPhotos(files: FileList | null) {
+    if (!files?.length) return;
+    const chosen = Array.from(files).slice(0, 8 - photos.length);
+    const form = new FormData();
+    form.append("kind", "image");
+    for (const f of chosen) form.append("file", f);
+    setUploading((n) => n + chosen.length);
+    const r = await uploadFiles(form);
+    setUploading((n) => n - chosen.length);
+    if ("error" in r) setSaveError(r.error);
+    else setPhotos((p) => [...p, ...r.ok.map((x) => x.url)].slice(0, 8));
+  }
+
+  function save() {
+    startSaving(async () => {
+      setSaveError(null);
+      const r = await saveProduct(product?.id ?? null, {
+        name: name.trim(),
+        brand: brand.trim() || null,
+        category,
+        condition,
+        description: about.trim(),
+        warrantyMonths: warranty,
+        inTheBox: inBox.split(",").map((x) => x.trim()).filter(Boolean),
+        highlights: features.map((f) => f.trim()).filter(Boolean),
+        specifications: Object.fromEntries(specs.filter(([k, v]) => k.trim() && v.trim()).map(([k, v]) => [k.trim(), v.trim()])),
+        images: photos,
+        price,
+        compareAt: compareAt > price ? compareAt : null,
+        stock,
+        options: options.map((o) => ({ name: o.name.trim(), stock: o.stock })),
+        status,
+        negotiable,
+        offerFloor: negotiable && floor > 0 ? floor : null,
+        offerHours: negotiable ? offerHours : null,
+        deliveryZoneIds: [...ticked].filter((id) => zones.some((z) => z.id === id)),
+        pickup,
+      });
+      if ("error" in r) {
+        setSaveError(r.error);
+        setConfirming(false);
+      } else {
+        router.push("/products");
+        router.refresh();
+      }
+    });
   }
 
   function movePhoto(from: number, to: number) {
@@ -141,7 +203,12 @@ export function ProductForm({ product }: { product?: Product }) {
                   )}
                 </button>
               ))}
-              {photos.length < 8 && (
+              {Array.from({ length: uploading }, (_, i) => (
+                <span key={`up${i}`} className="flex aspect-square animate-pulse items-center justify-center rounded-2xl bg-surface-alt text-xs font-semibold text-muted">
+                  Uploading…
+                </span>
+              ))}
+              {photos.length + uploading < 8 && (
                 <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-line text-sm font-semibold text-muted hover:border-brand hover:text-brand-strong">
                   <ImagePlus size={24} />
                   Add photos
@@ -184,24 +251,27 @@ export function ProductForm({ product }: { product?: Product }) {
                 </Field>
               </div>
               <Field required label="Category">
-                <CategoryPicker value={category} onChange={setCategory} yours={OWN_CATEGORIES} />
+                <CategoryPicker value={category} onChange={setCategory} yours={ownCategories} />
               </Field>
               <Field label="Brand">
                 <input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputClass} placeholder="e.g. Tecno" />
               </Field>
               <Field required label="Condition">
-                <select value={condition} onChange={(e) => setCondition(e.target.value)} className={inputClass}>
-                  <option>New</option>
-                  <option>Used, like new</option>
-                  <option>Refurbished</option>
+                <select value={condition} onChange={(e) => setCondition(e.target.value as Product["condition"])} className={inputClass}>
+                  {CONDITIONS.map(([v, label]) => (
+                    <option key={v} value={v}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </Field>
               <Field label="Warranty">
-                <select value={warranty} onChange={(e) => setWarranty(e.target.value)} className={inputClass}>
-                  <option>No warranty</option>
-                  <option>3 months</option>
-                  <option>6 months</option>
-                  <option>12 months</option>
+                <select value={warranty ?? ""} onChange={(e) => setWarranty(e.target.value ? Number(e.target.value) : null)} className={inputClass}>
+                  {WARRANTIES.map(([v, label]) => (
+                    <option key={label} value={v ?? ""}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </Field>
             </div>
@@ -256,7 +326,7 @@ export function ProductForm({ product }: { product?: Product }) {
             </div>
           </Card>
 
-          <Card title="Options and stock" description="Add options like colour, size or storage, each with its own stock.">
+          <Card title="Options and stock" description="Add options like colour, size or storage, each with its own stock. They all sell at the price above.">
             {options.length === 0 ? (
               <div className="flex flex-wrap items-end gap-3">
                 <Field required label="Stock">
@@ -269,10 +339,9 @@ export function ProductForm({ product }: { product?: Product }) {
             ) : (
               <div className="flex flex-col gap-2">
                 {options.map((o, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-2">
+                  <div key={i} className="grid grid-cols-[1fr_100px_auto] items-center gap-2">
                     <input value={o.name} onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className={inputClass} placeholder="e.g. 128GB · Black" />
                     <input type="number" min={0} value={o.stock} onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, stock: Number(e.target.value) } : x)))} className={inputClass} aria-label="Stock" />
-                    <input type="number" min={0} value={o.price ?? ""} onChange={(e) => setOptions(options.map((x, j) => (j === i ? { ...x, price: Number(e.target.value) || undefined } : x)))} className={inputClass} placeholder="Price" aria-label="Price" />
                     <button type="button" onClick={() => setOptions(options.filter((_, j) => j !== i))} aria-label="Remove option" className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:bg-bad-soft hover:text-bad">
                       <Trash2 size={16} />
                     </button>
@@ -360,7 +429,7 @@ export function ProductForm({ product }: { product?: Product }) {
         <div className="flex flex-col gap-6 lg:sticky lg:top-8 lg:self-start">
           <Card title="Preview" description="How it looks in the Sotechy app">
             <div className="mx-auto w-48 overflow-hidden rounded-2xl border border-line bg-surface">
-              <ProductThumb src={photos[0] ?? "/demo/item-phone.png"} size="fluid" rounded="rounded-none" />
+              <ProductThumb src={photos[0] ?? null} size="fluid" rounded="rounded-none" />
               <div className="p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">{store.name}</p>
                 <p className="line-clamp-2 text-sm font-semibold">{name || "Product name"}</p>
@@ -405,7 +474,7 @@ export function ProductForm({ product }: { product?: Product }) {
               <label className="mt-1 flex items-center justify-between gap-3 border-t border-line pt-3 text-sm">
                 <span>
                   <span className="block font-semibold">Pickup at your shop</span>
-                  <span className="text-xs text-muted">{storePickup.address}</span>
+                  <span className="text-xs text-muted">Customers collect it from your shop, free</span>
                 </span>
                 <input type="checkbox" checked={pickup} onChange={(e) => setPickup(e.target.checked)} />
               </label>
@@ -427,6 +496,7 @@ export function ProductForm({ product }: { product?: Product }) {
             </div>
           </Card>
 
+          {saveError && <p className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{saveError}</p>}
           {tried && missing.length > 0 && (
             <p className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">
               Still needed: {missing.join(", ")}.
@@ -455,7 +525,7 @@ export function ProductForm({ product }: { product?: Product }) {
             <div className="min-w-0">
               <p className="font-display text-lg font-bold leading-snug">{name}</p>
               <p className="text-muted">
-                {category} · {condition}
+                {category} · {CONDITIONS.find(([v]) => v === condition)?.[1]}
                 {brand.trim() && ` · ${brand.trim()}`}
               </p>
               <p className="text-xs text-muted">
@@ -487,7 +557,7 @@ export function ProductForm({ product }: { product?: Product }) {
               {totalStock} in stock
               {options.length > 0 && `: ${options.map((o) => `${o.name} (${o.stock})`).join(", ")}`}
             </p>
-            {warranty !== "No warranty" && <p className="text-muted">{warranty} warranty</p>}
+            {warranty && <p className="text-muted">{warranty} months warranty</p>}
           </Review>
 
           <Review title="Delivery">
@@ -530,8 +600,8 @@ export function ProductForm({ product }: { product?: Product }) {
             <button type="button" onClick={() => setConfirming(false)} className={`${btn.outline} flex-1`}>
               Edit
             </button>
-            <button type="button" onClick={() => router.push("/products")} className={`${btn.primary} flex-1`}>
-              {product ? "Save changes" : status === "live" ? "Add product" : "Save product"}
+            <button type="button" disabled={saving} onClick={save} className={`${btn.primary} flex-1`}>
+              {saving ? "Saving…" : product ? "Save changes" : status === "live" ? "Add product" : "Save product"}
             </button>
           </div>
         </div>

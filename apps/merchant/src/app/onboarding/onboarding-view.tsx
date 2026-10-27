@@ -2,7 +2,9 @@
 
 import { Check, ChevronRight, FileUp, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
+import type { MerchantApplicationInput } from "@sotechy/shared";
+import { saveApplication, uploadFiles } from "@/lib/market-actions";
 import { IdCheck } from "@/components/id-check";
 import { SellsPicker } from "@/components/sells-picker";
 import { Illo, type IlloName } from "@/components/illustrations";
@@ -38,43 +40,88 @@ export interface OnboardingStart {
   ticker: string;
   ownerName: string;
   kind: Kind;
+  sells: string[];
+  application: Omit<MerchantApplicationInput, "sellerKind" | "sells" | "submit"> | null;
+  submitted: boolean;
 }
 
-const RESERVED = ["SOTECHY", "NGN", "NAIRA", "USD", "USDT", "USDC", "MON", "MONAD", "BTC", "ETH", "CBN", "SEC"];
-const TAKEN = ["COLLINS", "MAXI", "AFRO"];
+const BANKS = ["Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank", "Fidelity Bank", "Union Bank", "Sterling Bank", "Wema Bank", "Opay", "Moniepoint", "Kuda", "PalmPay"];
 
-function tickerProblem(t: string) {
-  if (!t) return "Choose a ticker.";
-  if (t.length < 3 || t.length > 8) return "Use 3 to 8 letters or numbers.";
-  if (!/^[A-Z][A-Z0-9]*$/.test(t)) return "Letters and numbers only, starting with a letter.";
-  if (RESERVED.includes(t)) return `$${t} is reserved.`;
-  if (TAKEN.includes(t)) return `$${t} is already taken by another store.`;
-  return null;
-}
 
 export default function OnboardingView({ initialStep, start }: { initialStep?: StepId; start: OnboardingStart }) {
+  const app = start.application;
   const [kind, setKind] = useState<Kind>(start.kind);
-  const [structure, setStructure] = useState<Structure>("LTD");
+  const [structure, setStructure] = useState<Structure>(app?.structure ?? "LTD");
+  const [business, setBusiness] = useState({
+    registeredName: app?.registeredName ?? "",
+    registrationNumber: app?.registrationNumber ?? "",
+    registeredOn: app?.registeredOn ?? "",
+    tin: app?.tin ?? "",
+    businessAddress: app?.businessAddress ?? "",
+  });
+  const [bankName, setBankName] = useState(app?.bank?.bankName ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, startSaving] = useTransition();
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [step, setStep] = useState<StepId>(initialStep ?? "setup");
   const [done, setDone] = useState<Set<StepId>>(new Set());
-  const [uploaded, setUploaded] = useState<Record<string, string>>({});
-  const [people, setPeople] = useState([{ name: start.ownerName, role: "Director and owner", share: 100 }]);
-  const [storeName, setStoreName] = useState(start.storeName);
-  const [ticker, setTicker] = useState(start.ticker);
-  const [sells, setSells] = useState<string[]>([]);
-  const [account, setAccount] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  // Document name → its private address
+  const [uploaded, setUploaded] = useState<Record<string, string>>(app?.documents ?? {});
+  const [people, setPeople] = useState(app?.people?.length ? app.people : [{ name: start.ownerName, role: "Director and owner", share: 100 }]);
+  const storeName = start.storeName;
+  const ticker = start.ticker;
+  const [sells, setSells] = useState<string[]>(start.sells);
+  const [account, setAccount] = useState(app?.bank?.accountNumber ?? "");
+  const [submitted, setSubmitted] = useState(start.submitted);
+  const [confirmed, setConfirmed] = useState(false);
 
   const steps: StepId[] = useMemo(
     () => (kind === "registered" ? ["setup", "business", "documents", "you", "people", "token", "payout", "review"] : ["setup", "you", "token", "payout", "review"]),
     [kind],
   );
   const index = steps.indexOf(step);
-  const next = () => {
-    setDone((d) => new Set(d).add(step));
-    setStep(steps[Math.min(index + 1, steps.length - 1)]);
+  /** Everything so far, as the API takes it */
+  const details = (submit: boolean): MerchantApplicationInput => ({
+    sellerKind: kind,
+    sells,
+    structure: kind === "registered" ? structure : null,
+    ...(kind === "registered" ? business : { registeredName: null, registrationNumber: null, registeredOn: null, tin: null, businessAddress: null }),
+    documents: uploaded,
+    people: kind === "registered" ? people : [],
+    bank: bankName && account.length === 10 ? { bankName, accountNumber: account } : null,
+    submit,
+  });
+  const persist = (submit: boolean, then: () => void) =>
+    startSaving(async () => {
+      setError(null);
+      const r = await saveApplication(details(submit));
+      if ("error" in r) setError(r.error);
+      else then();
+    });
+  const next = () =>
+    persist(false, () => {
+      setDone((d) => new Set(d).add(step));
+      setStep(steps[Math.min(index + 1, steps.length - 1)]);
+    });
+  // What each step needs before moving on
+  const stepProblem =
+    step === "business" && (!business.registeredName.trim() || !business.registrationNumber.trim() || !business.businessAddress.trim())
+      ? "Fill in the business name, registration number and address."
+      : step === "token" && !sells.length
+        ? "Choose what you sell."
+        : step === "payout" && (!bankName || account.length !== 10)
+          ? "Choose your bank and enter the 10-digit account number."
+          : null;
+  const uploadDoc = async (name: string, file: File) => {
+    const form = new FormData();
+    form.append("kind", "document");
+    form.append("file", file);
+    setUploadingDoc(name);
+    const r = await uploadFiles(form);
+    setUploadingDoc(null);
+    if ("error" in r) setError(r.error);
+    else setUploaded((u) => ({ ...u, [name]: r.ok[0].url }));
   };
-  const problem = tickerProblem(ticker);
 
   if (submitted) {
     return (
@@ -180,11 +227,11 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
 
             {step === "business" && (
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2"><Field label="Registered business name" required hint="Exactly as on your CAC certificate."><input required className={inputClass} placeholder="e.g. Xena Gadgets Ltd" /></Field></div>
-                <Field label={`${structure === "BN" ? "BN" : structure === "IT" ? "IT" : "RC"} number`} required><input required inputMode="numeric" className={inputClass} placeholder="e.g. 1234567" /></Field>
-                <Field label="Date registered" required><input required type="date" className={inputClass} /></Field>
-                <div className="sm:col-span-2"><Field label="TIN" hint="Optional. Your tax ID number, if you have one."><input inputMode="numeric" className={inputClass} /></Field></div>
-                <div className="sm:col-span-2"><Field label="Business address" required><input required className={inputClass} placeholder="Street, city, state" /></Field></div>
+                <div className="sm:col-span-2"><Field label="Registered business name" required hint="Exactly as on your CAC certificate."><input value={business.registeredName} onChange={(e) => setBusiness({ ...business, registeredName: e.target.value })} required className={inputClass} placeholder="e.g. Xena Gadgets Ltd" /></Field></div>
+                <Field label={`${structure === "BN" ? "BN" : structure === "IT" ? "IT" : "RC"} number`} required><input value={business.registrationNumber} onChange={(e) => setBusiness({ ...business, registrationNumber: e.target.value })} required inputMode="numeric" className={inputClass} placeholder="e.g. 1234567" /></Field>
+                <Field label="Date registered"><input value={business.registeredOn} onChange={(e) => setBusiness({ ...business, registeredOn: e.target.value })} type="date" className={inputClass} /></Field>
+                <div className="sm:col-span-2"><Field label="TIN" hint="Optional. Your tax ID number, if you have one."><input value={business.tin} onChange={(e) => setBusiness({ ...business, tin: e.target.value })} inputMode="numeric" className={inputClass} /></Field></div>
+                <div className="sm:col-span-2"><Field label="Business address" required><input value={business.businessAddress} onChange={(e) => setBusiness({ ...business, businessAddress: e.target.value })} required className={inputClass} placeholder="Street, city, state" /></Field></div>
               </div>
             )}
 
@@ -201,9 +248,9 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                         {d}
                         {OPTIONAL_DOCS.includes(d) ? <span className="ml-1.5 text-sm font-normal text-muted">(optional)</span> : <Req />}
                       </span>
-                      <span className="text-sm text-muted">{uploaded[d] ?? "Tap to upload"}</span>
+                      <span className="text-sm text-muted">{uploadingDoc === d ? "Uploading…" : uploaded[d] ? "Uploaded · tap to replace" : "Tap to upload"}</span>
                     </span>
-                    <input type="file" accept=".pdf,image/png,image/jpeg" className="hidden" onChange={(e) => e.target.files?.[0] && setUploaded({ ...uploaded, [d]: e.target.files[0].name })} />
+                    <input type="file" accept=".pdf,image/png,image/jpeg" className="hidden" onChange={(e) => e.target.files?.[0] && uploadDoc(d, e.target.files[0])} />
                   </label>
                 ))}
               </div>
@@ -244,9 +291,6 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                 <Field label="What you sell" required>
                   <SellsPicker value={sells} onChange={setSells} />
                 </Field>
-                <Field label="Store name" required hint="Shown on your storefront in the Sotechy app.">
-                  <input value={storeName} onChange={(e) => setStoreName(e.target.value)} className={inputClass} />
-                </Field>
 
                 <div className="rounded-2xl bg-brand-soft p-4">
                   <p className="flex items-center gap-2 font-semibold"><Illo name="coin" size={24} /> What is a store token?</p>
@@ -258,18 +302,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                   </ul>
                 </div>
 
-                <Field label="Your ticker" required hint="3–8 letters or numbers. Usually your store name, e.g. $XENA. You can ask Sotechy to rename it later if you rebrand.">
-                  <div className={`flex items-center rounded-2xl border bg-surface pl-4 ${problem ? "border-line" : "border-good"}`}>
-                    <span className="font-display text-xl font-bold text-brand-strong">$</span>
-                    <input
-                      value={ticker}
-                      onChange={(e) => setTicker(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))}
-                      className="min-h-12 flex-1 rounded-r-2xl bg-transparent px-2 font-display text-xl font-bold uppercase tracking-wide outline-none"
-                    />
-                    {!problem && <Check size={18} className="mr-4 text-good" />}
-                  </div>
-                </Field>
-                <p className={`-mt-3 text-sm ${problem ? "text-bad" : "text-good"}`}>{problem ?? `$${ticker} is available.`}</p>
+                <p className="text-sm text-muted">Your token is <b className="text-ink">${ticker}</b>, made from your store name. If you rebrand, Sotechy can rename it.</p>
 
                 {/* Token preview */}
                 <div className="relative overflow-hidden rounded-2xl bg-panel p-5 text-white">
@@ -291,8 +324,11 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
               <div className="flex flex-col gap-4">
                 <p className="text-sm text-muted">Every payout for your orders goes to this account. It can be in {kind === "registered" ? "your registered business name" : "your business name"} or your own name, as on your ID.</p>
                 <Field label="Bank" required>
-                  <select className={inputClass}>
-                    {["GTBank", "Access Bank", "First Bank", "UBA", "Zenith Bank", "Opay", "Moniepoint", "Kuda", "PalmPay"].map((b) => <option key={b}>{b}</option>)}
+                  <select value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputClass}>
+                    <option value="" disabled>
+                      Choose your bank
+                    </option>
+                    {BANKS.map((b) => <option key={b}>{b}</option>)}
                   </select>
                 </Field>
                 <Field label="Account number" required>
@@ -315,19 +351,22 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                   </button>
                 ))}
                 <label className="mt-2 flex items-start gap-3 text-sm text-ink-2">
-                  <input type="checkbox" required className="mt-0.5" /> I confirm these details are true and I&apos;m allowed to act for this business.<Req />
+                  <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-0.5" /> I confirm these details are true and I&apos;m allowed to act for this business.<Req />
                 </label>
               </div>
             )}
           </div>
 
+          {(error || stepProblem) && <p className="mt-4 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error ?? stepProblem}</p>}
           <div className="mt-6 flex justify-between gap-3">
-            <button disabled={index === 0} onClick={() => setStep(steps[index - 1])} className={btn.ghost}>Back</button>
+            <button disabled={index === 0 || saving} onClick={() => setStep(steps[index - 1])} className={btn.ghost}>Back</button>
             {step === "review" ? (
-              <button onClick={() => setSubmitted(true)} className={btn.primary}>Submit for review</button>
+              <button disabled={saving || !confirmed} onClick={() => persist(true, () => setSubmitted(true))} className={btn.primary}>
+                {saving ? "Submitting…" : "Submit for review"}
+              </button>
             ) : (
-              <button disabled={step === "token" && !!problem} onClick={next} className={btn.dark}>
-                Save and continue <ChevronRight size={16} />
+              <button disabled={saving || !!stepProblem || uploadingDoc !== null} onClick={next} className={btn.dark}>
+                {saving ? "Saving…" : "Save and continue"} <ChevronRight size={16} />
               </button>
             )}
           </div>

@@ -10,7 +10,15 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
   return (
     <OnboardingView
       initialStep={initial}
-      start={{ storeName: store.name, ticker: store.ticker, ownerName: user.fullName || user.email, kind: store.sellerKind }}
+      start={{
+        storeName: store.name,
+        ticker: store.ticker,
+        ownerName: user.fullName || user.email,
+        kind: store.sellerKind,
+        sells: store.sells ?? [],
+        application: store.application ?? null,
+        submitted: !!store.submittedAt,
+      }}
     />
   );
 }

@@ -4,16 +4,17 @@ import { Illo } from "@/components/illustrations";
 import { btn, Card, Pill, ProductThumb, StatCard } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens } from "@/lib/money";
-import { getStoreSession } from "@/lib/api";
-import { offerThreads, ORDER_STATUS, orderMoney, orders, orderTotal, products, salesByDay, token } from "@/lib/mock";
+import { api, getStoreSession } from "@/lib/api";
+import { offerThreads, ORDER_STATUS, orderMoney, orderTotal, token } from "@/lib/mock";
 
 export default async function HomePage() {
   const { user, store } = await getStoreSession();
+  const [orders, products, { salesByDay }] = await Promise.all([api.merchantOrders(), api.merchantProducts(), api.merchantSummary()]);
   const waiting = orders.filter((o) => o.status === "new");
   const active = orders.filter((o) => ["accepted", "shipped", "delivered"].includes(o.status));
   const sales14 = salesByDay.reduce((n, d) => n + d.amount, 0);
   const maxDay = Math.max(...salesByDay.map((d) => d.amount));
-  const owedSecondHalf = active.reduce((n, o) => n + orderMoney(o).second, 0);
+  const owedSecondHalf = active.reduce((n, o) => n + orderMoney(o).share, 0);
   const offersWaiting = offerThreads.filter((t) => t.status === "waiting_you").length;
   const lowStock = products.filter((p) => p.status === "live" && p.stock <= 3);
   const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Africa/Lagos" }).format(new Date()));

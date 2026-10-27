@@ -1,10 +1,11 @@
 "use client";
 
 import { Clock, Home, Plus, Store, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { btn, Field, inputClass } from "./ui";
 import { formatNaira } from "@/lib/money";
 import { NIGERIAN_STATES, type DeliveryZone } from "@/lib/mock";
+import { removeZone, saveZone } from "@/lib/market-actions";
 
 const TIMES = ["Same day", "Same day – 1 day", "1–2 days", "2–3 days", "3–5 days", "5–7 days"];
 
@@ -27,7 +28,10 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
 
 /** Add or edit a delivery area: state, optional cities, home and pickup prices, time and free-delivery amount.
  *  New areas, and changes to the state or cities, go to Sotechy for approval. */
+/** Saves to the store's delivery areas, then hands back the saved area */
 export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSave: (z: DeliveryZone) => void; onDelete?: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const [busy, start] = useTransition();
   const [state, setState] = useState(zone?.state ?? "Edo");
   const [whole, setWhole] = useState(zone ? zone.areas.length === 0 : false);
   const [areas, setAreas] = useState<string[]>(zone?.areas ?? []);
@@ -135,30 +139,46 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
         <input type="number" min={0} value={freeOver || ""} onChange={(e) => setFreeOver(Number(e.target.value))} className={inputClass} />
       </Field>
 
+      {error && <p className="rounded-2xl bg-bad-soft px-3 py-2.5 text-sm text-bad">{error}</p>}
       <div className="mt-1 flex gap-2">
-        {onDelete && (
-          <button type="button" onClick={onDelete} className={btn.danger}>Delete</button>
+        {onDelete && zone && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              start(async () => {
+                const r = await removeZone(zone.id);
+                if ("error" in r) setError(r.error);
+                else onDelete();
+              })
+            }
+            className={btn.danger}
+          >
+            Delete
+          </button>
         )}
         <button
           type="button"
-          disabled={!valid}
+          disabled={!valid || busy}
           onClick={() =>
-            onSave({
-              id: zone?.id ?? `z${Date.now()}`,
-              state,
-              areas: whole ? [] : areas,
-              homeFee,
-              pickup: hasPickup ? { fee: pickupFee, point: point.trim() } : undefined,
-              days,
-              freeOver: freeOver || undefined,
-              active: zone?.active ?? true,
-              review: placeChanged ? "pending" : zone!.review,
-              reviewNote: placeChanged ? undefined : zone!.reviewNote,
+            start(async () => {
+              setError(null);
+              const r = await saveZone(zone?.id ?? null, {
+                state,
+                areas: whole ? [] : areas,
+                homeFee,
+                pickup: hasPickup ? { fee: pickupFee, point: point.trim() } : undefined,
+                days,
+                freeOver: freeOver || undefined,
+                active: zone?.active ?? true,
+              });
+              if ("error" in r) setError(r.error);
+              else onSave(r.ok);
             })
           }
           className={`${btn.dark} flex-1`}
         >
-          {zone ? (placeChanged ? "Save and send for approval" : "Save changes") : <><Plus size={16} /> Send for approval</>}
+          {busy ? "Saving…" : zone ? (placeChanged ? "Save and send for approval" : "Save changes") : <><Plus size={16} /> Send for approval</>}
         </button>
       </div>
     </div>
