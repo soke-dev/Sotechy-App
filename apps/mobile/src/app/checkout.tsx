@@ -439,13 +439,10 @@ export default function CheckoutScreen() {
         </Section>}
 
         {tokenPlan.length > 0 && (
-          <View style={[ui.card, { gap: space.md }]}>
-            <View style={ui.row}>
-              <Illo name="coin" size={30} />
-              <View style={{ flex: 1 }}>
-                <Txt variant="heading">Pay with tokens</Txt>
-                <Txt variant="caption">At least ₦{TOKEN_RULES.minCashPerOrder} is paid in money.</Txt>
-              </View>
+          <View style={[ui.card, { gap: space.sm, padding: space.md }]}>
+            <View style={[ui.between, { gap: space.sm }]}>
+              <Txt variant="label">Pay with tokens</Txt>
+              <Txt variant="caption">At least ₦{TOKEN_RULES.minCashPerOrder} in money</Txt>
             </View>
             {/* The store's token and $SOTECHY side by side; tap one to use it */}
             <View style={{ flexDirection: "row", gap: space.sm }}>
@@ -458,16 +455,23 @@ export default function CheckoutScreen() {
                       tap();
                       setUseTokens({ ...useTokens, [t.ticker]: !on });
                     }}
-                    style={{ flex: 1, minWidth: 0, gap: 4, padding: space.md, borderRadius: radius.lg, borderWidth: on ? 1.5 : 1, borderColor: on ? colors.brand : colors.line, backgroundColor: on ? colors.brandSoft : colors.surface }}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: on }}
+                    style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 10, paddingHorizontal: space.md, borderRadius: radius.lg, borderWidth: on ? 1.5 : 1, borderColor: on ? colors.brand : colors.line, backgroundColor: on ? colors.brandSoft : colors.surface }}
                   >
-                    <View style={[ui.between, { gap: 6 }]}>
-                      <Txt variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>${t.ticker}</Txt>
-                      <Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={20} color={on ? colors.brand : colors.faint} />
+                    {on ? (
+                      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons name="checkmark" size={17} color={colors.white} />
+                      </View>
+                    ) : (
+                      <Illo name={t.ticker === "SOTECHY" ? "sparkle" : "coin"} size={28} />
+                    )}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Txt variant="label" numberOfLines={1}>${t.ticker}</Txt>
+                      <Txt variant="caption" numberOfLines={1} color={on ? colors.success : colors.muted}>
+                        {on ? `−${formatNaira(t.value)} off` : `${t.balance.toLocaleString("en-NG")} · up to ${formatNaira(tokensToNaira(t.most))}`}
+                      </Txt>
                     </View>
-                    <Txt variant="caption">{t.balance.toLocaleString("en-NG")} held</Txt>
-                    <Txt variant="small" color={on ? colors.success : colors.ink2} numberOfLines={2}>
-                      {on ? `−${formatNaira(t.value)}` : `Up to ${formatNaira(tokensToNaira(t.most))}`}
-                    </Txt>
                   </Pressable>
                 );
               })}
