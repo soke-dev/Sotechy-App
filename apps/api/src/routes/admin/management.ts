@@ -1,6 +1,6 @@
 // People, branches, promotions, settings, suppliers, support, reports and audit logs.
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../../db/client";
@@ -98,7 +98,8 @@ export const adminManagementRoutes = new Hono<AppEnv>()
   )
 
   // --- Branches ---
-  .get("/branches", async (c) => c.json(await db.select().from(branches).orderBy(asc(branches.name))))
+  // Sotechy's own branches (marketplace stores' shops are managed with the store)
+  .get("/branches", async (c) => c.json(await db.select().from(branches).where(isNull(branches.merchantId)).orderBy(asc(branches.name))))
   .post("/branches", ADMIN, zValidator("json", branchFields), async (c) => {
     const [row] = await db.insert(branches).values(c.req.valid("json")).returning();
     return c.json(row, 201);
@@ -262,10 +263,65 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     return c.json(rows.map((r) => ({ ...r.log, actorEmail: r.actorEmail })));
   })
 
-  // --- Marketplace (Phase 4): read-only until onboarding is switched on ---
-  .get("/merchants", ADMIN, async (c) => {
-    const rows = await db.select().from(schema.merchants).where(inArray(schema.merchants.status, ["pending", "approved", "suspended"]));
-    return c.json({ enabled: false, merchants: rows });
+  // --- Marketplace stores ---
+  .get("/merchants", async (c) => {
+    const m = schema.merchants;
+    const rows = await db
+      .select({
+        store: m,
+        ownerName: users.fullName,
+        ownerEmail: users.email,
+        productCount: sql<number>`(select count(*)::int from products p where p.merchant_id = "merchants"."id")`,
+        orderCount: sql<number>`(select count(*)::int from orders o where o.merchant_id = "merchants"."id" and o.status <> 'pending_payment')`,
+        pendingZones: sql<number>`(select count(*)::int from delivery_zones z where z.merchant_id = "merchants"."id" and z.review = 'pending')`,
+      })
+      .from(m)
+      .leftJoin(users, eq(users.id, m.ownerId))
+      .orderBy(desc(m.createdAt));
+    return c.json(rows.map(({ store, ...rest }) => ({ ...store, ...rest })));
+  })
+  .get("/merchants/:id", async (c) => {
+    const m = schema.merchants;
+    const [row] = await db
+      .select({ store: m, owner: { id: users.id, name: users.fullName, email: users.email, username: users.username, phone: users.phone, avatarUrl: users.avatarUrl, createdAt: users.createdAt } })
+      .from(m)
+      .leftJoin(users, eq(users.id, m.ownerId))
+      .where(eq(m.id, c.req.param("id")));
+    if (!row) throw notFound("Store not found");
+    const [zones, counts] = await Promise.all([
+      db.select().from(schema.deliveryZones).where(eq(schema.deliveryZones.merchantId, row.store.id)).orderBy(asc(schema.deliveryZones.createdAt)),
+      db
+        .select({
+          products: sql<number>`(select count(*)::int from products p where p.merchant_id = ${row.store.id})`,
+          orders: sql<number>`(select count(*)::int from orders o where o.merchant_id = ${row.store.id} and o.status <> 'pending_payment')`,
+          sales: sql<number>`(select coalesce(sum(o.total), 0)::float from orders o where o.merchant_id = ${row.store.id} and o.status in ('paid','processing','dispatched','ready_for_pickup','delivered'))`,
+        })
+        .from(m)
+        .where(eq(m.id, row.store.id)),
+    ]);
+    return c.json({ ...row.store, owner: row.owner, zones, ...counts[0] });
+  })
+  /** Approve or decline a store's delivery area */
+  .patch(
+    "/delivery-zones/:id",
+    zValidator("json", z.object({ review: z.enum(["approved", "declined", "pending"]), note: z.string().trim().max(300).nullable().optional() })),
+    async (c) => {
+      const { review, note } = c.req.valid("json");
+      const [row] = await db
+        .update(schema.deliveryZones)
+        .set({ review, reviewNote: review === "declined" ? (note ?? null) : null })
+        .where(eq(schema.deliveryZones.id, c.req.param("id")))
+        .returning();
+      if (!row) throw notFound("Delivery area not found");
+      await audit(db, { actorId: c.get("user").id, action: `delivery_zone.${review}`, entityType: "delivery_zone", entityId: row.id, details: { merchantId: row.merchantId } });
+      return c.json(row);
+    },
+  )
+  /** A store's private documents (CAC certificate and the like), for reviewing it */
+  .get("/media/private/:id", async (c) => {
+    const [row] = await db.select().from(schema.media).where(eq(schema.media.id, c.req.param("id")));
+    if (!row) throw notFound("File not found");
+    return c.body(new Uint8Array(row.data), 200, { "Content-Type": row.contentType, "Cache-Control": "private, no-store", "Content-Disposition": `inline; filename="${row.filename.replace(/"/g, "")}"` });
   })
   /** Approve (go live), suspend or send a store back to review. Approving emails the owner. */
   .patch(

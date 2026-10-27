@@ -29,6 +29,10 @@ export const catalogColumns = {
   isPublished: products.isPublished,
   isDemo: products.isDemo,
   createdAt: products.createdAt,
+  /** The marketplace store selling it; null for Sotechy's own products */
+  storeName: sql<string | null>`(select m.name from merchants m where m.id = ${products.merchantId})`,
+  storeSlug: sql<string | null>`(select m.slug from merchants m where m.id = ${products.merchantId})`,
+  negotiable: products.negotiable,
   ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r where r.product_id = ${products.id} and r.is_published)`,
   ratingCount: sql<number>`(select count(*)::int from product_reviews r where r.product_id = ${products.id} and r.is_published)`,
 };
@@ -83,18 +87,27 @@ export function catalogQuery(where: SQL | undefined, having?: SQL) {
 
 const averageRating = sql`(select avg(r.rating) from product_reviews r where r.product_id = ${products.id} and r.is_published)`;
 
-/** Published store products matching the search text and category (a parent category includes its sub-categories). */
-function baseFilters({ q, category }: { q?: string; category?: string }) {
-  const filters: (SQL | undefined)[] = [eq(products.isPublished, true), isNull(products.merchantId)];
+/** Sotechy's own products, plus those of marketplace stores Sotechy has approved */
+const fromLiveSeller = sql`(${products.merchantId} is null or ${products.merchantId} in (select m.id from merchants m where m.status = 'approved'))`;
+
+/**
+ * Published products matching the search text and category (a parent category includes its sub-categories).
+ * `store`: one marketplace store's slug, or "sotechy" for Sotechy's own products.
+ */
+function baseFilters({ q, category, store }: { q?: string; category?: string; store?: string }) {
+  const filters: (SQL | undefined)[] = [eq(products.isPublished, true), fromLiveSeller];
+  if (store === "sotechy") filters.push(isNull(products.merchantId));
+  else if (store) filters.push(sql`${products.merchantId} = (select m.id from merchants m where m.slug = ${store})`);
   if (q) {
     const term = `%${q}%`;
     filters.push(or(ilike(products.name, term), ilike(products.brand, term), ilike(products.model, term)));
   }
   if (category) {
-    filters.push(sql`${products.categoryId} in (
+    // Store products use the store's own category names
+    filters.push(sql`(${products.storeCategory} = ${category} or ${products.categoryId} in (
       select c.id from categories c
       where c.slug = ${category} or c.id::text = ${category}
-         or c.parent_id in (select p.id from categories p where p.slug = ${category} or p.id::text = ${category}))`);
+         or c.parent_id in (select p.id from categories p where p.slug = ${category} or p.id::text = ${category})))`);
   }
   return filters;
 }
@@ -111,7 +124,7 @@ export const storeRoutes = new Hono()
     const now = new Date();
     const b = schema.banners;
     const [branchList, methods, assets, promos, delivery, support, features, bannerRows] = await Promise.all([
-      db.select().from(branches).where(eq(branches.isActive, true)).orderBy(asc(branches.name)),
+      db.select().from(branches).where(and(eq(branches.isActive, true), isNull(branches.merchantId))).orderBy(asc(branches.name)),
       db.select().from(schema.paymentMethods),
       db.select().from(schema.cryptoAssets).where(eq(schema.cryptoAssets.isEnabled, true)),
       db.select().from(schema.promotions).where(and(eq(schema.promotions.isActive, true), isNull(schema.promotions.code))),
@@ -178,6 +191,56 @@ export const storeRoutes = new Hono()
 
     return c.json(await catalogQuery(and(...filters), having.length ? and(...having) : undefined).orderBy(...order, desc(products.createdAt)).limit(100));
   })
+  /** Marketplace stores Sotechy has approved, featured ones first */
+  .get("/stores", async (c) => {
+    const m = schema.merchants;
+    const rows = await db
+      .select({
+        id: m.id,
+        name: m.name,
+        slug: m.slug,
+        ticker: m.ticker,
+        tagline: m.tagline,
+        logoUrl: m.logoUrl,
+        coverUrl: m.coverUrl,
+        storefront: m.storefront,
+        sells: m.sells,
+        featuredUntil: m.featuredUntil,
+        productCount: sql<number>`(select count(*)::int from products p where p.merchant_id = "merchants"."id" and p.is_published)`,
+        ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
+      })
+      .from(m)
+      .where(eq(m.status, "approved"))
+      .orderBy(sql`(${m.featuredUntil} > now()) desc nulls last`, asc(m.name));
+    return c.json(rows);
+  })
+  .get("/stores/:slug", async (c) => {
+    const m = schema.merchants;
+    const [store] = await db
+      .select({
+        id: m.id,
+        name: m.name,
+        slug: m.slug,
+        ticker: m.ticker,
+        tagline: m.tagline,
+        logoUrl: m.logoUrl,
+        coverUrl: m.coverUrl,
+        storefront: m.storefront,
+        sells: m.sells,
+        featuredUntil: m.featuredUntil,
+        branchId: branches.id,
+      })
+      .from(m)
+      .leftJoin(branches, eq(branches.merchantId, m.id))
+      .where(and(eq(m.slug, c.req.param("slug")), eq(m.status, "approved")));
+    if (!store) throw notFound("Store not found");
+    const items = await catalogQuery(and(eq(products.isPublished, true), eq(products.merchantId, store.id))).orderBy(desc(products.createdAt)).limit(200);
+    // The store's own categories, most used first
+    const counts = new Map<string, number>();
+    const cats = await db.select({ c: products.storeCategory }).from(products).where(and(eq(products.merchantId, store.id), eq(products.isPublished, true)));
+    for (const { c: name } of cats) if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+    return c.json({ ...store, categories: [...counts].sort((a, b) => b[1] - a[1]).map(([name]) => name), products: items });
+  })
   .get("/facets", async (c) => {
     // Brands and price range for the current search / category, to build the filter sheet.
     const rows = await catalogQuery(and(...baseFilters(c.req.query())));
@@ -196,8 +259,16 @@ export const storeRoutes = new Hono()
     const [product] = await db
       .select()
       .from(products)
-      .where(and(isUuid ? eq(products.id, key) : eq(products.slug, key), eq(products.isPublished, true)));
+      .where(and(isUuid ? eq(products.id, key) : eq(products.slug, key), eq(products.isPublished, true), fromLiveSeller));
     if (!product) throw notFound("Product not found");
+    const { offerFloor: _floor, ...shown } = product;
+    const [seller] = product.merchantId
+      ? await db
+          .select({ id: schema.merchants.id, name: schema.merchants.name, slug: schema.merchants.slug, ticker: schema.merchants.ticker, logoUrl: schema.merchants.logoUrl, branchId: branches.id })
+          .from(schema.merchants)
+          .leftJoin(branches, eq(branches.merchantId, schema.merchants.id))
+          .where(eq(schema.merchants.id, product.merchantId))
+      : [];
 
     const variants = await db
       .select(publicVariantColumns)
@@ -219,7 +290,7 @@ export const storeRoutes = new Hono()
       .where(and(eq(productVariants.productId, product.id), eq(branches.isActive, true)));
 
     const { summary } = await loadReviews(product.id);
-    return c.json({ ...product, variants, stock, ratingAverage: summary.count ? summary.average : null, ratingCount: summary.count });
+    return c.json({ ...shown, variants, stock, store: seller ?? null, ratingAverage: summary.count ? summary.average : null, ratingCount: summary.count });
   })
   .get("/products/:idOrSlug/reviews", async (c) => {
     const key = c.req.param("idOrSlug");

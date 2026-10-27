@@ -63,7 +63,7 @@ async function loadVariants(tx: Tx, ids: string[]) {
 async function priceAndHoldStock(
   tx: Tx,
   lines: { variantId: string; quantity: number }[],
-  opts: { branchId: string; mode: "reserve" | "deduct"; fulfilment: "delivery" | "pickup"; requirePublished: boolean },
+  opts: { branchId: string; mode: "reserve" | "deduct"; fulfilment: "delivery" | "pickup"; requirePublished: boolean; merchantId?: string | null },
 ) {
   const variants = await loadVariants(tx, lines.map((l) => l.variantId));
   let subtotal = 0;
@@ -71,7 +71,8 @@ async function priceAndHoldStock(
 
   for (const line of lines) {
     const v = variants.find((x) => x.id === line.variantId);
-    if (!v || !v.isActive || v.merchantId || (opts.requirePublished && !v.isPublished)) {
+    // A branch sells only its own products: Sotechy's branches Sotechy's stock, a store's branch that store's
+    if (!v || !v.isActive || (v.merchantId ?? null) !== (opts.merchantId ?? null) || (opts.requirePublished && !v.isPublished)) {
       throw badRequest("A product in the cart is no longer available");
     }
     if (opts.fulfilment === "delivery" && !v.allowDelivery) throw badRequest(`${v.productName} is available for pickup only`);
@@ -121,6 +122,7 @@ async function assertPaymentMethod(tx: Tx, code: PaymentMethodCode, channel: "on
 async function assertBranch(tx: Tx, branchId: string) {
   const [branch] = await tx.select().from(schema.branches).where(eq(schema.branches.id, branchId));
   if (!branch?.isActive) throw badRequest("Select a valid branch");
+  return branch;
 }
 
 async function holdMinutes(tx: Tx) {
@@ -156,7 +158,11 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
   try {
     return await db.transaction(async (tx) => {
       const asset = await assertPaymentMethod(tx, input.paymentMethod, "online", input.cryptoAsset);
-      await assertBranch(tx, input.branchId);
+      const branch = await assertBranch(tx, input.branchId);
+      if (branch.merchantId) {
+        const [store] = await tx.select({ status: schema.merchants.status }).from(schema.merchants).where(eq(schema.merchants.id, branch.merchantId));
+        if (store?.status !== "approved") throw badRequest("This store isn't taking orders right now");
+      }
 
       const lines = normaliseLines(input.items);
       if (lines.length === 0) throw badRequest("Cart is empty");
@@ -166,6 +172,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
         mode: "reserve",
         fulfilment: input.fulfilmentType,
         requirePublished: true,
+        merchantId: branch.merchantId,
       });
 
       const deliveryFee =
@@ -184,6 +191,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
           customerId: userId,
           channel: "online",
           branchId: input.branchId,
+          merchantId: branch.merchantId,
           fulfilmentType: input.fulfilmentType,
           deliveryAddress: input.fulfilmentType === "delivery" ? ({ ...input.deliveryAddress } as Record<string, string>) : null,
           paymentMethod: input.paymentMethod,
@@ -403,12 +411,15 @@ export async function updateOrderStatus(actor: AuthUser, orderId: string, to: Or
   return updated;
 }
 
-export async function cancelOrder(actor: AuthUser, orderId: string, note?: string) {
+/** `asStoreId`: a marketplace store declining its own order (it can't cancel anyone else's) */
+export async function cancelOrder(actor: AuthUser, orderId: string, note?: string, opts: { asStoreId?: string } = {}) {
   const updated = await db.transaction(async (tx) => {
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId)).for("update");
     if (!order) throw notFound("Order not found");
 
-    if (actor.role === "customer") {
+    if (opts.asStoreId) {
+      if (order.merchantId !== opts.asStoreId) throw notFound("Order not found");
+    } else if (actor.role === "customer") {
       if (order.customerId !== actor.id) throw notFound("Order not found");
       if (order.status !== "pending_payment") throw badRequest("Only unpaid orders can be cancelled. Contact support for help.");
     }

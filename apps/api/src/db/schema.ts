@@ -62,6 +62,27 @@ export const sellerKindEnum = pgEnum("seller_kind", ["registered", "individual"]
 /** The owner's identity check (ID document + liveness, through Didit) */
 export const kycStatusEnum = pgEnum("kyc_status", ["not_started", "in_progress", "in_review", "approved", "declined", "resubmit", "expired"]);
 
+export interface StorefrontSettings {
+  themeId: string;
+  accent?: string | null;
+  header: "cover" | "band";
+  layout: "grid" | "large";
+  announcement?: string | null;
+}
+
+export interface MerchantApplication {
+  structure?: "BN" | "LTD" | "PLC" | "IT" | null;
+  registeredName?: string | null;
+  registrationNumber?: string | null;
+  registeredOn?: string | null;
+  tin?: string | null;
+  businessAddress?: string | null;
+  /** Uploaded documents by name, e.g. { "CAC certificate": "/media/…" } */
+  documents?: Record<string, string>;
+  people?: { name: string; role: string; share: number }[];
+  bank?: { bankName: string; accountNumber: string } | null;
+}
+
 /** What Didit found, kept for admin review (no document images or full ID numbers) */
 export interface KycResult {
   diditStatus: string;
@@ -84,6 +105,8 @@ export const ticketStatusEnum = pgEnum("ticket_status", ["open", "pending", "res
 // ---------------------------------------------------------------------------
 export const branches = pgTable("branches", {
   id: uuid().primaryKey().defaultRandom(),
+  /** Set for a marketplace store's own shop; null for Sotechy's branches */
+  merchantId: uuid(),
   name: text().notNull(),
   code: text().notNull().unique(),
   address: text().notNull(),
@@ -178,11 +201,49 @@ export const merchants = pgTable("merchants", {
   /** WhatsApp number for order alerts when it differs from contactPhone, as +234… */
   contactWhatsapp: text(),
   commissionRate: numeric({ precision: 5, scale: 2, mode: "number" }),
+  /** Storefront look, shown in the app */
+  tagline: text(),
+  logoUrl: text(),
+  coverUrl: text(),
+  storefront: jsonb().$type<StorefrontSettings>(),
+  /** What the store sells (up to 3), from the setup list or the merchant's own words */
+  sells: text().array().notNull().default(sql`'{}'::text[]`),
+  /** Business details and documents from setup, for Sotechy's review */
+  application: jsonb().$type<MerchantApplication>(),
+  /** When the merchant submitted setup for review */
+  submittedAt: timestamp({ withTimezone: true }),
+  /** Shown first on the app's home and in search until then */
+  featuredUntil: timestamp({ withTimezone: true }),
   /** Owner's ID + liveness check through Didit; admin still approves the store itself */
   kycStatus: kycStatusEnum().notNull().default("not_started"),
   kycSessionId: text().unique(),
   kycResult: jsonb().$type<KycResult>(),
   kycUpdatedAt: timestamp({ withTimezone: true }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+export const zoneReviewEnum = pgEnum("zone_review", ["pending", "approved", "declined"]);
+
+/** Where a marketplace store delivers. Sotechy approves each new area (and changes to where it covers). */
+export const deliveryZones = pgTable("delivery_zones", {
+  id: uuid().primaryKey().defaultRandom(),
+  merchantId: uuid()
+    .notNull()
+    .references(() => merchants.id, { onDelete: "cascade" }),
+  state: text().notNull(),
+  /** Cities or areas in the state; empty means the whole state */
+  areas: text().array().notNull().default(sql`'{}'::text[]`),
+  /** Delivered to the customer's door */
+  homeFee: money().notNull(),
+  /** Collected from a pickup point in the area (cheaper); null = no pickup there */
+  pickupFee: money(),
+  pickupPoint: text(),
+  days: text().notNull(),
+  freeOver: money(),
+  isActive: boolean().notNull().default(true),
+  review: zoneReviewEnum().notNull().default("pending"),
+  reviewNote: text(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -227,6 +288,17 @@ export const products = pgTable(
     highlights: text().array().notNull().default(sql`'{}'::text[]`),
     /** What comes in the box */
     inTheBox: text().array().notNull().default(sql`'{}'::text[]`),
+    /** A store hid this product on purpose (vs a draft it hasn't finished) */
+    isHidden: boolean().notNull().default(false),
+    /** A marketplace store's own category name (from its list or typed under "Other") */
+    storeCategory: text(),
+    /** Customers can make an offer; `offerFloor` is the lowest the store will consider (only it sees this) */
+    negotiable: boolean().notNull().default(false),
+    offerFloor: money(),
+    /** How long an agreed price lasts: 6, 12 or 24 hours */
+    offerHours: integer(),
+    /** A marketplace store's delivery areas this product ships to */
+    deliveryZoneIds: uuid().array().notNull().default(sql`'{}'::uuid[]`),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -616,6 +688,8 @@ export const media = pgTable("media", {
   contentType: text().notNull(),
   size: integer().notNull(),
   data: bytea().notNull(),
+  /** Private files (a store's business documents) are only shown to their owner and Sotechy staff */
+  isPrivate: boolean().notNull().default(false),
   createdBy: uuid().references(() => users.id, { onDelete: "set null" }),
   createdAt: createdAt(),
 });

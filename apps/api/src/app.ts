@@ -14,6 +14,7 @@ import { authRoutes } from "./routes/auth";
 import { devEmailRoutes } from "./routes/dev-emails";
 import { mediaRoutes } from "./routes/media";
 import { merchantRoutes } from "./routes/merchant";
+import { merchantMarketRoutes } from "./routes/merchant-market";
 import { meRoutes } from "./routes/me";
 import { orderRoutes } from "./routes/orders";
 import { paymentRoutes } from "./routes/payments";
@@ -41,6 +42,7 @@ export const app = new Hono()
   .route("/orders", orderRoutes)
   .route("/me", meRoutes)
   .route("/merchant", merchantRoutes)
+  .route("/merchant", merchantMarketRoutes)
   .route("/payments", paymentRoutes)
   .route("/media", mediaRoutes)
   .route("/webhooks", webhookRoutes)

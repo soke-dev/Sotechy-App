@@ -5,8 +5,19 @@ import type {
   CatalogProduct,
   Category,
   ExchangeRate,
+  DeliveryZone,
+  DeliveryZoneInput,
   KycStatus,
+  MarketStore,
+  MarketStoreDetail,
+  MerchantApplicationInput,
+  MerchantCustomer,
+  MerchantOrder,
+  MerchantProduct,
+  MerchantProductInput,
   MerchantSession,
+  MerchantSummary,
+  StorefrontSettings,
   MerchantStore,
   Order,
   OrderDetail,
@@ -104,6 +115,24 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     openStore: (input: { name: string; slug?: string; sellerKind: "registered" | "individual"; phone: string; whatsappPhone?: string | null; username?: string; referralCode?: string }) =>
       send<MerchantSession>("POST", "/merchant/store", input),
     updateStore: (input: { name?: string; contactPhone?: string; contactWhatsapp?: string | null }) => send<MerchantStore>("PATCH", "/merchant/store", input),
+    // The store's own business
+    merchantProducts: () => get<MerchantProduct[]>("/merchant/products"),
+    merchantProduct: (id: string) => get<MerchantProduct>(`/merchant/products/${encodeURIComponent(id)}`),
+    createProduct: (input: MerchantProductInput) => send<MerchantProduct>("POST", "/merchant/products", input),
+    updateProduct: (id: string, input: MerchantProductInput) => send<MerchantProduct>("PUT", `/merchant/products/${encodeURIComponent(id)}`, input),
+    deliveryZones: () => get<DeliveryZone[]>("/merchant/delivery-zones"),
+    createDeliveryZone: (input: DeliveryZoneInput) => send<DeliveryZone>("POST", "/merchant/delivery-zones", input),
+    updateDeliveryZone: (id: string, input: DeliveryZoneInput) => send<DeliveryZone>("PUT", `/merchant/delivery-zones/${encodeURIComponent(id)}`, input),
+    deleteDeliveryZone: (id: string) => send<{ deleted: true }>("DELETE", `/merchant/delivery-zones/${encodeURIComponent(id)}`),
+    merchantOrders: () => get<MerchantOrder[]>("/merchant/orders"),
+    merchantOrder: (id: string) => get<MerchantOrder>(`/merchant/orders/${encodeURIComponent(id)}`),
+    merchantOrderAction: (id: string, action: "accept" | "ship" | "deliver" | "decline", note?: string) =>
+      send<MerchantOrder>("POST", `/merchant/orders/${encodeURIComponent(id)}/${action}`, note ? { note } : {}),
+    merchantCustomers: () => get<MerchantCustomer[]>("/merchant/customers"),
+    merchantSummary: () => get<MerchantSummary>("/merchant/summary"),
+    saveStorefront: (input: { tagline?: string | null; logoUrl?: string | null; coverUrl?: string | null; storefront?: StorefrontSettings }) =>
+      send<MerchantStore>("PATCH", "/merchant/storefront", input),
+    saveApplication: (input: MerchantApplicationInput) => send<MerchantStore>("PUT", "/merchant/application", input),
     checkStoreHandle: (handle: string) => get<{ handle: string; available: boolean; reason: string | null }>(`/merchant/handle/${encodeURIComponent(handle)}`),
     /** Starts the owner's ID + liveness check; open the returned URL */
     startIdCheck: () => send<{ url: string }>("POST", "/merchant/verification"),
@@ -132,6 +161,9 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
       return get<ProductFacets>(`/store/facets${qs.size ? `?${qs}` : ""}`);
     },
     product: (idOrSlug: string) => get<ProductDetail>(`/store/products/${encodeURIComponent(idOrSlug)}`),
+    /** Marketplace stores Sotechy has approved, and one store's page */
+    stores: () => get<MarketStore[]>("/store/stores"),
+    store: (slug: string) => get<MarketStoreDetail>(`/store/stores/${encodeURIComponent(slug)}`),
     productReviews: (idOrSlug: string) => get<ProductReviews>(`/store/products/${encodeURIComponent(idOrSlug)}/reviews`),
     submitReview: (input: { productId: string; rating: number; title?: string | null; body: string }) => send<{ id: string }>("POST", "/me/reviews", input),
 

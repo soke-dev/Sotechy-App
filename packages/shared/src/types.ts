@@ -69,6 +69,10 @@ export interface CatalogProduct {
   /** Average star rating (null when there are no reviews) */
   ratingAverage?: number | null;
   ratingCount?: number;
+  /** The marketplace store selling it; null for Sotechy's own products */
+  storeName?: string | null;
+  storeSlug?: string | null;
+  negotiable?: boolean;
 }
 
 export interface Product {
@@ -119,6 +123,11 @@ export interface BranchStock {
 export interface ProductDetail extends Product {
   variants: ProductVariant[];
   stock: BranchStock[];
+  /** The marketplace store selling it (its branch is where it ships from); null for Sotechy */
+  store?: { id: string; name: string; slug: string; ticker: string; logoUrl: string | null; branchId: string | null } | null;
+  storeCategory?: string | null;
+  negotiable?: boolean;
+  offerHours?: number | null;
   ratingAverage?: number | null;
   ratingCount?: number;
 }
@@ -175,6 +184,8 @@ export interface ProductQuery {
   maxPrice?: number;
   minRating?: number;
   inStock?: boolean;
+  /** One marketplace store's slug, or "sotechy" for Sotechy's own products */
+  store?: string;
 }
 
 /** Filter options available for a search / category. */
@@ -353,6 +364,14 @@ export interface MerchantStore {
   contactWhatsapp: string | null;
   /** The owner's ID + liveness check (Didit) */
   kycStatus: KycStatus;
+  tagline?: string | null;
+  logoUrl?: string | null;
+  coverUrl?: string | null;
+  storefront?: StorefrontSettings | null;
+  sells?: string[];
+  application?: Omit<MerchantApplicationInput, "sellerKind" | "sells" | "submit"> | null;
+  submittedAt?: string | null;
+  featuredUntil?: string | null;
   createdAt: string;
 }
 
@@ -484,4 +503,155 @@ export interface CartLine {
 export interface Paginated<T> {
   data: T[];
   total: number;
+}
+
+// ---------------------------------------------------------------------------
+// Marketplace stores
+// ---------------------------------------------------------------------------
+export interface StorefrontSettings {
+  themeId: string;
+  accent?: string | null;
+  header: "cover" | "band";
+  layout: "grid" | "large";
+  announcement?: string | null;
+}
+
+/** A store as shoppers see it in the app */
+export interface MarketStore {
+  id: string;
+  name: string;
+  slug: string;
+  ticker: string;
+  tagline: string | null;
+  logoUrl: string | null;
+  coverUrl: string | null;
+  storefront: StorefrontSettings | null;
+  sells: string[];
+  featuredUntil: string | null;
+  productCount?: number;
+  ratingAverage?: number | null;
+}
+
+export interface MarketStoreDetail extends MarketStore {
+  branchId: string | null;
+  categories: string[];
+  products: CatalogProduct[];
+}
+
+export type OfferHours = 6 | 12 | 24;
+
+/** A store's product as its dashboard shows it */
+export interface MerchantProduct {
+  id: string;
+  name: string;
+  brand: string | null;
+  image: string | null;
+  images: string[];
+  category: string;
+  condition: "new" | "used" | "refurbished";
+  description: string | null;
+  warrantyMonths: number | null;
+  inTheBox: string[];
+  highlights: string[];
+  specifications: Record<string, string>;
+  price: number;
+  compareAt: number | null;
+  stock: number;
+  options: { name: string; stock: number }[];
+  status: "live" | "draft" | "hidden";
+  sold: number;
+  negotiable: { floor: number | null; hours: OfferHours } | null;
+  deliveryZoneIds: string[];
+  pickup: boolean;
+  createdAt: string;
+}
+
+export interface MerchantProductInput {
+  name: string;
+  brand?: string | null;
+  category: string;
+  condition: "new" | "used" | "refurbished";
+  description?: string | null;
+  warrantyMonths?: number | null;
+  inTheBox: string[];
+  highlights: string[];
+  specifications: Record<string, string>;
+  images: string[];
+  price: number;
+  compareAt?: number | null;
+  stock: number;
+  options: { name: string; stock: number }[];
+  status: "live" | "draft" | "hidden";
+  negotiable: boolean;
+  offerFloor?: number | null;
+  offerHours?: OfferHours | null;
+  deliveryZoneIds: string[];
+  pickup: boolean;
+}
+
+export type MerchantOrderStatus = "new" | "accepted" | "shipped" | "delivered" | "completed" | "declined" | "payback";
+
+export interface MerchantOrder {
+  id: string;
+  number: string;
+  status: MerchantOrderStatus;
+  customer: { name: string; username: string; phone: string; address: string };
+  fulfilment: "delivery" | "pickup";
+  items: { name: string; image: string | null; qty: number; price: number; option?: string }[];
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  paidWithTokens: number;
+  createdAt: string;
+  acceptBy?: string;
+  history: { at: string; label: string; note?: string }[];
+}
+
+export interface DeliveryZone {
+  id: string;
+  state: string;
+  /** Empty = the whole state */
+  areas: string[];
+  homeFee: number;
+  pickup?: { fee: number; point: string };
+  days: string;
+  freeOver?: number;
+  active: boolean;
+  review: "pending" | "approved" | "declined";
+  reviewNote?: string;
+}
+
+export type DeliveryZoneInput = Omit<DeliveryZone, "id" | "review" | "reviewNote">;
+
+export interface MerchantCustomer {
+  userId: string;
+  name: string | null;
+  username: string | null;
+  phone: string | null;
+  orders: number;
+  spent: number;
+  lastOrderAt: string;
+  firstOrderAt: string;
+}
+
+export interface MerchantSummary {
+  salesByDay: { day: string; amount: number; orders: number }[];
+  completedOrders: number;
+  waiting: number;
+  inProgress: number;
+}
+
+export interface MerchantApplicationInput {
+  sellerKind: "registered" | "individual";
+  sells: string[];
+  structure?: "BN" | "LTD" | "PLC" | "IT" | null;
+  registeredName?: string | null;
+  registrationNumber?: string | null;
+  registeredOn?: string | null;
+  tin?: string | null;
+  businessAddress?: string | null;
+  documents?: Record<string, string>;
+  people?: { name: string; role: string; share: number }[];
+  bank?: { bankName: string; accountNumber: string } | null;
+  submit?: boolean;
 }
