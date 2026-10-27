@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "981794805521",
+    "project_id": "sotechy-stores",
+    "storage_bucket": "sotechy-stores.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:981794805521:android:0e67afa11a3513d5df1eb0",
+        "android_client_info": {
+          "package_name": "shop.sotechy.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCL4ARj6gVfxKi8Jy6ByxR4UJ8Q2c0Finc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
