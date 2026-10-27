@@ -11,7 +11,7 @@ import { sendPushLater } from "./push";
 const PUSH: Partial<Record<OrderStatus, (n: string, pickup: boolean) => { title: string; body: string }>> = {
   paid: (n) => ({ title: "Payment received", body: `We've got your payment for ${n}. We'll let you know when it's on its way.` }),
   processing: (n) => ({ title: "Order being packed", body: `${n} is being packed.` }),
-  ready_for_pickup: (n) => ({ title: "Ready for pickup", body: `${n} is ready. Bring your order number when you come.` }),
+  ready_for_pickup: (n) => ({ title: "Available for pickup", body: `${n} is waiting at the pickup location. Tap "I've picked it up" once you have it.` }),
   dispatched: (n) => ({ title: "On its way", body: `${n} has left the store and is on its way to you.` }),
   delivered: (n, pickup) => ({ title: pickup ? "Picked up" : "Delivered", body: `${n} is complete. Thanks for shopping with Sotechy.` }),
   cancelled: (n) => ({ title: "Order cancelled", body: `${n} was cancelled. If you paid, your refund is being processed.` }),

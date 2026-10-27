@@ -13,6 +13,7 @@ import { lineSchema, loadOrderDetail, paymentMethodSchema } from "../orders";
 import { notifyOrderStatus } from "../../services/order-notices";
 import { finalDueNow, payoutsForStatus } from "../../services/payouts";
 import { tokensForStatus } from "../../services/tokens";
+import { sendPushLater } from "../../services/push";
 
 const { orders, payments, refunds, inventory, productVariants, products, branches, stockMovements, users } = schema;
 
@@ -85,6 +86,30 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
   .post("/orders/:id/status", zValidator("json", z.object({ status: orderStatusSchema, note: z.string().max(500).optional() })), async (c) => {
     const { status, note } = c.req.valid("json");
     return c.json(await updateOrderStatus(c.get("user"), c.req.param("id"), status, note));
+  })
+  /** A store's request to hand a pickup order over somewhere else: approve (the customer is told) or decline */
+  .post("/orders/:id/pickup-change", zValidator("json", z.object({ approve: z.boolean() })), async (c) => {
+    const approve = c.req.valid("json").approve;
+    const [o] = await db
+      .update(orders)
+      .set({ pickupChangeStatus: approve ? "approved" : "declined" })
+      .where(and(eq(orders.id, c.req.param("id")), eq(orders.pickupChangeStatus, "pending")))
+      .returning();
+    if (!o) throw badRequest("There's no pickup change waiting on this order");
+    await audit(db, { actorId: c.get("user").id, action: approve ? "order.pickup_change_approved" : "order.pickup_change_declined", entityType: "order", entityId: o.id, details: { point: o.pickupChangePoint } });
+    if (approve) {
+      // The customer sees the new place in their order updates
+      await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: o.status, toStatus: o.status, note: `Pickup location changed to ${o.pickupChangePoint}`, changedBy: c.get("user").id });
+      if (o.customerId) sendPushLater([o.customerId], { title: "New pickup location", body: `Collect ${o.orderNumber} at ${o.pickupChangePoint}`, data: { url: `/order/${o.id}` } });
+    }
+    const [store] = o.merchantId ? await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId)) : [];
+    if (store?.ownerId)
+      sendPushLater([store.ownerId], {
+        title: approve ? "Pickup location approved" : "Pickup location declined",
+        body: approve ? `${o.orderNumber} is collected at ${o.pickupChangePoint}` : `Use your approved pickup location for ${o.orderNumber}`,
+        data: { url: `/orders/${o.id}` },
+      });
+    return c.json({ ok: true });
   })
   /** Sorted out: the customer has the order now, so the store's final payment can go */
   .post("/orders/:id/received", async (c) => {

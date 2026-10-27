@@ -70,7 +70,7 @@ const STEP_AT: Partial<Record<OrderStatus, number>> = { paid: 0, processing: 1, 
 const ORDER_COPY: Partial<Record<OrderStatus, (o: OrderEmailData) => { hero: Hero; subject: string; heading: string; lead: string }>> = {
   paid: (o) => ({ hero: "paid", subject: `Payment received for ${o.number}`, heading: "Payment received", lead: `**${o.store}** has your order and will start packing it soon.` }),
   processing: (o) => ({ hero: "processing", subject: `${o.number} is being packed`, heading: "Your order is being packed", lead: `**${o.store}** is getting your items ready.` }),
-  ready_for_pickup: (o) => ({ hero: "ready", subject: `${o.number} is ready for pickup`, heading: "Ready for pickup", lead: "Your order is waiting for you. Bring your order number when you come." }),
+  ready_for_pickup: (o) => ({ hero: "ready", subject: `${o.number} is available for pickup`, heading: "Available for pickup", lead: "Your order is waiting at the pickup location. Bring your order number, and tap “I've picked it up” in the app once you have it." }),
   dispatched: (o) => ({ hero: "dispatched", subject: `${o.number} is on its way`, heading: "Your order is on its way", lead: `It's left **${o.store}** and is heading to you. Keep your phone close; the rider may call.` }),
   delivered: (o) => ({
     hero: "delivered",
@@ -348,6 +348,28 @@ export function supportChatEmail(to: string, d: { name: string | null; customer:
       { kind: "text", text: `Hi ${first(d.name)}, **${d.customer}** wrote in the app's live chat:` },
       { kind: "note", tone: "brand", icon: "chat", text: d.message.slice(0, 600) },
       { kind: "button", label: "Reply in admin", url: `https://admin.sotechy.shop/support/${d.ticketId}` },
+    ],
+    reason: "You're getting this because you're a Sotechy admin.",
+  });
+}
+
+export function pickupChangeEmail(to: string, d: { name: string | null; store: string; orderNumber: string; from: string | null; to: string }) {
+  return build(to, `${d.store} wants another pickup location for ${d.orderNumber}`, {
+    preheader: `New location: ${d.to}. Approve or decline it.`,
+    hero: "store-notice",
+    eyebrow: "Sotechy admin · Order review",
+    heading: "A pickup location needs approval",
+    blocks: [
+      { kind: "text", text: `Hi ${first(d.name)}, **${d.store}** wants the customer to collect ${d.orderNumber} somewhere else. The order waits until you answer.` },
+      {
+        kind: "rows",
+        rows: [
+          { icon: "receipt", label: "Order", value: d.orderNumber },
+          { icon: "pin", label: "Approved location", value: d.from ?? "None" },
+          { icon: "pin", label: "New location", value: d.to },
+        ],
+      },
+      { kind: "button", label: "Approve or decline", url: "https://admin.sotechy.shop/order-reviews" },
     ],
     reason: "You're getting this because you're a Sotechy admin.",
   });

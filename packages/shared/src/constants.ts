@@ -13,7 +13,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending_payment: "Pending payment",
   paid: "Paid",
   processing: "Processing",
-  ready_for_pickup: "Ready for pickup",
+  ready_for_pickup: "Available for pickup",
   dispatched: "Dispatched",
   delivered: "Delivered",
   cancelled: "Cancelled",

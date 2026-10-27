@@ -152,7 +152,7 @@ export default function OrderScreen() {
     if (items.length === 1) setReviewing(items[0]);
     else if (items.length > 1) setPickingReview(true);
   }, [order, reviewAsked]);
-  const [confirming, setConfirming] = useState<"yes" | "no" | null>(null);
+  const [confirming, setConfirming] = useState<"yes" | "no" | "picked" | null>(null);
   const moneyMoves = useMoneyMoves();
   const [payOpen, setPayOpen] = useState(false);
   // After Money Moves closes, look for the payment for a minute (the webhook can take a few seconds).
@@ -185,6 +185,20 @@ export default function OrderScreen() {
   const history = [...order.history].reverse();
 
   /** The customer says they got it, so the store's last payment can go */
+  async function pickedUp() {
+    setConfirming("picked");
+    try {
+      await api.confirmPickedUp(order!.id);
+      tap();
+      toast("Enjoy! Thanks for confirming", { icon: "checkmark-circle" });
+      await reload();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't send that. Try again.", { icon: "alert-circle" });
+    } finally {
+      setConfirming(null);
+    }
+  }
+
   async function answerReceived(got: boolean) {
     setConfirming(got ? "yes" : "no");
     try {
@@ -274,6 +288,19 @@ export default function OrderScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: space.md }}>
           <ActivityIndicator color={colors.brandPressed} />
           <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>Checking for your Money Moves payment. This usually takes a few seconds.</Txt>
+        </View>
+      )}
+
+      {order.status === "ready_for_pickup" && order.fulfilmentType === "pickup" && (
+        <View style={[ui.card, { gap: space.md, borderColor: colors.brand }]}>
+          <View style={[ui.row, { gap: space.md }]}>
+            <Illo name="pin" size={38} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt variant="label">Available for pickup</Txt>
+              <Txt variant="small">{order.pickupLocation ? `Collect it at ${order.pickupLocation}.` : "It's waiting at the pickup location."} Tap below once you have it.</Txt>
+            </View>
+          </View>
+          <Button title="I've picked it up" icon="checkmark-circle" variant="dark" loading={confirming === "picked"} disabled={!!confirming} onPress={pickedUp} />
         </View>
       )}
 
@@ -425,7 +452,22 @@ export default function OrderScreen() {
       </Section>
 
       <Section title={order.fulfilmentType === "pickup" ? "Pickup" : "Delivery"} illo={order.fulfilmentType === "pickup" ? "store" : "bike"}>
-        {order.fulfilmentType === "pickup" && store ? (
+        {order.fulfilmentType === "pickup" && order.pickupLocation ? (
+          <>
+            <View style={{ gap: 2 }}>
+              <Txt variant="label">{order.pickupLocation}</Txt>
+              <Txt variant="small">Pickup location</Txt>
+            </View>
+            <Button
+              title="Directions"
+              icon="navigate-outline"
+              variant="outline"
+              size="sm"
+              onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(order.pickupLocation ?? "")}`)}
+            />
+            <Txt variant="caption">Bring your order number ({order.orderNumber}) when you collect.</Txt>
+          </>
+        ) : order.fulfilmentType === "pickup" && store ? (
           <>
             <View style={{ gap: 2 }}>
               <Txt variant="label">{store.name}</Txt>

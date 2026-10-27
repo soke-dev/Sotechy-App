@@ -245,6 +245,8 @@ export interface Order {
   customerConfirmedAt?: string | null;
   /** When the customer said it didn't arrive (Sotechy follows up) */
   customerIssueAt?: string | null;
+  /** Where a pickup order is collected (a store's approved pickup location, or an approved change) */
+  pickupLocation?: string | null;
   createdAt: string;
 }
 
@@ -672,6 +674,8 @@ export interface MerchantOrder {
   fulfilment: "delivery" | "pickup";
   /** Where the customer collects a pickup order */
   pickupPoint?: string;
+  /** The store asked to use another pickup location for this order */
+  pickupChange?: { point: string; status: "pending" | "approved" | "declined" };
   items: { name: string; image: string | null; qty: number; price: number; option?: string }[];
   subtotal: number;
   deliveryFee: number;

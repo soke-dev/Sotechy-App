@@ -8,7 +8,7 @@ import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, HttpError, notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
 import { moneyMovesConfigured } from "../services/moneymoves";
-import { cancelOrder, placeOrder } from "../services/orders";
+import { cancelOrder, placeOrder, updateOrderStatus } from "../services/orders";
 import { finalDueNow, holdFinal } from "../services/payouts";
 import { sendEmailLater } from "../lib/email";
 import { orderNotReceivedEmail } from "../emails/templates";
@@ -72,8 +72,14 @@ export async function loadOrderDetail(orderId: string) {
     }
   }
 
-  const { idempotencyKey: _k, ...publicOrder } = order;
-  return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions };
+  // A pickup order is collected at the store's pickup location, or at a change Sotechy approved
+  let pickupLocation: string | null = null;
+  if (order.fulfilmentType === "pickup") {
+    const [zone] = order.deliveryZoneId ? await db.select({ point: schema.deliveryZones.pickupPoint }).from(schema.deliveryZones).where(eq(schema.deliveryZones.id, order.deliveryZoneId)) : [];
+    pickupLocation = order.pickupChangeStatus === "approved" ? order.pickupChangePoint : (zone?.point ?? null);
+  }
+  const { idempotencyKey: _k, pickupChangePoint: _p, pickupChangeStatus: _ps, pickupChangeAt: _pa, ...publicOrder } = order;
+  return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation };
 }
 
 /** Order items with the product's first photo, for thumbnails. */
@@ -116,6 +122,22 @@ export const orderRoutes = new Hono<AppEnv>()
   })
   .post("/:id/cancel", async (c) => {
     return c.json(await cancelOrder(c.get("user"), c.req.param("id")));
+  })
+  /** The customer collected a pickup order that was ready: it's delivered and confirmed, and the store's final payment is due */
+  .post("/:id/picked-up", async (c) => {
+    const user = c.get("user");
+    const [o] = await db.select().from(orders).where(and(eq(orders.id, c.req.param("id")), eq(orders.customerId, user.id)));
+    if (!o) throw notFound("Order not found");
+    if (o.fulfilmentType !== "pickup") throw badRequest("This is a delivery order");
+    if (o.status !== "ready_for_pickup") throw badRequest(o.status === "delivered" ? "This order is already collected" : "This order isn't ready for pickup yet");
+    await db.update(orders).set({ customerConfirmedAt: new Date() }).where(eq(orders.id, o.id));
+    await updateOrderStatus(user, o.id, "delivered", "Collected (confirmed by the customer)");
+    if (o.merchantId) {
+      await finalDueNow(o.id);
+      const [store] = await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId));
+      if (store?.ownerId) sendPushLater([store.ownerId], { title: "Order collected", body: `The customer collected ${o.orderNumber}. Your final payment is on its way.`, data: { url: `/orders/${o.id}` } });
+    }
+    return c.json(await loadOrderDetail(o.id));
   })
   /** The customer got their order. The store's final payment falls due straight away. */
   .post("/:id/received", async (c) => {

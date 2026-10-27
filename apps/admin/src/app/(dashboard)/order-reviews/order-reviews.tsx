@@ -9,9 +9,9 @@ import { Illo } from "@/components/illustrations";
 import { usePasswordPrompt } from "@/components/password-prompt";
 import { RelTime } from "@/components/rel-time";
 import { dangerButtonClass, EmptyState, PageHeader, Pill, primaryButtonClass, secondaryButtonClass, Sheet, Tabs } from "@/components/ui";
-import { cancelOrder, markDelivered, markReceived, markRepaid } from "./actions";
+import { answerPickupChange, cancelOrder, markDelivered, markReceived, markRepaid } from "./actions";
 
-export type CaseKind = "not_received" | "not_accepted" | "not_confirmed" | "payback";
+export type CaseKind = "pickup_change" | "not_received" | "not_accepted" | "not_confirmed" | "payback";
 export interface OrderCase {
   id: string;
   kind: CaseKind;
@@ -27,6 +27,7 @@ export interface OrderCase {
 }
 
 const KIND: Record<CaseKind, { label: string; tone: "warn" | "info" | "bad"; illo: "box" | "bike" | "bank" }> = {
+  pickup_change: { label: "New pickup location", tone: "warn", illo: "box" },
   not_received: { label: "Customer didn't get it", tone: "bad", illo: "bike" },
   not_accepted: { label: "Not accepted in 24h", tone: "warn", illo: "box" },
   not_confirmed: { label: "Not delivered in 7 days", tone: "info", illo: "bike" },
@@ -62,6 +63,7 @@ export function OrderReviews({ cases }: { cases: OrderCase[] }) {
         onChange={setTab}
         tabs={[
           { id: "all", label: "All open", count: cases.length, urgent: true },
+          { id: "pickup_change", label: "Pickup changes", count: count("pickup_change") },
           { id: "not_received", label: "Didn't arrive", count: count("not_received") },
           { id: "not_accepted", label: "Not accepted", count: count("not_accepted") },
           { id: "not_confirmed", label: "Not delivered", count: count("not_confirmed") },
@@ -120,6 +122,16 @@ export function OrderReviews({ cases }: { cases: OrderCase[] }) {
                 <button disabled={busy} onClick={() => act(() => cancelOrder(current.orderId, "Store didn't accept within 24 hours"))} className={`${dangerButtonClass} w-full`}>
                   Cancel the order and refund the customer
                 </button>
+              )}
+              {current.kind === "pickup_change" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button disabled={busy} onClick={() => act(() => answerPickupChange(current.orderId, false))} className={`${secondaryButtonClass} w-full`}>
+                    Decline
+                  </button>
+                  <button disabled={busy} onClick={() => act(() => answerPickupChange(current.orderId, true))} className={`${primaryButtonClass} w-full`}>
+                    Approve
+                  </button>
+                </div>
               )}
               {current.kind === "not_received" && (
                 <button disabled={busy} onClick={() => act(() => markReceived(current.orderId))} className={`${primaryButtonClass} w-full`}>

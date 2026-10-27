@@ -49,7 +49,7 @@ export async function removeZone(id: string): Promise<Result<{ deleted: true }>>
   return attempt(() => api.deleteDeliveryZone(id), ["/delivery"]);
 }
 
-export async function orderAction(id: string, action: "accept" | "ship" | "deliver" | "decline", note?: string): Promise<Result<MerchantOrder>> {
+export async function orderAction(id: string, action: "accept" | "ship" | "deliver" | "decline" | "pickup-change", note?: string): Promise<Result<MerchantOrder>> {
   return attempt(() => api.merchantOrderAction(id, action, note), ["/orders", `/orders/${id}`, "/"]);
 }
 

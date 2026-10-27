@@ -28,6 +28,11 @@ export async function markDelivered(orderId: string): Promise<Result> {
   return attempt(() => api.post(`/admin/orders/${orderId}/status`, { status: "delivered", note: "Confirmed by Sotechy" }));
 }
 
+/** A store's request to use another pickup location for one order */
+export async function answerPickupChange(orderId: string, approve: boolean): Promise<Result> {
+  return attempt(() => api.post(`/admin/orders/${orderId}/pickup-change`, { approve }));
+}
+
 /** The customer has the order after all: the store's final payment can go */
 export async function markReceived(orderId: string): Promise<Result> {
   return attempt(() => api.post(`/admin/orders/${orderId}/received`, {}));

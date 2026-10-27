@@ -558,6 +558,11 @@ export const orders = pgTable(
     /** The customer said they didn't get it, after the store marked it delivered: Sotechy follows up */
     customerIssueAt: timestamp({ withTimezone: true }),
     customerIssueNote: text(),
+    /** A store asking to hand this pickup order over somewhere other than its approved pickup location.
+     *  "pending" until an admin answers; once "approved", it's where the customer collects. */
+    pickupChangePoint: text(),
+    pickupChangeStatus: text().$type<"pending" | "approved" | "declined">(),
+    pickupChangeAt: timestamp({ withTimezone: true }),
     notes: text(),
     createdBy: uuid().references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),

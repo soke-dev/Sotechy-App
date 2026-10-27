@@ -3,7 +3,7 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db, schema } from "../db/client";
 
-export type CaseKind = "not_received" | "not_accepted" | "not_confirmed" | "payback";
+export type CaseKind = "pickup_change" | "not_received" | "not_accepted" | "not_confirmed" | "payback";
 export interface OrderCase {
   id: string;
   kind: CaseKind;
@@ -64,6 +64,28 @@ export async function orderCases(): Promise<OrderCase[]> {
         money: "The store's first payment may be out; the final payment waits until it's delivered.",
       });
     }
+  }
+
+  const moves = await db
+    .select({ id: o.id, number: o.orderNumber, total: o.total, at: o.pickupChangeAt, point: o.pickupChangePoint, zone: schema.deliveryZones.pickupPoint, store: schema.merchants.name, customer: schema.users.fullName })
+    .from(o)
+    .leftJoin(schema.merchants, eq(schema.merchants.id, o.merchantId))
+    .leftJoin(schema.users, eq(schema.users.id, o.customerId))
+    .leftJoin(schema.deliveryZones, eq(schema.deliveryZones.id, o.deliveryZoneId))
+    .where(eq(o.pickupChangeStatus, "pending"));
+  for (const r of moves) {
+    cases.push({
+      id: `pc-${r.id}`,
+      kind: "pickup_change",
+      orderId: r.id,
+      order: r.number,
+      merchant: r.store ?? "Store",
+      customer: r.customer ?? "Customer",
+      total: r.total,
+      openedAt: (r.at ?? new Date()).toISOString(),
+      detail: `${r.store ?? "The store"} wants the customer to collect at "${r.point}" instead of ${r.zone ? `"${r.zone}"` : "its approved pickup location"}.`,
+      money: "Nothing changes for the money. The order waits until you answer; if you approve, the customer is told the new place.",
+    });
   }
 
   const missing = await db

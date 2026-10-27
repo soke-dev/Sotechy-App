@@ -6,7 +6,7 @@ export function orderSteps(fulfilment: FulfilmentType): { status: OrderStatus; l
     { status: "pending_payment", label: "Placed" },
     { status: "paid", label: "Paid" },
     { status: "processing", label: "Preparing" },
-    fulfilment === "pickup" ? { status: "ready_for_pickup", label: "Ready" } : { status: "dispatched", label: "On the way" },
+    fulfilment === "pickup" ? { status: "ready_for_pickup", label: "Available" } : { status: "dispatched", label: "On the way" },
     { status: "delivered", label: fulfilment === "pickup" ? "Collected" : "Delivered" },
   ];
 }
@@ -23,7 +23,7 @@ export function statusCopy(status: OrderStatus, fulfilment: FulfilmentType): { t
     case "processing":
       return { title: "We're preparing your order", body: "Our team is checking and packing your items." };
     case "ready_for_pickup":
-      return { title: "Ready for pickup", body: "Come to the store with your order number. We'll have it ready at the counter." };
+      return { title: "Available for pickup", body: "Your order is waiting at the pickup location. Bring your order number, and tap “I've picked it up” once you have it." };
     case "dispatched":
       return { title: "On its way to you", body: "Our rider is on the way. Keep your phone close for the delivery call." };
     case "delivered":

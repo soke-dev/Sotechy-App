@@ -22,6 +22,8 @@ import { CHAINS, currentContract } from "../services/chain";
 import { answerOffer, storeOffers } from "../services/offers";
 import { sendPushLater } from "../services/push";
 import { payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
+import { sendEmailLater } from "../lib/email";
+import { pickupChangeEmail } from "../emails/templates";
 import { answerSchema } from "./offers";
 import { cancelOrder, updateOrderStatus } from "../services/orders";
 
@@ -267,7 +269,8 @@ async function ordersForDashboard(storeId: string, ids?: string[]) {
         address: a ? [a.line1, a.line2, a.city, a.state].filter(Boolean).join(", ") : "",
       },
       fulfilment: o.fulfilmentType,
-      pickupPoint: o.fulfilmentType === "pickup" ? (point ?? undefined) : undefined,
+      pickupPoint: o.fulfilmentType === "pickup" ? ((o.pickupChangeStatus === "approved" ? o.pickupChangePoint : point) ?? undefined) : undefined,
+      pickupChange: o.pickupChangePoint && o.pickupChangeStatus ? { point: o.pickupChangePoint, status: o.pickupChangeStatus } : undefined,
       items: items
         .filter((i) => i.item.orderId === o.id)
         .map((i) => ({ name: i.item.productName, image: i.images?.[0] ?? null, qty: i.item.quantity, price: i.item.unitPrice, option: i.item.variantName !== "Standard" ? i.item.variantName : undefined })),
@@ -688,8 +691,19 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     if (action === "accept") {
       if (o.status !== "paid") throw conflict("This order can't be accepted now");
       await updateOrderStatus(actor, o.id, "processing", note ?? "Store accepted the order");
+    } else if (action === "pickup-change") {
+      // Handing it over somewhere else needs Sotechy's approval first
+      const point = note?.trim();
+      if (o.fulfilmentType !== "pickup") throw badRequest("Only pickup orders have a pickup location");
+      if (o.status !== "processing") throw conflict("You can change where it's collected before it's ready");
+      if (!point || point.length < 5) throw badRequest("Enter the new pickup location");
+      await db.update(orders).set({ pickupChangePoint: point, pickupChangeStatus: "pending", pickupChangeAt: new Date() }).where(eq(orders.id, o.id));
+      const [zone] = o.deliveryZoneId ? await db.select({ point: schema.deliveryZones.pickupPoint }).from(schema.deliveryZones).where(eq(schema.deliveryZones.id, o.deliveryZoneId)) : [];
+      const admins = await db.select({ email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.role, "admin"));
+      for (const a of admins) sendEmailLater(pickupChangeEmail(a.email, { name: a.name, store: store.name, orderNumber: o.orderNumber, from: zone?.point ?? null, to: point }));
     } else if (action === "ship") {
       if (o.status !== "processing") throw conflict("Accept the order first");
+      if (o.pickupChangeStatus === "pending") throw conflict("Wait for the new pickup location to be approved, or use your approved one");
       await updateOrderStatus(actor, o.id, o.fulfilmentType === "pickup" ? "ready_for_pickup" : "dispatched", note ?? (o.fulfilmentType === "pickup" ? "Ready for pickup" : "On its way"));
     } else if (action === "deliver") {
       if (o.status !== "dispatched" && o.status !== "ready_for_pickup") throw conflict("Send the order first");
