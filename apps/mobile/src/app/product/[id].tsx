@@ -538,18 +538,18 @@ export default function ProductScreen() {
                 </View>
               ) : null}
               {off > 0 && <Pill label={`Save ${off}%`} tone="brand" />}
+              {available > 0 ? (
+                <Pill
+                  icon="checkmark-circle"
+                  tone={lowStock ? "warning" : "success"}
+                  label={lowStock ? `Only ${available} left` : `In stock at ${storesWithStock.length} store${storesWithStock.length === 1 ? "" : "s"}`}
+                />
+              ) : (
+                <Pill icon="close-circle" tone="danger" label="Out of stock" />
+              )}
             </View>
-            {/* Stock and the offer side by side */}
+            {/* The offer, under the price */}
             <View style={[ui.row, { gap: space.sm, flexWrap: "wrap" }]}>
-            {available > 0 ? (
-              <Pill
-                icon="checkmark-circle"
-                tone={lowStock ? "warning" : "success"}
-                label={lowStock ? `Only ${available} left` : `In stock at ${storesWithStock.length} store${storesWithStock.length === 1 ? "" : "s"}`}
-              />
-            ) : (
-              <Pill icon="close-circle" tone="danger" label="Out of stock" />
-            )}
             {openOffer ? (
               <Pressable
                 onPress={() => router.push({ pathname: "/offer/[id]", params: { id: openOffer.id } })}
