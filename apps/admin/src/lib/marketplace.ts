@@ -1,8 +1,5 @@
-// Shared marketplace types, labels and fee rules for the admin screens. Stores and delivery areas come
-// from the API; payouts, order reviews and tokens start empty until those parts of the backend exist.
-
-const now = Date.now();
-const ago = (mins: number) => new Date(now - mins * 60_000).toISOString();
+// Fee rules, payout plan labels and token figures for the admin screens. Stores, orders, payouts, order
+// reviews and featuring come from the API; token figures stay at zero until the Monad contract is live.
 
 export const FEE = { rate: 0.02, reserveShare: 0.5, maxReviewBonus: 0.1, crossBonus: 0.1 };
 /** Store value of one token: the reserve half of the fee, spread over the token plus its maximum review bonus */
@@ -54,61 +51,11 @@ export interface Merchant {
   note?: string;
 }
 
-export const MERCHANT_STATUS: Record<MerchantStatus, { label: string; tone: "warn" | "info" | "good" | "bad" | "neutral" }> = {
-  review: { label: "Needs review", tone: "warn" },
-  info: { label: "Waiting on merchant", tone: "info" },
-  verified: { label: "Verified", tone: "good" },
-  suspended: { label: "Suspended", tone: "bad" },
-  rejected: { label: "Rejected", tone: "neutral" },
-};
 
-export const merchants: Merchant[] = [];
 
 /** How many of a merchant's documents have been looked at */
 export const docsChecked = (m: Pick<Merchant, "docs">) => m.docs.filter((d) => d.status !== "unchecked").length;
 
-export type ZoneReview = "pending" | "approved" | "declined";
-
-export interface ZoneRequest {
-  id: string;
-  merchant: string;
-  ticker: string;
-  state: string;
-  areas: string[];
-  homeFee: number;
-  pickup?: { fee: number; point: string };
-  days: string;
-  review: ZoneReview;
-  requestedAt: string;
-  change?: string;
-  evidence: string;
-  note?: string;
-}
-
-export const zoneRequests: ZoneRequest[] = [];
-
-export type CaseKind = "not_accepted" | "not_confirmed" | "payback" | "dispute";
-
-export interface OrderCase {
-  id: string;
-  kind: CaseKind;
-  order: string;
-  merchant: string;
-  customer: string;
-  total: number;
-  openedAt: string;
-  detail: string;
-  money: string;
-}
-
-export const CASE_KIND: Record<CaseKind, { label: string; tone: "warn" | "info" | "bad" | "brand"; illo: "box" | "bike" | "bank" | "chat" }> = {
-  not_accepted: { label: "Not accepted in 24h", tone: "warn", illo: "box" },
-  not_confirmed: { label: "Customer hasn't confirmed", tone: "info", illo: "bike" },
-  payback: { label: "Merchant must pay back", tone: "bad", illo: "bank" },
-  dispute: { label: "Customer complaint", tone: "brand", illo: "chat" },
-};
-
-export const orderCases: OrderCase[] = [];
 
 
 export interface TokenRow {
@@ -152,31 +99,6 @@ export const TOKEN_EVENT = {
   pos: { label: "Walk-in mint", tone: "neutral" },
 } as const;
 
-export type MerchantOrderStatus = "new" | "accepted" | "shipped" | "delivered" | "completed" | "declined";
-
-export const MERCHANT_ORDER_STATUS: Record<MerchantOrderStatus, { label: string; tone: "warn" | "info" | "brand" | "good" | "bad" }> = {
-  new: { label: "Waiting for merchant", tone: "warn" },
-  accepted: { label: "Accepted", tone: "info" },
-  shipped: { label: "Shipped", tone: "brand" },
-  delivered: { label: "Delivered", tone: "good" },
-  completed: { label: "Completed", tone: "good" },
-  declined: { label: "Declined", tone: "bad" },
-};
-
-/** Orders placed with marketplace merchants (Sotechy's own orders come from the API) */
-export interface MerchantOrder {
-  id: string;
-  number: string;
-  merchantId: string;
-  customer: string;
-  status: MerchantOrderStatus;
-  fulfilment: "delivery" | "pickup";
-  total: number;
-  createdAt: string;
-  payout: string;
-}
-
-export const merchantOrders: MerchantOrder[] = [];
 
 /** How a merchant is paid: the plan and the split live in the shared package, so the API pays the same numbers */
 export { splitByPlan, type FeeTiming, type PayoutPlan } from "@sotechy/shared";
@@ -190,12 +112,6 @@ export const FEE_TIMING: Record<FeeTiming, { label: string; hint: string }> = {
 
 export const describePlan = (plan: PayoutPlan) => `${plan.firstPercent}% first · fee ${plan.fee === "spread" ? "spread over both" : plan.fee === "first" ? "from the first payment" : "from the last payment"}`;
 
-/** What the admin needs to look at, for the nav badges and the dashboard */
-export const queue = {
-  merchants: merchants.filter((m) => m.status === "review").length,
-  zones: zoneRequests.filter((z) => z.review === "pending").length,
-  cases: orderCases.length,
-};
 
 /** Outstanding token value at store prices, against the naira the reserve holds */
 export function reserveHealth() {
@@ -205,21 +121,3 @@ export function reserveHealth() {
 }
 
 export const formatTokens = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M` : n.toLocaleString("en-NG"));
-
-/** "₦28.1m", "₦940k": for big numbers in small cards */
-export const nairaShort = (n: number) => (n >= 1_000_000 ? `₦${(n / 1_000_000).toFixed(1)}m` : n >= 10_000 ? `₦${Math.round(n / 1_000)}k` : `₦${n.toLocaleString("en-NG")}`);
-
-/** Paid featured placement: the monthly price and stores currently featured (sample) */
-const DAY_MS = 86_400_000;
-export const featuring = {
-  pricePerMonth: 2_000,
-  /** Most stores featured at once; a full slot list keeps it meaningful */
-  maxStores: 8,
-  stores: [
-    { merchantId: "m2", since: ago(60 * 24 * 4), until: new Date(Date.now() + 26 * DAY_MS).toISOString(), paid: 2_000 },
-    { merchantId: "m6", since: ago(60 * 24 * 10), until: new Date(Date.now() + 20 * DAY_MS).toISOString(), paid: 2_000 },
-    { merchantId: "m3", since: ago(60 * 24 * 9), until: new Date(Date.now() + 21 * DAY_MS).toISOString(), paid: 2_000 },
-  ],
-  revenueThisMonth: 6_000,
-};
-

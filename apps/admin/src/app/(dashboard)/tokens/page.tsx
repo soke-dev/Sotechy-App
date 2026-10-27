@@ -5,7 +5,7 @@ import { useState } from "react";
 import { formatNaira } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { RelTime } from "@/components/rel-time";
-import { buttonClass, Card, DataTable, Field, inputClass, PageHeader, Pill, SampleBadge, StatCard } from "@/components/ui";
+import { buttonClass, Card, DataTable, Field, inputClass, PageHeader, Pill, StatCard } from "@/components/ui";
 import { FEE, formatTokens, reserve, reserveHealth, TOKEN_EVENT, TOKEN_VALUE, tokenEvents, tokens } from "@/lib/marketplace";
 
 /** Half-circle gauge of how much of the token value the reserve covers */
@@ -40,8 +40,7 @@ export default function TokensPage() {
       <PageHeader
         illo="coin"
         title="Tokens & reserve"
-        badge={<SampleBadge />}
-        description="Every store's $TICKER token on Monad, the reserve that backs them, and the fee settings. Changes are signed with the admin key."
+        description="Every store's $TICKER token on Monad, the reserve that backs them, and the fee settings. The numbers fill in once the token contract is live on Monad."
       />
 
       <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_1.6fr]">

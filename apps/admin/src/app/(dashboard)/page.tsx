@@ -4,9 +4,9 @@ import { formatNaira, type AppFeatures } from "@sotechy/shared";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { Card, ErrorNote, Pill, StatCard } from "@/components/ui";
 import type { Queue } from "@/components/queue-context";
-import { fromApiOrder, fromMerchantOrder, OrderList } from "@/components/order-list";
+import { fromApiOrder, OrderList } from "@/components/order-list";
 import { getCurrentUser, load } from "@/lib/api";
-import { FEE, merchantOrders, reserve, reserveHealth } from "@/lib/marketplace";
+import { FEE, reserve, reserveHealth } from "@/lib/marketplace";
 import type { AdminOrderRow, SalesSummary } from "@/lib/types";
 
 function StatusDot({ on, label }: { on: boolean; label: string }) {
@@ -246,7 +246,7 @@ export default async function DashboardPage() {
       >
         <ErrorNote error={orders.error} />
         <OrderList
-          rows={[...(orders.data ?? []).map(fromApiOrder), ...merchantOrders.map(fromMerchantOrder)].sort((x, y) => y.at.localeCompare(x.at)).slice(0, 8)}
+          rows={(orders.data ?? []).map(fromApiOrder).sort((x, y) => y.at.localeCompare(x.at)).slice(0, 8)}
           empty="No orders yet. They'll appear here as soon as customers check out."
         />
       </Card>

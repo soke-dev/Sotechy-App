@@ -83,8 +83,6 @@ export const topHolders: { username: string; amount: number }[] = [];
 
 export const reviews: { id: string; product: string; customer: string; rating: number; text: string; photo: string | null; bonus: number; at: string; reply: string | null }[] = [];
 
-/** People other than the owner who can use this dashboard */
-export const team: { name: string; email: string; role: string; status: "active" | "invited" }[] = [];
 
 export const NIGERIAN_STATES = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu",
@@ -114,11 +112,5 @@ export const sentNotices: { id: string; title: string; body: string; at: string;
 
 
 /** Featured placement: the price Sotechy charges (set in admin) and this store's feature, if any */
-export const featured = {
-  pricePerMonth: 2_000,
-  until: null as number | null,
-  visits: 0,
-  visitsLift: null as string | null,
-  history: [] as { id: string; months: number; from: number; to: number; amount: number }[],
-};
+
 

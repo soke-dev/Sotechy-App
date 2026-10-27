@@ -105,6 +105,11 @@ export async function replyToReview(id: string, text: string): Promise<Result<{ 
   return attempt(() => api.post<{ ok: true }>(`/merchant/reviews/${id}/reply`, { text }), ["/reviews"]);
 }
 
+/** Starts paying for featuring; returns the Money Moves checkout page */
+export async function buyFeaturing(months: number): Promise<Result<{ checkoutUrl: string }>> {
+  return attempt(() => api.post<{ checkoutUrl: string }>("/merchant/featuring", { months }));
+}
+
 /** Sends a message to everyone following the store */
 export async function sendNotice(input: { title: string; body: string; productId?: string | null }): Promise<Result<MerchantNotice>> {
   return attempt(() => api.post<MerchantNotice>("/merchant/notices", input), ["/notifications"]);

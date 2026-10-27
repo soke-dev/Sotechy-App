@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderStatus } from "@sotechy/shared";
 import { Pill, toneForStatus, type Tone } from "./ui";
-import { MERCHANT_ORDER_STATUS, merchants, type MerchantOrder } from "@/lib/marketplace";
 import type { AdminOrderRow } from "@/lib/types";
 
 /** The marketplace store that sold an order; null for Sotechy's own */
@@ -39,23 +38,6 @@ export function fromApiOrder(o: AdminOrderRow): OrderRowView {
     customer: o.customerName ?? o.walkInCustomer?.name ?? o.customerEmail ?? "Walk-in",
     where: `${o.channel === "online" ? "App" : "In store"} · ${cap(o.fulfilmentType)}`,
     money: PAYMENT_METHOD_LABELS[o.paymentMethod] ?? o.paymentMethod,
-    total: o.total,
-    at: o.createdAt,
-  };
-}
-
-export function fromMerchantOrder(o: MerchantOrder): OrderRowView {
-  const found = merchants.find((x) => x.id === o.merchantId);
-  const m = found ? { id: found.id, name: found.name, ticker: found.ticker } : null;
-  return {
-    key: o.id,
-    number: o.number,
-    href: `/merchants/${o.merchantId}`,
-    merchant: m,
-    status: MERCHANT_ORDER_STATUS[o.status],
-    customer: o.customer,
-    where: `App · ${cap(o.fulfilment)}`,
-    money: o.payout,
     total: o.total,
     at: o.createdAt,
   };

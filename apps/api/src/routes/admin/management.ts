@@ -13,6 +13,7 @@ import { storeVerifiedEmail } from "../../emails/templates";
 import { adjustStock } from "../../services/inventory";
 import { salesSummary } from "../../services/reports";
 import { paymentMethodSchema } from "../orders";
+import { orderCases } from "../../services/order-cases";
 
 const { users, branches, promotions, paymentMethods, cryptoAssets, appSettings, suppliers, purchaseOrders, purchaseOrderItems, supportTickets, auditLogs } =
   schema;
@@ -302,6 +303,8 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     return c.json({ ...row.store, owner: row.owner, zones, ...counts[0] });
   })
   /** What's waiting for a decision, for the admin menu's counts */
+  /** Store orders that need Sotechy: not accepted, not delivered, paybacks owed */
+  .get("/order-cases", async (c) => c.json(await orderCases()))
   .get("/queue", async (c) => {
     const [row] = await db
       .select({
@@ -310,7 +313,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       })
       .from(users)
       .limit(1);
-    return c.json({ merchants: row?.merchants ?? 0, zones: row?.zones ?? 0, cases: 0 });
+    return c.json({ merchants: row?.merchants ?? 0, zones: row?.zones ?? 0, cases: (await orderCases()).length });
   })
   /** Every store's delivery areas, waiting ones first */
   .get("/delivery-zones", async (c) => {

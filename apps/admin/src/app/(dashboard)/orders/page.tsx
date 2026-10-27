@@ -3,12 +3,18 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { formatNaira, ORDER_STATUS_LABELS } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
-import { fromApiOrder, fromMerchantOrder, OrderList, type OrderRowView } from "@/components/order-list";
-import { Card, ErrorNote, FilterLinks, PageHeader, Pill, SampleBadge } from "@/components/ui";
+import { fromApiOrder, OrderList, type OrderRowView } from "@/components/order-list";
+import { Card, ErrorNote, FilterLinks, PageHeader, Pill } from "@/components/ui";
 import { UrlSearch, UrlSelect } from "@/components/url-controls";
 import { load } from "@/lib/api";
-import { CASE_KIND, MERCHANT_ORDER_STATUS, merchantOrders, orderCases } from "@/lib/marketplace";
 import type { AdminOrderRow } from "@/lib/types";
+import type { CaseKind, OrderCase } from "../order-reviews/order-reviews";
+
+const CASE_KIND: Record<CaseKind, { label: string; tone: "warn" | "info" | "bad"; illo: "box" | "bike" | "bank" }> = {
+  not_accepted: { label: "Not accepted in 24h", tone: "warn", illo: "box" },
+  not_confirmed: { label: "Not delivered in 7 days", tone: "info", illo: "bike" },
+  payback: { label: "Store owes it back", tone: "bad", illo: "bank" },
+};
 
 type Params = { status?: string; channel?: string; seller?: string; sort?: string; q?: string };
 
@@ -24,19 +30,18 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const qs = new URLSearchParams();
   if (status) qs.set("status", status);
   if (channel) qs.set("channel", channel);
-  const { data, error } = seller === "merchants" ? { data: [] as AdminOrderRow[], error: null } : await load<AdminOrderRow[]>(`/admin/orders?${qs}`);
+  const [{ data, error }, cases] = await Promise.all([load<AdminOrderRow[]>(`/admin/orders?${qs}`), load<OrderCase[]>("/admin/order-cases")]);
+  const orderCases = cases.data ?? [];
 
-  // Merchants' orders only sell through the app, so a walk-in filter leaves them out
-  const merchantRows = seller === "sotechy" || channel === "in_store" ? [] : merchantOrders.filter((o) => !status || o.status === status).map(fromMerchantOrder);
+  // Sotechy's own orders and every store's come back together; the seller switch narrows them
   const term = q?.toLowerCase();
-  const rows = [...(data ?? []).map(fromApiOrder), ...merchantRows]
+  const rows = (data ?? [])
+    .filter((o) => seller === "all" || (seller === "merchants") === !!o.merchantId)
+    .map(fromApiOrder)
     .filter((r) => !term || `${r.number} ${r.customer} ${r.merchant?.name ?? "sotechy"}`.toLowerCase().includes(term))
     .sort(SORTS[sort] ?? SORTS.newest);
 
-  const statusOptions =
-    seller === "merchants"
-      ? Object.entries(MERCHANT_ORDER_STATUS).map(([value, s]) => ({ value, label: s.label }))
-      : Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+  const statusOptions = Object.entries(ORDER_STATUS_LABELS).map(([value, label]) => ({ value, label }));
   const sellerHref = (s: string) => {
     const next = new URLSearchParams();
     if (s !== "all") next.set("seller", s);
@@ -66,7 +71,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               <Illo name="shield" size={26} /> Needs Sotechy
             </h2>
             <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-white">{orderCases.length}</span>
-            <SampleBadge />
             <Link href="/order-reviews" className="ml-auto inline-flex items-center gap-1 text-sm font-semibold text-brand-strong hover:underline">
               See all <ArrowRight size={15} />
             </Link>
@@ -100,7 +104,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         items={[
           { label: "All orders", href: sellerHref("all"), active: seller === "all" },
           { label: "Sotechy store", href: sellerHref("sotechy"), active: seller === "sotechy" },
-          { label: "Merchants", href: sellerHref("merchants"), active: seller === "merchants" },
+          { label: "Other stores", href: sellerHref("merchants"), active: seller === "merchants" },
         ]}
       />
       <div className="no-scrollbar -mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap">
@@ -134,7 +138,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         <ErrorNote error={error} />
         <p className="mb-3 text-sm text-muted">
           {rows.length} order{rows.length === 1 ? "" : "s"}
-          {merchantRows.length > 0 && " · merchant orders are sample data"}
         </p>
         <OrderList rows={rows} empty="No orders match. Try another filter." />
       </Card>
