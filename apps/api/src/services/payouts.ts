@@ -172,6 +172,41 @@ export async function sendPayout(id: string, opts: { actorId: string | null; for
   return done;
 }
 
+/** An admin paid the store from Sotechy's bank themselves: the payout is recorded as paid to the store's
+ *  default account and the store hears about it, as if it had gone through the payout service. */
+export async function markPaidByHand(id: string, opts: { actorId: string; reference: string | null }) {
+  const row = await db.transaction(async (tx) => {
+    const [p] = await tx.select().from(payouts).where(eq(payouts.id, id)).for("update");
+    if (!p) throw notFound("Payout not found");
+    if (p.stage === "payback") throw badRequest("Paybacks are settled, not paid");
+    if (!["scheduled", "failed", "held"].includes(p.status)) throw badRequest(`This payout is ${p.status}`);
+    const [store] = await tx.select().from(merchants).where(eq(merchants.id, p.merchantId));
+    const [updated] = await tx
+      .update(payouts)
+      .set({
+        status: "paid",
+        provider: "manual",
+        providerId: opts.reference,
+        sentAt: new Date(),
+        paidAt: new Date(),
+        failureReason: null,
+        bankCode: store?.payoutBankCode ?? p.bankCode,
+        bankName: store?.payoutBankName ?? p.bankName,
+        accountNumber: store?.payoutAccountNumber ?? p.accountNumber,
+        accountName: store?.payoutAccountName ?? p.accountName,
+      })
+      .where(eq(payouts.id, id))
+      .returning();
+    await audit(tx, { actorId: opts.actorId, action: "payout.paid_by_hand", entityType: "payout", entityId: id, details: { amount: p.amount, stage: p.stage, reference: opts.reference } });
+    return updated;
+  });
+  void tellStorePaid(row);
+  // Paid for an order that's since been cancelled: it's owed back
+  const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, row.orderId));
+  if (order?.status === "cancelled" || order?.status === "refunded") await unwind(row.orderId);
+  return row;
+}
+
 /** Records what the payout service says happened */
 async function applyTransfer(payoutId: string, t: Pick<RailResult, "status" | "failureReason">) {
   if (t.status === "paid") {

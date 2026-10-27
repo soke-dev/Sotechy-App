@@ -19,8 +19,8 @@ async function attempt(fn: () => Promise<unknown>): Promise<Result> {
 }
 
 /** Holding needs no password; sending, releasing and settling do */
-export async function payoutAction(id: string, action: "send" | "hold" | "release" | "settle", password = ""): Promise<Result> {
-  return attempt(() => withPassword("POST", `/admin/payouts/${id}/${action}`, {}, password));
+export async function payoutAction(id: string, action: "send" | "paid" | "hold" | "release" | "settle", password = "", body: Record<string, unknown> = {}): Promise<Result> {
+  return attempt(() => withPassword("POST", `/admin/payouts/${id}/${action}`, body, password));
 }
 
 export async function savePayoutSettings(settings: PayoutSettings, password: string): Promise<Result> {

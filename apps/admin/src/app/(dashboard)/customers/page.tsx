@@ -1,5 +1,4 @@
 import { Users } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
 import { formatDate, formatNaira, type User } from "@sotechy/shared";
 import { LiveSwitch } from "@/components/switch";
@@ -25,15 +24,16 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         <ErrorNote error={error} />
         <DataTable
           rows={data ?? []}
+          rowHref={(u) => `/customers/${u.id}`}
           empty={q ? `No customer matches “${q}”` : "No customers yet"}
           columns={[
             {
               header: "Customer",
               cell: (u) => (
-                <Link href={`/customers/${u.id}`} className="block min-w-0 hover:underline">
+                <span className="block min-w-0">
                   <span className="block font-semibold">{u.fullName ?? u.email}</span>
                   <span className="block text-xs text-muted">{u.username ? `@${u.username}` : u.email}</span>
-                </Link>
+                </span>
               ),
             },
             { header: "Phone", hideOnPhone: true, cell: (u) => u.phone ?? "—" },
@@ -42,6 +42,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
             { header: "Joined", hideOnPhone: true, cell: (u) => formatDate(u.createdAt) },
             {
               header: "Can sign in",
+              interactive: true,
               cell: (u) => (
                 <div className="w-40">
                   <LiveSwitch label={u.isActive ? "Active" : "Blocked"} initial={u.isActive} onChange={setCustomerActive.bind(null, u.id)} />

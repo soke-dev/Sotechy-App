@@ -60,9 +60,27 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
     const detail = await loadOrderDetail(c.req.param("id"));
     if (!detail) throw notFound("Order not found");
     const customer = detail.customerId
-      ? (await db.select({ email: users.email, fullName: users.fullName, phone: users.phone }).from(users).where(eq(users.id, detail.customerId)))[0]
+      ? (await db.select({ id: users.id, email: users.email, fullName: users.fullName, username: users.username, phone: users.phone }).from(users).where(eq(users.id, detail.customerId)))[0]
       : null;
-    return c.json({ ...detail, customer });
+    // The selling store, and what it's been paid for this order
+    const [row] = await db.select({ merchantId: orders.merchantId }).from(orders).where(eq(orders.id, detail.id));
+    const m = schema.merchants;
+    const [store] = row?.merchantId
+      ? await db
+          .select({ id: m.id, name: m.name, ticker: m.ticker, slug: m.slug, logoUrl: m.logoUrl, contactPhone: m.contactPhone, contactEmail: m.contactEmail, ownerEmail: users.email })
+          .from(m)
+          .leftJoin(users, eq(users.id, m.ownerId))
+          .where(eq(m.id, row.merchantId))
+      : [];
+    const p = schema.merchantPayouts;
+    const payouts = row?.merchantId
+      ? await db
+          .select({ id: p.id, stage: p.stage, amount: p.amount, fee: p.fee, status: p.status, dueAt: p.dueAt, paidAt: p.paidAt, provider: p.provider, failureReason: p.failureReason })
+          .from(p)
+          .where(eq(p.orderId, detail.id))
+          .orderBy(p.createdAt)
+      : [];
+    return c.json({ ...detail, customer, store: store ?? null, payouts });
   })
   .post("/orders/:id/status", zValidator("json", z.object({ status: orderStatusSchema, note: z.string().max(500).optional() })), async (c) => {
     const { status, note } = c.req.valid("json");

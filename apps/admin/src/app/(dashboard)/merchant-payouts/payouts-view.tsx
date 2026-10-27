@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Check, Pause, Pencil, Play, Plus, RotateCw, Send, Trash2 } from "lucide-react";
+import { Check, Copy, Pause, Pencil, Play, Plus, Trash2, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { formatNaira, type AdminPayoutRow, type PayoutPlan, type PayoutSettings, type PayoutStatus } from "@sotechy/shared";
@@ -34,6 +34,14 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("due");
   const [confirm, setConfirm] = useState<AdminPayoutRow | null>(null);
+  const [bankRef, setBankRef] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = (label: string, text: string) => {
+    void navigator.clipboard?.writeText(text).then(() => {
+      setCopied(label);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  };
   // Rendered on the server for this request, so "now" is fixed while the page is open
   const [now] = useState(() => Date.now());
 
@@ -55,18 +63,19 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
   const { ask, prompt } = usePasswordPrompt();
   // The password is asked before the transition starts: inside it, closing the confirm sheet is
   // held back, and that sheet would cover the password prompt.
-  const act = async (id: string, action: "send" | "hold" | "release" | "settle") => {
+  const act = async (id: string, action: "paid" | "hold" | "release" | "settle") => {
     setError(null);
     let password = "";
     if (action !== "hold") {
       const p = list.find((x) => x.id === id);
       setConfirm(null);
-      const given = await ask(action === "send" ? "Confirm this payout" : action === "release" ? "Release this payout?" : "Mark as repaid?", p ? `${formatNaira(p.amount)} · ${p.storeName} · ${p.orderNumber}` : undefined);
+      const given = await ask(action === "paid" ? "Mark this payout paid?" : action === "release" ? "Release this payout?" : "Mark as repaid?", p ? `${formatNaira(p.amount)} · ${p.storeName} · ${p.orderNumber}` : undefined);
       if (!given) return;
       password = given;
     }
     start(async () => {
-      const r = await payoutAction(id, action, password);
+      const r = await payoutAction(id, action, password, action === "paid" ? { reference: bankRef.trim() || undefined } : {});
+      if (!("error" in r)) setBankRef("");
       if ("error" in r) setError(r.error);
       setConfirm(null);
       router.refresh();
@@ -78,26 +87,16 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
       <PageHeader
         illo="bank"
         title="Store payouts"
-        description={`Paid through ${data.providerName}: part when a store accepts an order (with the whole delivery fee), the rest after delivery. Each payout has a fixed reference, so nothing can be paid twice.`}
+        description="Paid by hand for now: you send it from Sotechy's bank, then mark it paid here and the store is told. Part is due when a store accepts an order (with the whole delivery fee), the rest after delivery."
       />
-
-      {!data.ready && (
-        <p className="mb-5 flex items-start gap-2 rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn">
-          <AlertTriangle size={17} className="mt-0.5 shrink-0" />
-          {data.providerName} isn&apos;t connected, so nothing can be sent yet. Add {data.provider === "bachs" ? "BACHS_SECRET_KEY and BACHS_WEBHOOK_SECRET" : "FLUTTERWAVE_SECRET_KEY and FLUTTERWAVE_WEBHOOK_HASH"} to the API service.
-        </p>
-      )}
       {prompt}
-      {data.testMode && (
-        <p className="mb-5 rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">Test mode: there&apos;s no {data.providerName} key here, so payouts are pretend and no money moves.</p>
-      )}
       {error && <p className="mb-5 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
 
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard illo="wallet" tone="brand" label="Balance" value={data.balance == null ? "—" : formatNaira(data.balance)} hint={data.balance != null && data.balance < sum(due) ? "Less than what's due: top it up" : "Available for payouts"} />
+        <StatCard illo="wallet" tone="brand" label="Paid out" value={formatNaira(sum(groups.paid))} hint={`${groups.paid.length} payout${groups.paid.length === 1 ? "" : "s"}`} />
         <StatCard illo="bank" tone="info" label="Due now" value={formatNaira(sum(due))} hint={`${due.length} payout${due.length === 1 ? "" : "s"}`} />
         <StatCard illo="bike" tone="neutral" label="Coming up" value={formatNaira(sum(groups.waiting))} hint="Final payments after delivery" />
-        <StatCard illo="doc" tone="bad" label="Owed back by stores" value={formatNaira(sum(owed))} hint={groups.failed.length ? `${groups.failed.length} failed transfer${groups.failed.length === 1 ? "" : "s"}` : "No failed transfers"} />
+        <StatCard illo="doc" tone="bad" label="Owed back by stores" value={formatNaira(sum(owed))} hint={owed.length ? `${owed.length} payback${owed.length === 1 ? "" : "s"}` : "Nothing owed"} />
       </div>
 
       <Card title="Payouts" padded={false} className="mb-6">
@@ -175,9 +174,9 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
                 header: "",
                 cell: (p) => (
                   <span className="flex justify-end gap-1.5">
-                    {(p.status === "scheduled" || p.status === "failed") && (
-                      <button disabled={busy || !data.ready || !p.accountReady} onClick={() => setConfirm(p)} className={`${primaryButtonClass} min-h-9 px-3`}>
-                        {p.status === "failed" ? <RotateCw size={14} /> : <Send size={14} />} {p.status === "failed" ? "Retry" : "Send"}
+                    {(p.status === "scheduled" || p.status === "failed") && p.stage !== "payback" && (
+                      <button disabled={busy || !p.accountReady} onClick={() => setConfirm(p)} className={`${primaryButtonClass} min-h-9 px-3`}>
+                        <Wallet size={14} /> Pay
                       </button>
                     )}
                     {(p.status === "scheduled" || p.status === "failed") && (
@@ -208,22 +207,42 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
         <StorePlans stores={stores} settings={data.settings} />
       </div>
 
-      <Sheet open={confirm !== null} onClose={() => setConfirm(null)} title="Send this payout?">
+      {/* Payouts are sent by hand for now: the admin pays from Sotechy's bank, then records it here */}
+      <Sheet open={confirm !== null} onClose={() => setConfirm(null)} title="Pay this store">
         {confirm && (
           <div className="flex flex-col gap-4">
             <div className="rounded-2xl bg-surface-alt p-4">
               <p className="font-display text-3xl font-extrabold">{formatNaira(confirm.amount)}</p>
-              <p className="mt-1 text-sm text-ink-2">
-                to <span className="font-semibold">{confirm.accountName}</span> · {confirm.bankName ?? "their bank"} ••••{confirm.accountLast4 ?? "····"}
-              </p>
-              <p className="mt-2 text-sm text-muted">
+              <p className="mt-1 text-sm text-muted">
                 {STAGE[confirm.stage]} for {confirm.orderNumber}, {confirm.storeName}
-                {new Date(confirm.dueAt).getTime() > now ? <span className="text-warn"> · not due yet, you&apos;re sending it early</span> : null}
+                {new Date(confirm.dueAt).getTime() > now ? <span className="text-warn"> · not due yet, you&apos;re paying early</span> : null}
               </p>
             </div>
-            <p className="text-sm text-muted">This sends real money from the {data.providerName} balance. If the bank refuses it, you can retry safely: it can&apos;t be paid twice.</p>
-            <button disabled={busy} onClick={() => act(confirm.id, "send")} className={primaryButtonClass}>
-              <Send size={15} /> {busy ? "Sending…" : `Send ${formatNaira(confirm.amount)}`}
+            <div className="flex flex-col divide-y divide-line rounded-2xl border border-line">
+              {[
+                { label: "Bank", value: confirm.bankName },
+                { label: "Account number", value: confirm.accountNumber },
+                { label: "Account name", value: confirm.accountName },
+                { label: "Amount", value: confirm.amount.toFixed(2) },
+              ].map((r) => (
+                <div key={r.label} className="flex items-center gap-3 px-4 py-3">
+                  <span className="w-32 shrink-0 text-sm text-muted">{r.label}</span>
+                  <span className="min-w-0 flex-1 truncate font-semibold">{r.value ?? "—"}</span>
+                  {r.value && (
+                    <button type="button" onClick={() => copy(r.label, r.value!)} className="flex items-center gap-1 text-xs font-semibold text-brand-strong">
+                      {copied === r.label ? <Check size={13} /> : <Copy size={13} />} {copied === r.label ? "Copied" : "Copy"}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <label className="flex flex-col gap-1.5 text-sm">
+              <span className="font-semibold text-ink-2">Bank reference (optional)</span>
+              <input value={bankRef} onChange={(e) => setBankRef(e.target.value)} placeholder="Session ID or reference from your bank" className={inputClass} />
+            </label>
+            <p className="text-sm text-muted">Send this from Sotechy&apos;s bank first. Marking it paid tells the store the money is on its way, and it can&apos;t be paid twice here.</p>
+            <button disabled={busy} onClick={() => act(confirm.id, "paid")} className={primaryButtonClass}>
+              <Check size={15} /> {busy ? "Saving…" : "I've sent it · mark paid"}
             </button>
           </div>
         )}

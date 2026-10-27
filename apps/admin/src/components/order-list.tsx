@@ -93,12 +93,14 @@ export function OrderList({ rows, empty = "No orders here yet." }: { rows: Order
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.key} className="border-b border-line/70 transition-colors last:border-0 hover:bg-canvas">
+              <tr key={r.key} className="relative cursor-pointer border-b border-line/70 transition-colors last:border-0 hover:bg-canvas">
                 <td className="px-3 py-3">
-                  <Link href={r.href} className="flex items-center gap-2.5 whitespace-nowrap font-semibold hover:text-brand-strong">
+                  {/* Covers the row, so a click anywhere opens the order */}
+                  <Link href={r.href} className="absolute inset-0" aria-label={`Open ${r.number}`} />
+                  <span className="flex items-center gap-2.5 whitespace-nowrap font-semibold">
                     <SellerBadge merchant={r.merchant} size={30} />
                     {r.number}
-                  </Link>
+                  </span>
                 </td>
                 <td className="px-3 py-3 whitespace-nowrap"><SellerName merchant={r.merchant} /></td>
                 <td className="px-3 py-3"><Pill tone={r.status.tone}>{r.status.label}</Pill></td>

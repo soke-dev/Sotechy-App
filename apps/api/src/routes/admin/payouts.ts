@@ -8,7 +8,7 @@ import { audit } from "../../lib/audit";
 import { requirePassword, requireRole, type AppEnv } from "../../lib/auth";
 import { badRequest, notFound } from "../../lib/errors";
 import { provider, providerName, railBalance, railReady, railStandIn } from "../../services/payout-rail";
-import { payoutSettings, payoutsFor, sendPayout, toPayoutRow } from "../../services/payouts";
+import { markPaidByHand, payoutSettings, payoutsFor, sendPayout, toPayoutRow } from "../../services/payouts";
 
 // Moving money is for admins; managers can look
 const ADMIN = requireRole("admin");
@@ -30,7 +30,7 @@ export const adminPayoutRoutes = new Hono<AppEnv>()
   .get("/payouts", zValidator("query", z.object({ status: z.string().max(20).optional() })), async (c) => {
     const [rows, settings, balance] = await Promise.all([payoutsFor({ status: c.req.valid("query").status }), payoutSettings(), railBalance()]);
     const stores = await db
-      .select({ id: schema.merchants.id, accountName: schema.merchants.payoutAccountName })
+      .select({ id: schema.merchants.id, accountName: schema.merchants.payoutAccountName, accountNumber: schema.merchants.payoutAccountNumber, bankName: schema.merchants.payoutBankName })
       .from(schema.merchants)
       .where(inArray(schema.merchants.id, [...new Set(rows.map((r) => r.p.merchantId))].concat("00000000-0000-0000-0000-000000000000")));
     return c.json({
@@ -40,18 +40,29 @@ export const adminPayoutRoutes = new Hono<AppEnv>()
       providerName: providerName(),
       balance,
       settings,
-      payouts: rows.map((r) => ({
-        ...toPayoutRow(r),
-        merchantId: r.p.merchantId,
-        storeName: r.storeName,
-        storeTicker: r.storeTicker,
-        accountName: r.p.accountName ?? stores.find((s) => s.id === r.p.merchantId)?.accountName ?? null,
-        accountReady: r.ready,
-      })),
+      payouts: rows.map((r) => {
+        const store = stores.find((s) => s.id === r.p.merchantId);
+        // Unsent payouts go to the store's default account as it is now
+        const sent = r.p.status === "paid" || r.p.status === "sending";
+        return {
+          ...toPayoutRow(r),
+          merchantId: r.p.merchantId,
+          storeName: r.storeName,
+          storeTicker: r.storeTicker,
+          accountName: (sent ? r.p.accountName : store?.accountName) ?? r.p.accountName ?? null,
+          accountNumber: (sent ? r.p.accountNumber : store?.accountNumber) ?? r.p.accountNumber ?? null,
+          bankName: (sent ? r.p.bankName : store?.bankName) ?? r.p.bankName ?? null,
+          accountReady: r.ready,
+        };
+      }),
     });
   })
   /** Sends now, even before it's due (the admin is approving it) */
   .post("/payouts/:id/send", ADMIN, requirePassword, async (c) => c.json(await sendPayout(c.req.param("id"), { actorId: c.get("user").id, force: true })))
+  /** Sotechy paid the store from its own bank; this records it and tells the store */
+  .post("/payouts/:id/paid", ADMIN, requirePassword, zValidator("json", z.object({ reference: z.string().trim().max(100).optional() })), async (c) =>
+    c.json(await markPaidByHand(c.req.param("id"), { actorId: c.get("user").id, reference: c.req.valid("json").reference || null })),
+  )
   .post("/payouts/:id/hold", ADMIN, async (c) => c.json(await move(c.req.param("id"), ["scheduled", "failed"], "held", c.get("user").id)))
   .post("/payouts/:id/release", ADMIN, requirePassword, async (c) => c.json(await move(c.req.param("id"), ["held"], "scheduled", c.get("user").id)))
   /** A payback the store has returned */

@@ -222,10 +222,16 @@ export interface Column<T> {
   className?: string;
   /** Leave this column out of the compact phone card */
   hideOnPhone?: boolean;
+  /** Holds buttons or switches: kept clickable above a row link */
+  interactive?: boolean;
 }
 
+/** Keeps a cell's controls above the link that covers a clickable row */
+const above = (c: { interactive?: boolean }, node: ReactNode) => (c.interactive ? <div className="relative z-10">{node}</div> : node);
+
 /** A table on wide screens; on phones each row becomes a card of label/value pairs. */
-export function DataTable<T>({ rows, columns, empty = "Nothing here yet" }: { rows: T[]; columns: Column<T>[]; empty?: string }) {
+/** `rowHref` makes the whole row open that page */
+export function DataTable<T>({ rows, columns, empty = "Nothing here yet", rowHref }: { rows: T[]; columns: Column<T>[]; empty?: string; rowHref?: (row: T) => string }) {
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-3xl border-2 border-dashed border-line py-10 text-center">
@@ -253,10 +259,11 @@ export function DataTable<T>({ rows, columns, empty = "Nothing here yet" }: { ro
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={i} className="border-b border-line/70 transition-colors last:border-0 hover:bg-canvas">
+              <tr key={i} className={`border-b border-line/70 transition-colors last:border-0 hover:bg-canvas ${rowHref ? "relative cursor-pointer" : ""}`}>
                 {columns.map((c, j) => (
                   <td key={c.header || j} className={`px-3 py-3.5 align-middle first:whitespace-nowrap ${c.className ?? ""}`}>
-                    {c.cell(row)}
+                    {j === 0 && rowHref && <Link href={rowHref(row)} className="absolute inset-0" aria-label="Open" />}
+                    {above(c, c.cell(row))}
                   </td>
                 ))}
               </tr>
@@ -267,7 +274,8 @@ export function DataTable<T>({ rows, columns, empty = "Nothing here yet" }: { ro
       {/* Phones: the first column as the title, the rest as small label/value pairs on a line or two */}
       <ul className="flex flex-col gap-2 md:hidden">
         {rows.map((row, i) => (
-          <li key={i} className="rounded-2xl border border-line bg-surface px-3.5 py-3">
+          <li key={i} className={`rounded-2xl border border-line bg-surface px-3.5 py-3 ${rowHref ? "relative" : ""}`}>
+            {rowHref && <Link href={rowHref(row)} className="absolute inset-0 rounded-2xl" aria-label="Open" />}
             <div className="min-w-0 font-semibold">{first.cell(row)}</div>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
               {rest
@@ -275,7 +283,7 @@ export function DataTable<T>({ rows, columns, empty = "Nothing here yet" }: { ro
                 .map((c, j) => (
                   <span key={c.header || j} className="inline-flex min-w-0 items-center gap-1">
                     <span className="text-muted">{c.header}</span>
-                    <span className="min-w-0 break-words font-medium text-ink">{c.cell(row)}</span>
+                    <span className="min-w-0 break-words font-medium text-ink">{above(c, c.cell(row))}</span>
                   </span>
                 ))}
             </div>
@@ -283,7 +291,7 @@ export function DataTable<T>({ rows, columns, empty = "Nothing here yet" }: { ro
             {rest
               .filter((c) => !c.header && !c.hideOnPhone)
               .map((c, j) => (
-                <div key={j} className="mt-2">{c.cell(row)}</div>
+                <div key={j} className="mt-2">{above(c, c.cell(row))}</div>
               ))}
           </li>
         ))}

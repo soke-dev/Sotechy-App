@@ -82,6 +82,8 @@ export interface AdminPayoutRow extends PayoutRow {
   accountName: string | null;
   /** The store has a checked payout account */
   accountReady: boolean;
+  /** In full, so an admin can pay it by hand: the account it went to, or the store's default for unsent ones */
+  accountNumber: string | null;
 }
 
 /** A bank Flutterwave can pay into */
