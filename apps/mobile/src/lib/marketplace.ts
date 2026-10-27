@@ -129,7 +129,8 @@ export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "bra
     ratingCount: s.ratingCount ?? 0,
     sells: s.sells,
     logo: s.logoUrl ? { uri: s.logoUrl } : undefined,
-    cover: s.coverUrl ? { uri: s.coverUrl } : undefined,
+    // A store that chose the colour band in its storefront settings shows no photo
+    cover: s.coverUrl && look?.header !== "band" ? { uri: s.coverUrl } : undefined,
     theme,
     delivery: { states: s.deliveryStates ?? [], homeFrom: s.deliveryFrom ?? null, pickup: s.pickupPoints?.length ? s.pickupPoints.join(" · ") : undefined },
     areas: s.deliveryAreas ?? [],

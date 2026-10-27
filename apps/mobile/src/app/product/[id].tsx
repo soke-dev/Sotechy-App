@@ -539,46 +539,8 @@ export default function ProductScreen() {
               ) : null}
               {off > 0 && <Pill label={`Save ${off}%`} tone="brand" />}
             </View>
-            {openOffer ? (
-              <Pressable
-                onPress={() => router.push({ pathname: "/offer/[id]", params: { id: openOffer.id } })}
-                style={({ pressed }) => [
-                  ui.row,
-                  {
-                    gap: 8,
-                    alignSelf: "flex-start",
-                    paddingHorizontal: 14,
-                    paddingVertical: 9,
-                    borderRadius: radius.pill,
-                    borderWidth: 1,
-                    borderColor: openOffer.status === "waiting_store" ? colors.line : colors.brand,
-                    backgroundColor: pressed ? colors.surfaceAlt : openOffer.status === "waiting_store" ? colors.surface : colors.brandSoft,
-                  },
-                ]}
-              >
-                <Ionicons name={openOffer.status === "agreed" ? "time-outline" : openOffer.status === "waiting_customer" ? "chatbubble-ellipses-outline" : "hourglass-outline"} size={16} color={openOffer.status === "waiting_store" ? colors.ink : colors.brandPressed} />
-                <Txt variant="label" style={{ fontSize: 14 }}>
-                  {openOffer.status === "agreed"
-                    ? `Your price ${formatNaira(openOffer.agreedPrice ?? openOffer.lastAmount)}${openOffer.agreedUntil ? ` · ${left(openOffer.agreedUntil)}` : ""}`
-                    : openOffer.status === "waiting_customer"
-                      ? `The store replied · see offer`
-                      : `Offer sent · waiting for the store`}
-                </Txt>
-                <Ionicons name="chevron-forward" size={14} color={colors.muted} />
-              </Pressable>
-            ) : product.negotiable && product.store && variant && available > 0 ? (
-              <Pressable
-                onPress={() =>
-                  user
-                    ? router.push({ pathname: "/offer/[id]", params: { id: "new", variant: variant.id, name: product.name, price: String(variant.price), image: product.images[0] ?? "", store: product.store!.name } })
-                    : router.push("/sign-in")
-                }
-                style={({ pressed }) => [ui.row, { gap: 8, alignSelf: "flex-start", paddingHorizontal: 14, paddingVertical: 9, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: pressed ? colors.surfaceAlt : colors.surface }]}
-              >
-                <Ionicons name="pricetag-outline" size={16} color={colors.ink} />
-                <Txt variant="label" style={{ fontSize: 14 }}>Make an offer</Txt>
-              </Pressable>
-            ) : null}
+            {/* Stock and the offer side by side */}
+            <View style={[ui.row, { gap: space.sm, flexWrap: "wrap" }]}>
             {available > 0 ? (
               <Pill
                 icon="checkmark-circle"
@@ -588,6 +550,46 @@ export default function ProductScreen() {
             ) : (
               <Pill icon="close-circle" tone="danger" label="Out of stock" />
             )}
+            {openOffer ? (
+              <Pressable
+                onPress={() => router.push({ pathname: "/offer/[id]", params: { id: openOffer.id } })}
+                style={({ pressed }) => [
+                  ui.row,
+                  {
+                    gap: 5,
+                    paddingHorizontal: 11,
+                    paddingVertical: 5,
+                    borderRadius: radius.pill,
+                    borderWidth: 1,
+                    borderColor: openOffer.status === "waiting_store" ? colors.line : colors.brand,
+                    backgroundColor: pressed ? colors.surfaceAlt : openOffer.status === "waiting_store" ? colors.surface : colors.brandSoft,
+                  },
+                ]}
+              >
+                <Ionicons name={openOffer.status === "agreed" ? "time-outline" : openOffer.status === "waiting_customer" ? "chatbubble-ellipses-outline" : "hourglass-outline"} size={14} color={openOffer.status === "waiting_store" ? colors.ink : colors.brandPressed} />
+                <Txt variant="label" style={{ fontSize: 13 }}>
+                  {openOffer.status === "agreed"
+                    ? `${formatNaira(openOffer.agreedPrice ?? openOffer.lastAmount)}${openOffer.agreedUntil ? ` · ${left(openOffer.agreedUntil)}` : ""}`
+                    : openOffer.status === "waiting_customer"
+                      ? "Store replied"
+                      : "Offer sent"}
+                </Txt>
+                <Ionicons name="chevron-forward" size={12} color={colors.muted} />
+              </Pressable>
+            ) : product.negotiable && product.store && variant && available > 0 ? (
+              <Pressable
+                onPress={() =>
+                  user
+                    ? router.push({ pathname: "/offer/[id]", params: { id: "new", variant: variant.id, name: product.name, price: String(variant.price), image: product.images[0] ?? "", store: product.store!.name } })
+                    : router.push("/sign-in")
+                }
+                style={({ pressed }) => [ui.row, { gap: 5, paddingHorizontal: 11, paddingVertical: 5, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: pressed ? colors.surfaceAlt : colors.surface }]}
+              >
+                <Ionicons name="pricetag-outline" size={14} color={colors.ink} />
+                <Txt variant="label" style={{ fontSize: 13 }}>Make an offer</Txt>
+              </Pressable>
+            ) : null}
+            </View>
           </View>
 
           <ProductTabs tab={shownTab} onChange={setTab} rating={rating} count={ratingCount} reviews={features.reviews} />

@@ -80,7 +80,8 @@ export function BrandMark({ store, size }: { store: MarketStore; size: number })
 /** A wide banner for the store: its colours, a pattern, its name and a few of its products */
 export function StoreCover({ store, style }: { store: MarketStore; style?: StyleProp<ViewStyle> }) {
   const t = store.theme;
-  if (store.isSotechy && store.cover) return <Image source={store.cover} style={[{ backgroundColor: t.hero }, style as object]} contentFit="cover" />;
+  // The store's own cover photo when it has one; the drawn cover only stands in until then
+  if (store.cover) return <Image source={store.cover} style={[{ backgroundColor: t.hero }, style as object]} contentFit="cover" />;
   const items = store.products.slice(0, 3);
   return (
     <View style={[{ backgroundColor: t.hero, overflow: "hidden" }, style]}>
