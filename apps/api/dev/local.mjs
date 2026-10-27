@@ -34,13 +34,14 @@ const mmServer = await startFakeMoneyMoves({
   ...fake,
 });
 
-// Google sign-in client IDs are the one setting taken from apps/api/.env (everything else here is local)
+// Google sign-in and Resend settings are taken from apps/api/.env (everything else here is local)
 const envFile = join(apiDir, ".env");
-const googleIds = existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")).GOOGLE_CLIENT_IDS : undefined;
+const fromFile = existsSync(envFile) ? parseEnv(readFileSync(envFile, "utf8")) : {};
+const passThrough = Object.fromEntries(["GOOGLE_CLIENT_IDS", "RESEND_API_KEY", "EMAIL_FROM"].filter((k) => fromFile[k]).map((k) => [k, fromFile[k]]));
 
 const env = {
   ...process.env,
-  ...(googleIds && { GOOGLE_CLIENT_IDS: googleIds }),
+  ...passThrough,
   NODE_ENV: "development",
   PORT: String(API_PORT),
   DATABASE_URL: `postgres://postgres:postgres@127.0.0.1:${DB_PORT}/postgres`,

@@ -99,6 +99,19 @@ export const users = pgTable("users", {
   updatedAt: updatedAt(),
 });
 
+/** Emailed 6-digit codes for resetting a password. Only a hash of the code is kept. */
+export const passwordResets = pgTable("password_resets", {
+  id: uuid().primaryKey().defaultRandom(),
+  userId: uuid()
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  codeHash: text().notNull(),
+  expiresAt: timestamp({ withTimezone: true }).notNull(),
+  /** Wrong guesses so far; the code stops working after 5 */
+  attempts: integer().notNull().default(0),
+  createdAt: createdAt(),
+});
+
 // ---------------------------------------------------------------------------
 // Marketplace: a store is owned by an ordinary account, so one sign-in works in the app and the dashboard
 // ---------------------------------------------------------------------------

@@ -16,6 +16,9 @@ export default defineRailway(() => {
     sizeMB: 50000,
   });
 
+  // Custom addresses (api., admin., merchant., sotechy.shop, www.) are attached with `railway domain`,
+  // since this file can't register them; DNS for them lives at Namecheap.
+
   // Hono API + Postgres. Every deploy runs migrations, then the seed (which only adds what's missing).
   const api = service("api", {
     replicas: { [REGION]: 1 },
@@ -30,8 +33,14 @@ export default defineRailway(() => {
     env: {
       NODE_ENV: "production",
       DATABASE_URL: Postgres.env.DATABASE_URL,
-      // Browsers allowed to call the API: the admin dashboard
-      CORS_ORIGINS: "https://${{admin.RAILWAY_PUBLIC_DOMAIN}}",
+      // Browsers allowed to call the API: the dashboards and the website
+      CORS_ORIGINS: [
+        "https://${{admin.RAILWAY_PUBLIC_DOMAIN}}",
+        "https://admin.sotechy.shop",
+        "https://merchant.sotechy.shop",
+        "https://sotechy.shop",
+        "https://www.sotechy.shop",
+      ].join(","),
       JWT_SECRET: preserve(),
       SEED_ADMIN_EMAIL: "admin@sotechy.shop",
       SEED_ADMIN_PASSWORD: preserve(),
@@ -40,6 +49,9 @@ export default defineRailway(() => {
       MONEYMOVES_SECRET_KEY: preserve(),
       MONEYMOVES_WEBHOOK_SECRET: preserve(),
       GOOGLE_CLIENT_IDS: preserve(),
+      // Email through Resend; the sotechy.shop domain must be verified there
+      RESEND_API_KEY: preserve(),
+      EMAIL_FROM: "Sotechy <hello@sotechy.shop>",
     },
   });
 
@@ -58,7 +70,38 @@ export default defineRailway(() => {
     },
   });
 
+  // Next.js merchant dashboard
+  const merchant = service("merchant", {
+    replicas: { [REGION]: 1 },
+    build: {
+      builder: "RAILPACK",
+      buildCommand: "pnpm --filter @sotechy/merchant build",
+      watchPatterns: ["apps/merchant/**", "packages/shared/**", "pnpm-lock.yaml"],
+    },
+    start: "pnpm --filter @sotechy/merchant start",
+    env: {
+      NODE_ENV: "production",
+      API_URL: "https://${{api.RAILWAY_PUBLIC_DOMAIN}}",
+      // Google's Web client ID (public; read at build time)
+      NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: "135476780081-itrqdn08npnranseuh73v5l1cnmq3jip.apps.googleusercontent.com",
+    },
+  });
+
+  // Next.js landing site
+  const web = service("web", {
+    replicas: { [REGION]: 1 },
+    build: {
+      builder: "RAILPACK",
+      buildCommand: "pnpm --filter @sotechy/web build",
+      watchPatterns: ["apps/web/**", "packages/shared/**", "pnpm-lock.yaml"],
+    },
+    start: "pnpm --filter @sotechy/web start",
+    env: {
+      NODE_ENV: "production",
+    },
+  });
+
   return project("Sotechy Shop", {
-    resources: [admin, api, Postgres, postgresVolume],
+    resources: [admin, api, merchant, web, Postgres, postgresVolume],
   });
 });

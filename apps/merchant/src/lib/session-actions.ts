@@ -65,6 +65,25 @@ export async function googleSignIn(idToken: string): Promise<FormState> {
   return goOn();
 }
 
+export type ResetState = { error: string; email?: string } | { sent: string } | null;
+
+/** Step 1 of a forgotten password: email a code, step 2: the code and a new password */
+export async function resetPassword(_: ResetState, form: FormData): Promise<ResetState> {
+  const email = field(form, "email").toLowerCase();
+  const code = field(form, "code");
+  try {
+    if (!code) {
+      await api.forgotPassword(email);
+      return { sent: email };
+    }
+    const res = await api.resetPassword({ email, code, password: String(form.get("password") ?? "") });
+    await keepSession(res.token);
+  } catch (err) {
+    return { error: errorMessage(err), email: code ? email : undefined };
+  }
+  return goOn();
+}
+
 /** Local testing only, before a Google web client ID is set: a fixed test account stands in for Google */
 export async function testGoogleSignIn(): Promise<FormState> {
   if (process.env.NODE_ENV === "production") return { error: "Google sign-in isn't set up yet" };

@@ -510,6 +510,8 @@ export const mockApi: ApiClient = {
     return wait({ saved });
   },
   createSupportTicket: async () => wait({ id: `t${Date.now()}` }),
+  forgotPassword: async () => wait({ ok: true as const }),
+  resetPassword: async () => wait({ token: "demo-token", user: { ...demoUser } }),
   // The merchant dashboard is web-only
   merchantMe: unsupported,
   openStore: unsupported,

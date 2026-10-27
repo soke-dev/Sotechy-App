@@ -69,6 +69,9 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
       send<AuthResponse>("POST", "/auth/register", input),
     login: (input: { email: string; password: string }) => send<AuthResponse>("POST", "/auth/login", input),
     googleSignIn: (idToken: string) => send<AuthResponse>("POST", "/auth/google", { idToken }),
+    /** Emails a 6-digit code if the account exists (the answer is the same either way) */
+    forgotPassword: (email: string) => send<{ ok: true }>("POST", "/auth/password/forgot", { email }),
+    resetPassword: (input: { email: string; code: string; password: string }) => send<AuthResponse>("POST", "/auth/password/reset", input),
     me: () => get<User>("/auth/me"),
     updateProfile: (input: { fullName?: string; username?: string; phone?: string | null; whatsappPhone?: string | null; avatarStyle?: string | null }) =>
       send<User>("PATCH", "/auth/me", input),

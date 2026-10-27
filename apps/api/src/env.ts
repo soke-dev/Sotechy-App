@@ -19,6 +19,10 @@ const schema = z.object({
   RAILWAY_PUBLIC_DOMAIN: z.string().optional(),
   /** The customer app's URL scheme, used to send people back to the app after paying */
   APP_SCHEME: z.string().default("sotechy"),
+  /** re_… from Resend → API Keys. Without it, emails are printed to the console instead of sent. */
+  RESEND_API_KEY: z.string().optional(),
+  /** Sender for all emails; the domain must be verified in Resend */
+  EMAIL_FROM: z.string().default("Sotechy <hello@sotechy.shop>"),
 });
 
 export const env = schema.parse(process.env);

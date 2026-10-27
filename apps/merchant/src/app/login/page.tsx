@@ -22,6 +22,7 @@ export default function LoginPage() {
         <Field label="Password">
           <input name="password" type="password" required autoComplete="current-password" className={inputClass} />
         </Field>
+        <Link href="/forgot" className="-mt-1 self-end text-sm font-semibold text-brand-strong hover:underline">Forgot password?</Link>
         <FormError message={state?.error} />
         <button disabled={pending} className={btn.dark}>{pending ? "Signing in…" : "Sign in"}</button>
       </form>

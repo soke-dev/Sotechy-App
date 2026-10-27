@@ -1,11 +1,13 @@
+import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { zValidator } from "@hono/zod-validator";
-import { eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../db/client";
 import { checkPassword, hashPassword, issueToken, requireAuth, type AppEnv } from "../lib/auth";
 import { env } from "../env";
-import { conflict, forbidden, HttpError, unauthorized } from "../lib/errors";
+import { badRequest, conflict, forbidden, HttpError, unauthorized } from "../lib/errors";
+import { layout, sendEmail, sendEmailLater } from "../lib/email";
 import { getFeatures, requireFeature } from "../services/features";
 import { publicUser } from "../lib/serialize";
 import { claimUsername, normaliseUsername, phoneField, usernameRule } from "../lib/identity";
@@ -13,6 +15,34 @@ import { claimUsername, normaliseUsername, phoneField, usernameRule } from "../l
 const credentials = z.object({
   email: z.email().transform((e) => e.toLowerCase()),
   password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+const RESET_MINUTES = 15;
+const hashCode = (code: string) => createHmac("sha256", env.JWT_SECRET).update(code).digest("hex");
+
+const welcomeEmail = (to: string, name: string | null) => ({
+  to,
+  subject: "Welcome to Sotechy",
+  text: `Hi ${name?.split(" ")[0] ?? "there"}, your Sotechy account is ready. Shop from stores across Nigeria and earn tokens on every order.`,
+  html: layout({
+    heading: `Welcome${name ? `, ${name.split(" ")[0]}` : ""}`,
+    paragraphs: [
+      "Your Sotechy account is ready.",
+      "Shop from stores across Nigeria, earn tokens on every completed order, and spend them at the store you earned them from.",
+    ],
+  }),
+});
+
+const resetEmail = (to: string, code: string) => ({
+  to,
+  subject: `${code} is your Sotechy code`,
+  text: `Your code to reset your Sotechy password is ${code}. It works for ${RESET_MINUTES} minutes. If you didn't ask for it, ignore this email.`,
+  html: layout({
+    heading: "Reset your password",
+    paragraphs: [`Enter this code to choose a new password. It works for ${RESET_MINUTES} minutes.`],
+    code,
+    footer: "Didn't ask for this? You can ignore this email; your password stays the same.",
+  }),
 });
 
 /** Signing in takes an email or an @username */
@@ -51,7 +81,48 @@ export const authRoutes = new Hono<AppEnv>()
           whatsappPhone: phoneField(input.whatsappPhone, "WhatsApp number") ?? null,
         })
         .returning();
+      sendEmailLater(welcomeEmail(user.email, user.fullName));
       return c.json({ token: await issueToken(user), user: publicUser(user) }, 201);
+    },
+  )
+  /** Emails a 6-digit code. Always answers the same way, so it can't be used to find out who has an account. */
+  .post("/password/forgot", zValidator("json", z.object({ email: z.email().transform((e) => e.toLowerCase()) })), async (c) => {
+    const [user] = await db.select().from(schema.users).where(eq(schema.users.email, c.req.valid("json").email));
+    if (user?.isActive) {
+      const [recent] = await db
+        .select({ id: schema.passwordResets.id })
+        .from(schema.passwordResets)
+        .where(and(eq(schema.passwordResets.userId, user.id), gt(schema.passwordResets.createdAt, new Date(Date.now() - 60_000))));
+      if (!recent) {
+        const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+        await db.delete(schema.passwordResets).where(eq(schema.passwordResets.userId, user.id));
+        await db.insert(schema.passwordResets).values({ userId: user.id, codeHash: hashCode(code), expiresAt: new Date(Date.now() + RESET_MINUTES * 60_000) });
+        await sendEmail(resetEmail(user.email, code));
+      }
+    }
+    return c.json({ ok: true });
+  })
+  /** Sets a new password with the emailed code, and signs the person in */
+  .post(
+    "/password/reset",
+    zValidator(
+      "json",
+      credentials.extend({ code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code from the email") }),
+    ),
+    async (c) => {
+      const input = c.req.valid("json");
+      const wrong = () => badRequest("That code is wrong or has expired. Ask for a new one.");
+      const [user] = await db.select().from(schema.users).where(eq(schema.users.email, input.email));
+      if (!user?.isActive) throw wrong();
+      const [reset] = await db.select().from(schema.passwordResets).where(eq(schema.passwordResets.userId, user.id));
+      if (!reset || reset.expiresAt < new Date() || reset.attempts >= 5) throw wrong();
+      if (!timingSafeEqual(Buffer.from(reset.codeHash), Buffer.from(hashCode(input.code)))) {
+        await db.update(schema.passwordResets).set({ attempts: reset.attempts + 1 }).where(eq(schema.passwordResets.id, reset.id));
+        throw wrong();
+      }
+      await db.delete(schema.passwordResets).where(eq(schema.passwordResets.userId, user.id));
+      const [updated] = await db.update(schema.users).set({ passwordHash: await hashPassword(input.password) }).where(eq(schema.users.id, user.id)).returning();
+      return c.json({ token: await issueToken(updated), user: publicUser(updated) });
     },
   )
   .post("/login", zValidator("json", signInFields), async (c) => {
