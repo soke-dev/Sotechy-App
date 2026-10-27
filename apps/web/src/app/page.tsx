@@ -13,7 +13,7 @@ const COMING: { illo: IlloName; title: string; text: string }[] = [
   { illo: "store", title: "Verified stores", text: "Sotechy and shops across Nigeria, each checked by us before they can sell." },
   { illo: "coin", title: "Tokens on every order", text: "Earn each store's own token as you shop, then spend it there like cash." },
   { illo: "bike", title: "Delivery or pickup", text: "Get it brought to your door, or collect it from the store when it suits you." },
-  { illo: "card", title: "Pay your way", text: "Bank transfer, card or supported crypto, all in one secure checkout." },
+  { illo: "card", title: "Pay your way", text: "Bank transfer or card, all in one secure checkout." },
 ];
 
 // Illustrations floating around the hero mark: position, size, tilt and timing
