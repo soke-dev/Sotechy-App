@@ -49,7 +49,11 @@ export function UsernameField({ required, defaultValue = "" }: { required?: bool
   const problem = local ?? (result?.name === n ? result.problem : null);
 
   return (
-    <Field label="Username" required={required} hint={n ? undefined : "How customers and other stores find you. You can change it later."}>
+    <Field
+      label="Your username"
+      required={required}
+      hint={n ? undefined : "Your personal @handle, the same one you use in the Sotechy app. It's how customers and other stores find you. Your shop gets its own name and link next."}
+    >
       <span className="relative flex items-center">
         <span className="pointer-events-none absolute left-4 text-muted">@</span>
         <input

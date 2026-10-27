@@ -215,7 +215,7 @@ export const authRoutes = new Hono<AppEnv>()
       const patch = {
         ...(input.fullName !== undefined && { fullName: input.fullName }),
         ...(input.avatarStyle !== undefined && { avatarStyle: input.avatarStyle }),
-        ...(input.username !== undefined && { username: await claimUsername(input.username, id) }),
+        ...(input.username !== undefined && { username: await claimUsername(input.username, id, { staff: c.get("user").role !== "customer" }) }),
         ...(input.phone !== undefined && { phone: phoneField(input.phone, "Phone number") }),
         ...(input.whatsappPhone !== undefined && { whatsappPhone: phoneField(input.whatsappPhone, "WhatsApp number") }),
       };

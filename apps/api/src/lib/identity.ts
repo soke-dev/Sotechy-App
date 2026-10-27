@@ -11,8 +11,14 @@ const RESERVED = new Set([
 
 export const normaliseUsername = (name: string) => name.trim().toLowerCase().replace(/^@/, "");
 
-/** Why a username can't be used, or null if it's fine (availability is checked separately) */
-export function usernameRule(name: string): string | null {
+/** Words that would make an account look like it speaks for Sotechy; only staff may use them */
+const OFFICIAL = /sotechy|s0techy|sotechi/;
+
+/**
+ * Why a username can't be used, or null if it's fine (availability is checked separately).
+ * `staff`: Sotechy's own team may take names with "sotechy" in them.
+ */
+export function usernameRule(name: string, opts: { staff?: boolean } = {}): string | null {
   const n = normaliseUsername(name);
   if (n.length < 3) return "At least 3 characters";
   if (n.length > 20) return "20 characters at most";
@@ -20,13 +26,14 @@ export function usernameRule(name: string): string | null {
   if (/^[._]|[._]$/.test(n)) return "Can't start or end with a dot or underscore";
   if (/[._]{2}/.test(n)) return "No two dots or underscores in a row";
   if (RESERVED.has(n)) return `@${n} is reserved`;
+  if (!opts.staff && OFFICIAL.test(n.replace(/[._]/g, ""))) return "Names with \"sotechy\" in them are kept for the Sotechy team";
   return null;
 }
 
 /** Checks a username is valid and not taken by someone else; returns it normalised */
-export async function claimUsername(name: string, userId?: string) {
+export async function claimUsername(name: string, userId?: string, opts: { staff?: boolean } = {}) {
   const n = normaliseUsername(name);
-  const problem = usernameRule(n);
+  const problem = usernameRule(n, opts);
   if (problem) throw badRequest(problem);
   const [owner] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.username, n));
   if (owner && owner.id !== userId) throw conflict(`@${n} is taken`);
