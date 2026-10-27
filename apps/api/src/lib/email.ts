@@ -1,5 +1,5 @@
 // Email through Resend (https://resend.com/docs/api-reference/emails/send-email).
-// Without RESEND_API_KEY (local dev) emails are printed to the console instead.
+// Without RESEND_API_KEY, or outside production unless EMAIL_SEND_IN_DEV=true, emails are printed to the console instead.
 import { env } from "../env";
 
 export interface Email {
@@ -13,6 +13,11 @@ export interface Email {
 export async function sendEmail(email: Email): Promise<void> {
   if (!env.RESEND_API_KEY) {
     console.log(`\n[email not sent: no RESEND_API_KEY] to ${email.to}: ${email.subject}\n${email.text}\n`);
+    return;
+  }
+  // Local runs and tests send nothing real unless asked to
+  if (env.NODE_ENV !== "production" && env.EMAIL_SEND_IN_DEV !== "true") {
+    console.log(`\n[email not sent: local] to ${email.to}: ${email.subject}\n${email.text}\n`);
     return;
   }
   const res = await fetch("https://api.resend.com/emails", {

@@ -21,6 +21,8 @@ const schema = z.object({
   APP_SCHEME: z.string().default("sotechy"),
   /** re_… from Resend → API Keys. Without it, emails are printed to the console instead of sent. */
   RESEND_API_KEY: z.string().optional(),
+  /** Outside production, emails are only printed unless this is "true" (so local runs don't use the Resend quota) */
+  EMAIL_SEND_IN_DEV: z.enum(["true", "false"]).default("false"),
   /** Sender for all emails; the domain must be verified in Resend */
   EMAIL_FROM: z.string().default("Sotechy <hello@sotechy.shop>"),
   /** Didit identity checks for merchants (ID document + liveness): Console → API keys / Workflows / Webhooks */
