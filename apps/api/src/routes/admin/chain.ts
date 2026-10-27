@@ -86,7 +86,14 @@ export const adminChainRoutes = new Hono<AppEnv>()
       tokensUrl: tokensContract ? `${explorer}/address/${tokensContract.address}` : null,
       activity: activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
       rules: { perNaira: 1, crossBonus: CROSS_BONUS },
-      reserve,
+      reserve: {
+        ...reserve,
+        wallets: reserve.wallets.map((w) => ({
+          ...w,
+          url: `${explorer}/address/${w.address}`,
+          byToken: w.byToken.map((t) => ({ ...t, ticker: tokens.find((x) => x.tokenId === t.tokenId)?.ticker ?? `#${t.tokenId}` })),
+        })),
+      },
     });
   })
   /** The reserve and this month's fees, for the dashboard (no chain reads) */

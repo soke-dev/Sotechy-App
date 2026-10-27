@@ -21,7 +21,7 @@ export default async function TokensPage() {
       tokensUrl={data?.tokensUrl ?? null}
       activity={data?.activity ?? []}
       rules={data?.rules ?? { perNaira: 1, crossBonus: 0.1 }}
-      reserve={data?.reserve ?? { balance: 0, tokensHeld: 0, owed: 0, cover: null, recyclePool: 0, inThisMonth: 0, outThisMonth: 0, walkInFeesThisMonth: 0 }}
+      reserve={data?.reserve ?? { wallets: [], balance: 0, tokensHeld: 0, owed: 0, cover: null, recyclePool: 0, inThisMonth: 0, outThisMonth: 0, walkInFeesThisMonth: 0 }}
     />
   );
 }

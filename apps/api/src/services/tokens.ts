@@ -536,7 +536,15 @@ export async function reserveSummary() {
   const recyclePool = supply.reduce((n, s) => n + s.recyclePool, 0);
   const owed = tokensToNaira(held);
   const balance = round2(Number(totals?.balance ?? 0));
+  // Where spent tokens go: the reserve wallet, then half on to the recycling pool for review bonuses
+  const wallet = (key: "reserve" | "recycle", id: string, pick: (s: (typeof supply)[number]) => number) => ({
+    key,
+    address: walletAddress(id),
+    total: supply.reduce((n, s) => n + pick(s), 0),
+    byToken: supply.filter((s) => pick(s) > 0).map((s) => ({ tokenId: s.tokenId, amount: pick(s) })),
+  });
   return {
+    wallets: [wallet("reserve", RESERVE_WALLET, (s) => s.reserveWallet), wallet("recycle", RECYCLE_WALLET, (s) => s.recyclePool)],
     balance,
     tokensHeld: held,
     owed,

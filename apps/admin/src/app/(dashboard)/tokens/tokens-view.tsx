@@ -1,11 +1,11 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
-import type { ReactNode } from "react";
+import { Check, Copy, ExternalLink } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { formatNaira } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { RelTime } from "@/components/rel-time";
-import { Card, DataTable, PageHeader, Pill, StatCard } from "@/components/ui";
+import { Card, DataTable, PageHeader, Pill, StatCard, Tabs } from "@/components/ui";
 import { TOKEN_VALUE } from "@sotechy/shared";
 import { formatTokens } from "@/lib/marketplace";
 
@@ -19,7 +19,16 @@ export interface TokenRow {
   onChain: boolean;
 }
 
+export interface SystemWallet {
+  key: "reserve" | "recycle";
+  address: string;
+  url?: string;
+  total: number;
+  byToken: { tokenId: number; ticker?: string; amount: number }[];
+}
+
 export interface ReserveSummary {
+  wallets: SystemWallet[];
   balance: number;
   tokensHeld: number;
   owed: number;
@@ -48,6 +57,59 @@ const ACTIVITY: Record<TokenActivity["kind"], { label: string; tone: "good" | "i
   spent: { label: "Spent", tone: "warn" },
   refunded: { label: "Taken back", tone: "bad" },
 };
+
+const WALLET_COPY: Record<SystemWallet["key"], { name: string; about: string }> = {
+  reserve: { name: "Reserve wallet", about: "Tokens customers spend at checkout land here. The store is still paid in full; the naira those tokens stand for comes out of the reserve." },
+  recycle: { name: "Recycling pool", about: "Once an order paid with tokens is delivered, half of those tokens move on here. Review bonuses are paid from it first, so spent tokens go back to customers." },
+};
+
+function WalletRow({ w }: { w: SystemWallet }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    void navigator.clipboard?.writeText(w.address).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  const c = WALLET_COPY[w.key];
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl bg-surface-alt p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold">{c.name}</p>
+          <p className="mt-0.5 text-sm text-muted">{c.about}</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="font-display text-xl font-bold">{formatTokens(w.total)}</p>
+          <p className="text-xs text-muted">tokens</p>
+        </div>
+      </div>
+      {w.byToken.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {w.byToken.map((t) => (
+            <span key={t.tokenId} className="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold">
+              {formatTokens(t.amount)} <span className="text-brand-strong">${t.ticker}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        <span className="min-w-0 truncate font-mono text-ink-2">{w.address}</span>
+        <button type="button" onClick={copy} className="inline-flex items-center gap-1 font-semibold text-brand-strong">
+          {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
+        </button>
+        {w.url && (
+          <a href={w.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand-strong hover:underline">
+            On Monad <ExternalLink size={12} />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type Tab = "reserve" | "tokens" | "activity" | "chain";
+const TAB_KEY = "sotechy_tokens_tab";
 
 /** Half-circle gauge of how much of the token value the reserve covers */
 function CoverGauge({ cover }: { cover: number }) {
@@ -81,6 +143,24 @@ export function TokensView({
   activity: TokenActivity[];
   rules: { perNaira: number; crossBonus: number };
 }) {
+  // The last tab you looked at, remembered on this browser
+  const [tab, setTab] = useState<Tab>("reserve");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(TAB_KEY) as Tab | null;
+      if (saved && ["reserve", "tokens", "activity", "chain"].includes(saved)) setTab(saved);
+    } catch {
+      // Storage blocked: start on the reserve
+    }
+  }, []);
+  const pick = (t: Tab) => {
+    setTab(t);
+    try {
+      localStorage.setItem(TAB_KEY, t);
+    } catch {
+      // Not remembered; fine
+    }
+  };
 
   return (
     <>
@@ -89,8 +169,21 @@ export function TokensView({
         title="Tokens & reserve"
         description="Every store's $TICKER token and every receipt, written on Monad, and the reserve that backs the tokens."
       />
-      {chain}
+      <Tabs
+        className="mb-5"
+        value={tab}
+        onChange={pick}
+        tabs={[
+          { id: "reserve", label: "Reserve" },
+          { id: "tokens", label: "Tokens", count: tokens.length },
+          { id: "activity", label: "Activity" },
+          { id: "chain", label: "Monad & Base" },
+        ]}
+      />
+      {tab === "chain" && chain}
 
+      {tab === "reserve" && (
+      <>
       <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_1.6fr]">
         <Card title="Reserve cover">
           <div className="flex flex-col items-center text-center">
@@ -109,6 +202,21 @@ export function TokensView({
         </div>
       </div>
 
+      <Card title="Sotechy's token wallets" description="Where spent tokens go. The reserve's naira is money Sotechy holds, not tokens; these wallets hold the tokens themselves, on Monad." className="mb-6">
+        {reserve.wallets.length === 0 ? (
+          <p className="text-sm text-muted">Not loaded.</p>
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {reserve.wallets.map((w) => (
+              <WalletRow key={w.key} w={w} />
+            ))}
+          </div>
+        )}
+      </Card>
+      </>
+      )}
+
+      {tab === "tokens" && (
       <div className="mb-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <Card title="Tokens" description="One per store, created on Monad when you approve the store. $SOTECHY is Sotechy's own." padded={false}>
           <div className="px-5 pb-5">
@@ -164,7 +272,9 @@ export function TokensView({
           <p className="mt-3 text-xs text-muted">Store value per token: ₦{TOKEN_VALUE.toFixed(5)}.</p>
         </Card>
       </div>
+      )}
 
+      {tab === "activity" && (
       <Card title="Latest token activity">
         {activity.length === 0 ? (
           <p className="text-sm text-muted">Nothing yet. Tokens are earned as orders get delivered.</p>
@@ -197,6 +307,7 @@ export function TokensView({
           </ul>
         )}
       </Card>
+      )}
     </>
   );
 }
