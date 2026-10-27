@@ -105,7 +105,7 @@ export function TokensView({
           <StatCard illo="bank" tone="brand" label="Reserve" value={formatNaira(reserve.balance)} hint={`+${formatNaira(reserve.inThisMonth)} in, −${formatNaira(reserve.outThisMonth)} out this month`} />
           <StatCard illo="coin" label="Tokens owed, at store value" value={formatNaira(Math.round(reserve.owed))} hint={`${formatTokens(reserve.tokensHeld)} tokens · 1 = ₦${TOKEN_VALUE.toFixed(5)}`} />
           <StatCard illo="sparkle" tone="info" label="Recycling pool" value={formatTokens(reserve.recyclePool)} hint="Half of every spent token; pays review bonuses" />
-          <StatCard illo="receipt" tone="good" label="Walk-in fees this month" value={formatNaira(reserve.walkInFeesThisMonth)} hint="The reserve's half of stores' 2%" />
+          <StatCard illo="receipt" tone="good" label="Walk-in fees this month" value={formatNaira(reserve.walkInFeesThisMonth)} hint="Stores' 1%, all of it to the reserve" />
         </div>
       </div>
 
@@ -159,7 +159,7 @@ export function TokensView({
             <li className="rounded-2xl bg-surface-alt px-4 py-3">
               Customers <b>pay with tokens</b> at the store that issued them ($SOTECHY anywhere). The store is still paid in full; the reserve covers the tokens. At least ₦100 of every order is paid in money.
             </li>
-            <li className="rounded-2xl bg-surface-alt px-4 py-3">Walk-in sales earn tokens once the store pays its 2%. A refunded order takes back what it earned. Customers can send tokens to each other by @username.</li>
+            <li className="rounded-2xl bg-surface-alt px-4 py-3">Walk-in sales earn tokens once the store pays 1% of the sale, which all goes to the reserve. A refunded order takes back what it earned. Customers can send tokens to each other by @username.</li>
           </ul>
           <p className="mt-3 text-xs text-muted">Store value per token: ₦{TOKEN_VALUE.toFixed(5)}.</p>
         </Card>

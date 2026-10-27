@@ -1,7 +1,7 @@
 // Walk-in sales: a customer buys in the store's own shop and gives their @username or phone number.
-// The sale itself stays between them; the store pays Sotechy's 2% fee through Money Moves, and only
+// The sale itself stays between them; the store pays a 1% fee through Money Moves, and only
 // then does the customer get the store's token (plus $SOTECHY), as with an online order.
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { TOKEN_RULES } from "@sotechy/shared";
 import { db, schema } from "../db/client";
 import { env } from "../env";
@@ -18,11 +18,12 @@ export async function findCustomer(query: string) {
   if (q.length < 3) return null;
   const digits = q.replace(/\D/g, "");
   const phone = digits.length >= 10 ? `+234${digits.slice(-10)}` : null;
-  const [user] = await db
-    .select({ id: users.id, name: users.fullName, username: users.username, phone: users.phone, active: users.isActive })
-    .from(users)
-    .where(phone ? or(eq(users.username, q), eq(users.phone, phone)) : eq(users.username, q))
-    .limit(1);
+  const pick = { id: users.id, name: users.fullName, username: users.username, active: users.isActive };
+  const [byName] = await db.select(pick).from(users).where(eq(users.username, q)).limit(1);
+  // A phone number can be on more than one account; then only their @username is sure to be the right person
+  const byPhone = !byName && phone ? await db.select(pick).from(users).where(eq(users.phone, phone)).limit(2) : [];
+  if (byPhone.length > 1) throw badRequest("More than one account has that phone number. Ask for their @username instead.");
+  const user = byName ?? byPhone[0];
   if (!user || !user.active) return null;
   return { id: user.id, name: user.name, username: user.username };
 }
@@ -33,7 +34,7 @@ export async function startWalkIn(store: typeof schema.merchants.$inferSelect, b
   const customer = await findCustomer(input.customer);
   if (!customer) throw notFound("No Sotechy account found. Ask them to sign up in the app, then try again.");
   if (customer.id === store.ownerId) throw badRequest("You can't reward your own account");
-  const fee = Math.max(1, Math.round(input.amount * TOKEN_RULES.feeRate * 100) / 100);
+  const fee = Math.max(1, Math.round(input.amount * TOKEN_RULES.walkInFeeRate * 100) / 100);
   const [sale] = await db.insert(sales).values({ merchantId: store.id, customerId: customer.id, amount: input.amount, fee, note: input.note ?? null, createdBy: by.id }).returning();
   const checkout = await createCheckout({
     reference: `${WALK_IN_REF}${sale.id}`,

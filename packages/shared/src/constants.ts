@@ -83,6 +83,8 @@ export const TOKEN_RULES = {
   photoReviewBonus: 0.1,
   /** Tokens can't pay for all of an order: at least this much is paid in money */
   minCashPerOrder: 100,
+  /** A store's own (walk-in) sale: the store pays this, and all of it backs the tokens (Sotechy keeps none) */
+  walkInFeeRate: 0.01,
 } as const;
 
 /** Naira value of one token at the store that issued it (₦0.00909) */

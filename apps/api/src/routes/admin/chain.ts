@@ -92,9 +92,9 @@ export const adminChainRoutes = new Hono<AppEnv>()
   /** The reserve and this month's fees, for the dashboard (no chain reads) */
   .get("/reserve", async (c) => {
     const reserve = await reserveSummary();
-    // The reserve gets half of every fee, so this month's fees are twice what came in
-    const reserveShare = reserve.inThisMonth;
-    return c.json({ ...reserve, feesThisMonth: { total: reserveShare * 2, reserve: reserveShare, revenue: reserveShare } });
+    // Orders: the reserve gets half of the fee and the rest is revenue. Walk-ins: all of their 1% goes to the reserve.
+    const fromOrders = Math.max(0, reserve.inThisMonth - reserve.walkInFeesThisMonth);
+    return c.json({ ...reserve, feesThisMonth: { total: fromOrders * 2 + reserve.walkInFeesThisMonth, reserve: reserve.inThisMonth, revenue: fromOrders } });
   })
   /** Copies everything Monad has onto Base, only when an admin asks */
   .post("/chain/base-batch", ADMIN, requirePassword, async (c) => {

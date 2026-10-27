@@ -252,7 +252,8 @@ export async function earnForWalkIn(tx: Tx, sale: { id: string; merchantId: stri
   await record(tx, { tokenId, kind: "mint", toUserId: sale.customerId, amount, reason: "walk_in", sourceKey: `walkin:${sale.id}:earn` });
   const bonus = Math.floor(amount * CROSS_BONUS);
   if (bonus > 0) await record(tx, { tokenId: SOTECHY_TOKEN.id, kind: "mint", toUserId: sale.customerId, amount: bonus, reason: "bonus", sourceKey: `walkin:${sale.id}:bonus` });
-  await toReserve(tx, { kind: "walk_in_fee", amount: round2(sale.fee * TOKEN_RULES.reserveShare), walkInId: sale.id, sourceKey: `walkin:${sale.id}` });
+  // The whole walk-in fee backs the tokens it pays for
+  await toReserve(tx, { kind: "walk_in_fee", amount: round2(sale.fee), walkInId: sale.id, sourceKey: `walkin:${sale.id}` });
 }
 
 // ---------------------------------------------------------------------------

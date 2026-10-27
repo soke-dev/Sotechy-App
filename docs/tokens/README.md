@@ -35,7 +35,7 @@ Sotechy becomes a multi-merchant marketplace. Every verified merchant has a stor
 | ₦100M from Xena | **100M XENA + 10M SOTECHY** (10% cross-store bonus) |
 | Review with a photo (delivered items only) | **+10%** of that item's tokens |
 | Review without a photo (delivered items only) | **+5%** of that item's tokens |
-| Walk-in sale at a merchant's POS | That merchant's tokens + **10% SOTECHY**, only after the merchant pays Sotechy the 2% for that sale. The customer needs a Sotechy account; the cashier finds them by @username or phone. |
+| Walk-in sale at a merchant's POS | That merchant's tokens + **10% SOTECHY**, only after the merchant pays 1% of that sale, all of which goes to the reserve that backs the tokens. The customer needs a Sotechy account; the cashier finds them by @username or phone. |
 
 Tokens show as **pending** from checkout and are released **100%** when the order completes. Cancelled or refunded orders never release tokens.
 

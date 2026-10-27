@@ -1,6 +1,6 @@
 "use client";
 
-// A sale in the store's own shop: find the customer on Sotechy, pay Sotechy's 2%, and they get the tokens.
+// A sale in the store's own shop: find the customer on Sotechy, pay the 1% fee, and they get the tokens.
 import { Check, Loader2, Search } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { TOKEN_RULES } from "@sotechy/shared";
@@ -27,13 +27,13 @@ type Customer = { id: string; name: string | null; username: string | null };
 export function WalkInView({ sales, paidId }: { sales: WalkInSale[]; paidId: string | null }) {
   const { store } = useAccount();
   const [query, setQuery] = useState("");
-  const [found, setFound] = useState<{ q: string; customer: Customer | null } | null>(null);
+  const [found, setFound] = useState<{ q: string; customer: Customer | null; problem?: string } | null>(null);
   const [amount, setAmount] = useState(0);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const q = query.trim();
-  const fee = Math.round(amount * TOKEN_RULES.feeRate * 100) / 100;
+  const fee = Math.round(amount * TOKEN_RULES.walkInFeeRate * 100) / 100;
   const t = store.ticker;
   const paid = paidId ? sales.find((s) => s.id === paidId) : undefined;
   const customer = found?.q === q ? found.customer : undefined;
@@ -43,7 +43,7 @@ export function WalkInView({ sales, paidId }: { sales: WalkInSale[]; paidId: str
     if (q.replace(/^@/, "").length < 3) return;
     const timer = setTimeout(async () => {
       const r = await findWalkInCustomer(q);
-      setFound({ q, customer: "ok" in r ? r.ok : null });
+      setFound({ q, customer: "ok" in r ? r.ok : null, problem: "error" in r ? r.error : undefined });
     }, 350);
     return () => clearTimeout(timer);
   }, [q]);
@@ -81,7 +81,7 @@ export function WalkInView({ sales, paidId }: { sales: WalkInSale[]; paidId: str
 
   return (
     <>
-      <PageHeader illo="receipt" title="Walk-in sale" description={`Reward customers who buy in your shop. You pay Sotechy ${TOKEN_RULES.feeRate * 100}% of the sale, and they get $${t} plus ${TOKEN_RULES.crossBonus * 100}% in $SOTECHY.`} />
+      <PageHeader illo="receipt" title="Walk-in sale" description={`Reward customers who buy in your shop. You pay ${TOKEN_RULES.walkInFeeRate * 100}% of the sale, which backs their tokens, and they get $${t} plus ${TOKEN_RULES.crossBonus * 100}% in $SOTECHY.`} />
 
       <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
         <Card title="Sale details">
@@ -107,7 +107,7 @@ export function WalkInView({ sales, paidId }: { sales: WalkInSale[]; paidId: str
                   <Check size={18} className="text-good" />
                 </div>
               ) : (
-                <p className="rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn">No Sotechy account found. Ask them to download the app and sign up, then try again.</p>
+                <p className="rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn">{found?.problem ?? "No Sotechy account found. Ask them to download the app and sign up, then try again."}</p>
               ))}
             <Field label="Sale amount (₦)">
               <input type="number" min={0} value={amount || ""} onChange={(e) => setAmount(Number(e.target.value))} className={`${inputClass} font-display text-xl font-bold`} placeholder="0" />
@@ -132,7 +132,7 @@ export function WalkInView({ sales, paidId }: { sales: WalkInSale[]; paidId: str
                 </span>
               </div>
               <div className="flex items-center justify-between px-1 text-sm">
-                <span className="text-muted">You pay Sotechy ({TOKEN_RULES.feeRate * 100}%)</span>
+                <span className="text-muted">You pay ({TOKEN_RULES.walkInFeeRate * 100}%)</span>
                 <span className="font-display text-xl font-bold">{formatNaira(fee)}</span>
               </div>
               <p className="px-1 text-xs text-muted">Tokens are only sent after this fee is paid. The sale itself stays between you and the customer.</p>
