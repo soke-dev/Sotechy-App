@@ -355,7 +355,12 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       const [before] = await db.select().from(schema.merchants).where(eq(schema.merchants.id, c.req.param("id")));
       if (!before) throw notFound("Store not found");
       const store = await db.transaction(async (tx) => {
-        const [row] = await tx.update(schema.merchants).set({ status }).where(eq(schema.merchants.id, before.id)).returning();
+        // Approving a store approves its token too: the ticker is fixed and the token is created on Monad
+        const [row] = await tx
+          .update(schema.merchants)
+          .set({ status, ...(status === "approved" && !before.tokenApprovedAt && { tokenApprovedAt: new Date() }) })
+          .where(eq(schema.merchants.id, before.id))
+          .returning();
         await audit(tx, { actorId: actor.id, action: "merchant.status", entityType: "merchant", entityId: before.id, details: { from: before.status, to: status, note: note ?? null } });
         return row;
       });

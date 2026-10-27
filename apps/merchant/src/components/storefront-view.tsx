@@ -19,7 +19,8 @@ export interface StorefrontLook {
   logo: string | null;
   /** Without one, the header uses the theme's colour band */
   cover: string | null;
-  ticker: string;
+  /** null until the store's token is approved */
+  ticker: string | null;
   /** null until the first reviews come in */
   rating: number | null;
   followers: number;
@@ -85,7 +86,7 @@ export function StorefrontView({ look, products, compact = false }: { look: Stor
               Get their updates
             </span>
             <span className={`rounded-full font-semibold ${compact ? "px-3 py-1.5 text-xs" : "px-5 py-2.5 text-sm"}`} style={{ background: "rgba(255,255,255,0.16)" }}>
-              Earn ${look.ticker} on every order
+              Earn {look.ticker ? `$${look.ticker}` : "rewards"} on every order
             </span>
           </div>
         </div>

@@ -7,6 +7,7 @@ import { RelTime } from "@/components/rel-time";
 import { formatTokens } from "@/lib/money";
 import { reviews as initial } from "@/lib/mock";
 import { useAccount } from "@/components/account-context";
+import { tokenTicker } from "@/lib/token";
 
 const Stars = ({ n, size = 15 }: { n: number; size?: number }) => (
   <span className="inline-flex gap-0.5 text-sun">
@@ -32,7 +33,7 @@ export default function ReviewsPage() {
 
   return (
     <>
-      <PageHeader illo="heart" title="Reviews" description={`Only customers who received the item can review it. They earn bonus $${store.ticker}: 10% with a photo, 5% without.`} />
+      <PageHeader illo="heart" title="Reviews" description={`Only customers who received the item can review it. They earn bonus ${tokenTicker(store) ?? "tokens"}: 10% with a photo, 5% without.`} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
         <Card className="self-start">

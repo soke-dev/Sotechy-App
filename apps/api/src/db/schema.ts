@@ -81,6 +81,10 @@ export interface MerchantApplication {
   documents?: Record<string, string>;
   people?: { name: string; role: string; share: number }[];
   bank?: { bankName: string; accountNumber: string } | null;
+  /** What the business does and who it sells to */
+  description?: string | null;
+  /** The store picked its own ticker */
+  tickerChosen?: boolean;
 }
 
 /** What Didit found, kept for admin review (no document images or full ID numbers) */
@@ -227,6 +231,10 @@ export const merchants = pgTable("merchants", {
   /** Whose name the account is in: "business", "owner", or null when it matches neither */
   payoutAccountMatch: text(),
   payoutVerifiedAt: timestamp({ withTimezone: true }),
+  /** When Sotechy approved the store and its token; the ticker can't change after this */
+  tokenApprovedAt: timestamp({ withTimezone: true }),
+  /** Where the token lives on chain (set when it's created on Monad) */
+  tokenContract: text(),
   /** This store's own payout plan; null = the standard plan */
   payoutPlan: jsonb().$type<{ firstPercent: number; fee: "spread" | "first" | "last" }>(),
   createdAt: createdAt(),

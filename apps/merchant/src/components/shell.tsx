@@ -18,7 +18,8 @@ interface NavItem {
 
 export interface ShellStore {
   name: string;
-  ticker: string;
+  /** null until Sotechy approves the store's token */
+  ticker: string | null;
   /** The store's logo, or the owner's profile picture; initials when there's neither */
   logo?: string | null;
   verified: boolean;
@@ -38,7 +39,7 @@ const items = (s: ShellStore): NavItem[][] => [
     { href: "/delivery", label: "Delivery", illo: "bike" },
   ],
   [
-    { href: "/token", label: `$${s.ticker} token`, illo: "coin" },
+    { href: "/token", label: s.ticker ? `$${s.ticker} token` : "Store token", illo: "coin" },
     { href: "/walk-in", label: "Walk-in sale", illo: "receipt" },
     { href: "/payouts", label: "Payouts", illo: "bank" },
     { href: "/reviews", label: "Reviews", illo: "heart" },
@@ -167,7 +168,7 @@ function TabBar({ store, onMore }: { store: ShellStore; onMore: () => void }) {
     { href: "/", label: "Home", illo: "home" },
     { href: "/orders", label: "Orders", illo: "box", badge: store.newOrders },
     { href: "/products", label: "Products", illo: "bag" },
-    { href: "/token", label: `$${store.ticker}`, illo: "coin" },
+    { href: "/token", label: store.ticker ? `$${store.ticker}` : "Token", illo: "coin" },
   ];
   return (
     <nav className="fixed inset-x-3 bottom-3 z-30 flex items-stretch rounded-2xl border border-line bg-surface px-1 py-1.5 shadow-[0_12px_32px_rgba(23,18,14,0.14)] [transform:translateZ(0)] [will-change:transform] lg:hidden">

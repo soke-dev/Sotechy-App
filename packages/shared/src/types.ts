@@ -379,6 +379,8 @@ export interface MerchantStore {
   payoutAccountName?: string | null;
   payoutAccountMatch?: "business" | "owner" | null;
   payoutVerifiedAt?: string | null;
+  /** When Sotechy approved the store's token (its ticker is fixed from then on) */
+  tokenApprovedAt?: string | null;
   createdAt: string;
 }
 
@@ -705,5 +707,11 @@ export interface MerchantApplicationInput {
   documents?: Record<string, string>;
   people?: { name: string; role: string; share: number }[];
   bank?: { bankName: string; accountNumber: string } | null;
+  /** What the business does and who it sells to, for Sotechy's review */
+  description?: string | null;
+  /** The ticker the store chose for its token (until Sotechy approves the store, it can change it) */
+  ticker?: string | null;
+  /** Set once the store has picked its ticker itself */
+  tickerChosen?: boolean;
   submit?: boolean;
 }

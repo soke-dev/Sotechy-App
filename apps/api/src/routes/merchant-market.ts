@@ -10,6 +10,7 @@ import { publicApiUrl } from "../env";
 import { audit } from "../lib/audit";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
+import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem } from "@sotechy/shared";
 import { accountNameMatch, slugify } from "../lib/identity";
 import { nigerianBanks, resolveAccount } from "../services/flutterwave";
 import { payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
@@ -334,6 +335,17 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     return c.body(new Uint8Array(row.data), 200, { "Content-Type": row.contentType, "Cache-Control": "private, no-store" });
   })
 
+  /** Whether a ticker is free for this store's token */
+  .get("/ticker/:ticker", async (c) => {
+    const t = c.req.param("ticker").toUpperCase().replace(/^\$/, "");
+    const store = c.get("store");
+    if (t === store.ticker) return c.json({ ticker: t, available: true, reason: null });
+    const problem = tickerProblem(t);
+    if (problem) return c.json({ ticker: t, available: false, reason: problem });
+    const [taken] = await db.select({ id: schema.merchants.id }).from(schema.merchants).where(eq(schema.merchants.ticker, t));
+    return c.json({ ticker: t, available: !taken, reason: taken ? "Another store has it" : null });
+  })
+
   // --- Payouts: the account they go to, and what's been paid ---
   .get("/banks", async (c) => c.json(await nigerianBanks()))
   /** Checks the account with the bank and saves it. Payouts only go automatically to an account in
@@ -420,22 +432,58 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
         documents: z.record(z.string().max(60), z.string().max(200)).default({}),
         people: z.array(z.object({ name: z.string().trim().min(1).max(120), role: z.string().max(60), share: z.number().min(0).max(100) })).max(20).default([]),
         bank: z.object({ bankName: z.string().min(2).max(60), accountNumber: z.string().regex(/^\d{10}$/, "Account numbers have 10 digits") }).nullable().optional(),
+        description: z.string().trim().max(1000).nullable().optional(),
+        ticker: z.string().trim().max(9).nullable().optional(),
         submit: z.boolean().default(false),
       }),
     ),
     async (c) => {
-      const { sellerKind, sells, submit, ...application } = c.req.valid("json");
+      const { sellerKind, sells, submit, ticker: asked, ...application } = c.req.valid("json");
       const store = c.get("store");
-      if (submit) {
-        if (!sells.length) throw badRequest("Choose what you sell before submitting");
-        if (sellerKind === "registered" && (!application.registeredName || !application.registrationNumber || !application.businessAddress)) {
-          throw badRequest("Fill in your business details before submitting");
+
+      // The store names its own token, until Sotechy approves it
+      let ticker = store.ticker;
+      let tickerChosen = store.application?.tickerChosen ?? false;
+      if (asked) {
+        const t = asked.toUpperCase().replace(/^\$/, "");
+        if (t !== store.ticker) {
+          if (store.tokenApprovedAt) throw badRequest("Your token is already created. Ask Sotechy if you need to rename it.");
+          const problem = tickerProblem(t);
+          if (problem) throw badRequest(`Ticker: ${problem}`);
+          const [taken] = await db.select({ id: schema.merchants.id }).from(schema.merchants).where(eq(schema.merchants.ticker, t));
+          if (taken) throw conflict(`$${t} is taken. Try another ticker.`);
+          ticker = t;
         }
-        if (!application.bank) throw badRequest("Add a payout account before submitting");
+        tickerChosen = true;
+      }
+
+      if (submit) {
+        const kyc = store.kycStatus;
+        const docs = sellerKind === "registered" ? BUSINESS_DOCUMENTS[application.structure ?? "LTD"].filter((d) => !d.optional) : [];
+        const missingDoc = docs.find((d) => !application.documents[d.name]);
+        const shares = application.people.reduce((n, p) => n + p.share, 0);
+        const problem = !sells.length
+          ? "Choose what you sell"
+          : (application.description ?? "").length < MIN_BUSINESS_DESCRIPTION
+            ? `Describe your business in at least ${MIN_BUSINESS_DESCRIPTION} characters`
+            : !tickerChosen
+              ? "Choose your token's ticker"
+              : sellerKind === "registered" && (!application.structure || !application.registeredName || !application.registrationNumber || !application.businessAddress)
+                ? "Fill in your business details"
+                : missingDoc
+                  ? `Upload your ${missingDoc.name}`
+                  : sellerKind === "registered" && (!application.people.length || shares > 100)
+                    ? "List your directors and owners (shares can't add up to more than 100%)"
+                    : kyc !== "in_review" && kyc !== "approved"
+                      ? "Finish your ID check"
+                      : !store.payoutVerifiedAt
+                        ? "Add and check your payout account"
+                        : null;
+        if (problem) throw badRequest(`${problem} before submitting.`);
       }
       const [row] = await db
         .update(schema.merchants)
-        .set({ sellerKind, sells, application, ...(submit && { submittedAt: new Date() }) })
+        .set({ sellerKind, sells, ticker, application: { ...application, tickerChosen }, updatedAt: new Date(), ...(submit && { submittedAt: new Date() }) })
         .where(eq(schema.merchants.id, store.id))
         .returning();
       if (submit) await audit(db, { actorId: c.get("user").id, action: "merchant.submitted", entityType: "merchant", entityId: store.id });

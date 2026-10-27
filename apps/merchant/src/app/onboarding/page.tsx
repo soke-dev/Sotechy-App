@@ -1,7 +1,7 @@
 import { getStoreSession } from "@/lib/api";
 import OnboardingView, { type StepId } from "./onboarding-view";
 
-const STEPS: StepId[] = ["setup", "business", "documents", "you", "people", "token", "payout", "review"];
+const STEPS: StepId[] = ["setup", "business", "documents", "you", "people", "store", "payout", "review"];
 
 /** ?step=you opens a step directly; Didit sends merchants back with ?verify=done after their ID check */
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ step?: string; verify?: string }> }) {
@@ -21,6 +21,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         payout: store.payoutAccountNumber
           ? { bankCode: store.payoutBankCode ?? null, bankName: store.payoutBankName ?? null, accountNumber: store.payoutAccountNumber, accountName: store.payoutAccountName ?? null, match: store.payoutAccountMatch ?? null }
           : null,
+        kycStatus: store.kycStatus,
+        tokenApproved: !!store.tokenApprovedAt,
       }}
     />
   );

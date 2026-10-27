@@ -26,6 +26,24 @@ export default async function TokenPage() {
   const total = supply.reduce((n, s) => n + s.value, 0);
   const t = store.ticker;
 
+  if (!store.tokenApprovedAt) {
+    return (
+      <>
+        <PageHeader illo="coin" title="Store token" description="Your store's own reward token. Customers earn it when their orders complete and spend it only at your store." />
+        <section className="flex flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 sm:flex-row sm:items-center sm:p-8">
+          <Illo name="coin" size={72} />
+          <div className="flex-1">
+            <p className="font-display text-xl font-bold">Your token is created when Sotechy approves your store</p>
+            <p className="mt-1 text-muted">You choose its ticker in setup. Once your store is approved, the token is created on Monad with that ticker, and it shows here.</p>
+          </div>
+          <Link href="/onboarding?step=store" className={btn.dark}>
+            {store.submittedAt ? "View setup" : "Choose your ticker"}
+          </Link>
+        </section>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader illo="coin" title={`$${t} token`} description="Your store's own token. Customers earn it when their orders complete and spend it only at your store." />

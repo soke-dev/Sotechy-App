@@ -85,3 +85,12 @@ export async function listBanks(): Promise<Result<Bank[]>> {
 export async function savePayoutAccount(input: { bankCode: string; accountNumber: string }): Promise<Result<PayoutAccount>> {
   return attempt(() => api.savePayoutAccount(input), ["/settings", "/payouts", "/onboarding"]);
 }
+
+/** Whether a ticker is free for this store's token */
+export async function checkTicker(ticker: string): Promise<{ ticker: string; available: boolean; reason: string | null } | null> {
+  try {
+    return await api.get<{ ticker: string; available: boolean; reason: string | null }>(`/merchant/ticker/${encodeURIComponent(ticker)}`);
+  } catch {
+    return null;
+  }
+}

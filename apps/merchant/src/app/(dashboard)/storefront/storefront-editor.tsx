@@ -29,7 +29,7 @@ export function StorefrontEditor({ products }: { products: Product[] }) {
     announcement: sf?.announcement ?? "",
     logo: store.logoUrl ?? user.avatarUrl ?? null,
     cover: store.coverUrl ?? null,
-    ticker: store.ticker,
+    ticker: store.tokenApprovedAt ? store.ticker : null,
     rating: null,
     followers: 0,
   });

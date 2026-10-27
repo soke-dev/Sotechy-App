@@ -6,6 +6,7 @@ import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens } from "@/lib/money";
 import { api, getStoreSession } from "@/lib/api";
 import { offerThreads, ORDER_STATUS, orderMoney, orderTotal, token } from "@/lib/mock";
+import { tokenTicker } from "@/lib/token";
 
 export default async function HomePage() {
   const { user, store } = await getStoreSession();
@@ -98,7 +99,7 @@ export default async function HomePage() {
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard accent illo="wallet" label="Sales, last 14 days" value={formatNaira(sales14)} hint={`${orders.filter((o) => o.status === "completed").length} completed orders`} />
         <StatCard illo="bank" label="Owed to you" value={formatNaira(owedSecondHalf)} hint={`From ${active.length} order${active.length === 1 ? "" : "s"} in progress`} />
-        <StatCard illo="coin" label={`$${store.ticker} with customers`} value={formatTokens(token.circulating)} hint={`${token.holders} holders`} />
+        <StatCard illo="coin" label={`${tokenTicker(store) ?? "Tokens"} with customers`} value={formatTokens(token.circulating)} hint={`${token.holders} holders`} />
         <StatCard illo="heart" label="Store rating" value="New" hint="Ratings appear after your first reviews" />
       </div>
 
@@ -126,13 +127,13 @@ export default async function HomePage() {
           )}
         </Card>
 
-        <Card title={`Your $${store.ticker} token`} actions={<Link href="/token" className="text-sm font-semibold text-brand-strong hover:underline">Open</Link>}>
+        <Card title={tokenTicker(store) ? `Your ${tokenTicker(store)} token` : "Your store token"} actions={<Link href="/token" className="text-sm font-semibold text-brand-strong hover:underline">Open</Link>}>
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3 rounded-2xl bg-brand-soft p-4">
               <Illo name="coin" size={44} />
               <div>
                 <p className="text-xs font-medium text-muted">Released to customers</p>
-                <p className="font-display text-2xl font-bold">{formatTokens(token.issued)} <span className="text-brand-strong">${store.ticker}</span></p>
+                <p className="font-display text-2xl font-bold">{formatTokens(token.issued)} <span className="text-brand-strong">{tokenTicker(store) ?? "tokens"}</span></p>
               </div>
             </div>
             <dl className="grid grid-cols-2 gap-3 text-sm">
@@ -145,7 +146,7 @@ export default async function HomePage() {
                 <dd className="font-semibold">{formatTokens(token.redeemed)}</dd>
               </div>
             </dl>
-            <p className="text-xs text-muted">Customers earn 1 ${store.ticker} per ₦1 when an order completes, and spend it only at {store.name}.</p>
+            <p className="text-xs text-muted">Customers earn 1 {tokenTicker(store) ?? "token"} per ₦1 when an order completes, and spend it only at {store.name}.</p>
           </div>
         </Card>
       </div>

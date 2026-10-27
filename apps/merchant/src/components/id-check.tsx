@@ -1,7 +1,7 @@
 "use client";
 
 import type { KycStatus } from "@sotechy/shared";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { idCheckStatus, startIdCheck } from "@/lib/session-actions";
 import { FormError } from "./account-fields";
 import { Illo } from "./illustrations";
@@ -18,8 +18,13 @@ const COPY: Record<KycStatus, { title: string; body: string; tone: string; actio
 };
 
 /** The owner's ID + liveness check through Didit. Shows the live status and sends them to Didit's page. */
-export function IdCheck() {
+export function IdCheck({ onStatus }: { onStatus?: (status: KycStatus) => void } = {}) {
   const [status, setStatus] = useState<KycStatus | null>(null);
+  // Lets the setup form know when the check is done
+  const report = useRef(onStatus);
+  useEffect(() => {
+    report.current = onStatus;
+  });
   const [available, setAvailable] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -30,6 +35,7 @@ export function IdCheck() {
       const r = await idCheckStatus();
       if (!live || !r) return;
       setStatus(r.status);
+      report.current?.(r.status);
       setAvailable(r.available);
     };
     load();

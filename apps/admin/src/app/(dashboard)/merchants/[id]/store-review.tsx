@@ -237,7 +237,9 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
             <Row label="WhatsApp alerts">{store.contactWhatsapp ?? store.contactPhone}</Row>
           </Card>
           <Card title="Store">
+            <Row label="Token ticker">{`$${store.ticker}`}{!store.tokenApprovedAt && <span className="block text-xs font-normal text-muted">{store.application?.tickerChosen ? "Chosen by the store · fixed when you approve" : "Not chosen yet"}</span>}</Row>
             <Row label="Sells">{store.sells.length ? store.sells.join(", ") : null}</Row>
+            {store.application?.description && <p className="mt-2 whitespace-pre-line border-t border-line pt-3 text-sm text-ink-2">{store.application.description}</p>}
             <Row label="Products">{store.products}</Row>
             <Row label="Orders">{store.orders}</Row>
             <Row label="Sales">{formatNaira(store.sales)}</Row>

@@ -27,7 +27,9 @@ export interface AdminStore {
   contactPhone: string | null;
   contactWhatsapp: string | null;
   sells: string[];
-  application: Omit<MerchantApplicationInput, "sellerKind" | "sells" | "submit"> | null;
+  application: (Omit<MerchantApplicationInput, "sellerKind" | "sells" | "submit"> & { tickerChosen?: boolean }) | null;
+  /** When the store's token was approved (its ticker is fixed from then on) */
+  tokenApprovedAt: string | null;
   submittedAt: string | null;
   kycStatus: KycStatus;
   kycResult: KycResult | null;
