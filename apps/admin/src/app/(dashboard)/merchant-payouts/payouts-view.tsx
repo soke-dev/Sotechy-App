@@ -66,10 +66,11 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
   const act = async (id: string, action: "paid" | "hold" | "release" | "settle") => {
     setError(null);
     let password = "";
-    if (action !== "hold") {
+    // Holding and recording a payment made from the bank need no password; the rest do
+    if (action !== "hold" && action !== "paid") {
       const p = list.find((x) => x.id === id);
       setConfirm(null);
-      const given = await ask(action === "paid" ? "Mark this payout paid?" : action === "release" ? "Release this payout?" : "Mark as repaid?", p ? `${formatNaira(p.amount)} · ${p.storeName} · ${p.orderNumber}` : undefined);
+      const given = await ask(action === "release" ? "Release this payout?" : "Mark as repaid?", p ? `${formatNaira(p.amount)} · ${p.storeName} · ${p.orderNumber}` : undefined);
       if (!given) return;
       password = given;
     }

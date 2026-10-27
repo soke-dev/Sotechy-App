@@ -59,8 +59,9 @@ export const adminPayoutRoutes = new Hono<AppEnv>()
   })
   /** Sends now, even before it's due (the admin is approving it) */
   .post("/payouts/:id/send", ADMIN, requirePassword, async (c) => c.json(await sendPayout(c.req.param("id"), { actorId: c.get("user").id, force: true })))
-  /** Sotechy paid the store from its own bank; this records it and tells the store */
-  .post("/payouts/:id/paid", ADMIN, requirePassword, zValidator("json", z.object({ reference: z.string().trim().max(100).optional() })), async (c) =>
+  /** Sotechy paid the store from its own bank; this records it and tells the store. No password:
+   *  nothing moves here, the money already went from the bank. */
+  .post("/payouts/:id/paid", ADMIN, zValidator("json", z.object({ reference: z.string().trim().max(100).optional() })), async (c) =>
     c.json(await markPaidByHand(c.req.param("id"), { actorId: c.get("user").id, reference: c.req.valid("json").reference || null })),
   )
   .post("/payouts/:id/hold", ADMIN, async (c) => c.json(await move(c.req.param("id"), ["scheduled", "failed"], "held", c.get("user").id)))
