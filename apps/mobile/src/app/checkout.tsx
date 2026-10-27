@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { areaDeliveryFee, deliveryAreaFor, formatNaira, formatUsd, nairaToTokens, TOKEN_RULES, tokensToNaira, type FulfilmentType, type PromoCheck } from "@sotechy/shared";
 import { AddressCard } from "@/components/address-card";
 import { Illo, type IlloName } from "@/components/illustrations";
@@ -302,7 +302,7 @@ export default function CheckoutScreen() {
               <Ionicons name="time-outline" size={18} color={colors.warning} />
               <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>
                 {notSetUp
-                  ? `${seller?.name ?? "This store"} is still getting its delivery areas and pickup locations approved by Sotechy. You'll be able to order soon; your cart is saved.`
+                  ? `${seller?.name ?? "This store"} is still getting its delivery areas and pickup locations approved. You'll be able to order soon; your cart is saved.`
                   : !itemsPickup && !itemsDelivery
                     ? "Some items are delivery only and others pickup only. Order them separately."
                     : `${seller?.name ?? "This store"} can't deliver or have this collected yet. Your cart is saved; try again soon.`}
@@ -447,25 +447,31 @@ export default function CheckoutScreen() {
                 <Txt variant="caption">At least ₦{TOKEN_RULES.minCashPerOrder} is paid in money.</Txt>
               </View>
             </View>
-            {tokenPlan.map((t) => (
-              <View key={t.ticker} style={[ui.between, { gap: space.md }]}>
-                <View style={{ flex: 1 }}>
-                  <Txt variant="label">
-                    {t.ticker === "SOTECHY" ? "$SOTECHY" : `$${t.ticker}`} · {t.balance.toLocaleString("en-NG")}
-                  </Txt>
-                  <Txt variant="caption">{useTokens[t.ticker] ? `Using ${t.amount.toLocaleString("en-NG")} · −${formatNaira(t.value)}` : `Worth up to ${formatNaira(tokensToNaira(t.most))} here`}</Txt>
-                </View>
-                <Switch
-                  value={!!useTokens[t.ticker]}
-                  onValueChange={(on) => {
-                    tap();
-                    setUseTokens({ ...useTokens, [t.ticker]: on });
-                  }}
-                  trackColor={{ true: colors.brand, false: colors.line }}
-                  thumbColor="#fff"
-                />
-              </View>
-            ))}
+            {/* The store's token and $SOTECHY side by side; tap one to use it */}
+            <View style={{ flexDirection: "row", gap: space.sm }}>
+              {tokenPlan.map((t) => {
+                const on = !!useTokens[t.ticker];
+                return (
+                  <Pressable
+                    key={t.ticker}
+                    onPress={() => {
+                      tap();
+                      setUseTokens({ ...useTokens, [t.ticker]: !on });
+                    }}
+                    style={{ flex: 1, minWidth: 0, gap: 4, padding: space.md, borderRadius: radius.lg, borderWidth: on ? 1.5 : 1, borderColor: on ? colors.brand : colors.line, backgroundColor: on ? colors.brandSoft : colors.surface }}
+                  >
+                    <View style={[ui.between, { gap: 6 }]}>
+                      <Txt variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>${t.ticker}</Txt>
+                      <Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={20} color={on ? colors.brand : colors.faint} />
+                    </View>
+                    <Txt variant="caption">{t.balance.toLocaleString("en-NG")} held</Txt>
+                    <Txt variant="small" color={on ? colors.success : colors.ink2} numberOfLines={2}>
+                      {on ? `−${formatNaira(t.value)}` : `Up to ${formatNaira(tokensToNaira(t.most))}`}
+                    </Txt>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         )}
 
