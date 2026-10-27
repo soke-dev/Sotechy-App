@@ -64,7 +64,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Sotechy uses your photos so you can attach pictures to support requests.",
+          "photosPermission": "Sotechy uses your photos so you can add pictures to reviews and support requests.",
           "cameraPermission": "Sotechy uses the camera so you can take pictures for support requests.",
           "microphonePermission": false
         }
