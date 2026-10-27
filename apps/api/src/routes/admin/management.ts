@@ -7,7 +7,9 @@ import { db, schema } from "../../db/client";
 import { audit } from "../../lib/audit";
 import { hashPassword, MANAGERS, requireRole, type AppEnv } from "../../lib/auth";
 import { notFound } from "../../lib/errors";
+import { sendEmailLater } from "../../lib/email";
 import { publicUser } from "../../lib/serialize";
+import { storeVerifiedEmail } from "../../emails/templates";
 import { adjustStock } from "../../services/inventory";
 import { salesSummary } from "../../services/reports";
 import { paymentMethodSchema } from "../orders";
@@ -264,4 +266,26 @@ export const adminManagementRoutes = new Hono<AppEnv>()
   .get("/merchants", ADMIN, async (c) => {
     const rows = await db.select().from(schema.merchants).where(inArray(schema.merchants.status, ["pending", "approved", "suspended"]));
     return c.json({ enabled: false, merchants: rows });
-  });
+  })
+  /** Approve (go live), suspend or send a store back to review. Approving emails the owner. */
+  .patch(
+    "/merchants/:id/status",
+    ADMIN,
+    zValidator("json", z.object({ status: z.enum(["pending", "approved", "suspended"]), note: z.string().max(500).optional() })),
+    async (c) => {
+      const { status, note } = c.req.valid("json");
+      const actor = c.get("user");
+      const [before] = await db.select().from(schema.merchants).where(eq(schema.merchants.id, c.req.param("id")));
+      if (!before) throw notFound("Store not found");
+      const store = await db.transaction(async (tx) => {
+        const [row] = await tx.update(schema.merchants).set({ status }).where(eq(schema.merchants.id, before.id)).returning();
+        await audit(tx, { actorId: actor.id, action: "merchant.status", entityType: "merchant", entityId: before.id, details: { from: before.status, to: status, note: note ?? null } });
+        return row;
+      });
+      if (status === "approved" && before.status !== "approved" && store.ownerId) {
+        const [owner] = await db.select({ email: users.email, name: users.fullName }).from(users).where(eq(users.id, store.ownerId));
+        if (owner) sendEmailLater(storeVerifiedEmail(store.contactEmail ?? owner.email, { name: owner.name, store: store.name }));
+      }
+      return c.json(store);
+    },
+  );
