@@ -363,7 +363,8 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       "json",
       z.object({
         sellerKind: z.enum(["registered", "individual"]),
-        sells: z.array(z.string().trim().min(1).max(40)).min(1, "Choose what you sell").max(3),
+        // Saved step by step, so only required when it's submitted
+        sells: z.array(z.string().trim().min(1).max(40)).max(3).default([]),
         structure: z.enum(["BN", "LTD", "PLC", "IT"]).nullable().optional(),
         registeredName: z.string().trim().max(160).nullable().optional(),
         registrationNumber: z.string().trim().max(30).nullable().optional(),
@@ -380,6 +381,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       const { sellerKind, sells, submit, ...application } = c.req.valid("json");
       const store = c.get("store");
       if (submit) {
+        if (!sells.length) throw badRequest("Choose what you sell before submitting");
         if (sellerKind === "registered" && (!application.registeredName || !application.registrationNumber || !application.businessAddress)) {
           throw badRequest("Fill in your business details before submitting");
         }

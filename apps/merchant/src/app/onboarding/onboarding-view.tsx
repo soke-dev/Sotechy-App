@@ -2,6 +2,7 @@
 
 import { Check, ChevronRight, FileUp, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import type { MerchantApplicationInput } from "@sotechy/shared";
 import { saveApplication, uploadFiles } from "@/lib/market-actions";
@@ -98,6 +99,9 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
       if ("error" in r) setError(r.error);
       else then();
     });
+  const router = useRouter();
+  /** Keeps what's filled in so far (even if a step isn't complete) and goes to the dashboard */
+  const finishLater = () => persist(false, () => router.push("/"));
   const next = () =>
     persist(false, () => {
       setDone((d) => new Set(d).add(step));
@@ -179,7 +183,9 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
             );
           })}
         </ol>
-        <Link href="/" className="mt-8 inline-block text-sm font-semibold text-muted hover:text-ink">Finish later</Link>
+        <button type="button" disabled={saving} onClick={finishLater} className="mt-8 text-sm font-semibold text-muted hover:text-ink">
+          Save and finish later
+        </button>
       </aside>
 
       <main className="px-4 pb-16 pt-6 sm:px-10 lg:pt-12">
@@ -358,8 +364,12 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
           </div>
 
           {(error || stepProblem) && <p className="mt-4 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error ?? stepProblem}</p>}
-          <div className="mt-6 flex justify-between gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-2">
             <button disabled={index === 0 || saving} onClick={() => setStep(steps[index - 1])} className={btn.ghost}>Back</button>
+            <span className="flex-1" />
+            <button disabled={saving || uploadingDoc !== null} onClick={finishLater} className={btn.outline}>
+              Finish later
+            </button>
             {step === "review" ? (
               <button disabled={saving || !confirmed} onClick={() => persist(true, () => setSubmitted(true))} className={btn.primary}>
                 {saving ? "Submitting…" : "Submit for review"}
