@@ -12,6 +12,7 @@ import { Illo, type IlloName } from "@/components/illustrations";
 import { btn, Field, inputClass, Req } from "@/components/ui";
 import { formatNaira, SOTECHY_CROSS_BONUS, STORE_VALUE_PER_TOKEN } from "@/lib/money";
 import { AddressInput } from "@/components/address-input";
+import { PayoutAccountForm, type SavedAccount } from "@/components/payout-account-form";
 
 type Kind = "registered" | "individual";
 type Structure = "BN" | "LTD" | "PLC" | "IT";
@@ -45,9 +46,10 @@ export interface OnboardingStart {
   sells: string[];
   application: Omit<MerchantApplicationInput, "sellerKind" | "sells" | "submit"> | null;
   submitted: boolean;
+  /** The checked payout account, if one was saved */
+  payout: SavedAccount | null;
 }
 
-const BANKS = ["Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank", "Fidelity Bank", "Union Bank", "Sterling Bank", "Wema Bank", "Opay", "Moniepoint", "Kuda", "PalmPay"];
 
 
 export default function OnboardingView({ initialStep, start }: { initialStep?: StepId; start: OnboardingStart }) {
@@ -330,20 +332,13 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
             {step === "payout" && (
               <div className="flex flex-col gap-4">
                 <p className="text-sm text-muted">Every payout for your orders goes to this account. It can be in {kind === "registered" ? "your registered business name" : "your business name"} or your own name, as on your ID.</p>
-                <Field label="Bank" required>
-                  <select value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputClass}>
-                    <option value="" disabled>
-                      Choose your bank
-                    </option>
-                    {BANKS.map((b) => <option key={b}>{b}</option>)}
-                  </select>
-                </Field>
-                <Field label="Account number" required>
-                  <input value={account} onChange={(e) => setAccount(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" className={`${inputClass} font-mono tracking-wider`} placeholder="10 digits" />
-                </Field>
-                {account.length === 10 && (
-                  <p className="rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">Sotechy checks the account name matches your business or your ID before your first payout.</p>
-                )}
+                <PayoutAccountForm
+                  saved={start.payout}
+                  onSaved={(a) => {
+                    setBankName(a.bankName);
+                    setAccount(a.accountNumber);
+                  }}
+                />
               </div>
             )}
 

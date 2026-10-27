@@ -6,7 +6,7 @@ import { Card, ErrorNote, Pill, StatCard } from "@/components/ui";
 import type { Queue } from "@/components/queue-context";
 import { fromApiOrder, fromMerchantOrder, OrderList } from "@/components/order-list";
 import { getCurrentUser, load } from "@/lib/api";
-import { FEE, merchantOrders, merchantPayouts, reserve, reserveHealth } from "@/lib/marketplace";
+import { FEE, merchantOrders, reserve, reserveHealth } from "@/lib/marketplace";
 import type { AdminOrderRow, SalesSummary } from "@/lib/types";
 
 function StatusDot({ on, label }: { on: boolean; label: string }) {
@@ -41,13 +41,14 @@ function marketplaceSales(rows: AdminOrderRow[]) {
 }
 
 export default async function DashboardPage() {
-  const [summary, orders, switches, user, waiting, stores] = await Promise.all([
+  const [summary, orders, switches, user, waiting, stores, failed] = await Promise.all([
     load<SalesSummary>("/admin/reports/summary"),
     load<AdminOrderRow[]>("/admin/orders"),
     load<{ features: AppFeatures }>("/admin/features"),
     getCurrentUser(),
     load<Queue>("/admin/queue"),
     load<{ status: string }[]>("/admin/merchants"),
+    load<{ payouts: { status: string }[] }>("/admin/payouts?status=failed"),
   ]);
   const queue = waiting.data ?? { merchants: 0, zones: 0, cases: 0 };
   const s = summary.data;
@@ -57,7 +58,7 @@ export default async function DashboardPage() {
   const firstName = (user.fullName ?? user.email).split(/[\s@]/)[0];
   const decisions = queue.merchants + queue.zones + queue.cases;
   const health = reserveHealth();
-  const failedPayouts = merchantPayouts.filter((p) => p.status === "failed").length;
+  const failedPayouts = failed.data?.payouts.length ?? 0;
   const liveMerchants = (stores.data ?? []).filter((m) => m.status === "approved");
   const gmv = marketplaceSales(orders.data ?? []);
   const cover = health.cover === null ? "—" : `${Math.round(health.cover * 100)}%`;

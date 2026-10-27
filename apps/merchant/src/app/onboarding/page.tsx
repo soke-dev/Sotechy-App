@@ -18,6 +18,9 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         sells: store.sells ?? [],
         application: store.application ?? null,
         submitted: !!store.submittedAt,
+        payout: store.payoutAccountNumber
+          ? { bankCode: store.payoutBankCode ?? null, bankName: store.payoutBankName ?? null, accountNumber: store.payoutAccountNumber, accountName: store.payoutAccountName ?? null, match: store.payoutAccountMatch ?? null }
+          : null,
       }}
     />
   );

@@ -4,7 +4,7 @@
 // storefront and setup. Each returns { error } instead of throwing, so forms can show what went wrong.
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { AddressSuggestion, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantOrder, MerchantProduct, MerchantProductInput, StorefrontSettings } from "@sotechy/shared";
+import type { AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantOrder, MerchantProduct, MerchantProductInput, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
 import { api, errorMessage, TOKEN_COOKIE } from "./api";
 
 type Result<T> = { ok: T } | { error: string };
@@ -74,4 +74,14 @@ export async function suggestAddresses(q: string): Promise<AddressSuggestion[]> 
   } catch {
     return [];
   }
+}
+
+/** Banks a store can be paid into (from Flutterwave) */
+export async function listBanks(): Promise<Result<Bank[]>> {
+  return attempt(() => api.banks());
+}
+
+/** Checks the account with the bank and saves it as where payouts go */
+export async function savePayoutAccount(input: { bankCode: string; accountNumber: string }): Promise<Result<PayoutAccount>> {
+  return attempt(() => api.savePayoutAccount(input), ["/settings", "/payouts", "/onboarding"]);
 }

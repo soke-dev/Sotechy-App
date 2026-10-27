@@ -46,8 +46,6 @@ export const salesByDay = Array.from({ length: 14 }, (_, i) => ({
   amount: 0,
 }));
 
-export const payouts: { id: string; orderNumber: string; half: string; amount: number; status: "paid" | "scheduled"; at: string }[] = [];
-
 /** The store's payout account; null until one is added */
 export const bank: { bankName: string; accountName: string; accountNumber: string } | null = null;
 

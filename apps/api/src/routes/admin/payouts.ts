@@ -7,7 +7,7 @@ import { db, schema } from "../../db/client";
 import { audit } from "../../lib/audit";
 import { requireRole, type AppEnv } from "../../lib/auth";
 import { badRequest, notFound } from "../../lib/errors";
-import { flutterwaveReady, payoutBalance } from "../../services/flutterwave";
+import { flutterwaveReady, payoutBalance, standIn } from "../../services/flutterwave";
 import { payoutSettings, payoutsFor, sendPayout, toPayoutRow } from "../../services/payouts";
 
 // Moving money is for admins; managers can look
@@ -34,7 +34,8 @@ export const adminPayoutRoutes = new Hono<AppEnv>()
       .from(schema.merchants)
       .where(inArray(schema.merchants.id, [...new Set(rows.map((r) => r.p.merchantId))].concat("00000000-0000-0000-0000-000000000000")));
     return c.json({
-      ready: flutterwaveReady(),
+      ready: flutterwaveReady() || standIn(),
+      testMode: standIn(),
       balance,
       settings,
       payouts: rows.map((r) => ({

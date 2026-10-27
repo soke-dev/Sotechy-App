@@ -8,7 +8,8 @@ import { HttpError } from "../lib/errors";
 
 const BASE = "https://api.flutterwave.com/v3";
 export const flutterwaveReady = () => !!env.FLUTTERWAVE_SECRET_KEY;
-const standIn = () => !env.FLUTTERWAVE_SECRET_KEY && env.NODE_ENV !== "production";
+/** Locally without a key: pretend transfers, so the flow can be tried */
+export const standIn = () => !env.FLUTTERWAVE_SECRET_KEY && env.NODE_ENV !== "production";
 
 async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
   if (!env.FLUTTERWAVE_SECRET_KEY) throw new HttpError(503, "Payouts aren't set up yet");

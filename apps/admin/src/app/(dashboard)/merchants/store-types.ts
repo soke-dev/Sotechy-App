@@ -39,6 +39,10 @@ export interface AdminStore {
   productCount: number;
   orderCount: number;
   pendingZones: number;
+  /** This store's own payout plan; null = the standard plan */
+  payoutPlan: import("@sotechy/shared").PayoutPlan | null;
+  payoutAccountName: string | null;
+  payoutBankName: string | null;
 }
 
 export interface AdminZone {

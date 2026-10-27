@@ -1,14 +1,11 @@
 "use client";
 
 import { Check, Lock } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { use, useState, useTransition } from "react";
+import { use, useState } from "react";
 import { btn, Card, Field, inputClass, PageHeader, Tabs } from "@/components/ui";
 import { useAccount } from "@/components/account-context";
-import { saveApplication } from "@/lib/market-actions";
+import { PayoutAccountForm } from "@/components/payout-account-form";
 import { ProfileForm, StoreDetailsForm } from "./account-forms";
-
-const BANKS = ["Access Bank", "GTBank", "First Bank", "UBA", "Zenith Bank", "Fidelity Bank", "Union Bank", "Sterling Bank", "Wema Bank", "Opay", "Moniepoint", "Kuda", "PalmPay"];
 
 /** `locked`: always on and can't be switched off */
 function Toggle({ on, onChange, label, hint, locked }: { on: boolean; onChange: (v: boolean) => void; label: string; hint?: string; locked?: boolean }) {
@@ -51,21 +48,6 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
   const [notify, setNotify] = useState({ newOrderSms: true, whatsapp: true, payouts: true, reviews: true, weekly: false });
   const [waNumber, setWaNumber] = useState(store.contactWhatsapp ?? store.contactPhone ?? "");
   const [waTest, setWaTest] = useState(false);
-  const bank = store.application?.bank ?? null;
-  const [bankName, setBankName] = useState(bank?.bankName ?? "");
-  const [accountNumber, setAccountNumber] = useState(bank?.accountNumber ?? "");
-  const resolved = accountNumber.length === 10 && !!bankName;
-  const router = useRouter();
-  const [payoutSaving, startPayout] = useTransition();
-  const [payoutMsg, setPayoutMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  /** The payout account lives with the store's setup details; the rest of them are kept as they are */
-  const savePayout = () =>
-    startPayout(async () => {
-      const r = await saveApplication({ sellerKind: store.sellerKind, sells: store.sells ?? [], ...(store.application ?? {}), bank: { bankName, accountNumber }, submit: false });
-      setPayoutMsg("error" in r ? { ok: false, text: r.error } : { ok: true, text: "Payout account saved" });
-      if ("ok" in r) router.refresh();
-    });
-
   return (
     <>
       <PageHeader illo="shield" title="Settings" />
@@ -81,36 +63,16 @@ export default function SettingsPage({ searchParams }: { searchParams: Promise<{
         {tab === "payout" && (
           <Card
             title="Payout account"
-            description="Every payout for your orders lands here, in the stages of your payout plan. The account can be in your business name or your own name."
+            description="Every payout for your orders lands here. The account can be in your business name or your own name."
           >
-            <div id="payout" className="flex flex-col gap-4">
-              <Field label="Bank">
-                <select value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputClass}>
-                  <option value="" disabled>
-                    Choose your bank
-                  </option>
-                  {BANKS.map((b) => (
-                    <option key={b}>{b}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Account number">
-                <input
-                  value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  inputMode="numeric"
-                  className={`${inputClass} font-mono tracking-wider`}
-                />
-              </Field>
-              {resolved && (
-                <p className="rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">
-                  Sotechy checks the name on this account matches your business or your ID before your first payout.
-                </p>
-              )}
-              {payoutMsg && <p className={`rounded-2xl px-4 py-3 text-sm ${payoutMsg.ok ? "bg-good-soft text-good" : "bg-bad-soft text-bad"}`}>{payoutMsg.text}</p>}
-              <button disabled={!resolved || payoutSaving} onClick={savePayout} className={btn.dark}>
-                {payoutSaving ? "Saving…" : "Save payout account"}
-              </button>
+            <div id="payout">
+              <PayoutAccountForm
+                saved={
+                  store.payoutAccountNumber
+                    ? { bankCode: store.payoutBankCode ?? null, bankName: store.payoutBankName ?? null, accountNumber: store.payoutAccountNumber, accountName: store.payoutAccountName ?? null, match: store.payoutAccountMatch ?? null }
+                    : null
+                }
+              />
             </div>
           </Card>
         )}

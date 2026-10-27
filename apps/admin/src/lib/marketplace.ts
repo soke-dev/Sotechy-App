@@ -110,27 +110,6 @@ export const CASE_KIND: Record<CaseKind, { label: string; tone: "warn" | "info" 
 
 export const orderCases: OrderCase[] = [];
 
-export interface MerchantPayout {
-  id: string;
-  merchant: string;
-  order: string;
-  half: "First payment" | "Last payment";
-  amount: number;
-  status: "paid" | "scheduled" | "held" | "failed";
-  at: string;
-  bank: string;
-}
-
-export const merchantPayouts: MerchantPayout[] = [];
-
-export const PAYOUT_STATUS = {
-  paid: { label: "Paid", tone: "good" },
-  scheduled: { label: "Sending", tone: "info" },
-  held: { label: "On hold", tone: "warn" },
-  failed: { label: "Failed", tone: "bad" },
-} as const;
-
-export const paybacks: { merchant: string; order: string; amount: number; since: string }[] = [];
 
 export interface TokenRow {
   ticker: string;
@@ -199,47 +178,15 @@ export interface MerchantOrder {
 
 export const merchantOrders: MerchantOrder[] = [];
 
-/** How a merchant is paid: the share of the goods paid when they accept (the rest when delivery is
- *  confirmed), and when Sotechy's fee comes out. The delivery fee is always paid with the first payment. */
-export type FeeTiming = "spread" | "first" | "last";
-export interface PayoutPlan {
-  firstPercent: number;
-  fee: FeeTiming;
-}
+/** How a merchant is paid: the plan and the split live in the shared package, so the API pays the same numbers */
+export { splitByPlan, type FeeTiming, type PayoutPlan } from "@sotechy/shared";
+import type { FeeTiming, PayoutPlan } from "@sotechy/shared";
 
 export const FEE_TIMING: Record<FeeTiming, { label: string; hint: string }> = {
   spread: { label: "Spread over both", hint: "Taken off the total before it's split, so each payment carries its share." },
   first: { label: "From the first payment", hint: "All of it comes out of the payment made when they accept." },
   last: { label: "From the last payment", hint: "Held back until delivery is confirmed. Good when you pay more up front." },
 };
-
-/** The default plan and the merchants with their own. Kept here for the session until the backend stores it. */
-export const payoutPlans: { standard: PayoutPlan; merchants: Record<string, PayoutPlan> } = {
-  standard: { firstPercent: 50, fee: "spread" },
-  merchants: {},
-};
-
-export const planFor = (merchantId: string): { plan: PayoutPlan; custom: boolean } =>
-  payoutPlans.merchants[merchantId] ? { plan: payoutPlans.merchants[merchantId], custom: true } : { plan: payoutPlans.standard, custom: false };
-
-/** What a merchant receives at each step for an order, and whether a payment is too small to carry the fee */
-export function splitByPlan(goods: number, delivery: number, plan: PayoutPlan, rate = FEE.rate) {
-  const fee = Math.round(goods * rate);
-  const p = plan.firstPercent / 100;
-  let first: number;
-  let second: number;
-  if (plan.fee === "first") {
-    first = Math.round(goods * p) - fee;
-    second = goods - Math.round(goods * p);
-  } else if (plan.fee === "last") {
-    first = Math.round(goods * p);
-    second = goods - Math.round(goods * p) - fee;
-  } else {
-    first = Math.round((goods - fee) * p);
-    second = goods - fee - first;
-  }
-  return { fee, first: first + delivery, second, problem: first < 0 || second < 0 };
-}
 
 export const describePlan = (plan: PayoutPlan) => `${plan.firstPercent}% first · fee ${plan.fee === "spread" ? "spread over both" : plan.fee === "first" ? "from the first payment" : "from the last payment"}`;
 
