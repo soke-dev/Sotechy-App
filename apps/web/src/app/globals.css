@@ -57,3 +57,39 @@ html {
     animation: none;
   }
 }
+
+/* Policy text */
+.policy h2 {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+.policy h3 {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 1.75rem 0 0.5rem;
+}
+.policy p,
+.policy li {
+  color: var(--color-ink-2);
+  line-height: 1.7;
+}
+.policy p + p {
+  margin-top: 0.75rem;
+}
+.policy ul,
+.policy ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+.policy ul {
+  list-style: disc;
+}
+.policy ol {
+  list-style: decimal;
+}
+.policy li + li {
+  margin-top: 0.4rem;
+}

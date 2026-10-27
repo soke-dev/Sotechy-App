@@ -66,9 +66,6 @@ export default function ComingSoon() {
               order.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href={X_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-foreground px-6 font-semibold text-white transition hover:opacity-90">
-                <XLogo /> Follow the build
-              </a>
               <a href={`mailto:${EMAIL}`} className="inline-flex min-h-12 items-center gap-2 rounded-full border border-line bg-white px-6 font-semibold transition hover:border-foreground">
                 <Illo name="mail" size={22} /> {EMAIL}
               </a>
@@ -157,9 +154,15 @@ export default function ComingSoon() {
           <span>
             © {BUSINESS.name} · {BUSINESS.headOffice}
           </span>
-          <span className="flex gap-5">
-            <Link href="/policies" className="hover:text-foreground">
-              Policies
+          <span className="flex flex-wrap gap-x-5 gap-y-2">
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link href="/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/returns" className="hover:text-foreground">
+              Returns
             </Link>
             <a href={X_URL} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
               X
