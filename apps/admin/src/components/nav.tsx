@@ -31,15 +31,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Illo, type IlloName } from "./illustrations";
-import { queue } from "@/lib/marketplace";
+import { useQueue, type Queue } from "./queue-context";
 
 export interface NavLink {
   href: string;
   label: string;
   icon: LucideIcon;
   illo: IlloName;
-  /** Things waiting for a decision */
-  count?: number;
+  /** Which waiting count to show next to it */
+  countKey?: keyof Queue;
 }
 
 /** A sidebar item. Its first page is where it opens; the others show as tabs at the top of the page. */
@@ -56,7 +56,7 @@ export const NAV: NavGroup[] = [
     illo: "receipt",
     pages: [
       { href: "/orders", label: "Orders", icon: ShoppingBag, illo: "receipt" },
-      { href: "/order-reviews", label: "Order reviews", icon: Gavel, illo: "shield", count: queue.cases },
+      { href: "/order-reviews", label: "Order reviews", icon: Gavel, illo: "shield", countKey: "cases" },
       { href: "/payments", label: "Payments & refunds", icon: CreditCard, illo: "card" },
       { href: "/pos", label: "Walk-in sale", icon: ScanBarcode, illo: "cart" },
     ],
@@ -65,8 +65,8 @@ export const NAV: NavGroup[] = [
     label: "Merchants",
     illo: "store",
     pages: [
-      { href: "/merchants", label: "Merchants", icon: Store, illo: "store", count: queue.merchants },
-      { href: "/delivery-areas", label: "Delivery areas", icon: MapPin, illo: "pin", count: queue.zones },
+      { href: "/merchants", label: "Merchants", icon: Store, illo: "store", countKey: "merchants" },
+      { href: "/delivery-areas", label: "Delivery areas", icon: MapPin, illo: "pin", countKey: "zones" },
       { href: "/merchant-payouts", label: "Merchant payouts", icon: Banknote, illo: "bank" },
       { href: "/featured-stores", label: "Featured stores", icon: Sparkles, illo: "sparkle" },
     ],
@@ -118,7 +118,8 @@ export const ALL_LINKS = NAV.flatMap((g) => g.pages.map((p) => ({ ...p, section:
 
 export const isActive = (href: string, pathname: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
-const groupCount = (g: NavGroup) => g.pages.reduce((n, p) => n + (p.count ?? 0), 0);
+const pageCount = (p: NavLink, q: Queue) => (p.countKey ? q[p.countKey] : 0);
+const groupCount = (g: NavGroup, q: Queue) => g.pages.reduce((n, p) => n + pageCount(p, q), 0);
 
 /** The section and page the user is on */
 export function useCurrentPage() {
@@ -133,11 +134,12 @@ export function useCurrentPage() {
 /** Sidebar navigation, drawn on the dark panel. */
 export function Nav({ onNavigate }: { onNavigate?: () => void }) {
   const current = useCurrentPage();
+  const queue = useQueue();
   return (
     <nav className="flex flex-col gap-1 text-[15px]">
       {NAV.map((g) => {
         const active = current?.group === g;
-        const count = groupCount(g);
+        const count = groupCount(g, queue);
         return (
           <Link
             key={g.label}
@@ -161,6 +163,7 @@ export function Nav({ onNavigate }: { onNavigate?: () => void }) {
 /** Tabs for the other pages in the current section, shown at the top of the page. */
 export function SectionTabs() {
   const current = useCurrentPage();
+  const queue = useQueue();
   if (!current || current.group.pages.length < 2) return null;
   return (
     <nav className="no-scrollbar -mx-1 mb-6 flex min-w-0 gap-1 overflow-x-auto border-b border-line px-1">
@@ -174,7 +177,7 @@ export function SectionTabs() {
             className={`relative flex shrink-0 items-center gap-2 px-3 pb-3 pt-1 text-sm font-semibold transition ${on ? "text-ink" : "text-muted hover:text-ink"}`}
           >
             {p.label}
-            {p.count ? <span className="rounded-full bg-brand px-1.5 text-[11px] font-bold text-white">{p.count}</span> : null}
+            {pageCount(p, queue) ? <span className="rounded-full bg-brand px-1.5 text-[11px] font-bold text-white">{pageCount(p, queue)}</span> : null}
             {on && <span className="absolute inset-x-2 -bottom-px h-[3px] rounded-full bg-brand" />}
           </Link>
         );

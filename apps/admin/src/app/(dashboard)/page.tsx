@@ -2,10 +2,11 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight, PackagePlus, ScanBarcode } from "lucide-react";
 import { formatNaira, type AppFeatures } from "@sotechy/shared";
 import { Illo, type IlloName } from "@/components/illustrations";
-import { Card, ErrorNote, Pill, SampleBadge, StatCard } from "@/components/ui";
+import { Card, ErrorNote, Pill, StatCard } from "@/components/ui";
+import type { Queue } from "@/components/queue-context";
 import { fromApiOrder, fromMerchantOrder, OrderList } from "@/components/order-list";
 import { getCurrentUser, load } from "@/lib/api";
-import { FEE, merchantOrders, merchantPayouts, merchants, queue, reserve, reserveHealth } from "@/lib/marketplace";
+import { FEE, merchantOrders, merchantPayouts, reserve, reserveHealth } from "@/lib/marketplace";
 import type { AdminOrderRow, SalesSummary } from "@/lib/types";
 
 function StatusDot({ on, label }: { on: boolean; label: string }) {
@@ -31,13 +32,24 @@ function Decision({ href, illo, count, title, hint }: { href: string; illo: Illo
   );
 }
 
+/** Marketplace stores' paid orders in the last 30 days */
+function marketplaceSales(rows: AdminOrderRow[]) {
+  const monthAgo = Date.now() - 30 * 86_400_000;
+  return rows
+    .filter((o) => o.merchantId && ["paid", "processing", "ready_for_pickup", "dispatched", "delivered"].includes(o.status) && new Date(o.createdAt).getTime() > monthAgo)
+    .reduce((n, o) => n + o.total, 0);
+}
+
 export default async function DashboardPage() {
-  const [summary, orders, switches, user] = await Promise.all([
+  const [summary, orders, switches, user, waiting, stores] = await Promise.all([
     load<SalesSummary>("/admin/reports/summary"),
     load<AdminOrderRow[]>("/admin/orders"),
     load<{ features: AppFeatures }>("/admin/features"),
     getCurrentUser(),
+    load<Queue>("/admin/queue"),
+    load<{ status: string }[]>("/admin/merchants"),
   ]);
+  const queue = waiting.data ?? { merchants: 0, zones: 0, cases: 0 };
   const s = summary.data;
   const f = switches.data?.features;
   const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Africa/Lagos" }).format(new Date()));
@@ -46,8 +58,9 @@ export default async function DashboardPage() {
   const decisions = queue.merchants + queue.zones + queue.cases;
   const health = reserveHealth();
   const failedPayouts = merchantPayouts.filter((p) => p.status === "failed").length;
-  const liveMerchants = merchants.filter((m) => m.status === "verified");
-  const gmv = liveMerchants.reduce((n, m) => n + m.sales30d, 0);
+  const liveMerchants = (stores.data ?? []).filter((m) => m.status === "approved");
+  const gmv = marketplaceSales(orders.data ?? []);
+  const cover = health.cover === null ? "—" : `${Math.round(health.cover * 100)}%`;
   const channelMax = Math.max(1, ...(s?.byChannel ?? []).map((c) => c.revenue));
 
   return (
@@ -96,7 +109,7 @@ export default async function DashboardPage() {
               </div>
               <div>
                 <p className="text-white/50">Reserve cover</p>
-                <p className={`font-display text-xl font-bold sm:text-2xl ${health.cover >= 1 ? "text-[#7fdca4]" : "text-sun"}`}>{Math.round(health.cover * 100)}%</p>
+                <p className={`font-display text-xl font-bold sm:text-2xl ${health.cover === null || health.cover >= 1 ? "text-[#7fdca4]" : "text-sun"}`}>{cover}</p>
               </div>
             </div>
           )}
@@ -106,7 +119,7 @@ export default async function DashboardPage() {
       {/* Decisions */}
       <section className="mb-6">
         <h2 className="mb-3 flex items-center gap-3 text-lg font-bold">
-          Needs a decision <SampleBadge />
+          Needs a decision
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Decision href="/merchants" illo="store" count={queue.merchants} title="new merchants" hint="Check documents, ID and payout name" />
@@ -184,7 +197,7 @@ export default async function DashboardPage() {
           )}
         </Card>
 
-        <Card title="Marketplace" actions={<SampleBadge />}>
+        <Card title="Marketplace">
           <div className="flex flex-col gap-4 text-sm">
             <div className="flex items-center gap-3 rounded-2xl bg-brand-soft p-4">
               <Illo name="coin" size={40} />
@@ -211,7 +224,7 @@ export default async function DashboardPage() {
               </div>
               <div>
                 <dt className="text-muted">Cover</dt>
-                <dd className="font-semibold text-good">{Math.round(health.cover * 100)}%</dd>
+                <dd className="font-semibold text-good">{cover}</dd>
               </div>
             </dl>
             <Link href="/tokens" className="inline-flex items-center gap-1 font-semibold text-brand-strong hover:underline">

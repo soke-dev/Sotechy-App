@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Illo } from "./illustrations";
 import { ALL_LINKS, Nav, NAV, SectionTabs, useCurrentPage, type NavLink } from "./nav";
-import { queue } from "@/lib/marketplace";
+import { useQueue } from "./queue-context";
 
 interface ShellUser {
   name: string;
@@ -39,6 +39,7 @@ function LagosClock() {
 
 /** Sidebar content on the dark panel: logo, navigation, and the signed-in person with sign out. */
 function Sidebar({ user, signOut, onNavigate }: { user: ShellUser; signOut: (formData: FormData) => void; onNavigate?: () => void }) {
+  const queue = useQueue();
   return (
     <div className="flex h-full flex-col bg-panel text-white">
       <div className="px-5 pb-4 pt-5">
@@ -84,6 +85,7 @@ function Sidebar({ user, signOut, onNavigate }: { user: ShellUser; signOut: (for
 /** "Jump to" search over every page in the dashboard. Ctrl+K / ⌘K opens it. */
 function JumpTo({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
+  const queue = useQueue();
   const [q, setQ] = useState("");
   if (!open) return null;
   const query = q.trim().toLowerCase();
@@ -122,7 +124,7 @@ function JumpTo({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <span className="block truncate text-sm font-semibold">{l.label}</span>
                   <span className="block text-xs text-muted">{l.section}</span>
                 </span>
-                {l.count ? <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">{l.count}</span> : null}
+                {l.countKey && queue[l.countKey] ? <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">{queue[l.countKey]}</span> : null}
               </button>
             </li>
           ))}
@@ -136,12 +138,13 @@ function JumpTo({ open, onClose }: { open: boolean; onClose: () => void }) {
 /** Phone tab bar, like the merchant dashboard and the customer app. */
 function TabBar({ onMore }: { onMore: () => void }) {
   const current = useCurrentPage();
+  const queue = useQueue();
   // The first four sections, each lit up for any of its pages
   const tabs = NAV.slice(0, 4).map((g) => ({
     href: g.pages[0].href,
     label: g.label === "Dashboard" ? "Home" : g.label,
     illo: g.illo,
-    badge: g.pages.reduce((n, p) => n + (p.count ?? 0), 0),
+    badge: g.pages.reduce((n, p) => n + (p.countKey ? queue[p.countKey] : 0), 0),
     group: g,
   }));
   return (

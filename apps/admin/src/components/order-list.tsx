@@ -4,14 +4,21 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderStatus } from "@sotechy/shared";
 import { Pill, toneForStatus, type Tone } from "./ui";
-import { MERCHANT_ORDER_STATUS, merchants, type Merchant, type MerchantOrder } from "@/lib/marketplace";
+import { MERCHANT_ORDER_STATUS, merchants, type MerchantOrder } from "@/lib/marketplace";
 import type { AdminOrderRow } from "@/lib/types";
+
+/** The marketplace store that sold an order; null for Sotechy's own */
+export interface Seller {
+  id: string;
+  name: string;
+  ticker: string;
+}
 
 export interface OrderRowView {
   key: string;
   number: string;
   href: string;
-  merchant: Merchant | null;
+  merchant: Seller | null;
   status: { label: string; tone: Tone };
   customer: string;
   where: string;
@@ -27,7 +34,7 @@ export function fromApiOrder(o: AdminOrderRow): OrderRowView {
     key: o.id,
     number: o.orderNumber,
     href: `/orders/${o.id}`,
-    merchant: null,
+    merchant: o.merchantId && o.storeName ? { id: o.merchantId, name: o.storeName, ticker: o.storeTicker ?? "" } : null,
     status: { label: ORDER_STATUS_LABELS[o.status as OrderStatus] ?? o.status, tone: toneForStatus(o.status) },
     customer: o.customerName ?? o.walkInCustomer?.name ?? o.customerEmail ?? "Walk-in",
     where: `${o.channel === "online" ? "App" : "In store"} · ${cap(o.fulfilmentType)}`,
@@ -38,7 +45,8 @@ export function fromApiOrder(o: AdminOrderRow): OrderRowView {
 }
 
 export function fromMerchantOrder(o: MerchantOrder): OrderRowView {
-  const m = merchants.find((x) => x.id === o.merchantId) ?? null;
+  const found = merchants.find((x) => x.id === o.merchantId);
+  const m = found ? { id: found.id, name: found.name, ticker: found.ticker } : null;
   return {
     key: o.id,
     number: o.number,
@@ -57,7 +65,7 @@ const shortDate = (iso: string) =>
   new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Lagos" }).format(new Date(iso));
 
 /** Orange Sotechy mark for Sotechy's own orders; the merchant's initials on grey for theirs */
-export function SellerBadge({ merchant, size = 32 }: { merchant: Merchant | null; size?: number }) {
+export function SellerBadge({ merchant, size = 32 }: { merchant: Seller | null; size?: number }) {
   if (!merchant)
     return (
       <span className="flex shrink-0 items-center justify-center rounded-xl bg-brand" style={{ width: size, height: size }} title="Sotechy store">
@@ -78,7 +86,7 @@ export function SellerBadge({ merchant, size = 32 }: { merchant: Merchant | null
   );
 }
 
-function SellerName({ merchant }: { merchant: Merchant | null }) {
+function SellerName({ merchant }: { merchant: Seller | null }) {
   return merchant ? (
     <span>
       {merchant.name} <span className="font-semibold text-brand-strong">${merchant.ticker}</span>

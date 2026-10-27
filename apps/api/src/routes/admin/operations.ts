@@ -40,10 +40,15 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
         customerName: users.fullName,
         walkInCustomer: orders.walkInCustomer,
         branchName: branches.name,
+        // The marketplace store that sold it; null for Sotechy's own orders
+        merchantId: orders.merchantId,
+        storeName: schema.merchants.name,
+        storeTicker: schema.merchants.ticker,
       })
       .from(orders)
       .leftJoin(users, eq(users.id, orders.customerId))
       .leftJoin(branches, eq(branches.id, orders.branchId))
+      .leftJoin(schema.merchants, eq(schema.merchants.id, orders.merchantId))
       .where(and(...filters))
       .orderBy(desc(orders.createdAt))
       .limit(200);

@@ -14,6 +14,10 @@ export interface AdminOrderRow {
   customerName: string | null;
   walkInCustomer: { name?: string; phone?: string } | null;
   branchName: string | null;
+  /** The marketplace store that sold it; null for Sotechy's own orders */
+  merchantId: string | null;
+  storeName: string | null;
+  storeTicker: string | null;
 }
 
 export interface AdminPaymentRow {

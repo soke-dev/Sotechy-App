@@ -47,8 +47,8 @@ export default function TokensPage() {
       <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_1.6fr]">
         <Card title="Reserve cover">
           <div className="flex flex-col items-center text-center">
-            <CoverGauge cover={health.cover} />
-            <p className={`font-display -mt-2 text-4xl font-extrabold ${health.cover >= 1 ? "text-good" : "text-brand-strong"}`}>{Math.round(health.cover * 100)}%</p>
+            <CoverGauge cover={health.cover ?? 1} />
+            <p className={`font-display -mt-2 text-4xl font-extrabold ${health.cover === null || health.cover >= 1 ? "text-good" : "text-brand-strong"}`}>{health.cover === null ? "—" : `${Math.round(health.cover * 100)}%`}</p>
             <p className="mt-1 max-w-xs text-sm text-muted">
               The reserve holds {formatNaira(reserve.walletNaira)} against {formatNaira(Math.round(health.outstanding))} of tokens customers could spend. Above 100% means every token is backed.
             </p>

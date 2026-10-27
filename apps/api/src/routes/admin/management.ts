@@ -301,6 +301,27 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     ]);
     return c.json({ ...row.store, owner: row.owner, zones, ...counts[0] });
   })
+  /** What's waiting for a decision, for the admin menu's counts */
+  .get("/queue", async (c) => {
+    const [row] = await db
+      .select({
+        merchants: sql<number>`(select count(*)::int from merchants m where m.status = 'pending' and m.submitted_at is not null)`,
+        zones: sql<number>`(select count(*)::int from delivery_zones z where z.review = 'pending')`,
+      })
+      .from(users)
+      .limit(1);
+    return c.json({ merchants: row?.merchants ?? 0, zones: row?.zones ?? 0, cases: 0 });
+  })
+  /** Every store's delivery areas, waiting ones first */
+  .get("/delivery-zones", async (c) => {
+    const z = schema.deliveryZones;
+    const rows = await db
+      .select({ zone: z, storeName: schema.merchants.name, storeSlug: schema.merchants.slug, storeStatus: schema.merchants.status })
+      .from(z)
+      .innerJoin(schema.merchants, eq(schema.merchants.id, z.merchantId))
+      .orderBy(sql`(${z.review} = 'pending') desc`, desc(z.updatedAt));
+    return c.json(rows.map(({ zone, ...store }) => ({ ...zone, ...store })));
+  })
   /** Approve or decline a store's delivery area */
   .patch(
     "/delivery-zones/:id",
