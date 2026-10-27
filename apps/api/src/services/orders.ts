@@ -9,6 +9,7 @@ import type { AuthUser } from "../lib/auth";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { findPromotion } from "./promotions";
 import { deliveryFeeFor, getSetting, type DeliverySettings } from "./settings";
+import { payoutsForStatus } from "./payouts";
 import { storeDeliveryCharge } from "./store-delivery";
 
 const { orders, orderItems, payments, inventory, productVariants, products, orderStatusHistory } = schema;
@@ -419,6 +420,7 @@ export async function updateOrderStatus(actor: AuthUser, orderId: string, to: Or
     return updated;
   });
   void notifyOrderStatus(orderId, to);
+  if (updated.merchantId) await payoutsForStatus(orderId, to);
   return updated;
 }
 
@@ -468,6 +470,7 @@ export async function cancelOrder(actor: AuthUser, orderId: string, note?: strin
   });
   // Customers who cancel their own unpaid order don't need telling
   if (actor.id !== updated.customerId) void notifyOrderStatus(orderId, "cancelled");
+  if (updated.merchantId) await payoutsForStatus(orderId, "cancelled");
   return updated;
 }
 

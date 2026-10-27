@@ -10,6 +10,7 @@ import { adminCatalogRoutes } from "./routes/admin/catalog";
 import { adminContentRoutes } from "./routes/admin/content";
 import { adminManagementRoutes } from "./routes/admin/management";
 import { adminOperationsRoutes } from "./routes/admin/operations";
+import { adminPayoutRoutes } from "./routes/admin/payouts";
 import { authRoutes } from "./routes/auth";
 import { devEmailRoutes } from "./routes/dev-emails";
 import { geoRoutes } from "./routes/geo";
@@ -27,6 +28,7 @@ const admin = new Hono<AppEnv>()
   .route("/", adminCatalogRoutes)
   .route("/", adminOperationsRoutes)
   .route("/", adminManagementRoutes)
+  .route("/", adminPayoutRoutes)
   .route("/", adminContentRoutes);
 
 export const app = new Hono()

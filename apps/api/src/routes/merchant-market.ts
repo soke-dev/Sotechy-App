@@ -10,7 +10,9 @@ import { publicApiUrl } from "../env";
 import { audit } from "../lib/audit";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
-import { slugify } from "../lib/identity";
+import { accountNameMatch, slugify } from "../lib/identity";
+import { nigerianBanks, resolveAccount } from "../services/flutterwave";
+import { payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
 import { cancelOrder, updateOrderStatus } from "../services/orders";
 
 type Store = typeof schema.merchants.$inferSelect;
@@ -330,6 +332,47 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     const [row] = await db.select().from(schema.media).where(and(eq(schema.media.id, c.req.param("id")), eq(schema.media.createdBy, c.get("user").id)));
     if (!row) throw notFound("File not found");
     return c.body(new Uint8Array(row.data), 200, { "Content-Type": row.contentType, "Cache-Control": "private, no-store" });
+  })
+
+  // --- Payouts: the account they go to, and what's been paid ---
+  .get("/banks", async (c) => c.json(await nigerianBanks()))
+  /** Checks the account with the bank and saves it. Payouts only go automatically to an account in
+   *  the business's or the owner's name; anything else waits for Sotechy. */
+  .put(
+    "/payout-account",
+    zValidator("json", z.object({ bankCode: z.string().trim().min(2).max(10), accountNumber: z.string().regex(/^\d{10}$/, "Account numbers have 10 digits") })),
+    async (c) => {
+      const { bankCode, accountNumber } = c.req.valid("json");
+      const store = c.get("store");
+      const bank = (await nigerianBanks()).find((b) => b.code === bankCode);
+      if (!bank) throw badRequest("Choose your bank from the list");
+      const [owner] = await db.select({ fullName: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
+      const accountName = await resolveAccount(bankCode, accountNumber, owner?.fullName ?? store.name);
+      const match = accountNameMatch(accountName, [store.name, store.application?.registeredName], owner?.fullName ?? "");
+      const verifiedAt = new Date();
+      await db
+        .update(schema.merchants)
+        .set({
+          payoutBankCode: bank.code,
+          payoutBankName: bank.name,
+          payoutAccountNumber: accountNumber,
+          payoutAccountName: accountName,
+          payoutAccountMatch: match,
+          payoutVerifiedAt: verifiedAt,
+          // Setup shows the same account
+          application: { ...(store.application ?? {}), bank: { bankName: bank.name, accountNumber } } as typeof store.application,
+          updatedAt: verifiedAt,
+        })
+        .where(eq(schema.merchants.id, store.id));
+      await audit(db, { actorId: c.get("user").id, action: "merchant.payout_account", entityType: "merchant", entityId: store.id, details: { bank: bank.name, last4: accountNumber.slice(-4), match } });
+      return c.json({ bankCode: bank.code, bankName: bank.name, accountNumber, accountName, match, verifiedAt: verifiedAt.toISOString() });
+    },
+  )
+  .get("/payouts", async (c) => {
+    const store = c.get("store");
+    const settings = await payoutSettings();
+    const rows = await payoutsFor({ merchantId: store.id });
+    return c.json({ payouts: rows.map(toPayoutRow), plan: store.payoutPlan ?? settings.standard, feeRate: settings.feeRate, finalAfterHours: settings.finalAfterHours });
   })
 
   // --- Storefront look ---

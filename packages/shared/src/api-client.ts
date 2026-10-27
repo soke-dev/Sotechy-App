@@ -1,3 +1,4 @@
+import type { Bank, PayoutAccount, PayoutPlan, PayoutRow } from "./payouts";
 import type {
   Address,
   AddressInput,
@@ -164,6 +165,10 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     product: (idOrSlug: string) => get<ProductDetail>(`/store/products/${encodeURIComponent(idOrSlug)}`),
     /** Marketplace stores Sotechy has approved, and one store's page */
     stores: () => get<MarketStore[]>("/store/stores"),
+    /** Banks a store can be paid into, its payout account, and its payouts */
+    banks: () => get<Bank[]>("/merchant/banks"),
+    savePayoutAccount: (input: { bankCode: string; accountNumber: string }) => send<PayoutAccount>("PUT", "/merchant/payout-account", input),
+    merchantPayouts: () => get<{ payouts: PayoutRow[]; plan: PayoutPlan; feeRate: number; finalAfterHours: number }>("/merchant/payouts"),
     /** Address suggestions while typing (Nigeria only); empty when lookups aren't set up */
     addressSuggestions: (q: string) => get<AddressSuggestion[]>(`/geo/address?q=${encodeURIComponent(q)}`),
     store: (slug: string) => get<MarketStoreDetail>(`/store/stores/${encodeURIComponent(slug)}`),

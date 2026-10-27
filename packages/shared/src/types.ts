@@ -372,6 +372,13 @@ export interface MerchantStore {
   application?: Omit<MerchantApplicationInput, "sellerKind" | "sells" | "submit"> | null;
   submittedAt?: string | null;
   featuredUntil?: string | null;
+  /** Where payouts go, checked with the bank */
+  payoutBankCode?: string | null;
+  payoutBankName?: string | null;
+  payoutAccountNumber?: string | null;
+  payoutAccountName?: string | null;
+  payoutAccountMatch?: "business" | "owner" | null;
+  payoutVerifiedAt?: string | null;
   createdAt: string;
 }
 

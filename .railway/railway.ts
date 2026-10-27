@@ -58,6 +58,8 @@ export default defineRailway(() => {
       DIDIT_WORKFLOW_ID: preserve(),
       DIDIT_WEBHOOK_SECRET: preserve(),
       GEOAPIFY_API_KEY: preserve(),
+      FLUTTERWAVE_SECRET_KEY: preserve(),
+      FLUTTERWAVE_WEBHOOK_HASH: preserve(),
       // Where Didit sends merchants back to (switch to https://merchant.sotechy.shop once its DNS works)
       MERCHANT_APP_URL: "https://${{merchant.RAILWAY_PUBLIC_DOMAIN}}",
     },

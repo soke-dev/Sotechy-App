@@ -64,6 +64,13 @@
       "when": 1793095940458,
       "tag": "0008_order_delivery_zone",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793098644074,
+      "tag": "0009_merchant_payouts",
+      "breakpoints": true
     }
   ]
 }

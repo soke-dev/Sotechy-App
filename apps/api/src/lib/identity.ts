@@ -107,3 +107,21 @@ export async function referrerFor(code: string | undefined, userId?: string) {
   if (referrer.id === userId) throw badRequest("You can't use your own referral code");
   return referrer.id;
 }
+
+/** Whose name a bank account is in: the business (its trading or registered name), the owner, or neither */
+export function accountNameMatch(accountName: string, businessNames: (string | null | undefined)[], ownerName: string): "business" | "owner" | null {
+  const clean = (s: string) =>
+    s
+      .toUpperCase()
+      .replace(/\b(LTD|LIMITED|ENTERPRISES?|VENTURES?|NIG|NIGERIA|GLOBAL|SERVICES?)\b|[^A-Z ]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  const name = clean(accountName);
+  if (!name) return null;
+  if (businessNames.some((b) => b && clean(b) === name)) return "business";
+  const words = name.split(" ");
+  const owner = clean(ownerName).split(" ").filter(Boolean);
+  // Every part of the owner's name appears in the account name (banks often add a middle name)
+  if (owner.length >= 2 && owner.every((part) => words.includes(part))) return "owner";
+  return null;
+}

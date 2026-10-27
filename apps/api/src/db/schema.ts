@@ -219,11 +219,23 @@ export const merchants = pgTable("merchants", {
   kycSessionId: text().unique(),
   kycResult: jsonb().$type<KycResult>(),
   kycUpdatedAt: timestamp({ withTimezone: true }),
+  /** Where payouts go, checked with the bank through Flutterwave */
+  payoutBankCode: text(),
+  payoutBankName: text(),
+  payoutAccountNumber: text(),
+  payoutAccountName: text(),
+  /** Whose name the account is in: "business", "owner", or null when it matches neither */
+  payoutAccountMatch: text(),
+  payoutVerifiedAt: timestamp({ withTimezone: true }),
+  /** This store's own payout plan; null = the standard plan */
+  payoutPlan: jsonb().$type<{ firstPercent: number; fee: "spread" | "first" | "last" }>(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
 
 export const zoneReviewEnum = pgEnum("zone_review", ["pending", "approved", "declined"]);
+export const payoutStageEnum = pgEnum("payout_stage", ["first", "final", "payback"]);
+export const payoutStatusEnum = pgEnum("payout_status", ["scheduled", "sending", "paid", "failed", "held", "cancelled", "owed", "settled"]);
 
 /** Where a marketplace store delivers. Sotechy approves each new area (and changes to where it covers). */
 export const deliveryZones = pgTable("delivery_zones", {
@@ -725,3 +737,42 @@ export const webhookEvents = pgTable("webhook_events", {
   type: text().notNull(),
   receivedAt: createdAt(),
 });
+
+// ---------------------------------------------------------------------------
+// Payouts to marketplace stores (sent through Flutterwave)
+// ---------------------------------------------------------------------------
+export const merchantPayouts = pgTable(
+  "merchant_payouts",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id),
+    orderId: uuid()
+      .notNull()
+      .references(() => orders.id),
+    stage: payoutStageEnum().notNull(),
+    /** What the store receives (or, for a payback, owes) */
+    amount: money().notNull(),
+    /** Sotechy's fee taken from this payment */
+    fee: money().notNull().default(0),
+    status: payoutStatusEnum().notNull().default("scheduled"),
+    /** Not sent before this */
+    dueAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    /** Sent to Flutterwave as the transfer reference, so a payout can never go out twice */
+    reference: text().notNull().unique(),
+    providerId: text(),
+    /** The account it was sent to */
+    bankCode: text(),
+    bankName: text(),
+    accountNumber: text(),
+    accountName: text(),
+    failureReason: text(),
+    attempts: integer().notNull().default(0),
+    sentAt: timestamp({ withTimezone: true }),
+    paidAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [unique().on(t.orderId, t.stage), index().on(t.status, t.dueAt), index().on(t.merchantId, t.createdAt)],
+);

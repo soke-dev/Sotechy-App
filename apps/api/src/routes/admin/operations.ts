@@ -11,6 +11,7 @@ import { adjustStock, transferStock } from "../../services/inventory";
 import { cancelOrder, recordWalkInSale, updateOrderStatus, verifyPaymentManually } from "../../services/orders";
 import { lineSchema, loadOrderDetail, paymentMethodSchema } from "../orders";
 import { notifyOrderStatus } from "../../services/order-notices";
+import { payoutsForStatus } from "../../services/payouts";
 
 const { orders, payments, refunds, inventory, productVariants, products, branches, stockMovements, users } = schema;
 
@@ -133,7 +134,10 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
         await audit(tx, { actorId: actor.id, action: `refund.${status}`, entityType: "refund", entityId: row.id, details: { amount: row.amount } });
         return row;
       });
-      if (status === "processed") void notifyOrderStatus(refund.orderId, "refunded");
+      if (status === "processed") {
+        void notifyOrderStatus(refund.orderId, "refunded");
+        await payoutsForStatus(refund.orderId, "refunded");
+      }
       return c.json(refund);
     },
   )

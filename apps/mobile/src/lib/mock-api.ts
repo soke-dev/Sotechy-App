@@ -539,6 +539,9 @@ export const mockApi: ApiClient = {
   // Marketplace stores come from the server; demo mode has none
   stores: async () => wait([]),
   addressSuggestions: async () => [],
+  banks: unsupported,
+  savePayoutAccount: unsupported,
+  merchantPayouts: unsupported,
   store: unsupported,
   startIdCheck: unsupported,
   idCheckStatus: unsupported,
