@@ -1,11 +1,13 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import type { MerchantStore, User } from "@sotechy/shared";
+import type { MerchantStore, StoreRole, User } from "@sotechy/shared";
 
 export interface Account {
   user: User;
   store: MerchantStore;
+  /** "owner", or their role on the store's team */
+  role: StoreRole;
 }
 
 const AccountContext = createContext<Account | null>(null);

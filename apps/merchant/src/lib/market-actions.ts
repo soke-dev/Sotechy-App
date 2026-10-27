@@ -152,3 +152,25 @@ export async function makeDefaultPayoutAccount(id: string): Promise<Result<Store
 export async function removePayoutAccount(id: string): Promise<Result<StorePayoutAccount[]>> {
   return attempt(() => api.delete<StorePayoutAccount[]>(`/merchant/payout-accounts/${id}`), ["/settings"]);
 }
+
+export interface TeamMember {
+  id: string;
+  email: string;
+  role: Exclude<import("@sotechy/shared").StoreRole, "owner">;
+  status: "active" | "invited";
+  name: string | null;
+  username: string | null;
+  createdAt: string;
+}
+
+export async function inviteTeamMember(input: { email: string; role: TeamMember["role"] }): Promise<Result<TeamMember[]>> {
+  return attempt(() => api.post<TeamMember[]>("/merchant/team", input), ["/team"]);
+}
+
+export async function changeTeamRole(id: string, role: TeamMember["role"]): Promise<Result<TeamMember[]>> {
+  return attempt(() => api.patch<TeamMember[]>(`/merchant/team/${id}`, { role }), ["/team"]);
+}
+
+export async function removeTeamMember(id: string): Promise<Result<TeamMember[]>> {
+  return attempt(() => api.delete<TeamMember[]>(`/merchant/team/${id}`), ["/team"]);
+}

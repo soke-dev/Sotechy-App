@@ -391,9 +391,14 @@ export interface MerchantStore {
 
 export type KycStatus = "not_started" | "in_progress" | "in_review" | "approved" | "declined" | "resubmit" | "expired";
 
+/** The owner, or a team member's role ("admin", "orders", "catalogue", "finance" or "viewer") */
+export type StoreRole = "owner" | "admin" | "orders" | "catalogue" | "finance" | "viewer";
+
 export interface MerchantSession {
   user: User;
   store: MerchantStore | null;
+  /** How this account runs the store; null without one */
+  role?: StoreRole | null;
 }
 
 export interface AuthResponse {

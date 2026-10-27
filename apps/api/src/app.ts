@@ -19,6 +19,7 @@ import { devEmailRoutes } from "./routes/dev-emails";
 import { geoRoutes } from "./routes/geo";
 import { mediaRoutes } from "./routes/media";
 import { merchantRoutes } from "./routes/merchant";
+import { merchantTeamRoutes } from "./routes/merchant-team";
 import { merchantMarketRoutes } from "./routes/merchant-market";
 import { meRoutes } from "./routes/me";
 import { offerRoutes } from "./routes/offers";
@@ -52,6 +53,7 @@ export const app = new Hono()
   .route("/orders", orderRoutes)
   .route("/offers", offerRoutes)
   .route("/me", meRoutes)
+  .route("/merchant", merchantTeamRoutes)
   .route("/merchant", merchantRoutes)
   .route("/merchant", merchantMarketRoutes)
   .route("/payments", paymentRoutes)

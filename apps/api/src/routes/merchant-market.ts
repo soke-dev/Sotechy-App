@@ -14,6 +14,7 @@ import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem } from "@so
 import { slugify } from "../lib/identity";
 import { railBanks } from "../services/payout-rail";
 import { buyFeaturing, featuredCount, featuringSettings, purchasesOf } from "../services/featuring";
+import { roleAllows, storeAccess, type StoreRole } from "../services/team";
 import { addPayoutAccount, makeDefault, payoutAccountsOf, removePayoutAccount } from "../services/payout-accounts";
 import { findCustomer, startWalkIn, walkInsOf } from "../services/walk-in";
 import { storeTokenStats } from "../services/tokens";
@@ -25,15 +26,17 @@ import { answerSchema } from "./offers";
 import { cancelOrder, updateOrderStatus } from "../services/orders";
 
 type Store = typeof schema.merchants.$inferSelect;
-type StoreEnv = AppEnv & { Variables: { store: Store } };
+type StoreEnv = AppEnv & { Variables: { store: Store; storeRole: StoreRole } };
 
 const { products, productVariants, inventory, orders, orderItems, deliveryZones, branches } = schema;
 
-/** Loads the owner's store; 404 without one */
+/** Loads the store this account runs (its own, or one it's on the team of) and checks the role allows this */
 const withStore = createMiddleware<StoreEnv>(async (c, next) => {
-  const [store] = await db.select().from(schema.merchants).where(eq(schema.merchants.ownerId, c.get("user").id));
-  if (!store) throw notFound("You don't have a store yet");
-  c.set("store", store);
+  const access = await storeAccess(c.get("user").id);
+  if (!access) throw notFound("You don't have a store yet");
+  if (!roleAllows(access.role, c.req.method, c.req.path)) throw forbidden("Your role on this store's team doesn't include this. Ask the owner.");
+  c.set("store", access.store);
+  c.set("storeRole", access.role);
   await next();
 });
 

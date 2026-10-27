@@ -359,3 +359,27 @@ export function payoutAccountChangedEmail(to: string, d: { name: string | null; 
     reason: "You're getting this because your store's payout account changed.",
   });
 }
+
+const TEAM_ROLE_LABEL: Record<string, string> = {
+  admin: "Admin: everything except payout accounts and setup",
+  orders: "Orders: accept, ship and deliver orders, walk-in sales",
+  catalogue: "Catalogue: products, delivery areas and the storefront",
+  finance: "Finance: payouts, the token and featuring",
+  viewer: "Viewer: can see everything, change nothing",
+};
+
+export function teamInviteEmail(to: string, d: { store: string; from: string | null; role: string; link: string }) {
+  return build(to, `Join ${d.store} on Sotechy`, {
+    preheader: `${d.from ?? "The owner"} added you to ${d.store}'s team.`,
+    hero: "welcome",
+    eyebrow: "Sotechy · Team",
+    heading: `You're invited to ${d.store}`,
+    blocks: [
+      { kind: "text", text: `${d.from ? `**${d.from}**` : "The store's owner"} added you to **${d.store}**'s team on Sotechy, so you can help run the store with your own sign-in.` },
+      { kind: "rows", rows: [{ icon: "sparkle", label: "Your role", value: TEAM_ROLE_LABEL[d.role] ?? d.role }] },
+      { kind: "button", label: "Accept the invite", url: d.link },
+      { kind: "text", text: `Sign in or create an account with this email (${to}) to accept. If you weren't expecting this, you can ignore it.` },
+    ],
+    reason: "You're getting this because a Sotechy store invited this email address.",
+  });
+}

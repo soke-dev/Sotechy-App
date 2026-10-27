@@ -25,7 +25,7 @@ export const getSession = cache(async (): Promise<MerchantSession> => {
 export async function getStoreSession() {
   const session = await getSession();
   if (!session.store) redirect("/signup?step=store");
-  return { user: session.user, store: session.store };
+  return { user: session.user, store: session.store, role: session.role ?? "owner" };
 }
 
 export function errorMessage(err: unknown) {

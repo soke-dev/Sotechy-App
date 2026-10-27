@@ -1,5 +1,7 @@
 "use client";
 
+import type { StoreRole } from "@sotechy/shared";
+import { roleSees } from "@/lib/roles";
 import { ExternalLink, LogOut, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,6 +32,8 @@ export interface ShellStore {
   offersWaiting: number;
   /** Payouts on their way to the store */
   balance: number;
+  /** How the signed-in person runs the store; the menu shows what their role can open */
+  access: StoreRole;
 }
 
 const items = (s: ShellStore): NavItem[][] => [
@@ -99,7 +103,10 @@ function NavList({ store, onNavigate }: { store: ShellStore; onNavigate?: () => 
   const path = usePathname();
   return (
     <nav className="flex flex-col gap-4">
-      {items(store).map((group, i) => (
+      {items(store)
+        .map((group) => group.filter((item) => roleSees(store.access, item.href)))
+        .filter((group) => group.length > 0)
+        .map((group, i) => (
         <div key={i} className="flex flex-col gap-0.5">
           {group.map((item) => {
             const active = isActive(item.href, path);
@@ -168,12 +175,13 @@ function Sidebar({ store, user, onNavigate }: { store: ShellStore; user: ShellUs
 /** Phone tab bar, like the customer app. */
 function TabBar({ store, onMore }: { store: ShellStore; onMore: () => void }) {
   const path = usePathname();
-  const tabs: NavItem[] = [
+  const all: NavItem[] = [
     { href: "/", label: "Home", illo: "home" },
     { href: "/orders", label: "Orders", illo: "box", badge: store.newOrders },
     { href: "/products", label: "Products", illo: "bag" },
     { href: "/token", label: store.ticker ? `$${store.ticker}` : "Token", illo: "coin" },
   ];
+  const tabs = all.filter((t) => roleSees(store.access, t.href));
   return (
     <nav className="fixed inset-x-3 bottom-3 z-30 flex items-stretch rounded-2xl border border-line bg-surface px-1 py-1.5 shadow-[0_12px_32px_rgba(23,18,14,0.14)] [transform:translateZ(0)] [will-change:transform] lg:hidden">
       {tabs.map((t) => {

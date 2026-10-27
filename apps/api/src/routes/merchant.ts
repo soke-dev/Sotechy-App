@@ -4,12 +4,13 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
-import { badRequest, conflict, notFound } from "../lib/errors";
+import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { claimUsername, phoneField, referrerFor, slugify, storeHandleRule, tickerFrom } from "../lib/identity";
 import { publicUser } from "../lib/serialize";
 import { sendEmailLater } from "../lib/email";
 import { storeOpenedEmail } from "../emails/templates";
 import { diditConfigured, refreshIdCheck, startIdCheck } from "../services/didit";
+import { storeAccess } from "../services/team";
 
 const storeOf = async (ownerId: string) => (await db.select().from(schema.merchants).where(eq(schema.merchants.ownerId, ownerId)))[0] ?? null;
 
@@ -41,7 +42,8 @@ export const merchantRoutes = new Hono<AppEnv>()
   .get("/me", async (c) => {
     const id = c.get("user").id;
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
-    return c.json({ user: publicUser(user), store: await storeOf(id) });
+    const access = await storeAccess(id);
+    return c.json({ user: publicUser(user), store: access?.store ?? null, role: access?.role ?? null });
   })
   /** Opens a store for this account. New stores start in test mode (pending) until Sotechy verifies them. */
   .post(
@@ -64,7 +66,7 @@ export const merchantRoutes = new Hono<AppEnv>()
     async (c) => {
       const input = c.req.valid("json");
       const id = c.get("user").id;
-      if (await storeOf(id)) throw conflict("This account already has a store");
+      if (await storeAccess(id)) throw conflict("This account already runs a store");
       const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
 
       const phone = phoneField(input.phone, "Phone number");
@@ -126,8 +128,11 @@ export const merchantRoutes = new Hono<AppEnv>()
     ),
     async (c) => {
       const input = c.req.valid("json");
-      const store = await storeOf(c.get("user").id);
-      if (!store) throw notFound("You don't have a store yet");
+      // The owner and the store's admins can change its details
+      const access = await storeAccess(c.get("user").id);
+      if (!access) throw notFound("You don't have a store yet");
+      if (access.role !== "owner" && access.role !== "admin") throw forbidden("Only the owner and admins can change the store's details");
+      const store = access.store;
       const phone = phoneField(input.contactPhone, "Phone number");
       const patch = {
         ...(input.name !== undefined && { name: input.name }),

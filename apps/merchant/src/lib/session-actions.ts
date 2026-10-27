@@ -22,8 +22,43 @@ async function keepSession(token: string) {
   });
 }
 
+const INVITE_COOKIE = "sotechy_team_invite";
+
+/** Someone opened a team invite while signed out: remember it, then sign in or create an account */
+export async function rememberInvite(token: string, next: "/login" | "/signup"): Promise<never> {
+  (await cookies()).set(INVITE_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 });
+  redirect(next);
+}
+
+/** Accepts a remembered invite, if there is one; true when the account just joined a store */
+async function acceptRememberedInvite() {
+  const jar = await cookies();
+  const token = jar.get(INVITE_COOKIE)?.value;
+  if (!token) return false;
+  jar.delete(INVITE_COOKIE);
+  try {
+    await api.post("/merchant/team/accept", { token });
+    return true;
+  } catch {
+    // Wrong email or a used invite: carry on as a normal sign-in; the join page explains if they go back
+    return false;
+  }
+}
+
+/** The signed-in person accepts an invite from the join page */
+export async function acceptInvite(token: string): Promise<FormState> {
+  try {
+    await api.post("/merchant/team/accept", { token });
+  } catch (err) {
+    return { error: errorMessage(err) };
+  }
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
 /** After signing in: the dashboard, or the last sign-up step for accounts with no store yet */
 async function goOn(): Promise<never> {
+  if (await acceptRememberedInvite()) redirect("/");
   const { store } = await api.merchantMe();
   redirect(store ? "/" : "/signup?step=store");
 }
@@ -52,6 +87,8 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   } catch (err) {
     return { error: errorMessage(err) };
   }
+  // Invited to someone's store: straight into it, no store of their own to open
+  if (await acceptRememberedInvite()) redirect("/");
   const ref = field(form, "referralCode");
   redirect(ref ? `/signup?step=store&ref=${encodeURIComponent(ref)}` : "/signup?step=store");
 }
