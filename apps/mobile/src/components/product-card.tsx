@@ -4,9 +4,9 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 import { formatNaira, type CatalogProduct } from "@sotechy/shared";
 import { api } from "@/lib/api";
-import { useCart } from "@/lib/cart";
 import { useFeatures } from "@/lib/store-config";
 import { colors, radius, space } from "@/lib/theme";
+import { sellerOf, useAddToCart } from "./add-to-cart";
 import { useCartFeedback } from "./cart-feedback";
 import { useToast } from "./toast";
 import { discountPercent, Pill, Txt } from "./ui";
@@ -14,7 +14,7 @@ import { ProductImage } from "./product-image";
 
 /** Floating "+" button: adds single-option products straight to the cart, otherwise opens the product. */
 function QuickAdd({ product }: { product: CatalogProduct }) {
-  const cart = useCart();
+  const addToCart = useAddToCart();
   const toast = useToast();
   const showAdded = useCartFeedback();
   const [busy, setBusy] = useState(false);
@@ -28,7 +28,8 @@ function QuickAdd({ product }: { product: CatalogProduct }) {
         return;
       }
       const v = detail.variants[0];
-      cart.add({ variantId: v.id, productId: detail.id, productName: detail.name, variantName: v.name, unitPrice: v.price, imageUrl: detail.images[0] ?? null });
+      const line = { variantId: v.id, productId: detail.id, productName: detail.name, variantName: v.name, unitPrice: v.price, imageUrl: detail.images[0] ?? null, store: sellerOf(detail.store) };
+      if (!(await addToCart(line))) return;
       showAdded({ name: detail.name, imageUrl: detail.images[0] ?? null, quantity: 1, unitPrice: v.price });
     } catch (err) {
       toast(err instanceof Error ? err.message : "Could not add", { icon: "alert-circle" });
@@ -85,6 +86,12 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
               {product.name}
             </Txt>
             <Txt variant="price" style={{ marginTop: 2 }}>{formatNaira(product.minPrice)}</Txt>
+            {product.storeName ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Ionicons name="storefront-outline" size={11} color={colors.muted} />
+                <Txt variant="caption" numberOfLines={1} style={{ flexShrink: 1, fontSize: 11.5 }}>{product.storeName}</Txt>
+              </View>
+            ) : null}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 20 }}>
               {off > 0 ? (
                 <>

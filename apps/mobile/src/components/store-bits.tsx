@@ -5,17 +5,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { formatNaira } from "@sotechy/shared";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { api } from "@/lib/api";
 import { formatTokens, isFeatured, tileColor, wallet, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { Illo } from "./illustrations";
 import { BrandMark, ProductArt, StoreCover } from "./store-brand";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
-import { useAsync } from "@/lib/use-async";
 import { Txt } from "./ui";
 
 export const openStore = (slug: string) => router.push({ pathname: "/store/[slug]", params: { slug } });
-/** A marketplace store's product page */
-export const openItem = (store: string, id: string) => router.push({ pathname: "/item/[store]/[id]", params: { store, id } });
+/** A product's page (Sotechy's and every store's products share it) */
+export const openProduct = (slug: string) => router.push({ pathname: "/product/[id]", params: { id: slug } });
 
 /** How many of this store's tokens the customer holds */
 export const heldTokens = (ticker: string) => wallet.balances.find((b) => b.ticker === ticker)?.amount ?? 0;
@@ -62,7 +60,7 @@ function Rating({ store, color }: { store: MarketStore; color?: string }) {
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
       <Ionicons name="star" size={12} color={colors.brandYellow} />
       <Txt variant="caption" color={color ?? colors.ink2}>
-        {store.rating} · {store.city}
+        {store.isSotechy ? "Official store · Benin City" : `${store.rating ?? "New"} · ${store.productCount} product${store.productCount === 1 ? "" : "s"}`}
       </Txt>
     </View>
   );
@@ -131,31 +129,23 @@ export function StoreRow({ store }: { store: MarketStore }) {
         <Rating store={store} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
           <TokenChip store={store} label={held > 0 ? `${formatTokens(held)} $${store.ticker}` : undefined} />
-          <Txt variant="caption" numberOfLines={1} style={{ flexShrink: 1 }}>
-            Delivers to {store.delivery.states.slice(0, 2).join(", ")}
-            {store.delivery.states.length > 2 ? ` +${store.delivery.states.length - 2}` : ""}
-          </Txt>
+          {store.delivery.states.length > 0 && (
+            <Txt variant="caption" numberOfLines={1} style={{ flexShrink: 1 }}>
+              Delivers to {store.delivery.states.slice(0, 2).join(", ")}
+              {store.delivery.states.length > 2 ? ` +${store.delivery.states.length - 2}` : ""}
+            </Txt>
+          )}
         </View>
       </View>
     </Pressable>
   );
 }
 
-/** A store's products: Sotechy's come from the live catalogue, the others are samples for now */
-export function useStoreProducts(store: MarketStore | undefined) {
-  return useAsync(async (): Promise<StoreProduct[]> => {
-    if (!store) return [];
-    if (!store.isSotechy) return store.products;
-    const items = await api.products({ sort: "newest" });
-    return items.map((p) => ({ id: p.id, name: p.name, price: p.minPrice, compareAt: p.compareAtPrice ?? undefined, image: p.imageUrl ? { uri: p.imageUrl } : store.logo, slug: p.slug }));
-  }, [store?.slug]);
-}
-
 /** A product from a marketplace store, labelled with the store that sells it */
 export function MarketProductCard({ store, product, width = 150, onDark }: { store: MarketStore; product: StoreProduct; width?: number; onDark?: boolean }) {
   const off = product.compareAt && product.compareAt > product.price ? Math.round(((product.compareAt - product.price) / product.compareAt) * 100) : 0;
   return (
-    <Pressable onPress={() => openItem(store.slug, product.id)} style={({ pressed }) => ({ width, opacity: pressed ? 0.88 : 1 })}>
+    <Pressable onPress={() => openProduct(product.slug)} style={({ pressed }) => ({ width, opacity: pressed ? 0.88 : 1 })}>
       <View style={{ aspectRatio: 1, borderRadius: radius.lg, backgroundColor: tileColor(store.theme), alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         <View style={{ position: "absolute", width: "66%", height: "66%", borderRadius: 999, backgroundColor: "rgba(255,255,255,0.55)" }} />
         <ProductArt product={product} store={store} />

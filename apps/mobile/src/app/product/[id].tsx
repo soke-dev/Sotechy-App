@@ -38,6 +38,7 @@ import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
+import { sellerOf, useAddToCart } from "@/components/add-to-cart";
 
 type Tab = "overview" | "about" | "reviews";
 
@@ -337,6 +338,7 @@ export default function ProductScreen() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const galleryRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const cart = useCart();
+  const addToCart = useAddToCart();
   const features = useFeatures();
   const showAdded = useCartFeedback();
   const { user } = useAuth();
@@ -371,19 +373,18 @@ export default function ProductScreen() {
   const ratingCount = reviews.data?.summary.count ?? product.ratingCount ?? 0;
   const mine = user ? reviews.data?.reviews.find((r) => r.userId === user.id) : undefined;
 
-  function addToCart() {
+  async function addCurrent() {
     if (!variant || !product) return;
-    cart.add(
-      {
-        variantId: variant.id,
-        productId: product.id,
-        productName: product.name,
-        variantName: variant.name,
-        unitPrice: variant.price,
-        imageUrl: product.images[0] ?? null,
-      },
-      qty,
-    );
+    const line = {
+      variantId: variant.id,
+      productId: product.id,
+      productName: product.name,
+      variantName: variant.name,
+      unitPrice: variant.price,
+      imageUrl: product.images[0] ?? null,
+      store: sellerOf(product.store),
+    };
+    if (!(await addToCart(line, qty))) return;
     showAdded({ name: product.name, variant: product.variants.length > 1 ? variant.name : undefined, imageUrl: product.images[0] ?? null, quantity: qty, unitPrice: variant.price });
   }
 
@@ -479,6 +480,15 @@ export default function ProductScreen() {
           <View style={{ gap: 6 }}>
             {product.brand ? <Txt variant="overline">{product.brand}{product.model ? ` · ${product.model}` : ""}</Txt> : null}
             <Txt variant="title">{product.name}</Txt>
+            {product.store && (
+              <Pressable onPress={() => router.push(`/store/${product.store!.slug}`)} hitSlop={6} style={[ui.row, { gap: 6, alignSelf: "flex-start" }]}>
+                <Ionicons name="storefront-outline" size={15} color={colors.muted} />
+                <Txt variant="small">
+                  Sold by <Txt variant="label" color={colors.brandPressed} style={{ fontSize: 14 }}>{product.store.name}</Txt>
+                </Txt>
+                <Ionicons name="chevron-forward" size={14} color={colors.muted} />
+              </Pressable>
+            )}
             <View style={[ui.row, { marginTop: 4, flexWrap: "wrap" }]}>
               <Price amount={variant?.price ?? 0} compareAt={variant?.compareAtPrice} size="lg" />
               {features.usdPrices && fx.data && variant ? (
@@ -527,7 +537,7 @@ export default function ProductScreen() {
           onPress={() => config.data?.support.phone && Linking.openURL(`tel:${config.data.support.phone.replace(/[^\d+]/g, "")}`)}
         />
         <QtyStepper value={qty} onChange={setQty} max={Math.max(1, available)} />
-        <Button title={available > 0 ? `Add · ${formatNaira((variant?.price ?? 0) * qty)}` : "Out of stock"} icon="bag-add-outline" onPress={addToCart} disabled={available <= 0} style={{ flex: 1 }} />
+        <Button title={available > 0 ? `Add · ${formatNaira((variant?.price ?? 0) * qty)}` : "Out of stock"} icon="bag-add-outline" onPress={addCurrent} disabled={available <= 0} style={{ flex: 1 }} />
       </BottomBar>
 
       <ReviewSheet visible={reviewOpen} productName={product.name} initial={mine} onClose={() => setReviewOpen(false)} onSubmit={submitReview} />

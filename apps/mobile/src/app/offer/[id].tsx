@@ -150,7 +150,7 @@ export default function OfferScreen() {
             <View style={{ flexDirection: "row", gap: space.sm, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt }}>
               <Ionicons name="information-circle-outline" size={18} color={colors.muted} />
               <Txt variant="caption" style={{ flex: 1 }}>
-                If {first} agrees, the price is held for you only, for up to {product.negotiable?.hours ?? 12} hours. You&apos;ll hear back here, on WhatsApp and by email.
+                If {first} agrees, the price is held for you only, for up to 24 hours. You&apos;ll hear back here, on WhatsApp and by email.
               </Txt>
             </View>
           </View>

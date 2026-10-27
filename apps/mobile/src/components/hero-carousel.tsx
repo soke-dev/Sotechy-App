@@ -4,7 +4,6 @@ import { router, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Linking, Pressable, ScrollView, View } from "react-native";
 import type { Banner as AdminBanner } from "@sotechy/shared";
-import { stores } from "@/lib/marketplace";
 import { demoMedia } from "@/lib/mock-api";
 import { useStoreConfig } from "@/lib/store-config";
 import { colors as theme, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
@@ -185,36 +184,6 @@ function fromAdmin(b: AdminBanner): Slide {
   };
 }
 
-/** Each marketplace store's promotion, in its own colours */
-const storeSlides: Slide[] = stores
-  .filter((st) => st.promo)
-  .map((st) => {
-    const item = st.products.find((x) => x.id === st.promo!.productId) ?? st.products[0];
-    return {
-      bg: st.theme.hero,
-      fg: st.theme.onHero,
-      accent: st.theme.accent,
-      overline: st.promo!.overline,
-      title: st.promo!.title,
-      subtitle: st.promo!.subtitle,
-      cta: "Visit store",
-      circle: st.theme.accent,
-      action: { pathname: "/store/[slug]", params: { slug: st.slug } },
-      art: item?.image ? [{ source: item.image as ImageSource, w: 0.42, h: 0.62, right: 0.03, bottom: 0.18 }] : undefined,
-      badge: item?.image ? undefined : st.ticker.slice(0, 1),
-    };
-  });
-
-/** Sotechy's banners and the stores' promotions, taking turns */
-const interleave = (a: Slide[], b: Slide[]) => {
-  const out: Slide[] = [];
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    if (b[i]) out.push(b[i]);
-    if (a[i]) out.push(a[i]);
-  }
-  return out;
-};
-
 const AUTOPLAY_MS = 5000;
 
 export function HeroCarousel({ width }: { width: number }) {
@@ -224,7 +193,7 @@ export function HeroCarousel({ width }: { width: number }) {
   const height = Math.round(width * 0.52);
   const step = width + space.md;
   const adminBanners = useStoreConfig().config?.banners;
-  const slides = interleave(adminBanners?.length ? adminBanners.map(fromAdmin) : builtInSlides, storeSlides);
+  const slides = adminBanners?.length ? adminBanners.map(fromAdmin) : builtInSlides;
 
   // Auto-advance; pauses for a while after the user swipes.
   useEffect(() => {

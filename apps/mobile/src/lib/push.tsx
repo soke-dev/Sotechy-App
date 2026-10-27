@@ -43,7 +43,7 @@ export async function forgetPushDevice() {
 }
 
 /** Registers the phone for the signed-in account and handles taps on notifications */
-export function PushNotifications() {
+function PhonePushNotifications() {
   const { user } = useAuth();
   const lastResponse = Notifications.useLastNotificationResponse();
 
@@ -65,3 +65,6 @@ export function PushNotifications() {
 
   return null;
 }
+
+// Browsers have no push here (and the notification hooks throw on web)
+export const PushNotifications = Platform.OS === "web" ? () => null : PhonePushNotifications;

@@ -14,6 +14,7 @@ import { useCart } from "@/lib/cart";
 import { useFeatures } from "@/lib/store-config";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
+import { loadStore } from "@/lib/marketplace";
 
 const newKey = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 
@@ -66,6 +67,9 @@ export default function CheckoutScreen() {
   const [address, setAddress] = useState({ recipientName: user?.fullName ?? "", phone: user?.phone ?? "", line1: "", line2: "", city: "Benin City", state: "Edo" });
   const [submitting, setSubmitting] = useState(false);
   const saved = useAsync(async () => (user ? api.addresses() : []), [user?.id]);
+  // A marketplace store's order ships from (or is collected at) that store
+  const seller = cart.seller;
+  const sellerInfo = useAsync(async () => (seller ? loadStore(seller.slug) : null), [seller?.slug]);
   // null = use the default saved address; "new" = type a new one; otherwise a saved address id
   const [addressId, setAddressId] = useState<string | null>(null);
   const [saveNew, setSaveNew] = useState(true);
@@ -88,7 +92,7 @@ export default function CheckoutScreen() {
   const paused = !features.ordering || (!features.delivery && !features.pickup);
   const promoOn = features.promoCodes;
   // Deliveries go out from the main store; pickup lets the customer choose.
-  const selectedBranch = (fulfilment === "pickup" ? branchId : null) ?? cfg.branches[0]?.id ?? null;
+  const selectedBranch = seller?.branchId ?? (fulfilment === "pickup" ? branchId : null) ?? cfg.branches[0]?.id ?? null;
   const freeDelivery = cfg.delivery.freeOver != null && cart.subtotal >= cfg.delivery.freeOver;
   const deliveryFee = fulfilment === "delivery" && !freeDelivery ? cfg.delivery.flatFee : 0;
   const discount = features.promoCodes ? (promo?.discount ?? 0) : 0;
@@ -181,8 +185,13 @@ export default function CheckoutScreen() {
           </View>
         )}
         <Section step={1} title="How do you want it?">
+          {seller && (
+            <Txt variant="small" color={colors.ink2}>
+              This order comes from <Txt variant="label" style={{ fontSize: 14 }}>{seller.name}</Txt>. They send it to you, or have it ready to collect.
+            </Txt>
+          )}
           <View style={[ui.row, { gap: space.md, alignItems: "stretch" }]}>
-            {features.pickup && <FulfilmentCard illo="store" title="Store pickup" subtitle="Free · usually same day" active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />}
+            {features.pickup && <FulfilmentCard illo="store" title="Store pickup" subtitle={seller ? "Collect from the store" : "Free · usually same day"} active={fulfilment === "pickup"} onPress={() => setFulfilment("pickup")} />}
             {features.delivery && <FulfilmentCard
               illo="bike"
               title="Delivery"
@@ -194,7 +203,17 @@ export default function CheckoutScreen() {
         </Section>
 
         <Section step={2} title={fulfilment === "pickup" ? "Pickup store" : "Delivery details"}>
+          {fulfilment === "pickup" && seller && (
+            <OptionRow
+              illo="store"
+              title={seller.name}
+              subtitle={sellerInfo.data?.delivery.pickup ? `Collect at ${sellerInfo.data.delivery.pickup}` : "The store tells you where and when to collect"}
+              selected
+              onPress={() => {}}
+            />
+          )}
           {fulfilment === "pickup" &&
+            !seller &&
             cfg.branches.map((b) => (
               <OptionRow key={b.id} illo="store" title={b.name} subtitle={`${b.address}, ${b.city}`} selected={selectedBranch === b.id} onPress={() => setBranchId(b.id)} />
             ))}

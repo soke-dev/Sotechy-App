@@ -97,7 +97,7 @@ export function OffersProvider({ children }: { children: ReactNode }) {
       if (!product) return;
       setTimeout(() => {
         const counterPrice = Math.max(amount, Math.round((amount + product.price) / 2 / 500) * 500);
-        update(id, (t) => push(t, { from: "store", kind: "counter", amount: counterPrice, hours: product.negotiable?.hours ?? 12, text: "This is the best we can do." }, { status: "countered" }));
+        update(id, (t) => push(t, { from: "store", kind: "counter", amount: counterPrice, hours: 24, text: "This is the best we can do." }, { status: "countered" }));
         toast(`${name} replied to your offer`);
       }, 2500);
     },

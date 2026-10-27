@@ -4,11 +4,12 @@ import { useEffect } from "react";
 import { Pressable, ScrollView, Switch, View } from "react-native";
 import { openStore, StoreLogo } from "@/components/store-bits";
 import { Divider, EmptyState, Txt, ui } from "@/components/ui";
-import { ago, stores, storeBySlug } from "@/lib/marketplace";
+import { ago, SOTECHY_STORE, storeBySlug, useStores } from "@/lib/marketplace";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { colors, gutter, radius, space } from "@/lib/theme";
 
 export default function NotificationsScreen() {
+  const { stores } = useStores();
   const { inbox, isSubscribed, toggle, markAllRead } = useStoreNotifications();
 
   // Opening the inbox counts as reading it
@@ -47,7 +48,7 @@ export default function NotificationsScreen() {
           <Txt variant="heading">Store updates</Txt>
           <Txt variant="small">Only stores you subscribe to can send you messages.</Txt>
           <View style={[ui.card, { paddingVertical: space.xs }]}>
-            {stores.map((s, i) => (
+            {[SOTECHY_STORE, ...(stores ?? [])].map((s, i) => (
               <View key={s.slug}>
                 {i > 0 && <Divider />}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>

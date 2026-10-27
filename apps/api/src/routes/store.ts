@@ -119,6 +119,13 @@ const positive = (v: string | undefined) => {
 
 const { costPrice: _cost, ...publicVariantColumns } = getTableColumns(productVariants);
 
+// Where a store delivers: its approved, active delivery areas
+const liveZone = sql`z.merchant_id = "merchants"."id" and z.review = 'approved' and z.is_active`;
+const storeDelivery = {
+  deliveryStates: sql<string[]>`(select coalesce(array_agg(distinct z.state order by z.state), '{}') from delivery_zones z where ${liveZone})`,
+  deliveryFrom: sql<number | null>`(select min(z.home_fee)::float from delivery_zones z where ${liveZone})`,
+};
+
 export const storeRoutes = new Hono()
   .get("/config", async (c) => {
     const now = new Date();
@@ -208,6 +215,7 @@ export const storeRoutes = new Hono()
         featuredUntil: m.featuredUntil,
         productCount: sql<number>`(select count(*)::int from products p where p.merchant_id = "merchants"."id" and p.is_published)`,
         ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
+        ...storeDelivery,
       })
       .from(m)
       .where(eq(m.status, "approved"))
@@ -229,6 +237,8 @@ export const storeRoutes = new Hono()
         sells: m.sells,
         featuredUntil: m.featuredUntil,
         branchId: branches.id,
+        ...storeDelivery,
+        pickupPoints: sql<string[]>`(select coalesce(array_agg(distinct z.pickup_point), '{}') from delivery_zones z where ${liveZone} and z.pickup_point is not null)`,
       })
       .from(m)
       .leftJoin(branches, eq(branches.merchantId, m.id))

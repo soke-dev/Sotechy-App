@@ -351,7 +351,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       }),
     ),
     async (c) => {
-      const [row] = await db.update(schema.merchants).set(c.req.valid("json")).where(eq(schema.merchants.id, c.get("store").id)).returning();
+      const [row] = await db.update(schema.merchants).set({ ...c.req.valid("json"), updatedAt: new Date() }).where(eq(schema.merchants.id, c.get("store").id)).returning();
       return c.json(row);
     },
   )

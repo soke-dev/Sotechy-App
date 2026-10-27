@@ -4,20 +4,20 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, type Href } from "expo-router";
 import { Linking, Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatNaira, type CatalogProduct, type Category } from "@sotechy/shared";
+import { formatNaira, type Category } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { MenuButton } from "@/components/menu";
 import { ProductRail } from "@/components/product-rail";
 import { SupportChat } from "@/components/support-chat";
 import { useTabBarInset } from "@/components/tab-bar";
-import { FeaturedStoreCard, MarketRail, openItem, openStore } from "@/components/store-bits";
+import { FeaturedStoreCard, MarketRail, openStore } from "@/components/store-bits";
 import { AccountIcon } from "@/components/tab-icons";
 import { UserAvatar } from "@/components/user-avatar";
 import { ArtButton, Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { byFeatured, marketProducts, stores, tileColor, type Img as MarketImg } from "@/lib/marketplace";
+import { byFeatured, SOTECHY_STORE, tileColor, toStoreProduct, useStores, type Img as MarketImg } from "@/lib/marketplace";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { useFeatures } from "@/lib/store-config";
 import { demoMedia } from "@/lib/mock-api";
@@ -83,6 +83,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { unread } = useStoreNotifications();
+  const { stores } = useStores();
   const { user } = useAuth();
   const tabInset = useTabBarInset();
   const features = useFeatures();
@@ -99,19 +100,29 @@ export default function HomeScreen() {
 
   const { config, categories, products } = data;
   const tops = categories.filter((c) => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
-  const deals = products.filter((p) => discountPercent(p.minPrice, p.compareAtPrice) > 0 || p.isFeatured);
-  // Deals from every store, taking turns with Sotechy's own
-  const storeDeals = marketProducts(true);
-  const mixedDeals: Deal[] = [];
-  for (let i = 0; i < Math.max(deals.length, storeDeals.length); i++) {
-    const sd = storeDeals[i];
-    if (sd)
-      mixedDeals.push({ key: `${sd.store.slug}-${sd.product.id}`, name: sd.product.name, price: sd.product.price, compareAt: sd.product.compareAt ?? null, image: sd.product.image ?? null, seller: sd.store.name, tint: tileColor(sd.store.theme), onPress: () => openItem(sd.store.slug, sd.product.id) });
-    const d = deals[i];
-    if (d)
-      mixedDeals.push({ key: d.id, name: d.name, price: d.minPrice, compareAt: d.compareAtPrice, image: d.imageUrl ? { uri: d.imageUrl } : null, seller: "Sotechy", tint: "#F1ECE5", onPress: () => router.push({ pathname: "/product/[id]", params: { id: d.slug } }) });
-  }
-  const marketStores = stores.filter((st) => !st.isSotechy);
+  // The catalogue holds Sotechy's products and every approved store's
+  const marketStores = byFeatured(stores ?? []);
+  const storeOf = new Map(marketStores.map((st) => [st.slug, st]));
+  const own = products.filter((p) => !p.storeSlug);
+  const storeItems = products.flatMap((p) => {
+    const store = p.storeSlug ? storeOf.get(p.storeSlug) : undefined;
+    return store ? [{ store, product: toStoreProduct(p) }] : [];
+  });
+  const isDeal = (p: (typeof products)[number]) => discountPercent(p.minPrice, p.compareAtPrice) > 0 || p.isFeatured;
+  const deals = own.filter(isDeal);
+  const mixedDeals: Deal[] = products.filter(isDeal).map((d) => {
+    const store = d.storeSlug ? storeOf.get(d.storeSlug) : undefined;
+    return {
+      key: d.id,
+      name: d.name,
+      price: d.minPrice,
+      compareAt: d.compareAtPrice,
+      image: d.imageUrl ? { uri: d.imageUrl } : null,
+      seller: d.storeName ?? "Sotechy",
+      tint: store ? tileColor(store.theme) : "#F1ECE5",
+      onPress: () => router.push({ pathname: "/product/[id]", params: { id: d.slug } }),
+    };
+  });
   // Three circles in one row: card padding (2 × lg), card border (2 × 1px) and two gaps.
   const bubbleSize = Math.floor((contentWidth - space.lg * 2 - 2 - space.md * 2) / 3);
   const support = config.support;
@@ -200,7 +211,7 @@ export default function HomeScreen() {
           <SectionHeader title="Stores on Sotechy" action="All stores" onAction={() => router.push("/stores")} />
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={Math.min(contentWidth * 0.78, 290) + space.md} decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
-          {byFeatured(stores).map((s) => (
+          {byFeatured([SOTECHY_STORE, ...marketStores]).map((s) => (
             <FeaturedStoreCard key={s.slug} store={s} width={Math.min(contentWidth * 0.78, 290)} />
           ))}
         </ScrollView>
@@ -257,14 +268,14 @@ export default function HomeScreen() {
           {tops.slice(0, 4).map((c) => (
             <CircleLink key={c.id} label={c.name} image={c.imageUrl} icon={productIcon(c.name)} onPress={() => shop({ category: c.slug })} />
           ))}
-          <CircleLink label="Fashion" icon="shirt-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Fashion" } })} />
-          <CircleLink label="Beauty & hair" icon="color-palette-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Beauty & hair" } })} />
-          <CircleLink label="Food & groceries" icon="nutrition-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Food & groceries" } })} />
-          <CircleLink label="Home & living" icon="bed-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Home & living" } })} />
+          <CircleLink label="Fashion" icon="shirt-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Fashion & clothing" } })} />
+          <CircleLink label="Beauty" icon="color-palette-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Beauty & makeup" } })} />
+          <CircleLink label="Groceries" icon="nutrition-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Groceries" } })} />
+          <CircleLink label="Home & decor" icon="bed-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Furniture & home decor" } })} />
         </View>
       </View>
 
-      <MarketRail title="Fresh from stores on Sotechy" subtitle="Verified shops, each with its own token" items={marketProducts()} onSeeAll={() => router.push("/stores")} />
+      <MarketRail title="Fresh from stores on Sotechy" subtitle="Verified shops, each with its own token" items={storeItems} onSeeAll={() => router.push("/stores")} />
 
       <ProductRail title="Top deals" subtitle="Sold by Sotechy" products={deals} dark onSeeAll={() => shop({ featured: "1" })} />
 
@@ -275,7 +286,7 @@ export default function HomeScreen() {
           <View key={c.id} style={{ gap: space.xxl }}>
             <ProductRail
               title={c.name}
-              products={products.filter((p) => topOf(categories, p.categoryId) === c.id)}
+              products={own.filter((p) => topOf(categories, p.categoryId) === c.id)}
               dark={i % 3 === 2}
               subtitle={i % 3 === 2 ? "Sold by Sotechy, with warranty" : "Sold by Sotechy"}
               onSeeAll={() => shop({ category: c.slug })}
@@ -283,8 +294,8 @@ export default function HomeScreen() {
             {st ? (
               <MarketRail
                 title={`From ${st.name}`}
-                subtitle={`${st.city} · earn $${st.ticker}`}
-                items={st.products.map((product) => ({ store: st, product }))}
+                subtitle={`Earn $${st.ticker} on every order`}
+                items={storeItems.filter((x) => x.store.slug === st.slug)}
                 dark={i % 3 === 1}
                 onSeeAll={() => openStore(st.slug)}
               />

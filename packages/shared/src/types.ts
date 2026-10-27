@@ -490,6 +490,13 @@ export interface PlaceOrderInput {
   idempotencyKey: string;
 }
 
+/** The marketplace store an item comes from (it ships from the store's own branch) */
+export interface CartSeller {
+  slug: string;
+  name: string;
+  branchId: string;
+}
+
 export interface CartLine {
   variantId: string;
   productId: string;
@@ -498,6 +505,8 @@ export interface CartLine {
   unitPrice: number;
   quantity: number;
   imageUrl: string | null;
+  /** null or missing: Sotechy's own stock */
+  store?: CartSeller | null;
 }
 
 export interface Paginated<T> {
@@ -530,10 +539,15 @@ export interface MarketStore {
   featuredUntil: string | null;
   productCount?: number;
   ratingAverage?: number | null;
+  /** States the store's approved delivery areas cover, and its cheapest door delivery */
+  deliveryStates: string[];
+  deliveryFrom: number | null;
 }
 
 export interface MarketStoreDetail extends MarketStore {
   branchId: string | null;
+  /** Where customers can collect pickup orders */
+  pickupPoints: string[];
   categories: string[];
   products: CatalogProduct[];
 }

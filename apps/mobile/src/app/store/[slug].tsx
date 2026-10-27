@@ -10,20 +10,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
 import { Illo } from "@/components/illustrations";
-import { heldTokens, openItem, StoreLogo, useStoreProducts } from "@/components/store-bits";
-import { EmptyState, IconButton, Loading, tap } from "@/components/ui";
-import { CROSS_BONUS, formatTokens, storeBySlug, tileColor, tokenNaira, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { heldTokens, openProduct, StoreLogo } from "@/components/store-bits";
+import { EmptyState, ErrorView, IconButton, Loading, tap } from "@/components/ui";
+import { CROSS_BONUS, formatTokens, loadStore, tileColor, tokenNaira, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { ProductArt, StoreCover } from "@/components/store-brand";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { fonts, gutter, radius, space } from "@/lib/theme";
+import { useAsync } from "@/lib/use-async";
 
-type Tab = "products" | "about" | "reviews";
+type Tab = "products" | "about";
 
-const REVIEWS = [
-  { name: "Chidi O.", stars: 5, text: "Came the next day, well packed. Phone works perfectly.", photo: true, ago: "2 days ago" },
-  { name: "Amaka N.", stars: 4, text: "Good price and they called before delivery. Box was a bit dented.", photo: false, ago: "1 week ago" },
-  { name: "Tunde B.", stars: 5, text: "Picked it up myself, very friendly staff. Will buy again.", photo: true, ago: "3 weeks ago" },
-];
 
 function T({ children, color, size = 15, weight = fonts.body, style, lines }: { children: React.ReactNode; color: string; size?: number; weight?: string; style?: object; lines?: number }) {
   return (
@@ -39,8 +35,7 @@ function ProductTile({ p, store, width }: { p: StoreProduct; store: MarketStore;
     <Pressable
       onPress={() => {
         tap();
-        if (p.slug) router.push({ pathname: "/product/[id]", params: { id: p.slug } });
-        else openItem(store.slug, p.id);
+        openProduct(p.slug);
       }}
       style={({ pressed }) => ({ width, borderRadius: radius.lg, backgroundColor: t.surface, overflow: "hidden", opacity: pressed ? 0.9 : 1 })}
     >
@@ -70,14 +65,17 @@ function ProductTile({ p, store, width }: { p: StoreProduct; store: MarketStore;
 
 export default function StoreScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const store = storeBySlug(slug ?? "");
+  const loaded = useAsync(() => loadStore(slug ?? ""), [slug]);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>("products");
   const subs = useStoreNotifications();
-  const products = useStoreProducts(store);
 
+  if (loaded.loading && !loaded.data) return <Loading />;
+  if (loaded.error) return <ErrorView message={loaded.error} onRetry={loaded.reload} />;
+  const store = loaded.data;
   if (!store) return <EmptyState illo="store" title="Store not found" message="It may have closed or changed its link." />;
+  const products = store.products;
 
   const t = store.theme;
   const following = subs.isSubscribed(store.slug);
@@ -121,11 +119,12 @@ export default function StoreScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, flexWrap: "wrap" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Ionicons name="star" size={14} color="#FDB913" />
-              <T color={t.text} size={13} weight={fonts.bold}>{store.rating}</T>
-              <T color={t.muted} size={13}>({store.reviews.toLocaleString()})</T>
+              <T color={t.text} size={13} weight={fonts.bold}>{store.rating ?? "New store"}</T>
             </View>
-            <T color={t.muted} size={13}>{(store.followers + (following ? 1 : 0)).toLocaleString()} subscribers</T>
-            <T color={t.muted} size={13}>{store.city}</T>
+            <T color={t.muted} size={13}>
+              {products.length} product{products.length === 1 ? "" : "s"}
+            </T>
+            {store.delivery.states.length > 0 && <T color={t.muted} size={13}>Delivers to {store.delivery.states.length === 1 ? store.delivery.states[0] : `${store.delivery.states.length} states`}</T>}
           </View>
           <View style={{ flexDirection: "row", gap: space.sm }}>
             <Pressable
@@ -163,10 +162,10 @@ export default function StoreScreen() {
 
         {/* Tabs */}
         <View style={{ marginTop: space.lg, marginHorizontal: gutter, flexDirection: "row", backgroundColor: t.surface, borderRadius: radius.pill, padding: 4 }}>
-          {(["products", "about", "reviews"] as Tab[]).map((k) => (
+          {(["products", "about"] as Tab[]).map((k) => (
             <Pressable key={k} onPress={() => setTab(k)} style={{ flex: 1, height: 38, borderRadius: radius.pill, backgroundColor: tab === k ? t.accent : "transparent", alignItems: "center", justifyContent: "center" }}>
               <T color={tab === k ? t.onAccent : t.muted} size={13.5} weight={fonts.semibold}>
-                {k === "products" ? `Products${products.data ? ` (${products.data.length})` : ""}` : k === "about" ? "About" : "Reviews"}
+                {k === "products" ? `Products (${products.length})` : "About"}
               </T>
             </Pressable>
           ))}
@@ -174,13 +173,15 @@ export default function StoreScreen() {
 
         <View style={{ marginTop: space.md, paddingHorizontal: gutter }}>
           {tab === "products" &&
-            (products.loading && !products.data ? (
-              <View style={{ height: 200 }}>
-                <Loading />
+            (products.length === 0 ? (
+              <View style={{ backgroundColor: t.surface, borderRadius: radius.lg, padding: space.xl, alignItems: "center", gap: space.sm }}>
+                <Illo name="box" size={56} />
+                <T color={t.text} weight={fonts.semibold}>No products yet</T>
+                <T color={t.muted} size={13.5} style={{ textAlign: "center" }}>Subscribe to hear when {store.name} adds something.</T>
               </View>
             ) : (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.md }}>
-                {(products.data ?? []).map((p) => (
+                {products.map((p) => (
                   <ProductTile key={p.id} p={p} store={store} width={tileWidth} />
                 ))}
               </View>
@@ -190,10 +191,10 @@ export default function StoreScreen() {
             <View style={{ backgroundColor: t.surface, borderRadius: radius.lg, padding: space.lg, gap: space.md }}>
               <T color={t.text}>{store.about}</T>
               {[
-                ["shield-checkmark", `Verified by Sotechy${store.isSotechy ? "" : ` · selling for ${store.sinceMonths} month${store.sinceMonths === 1 ? "" : "s"}`}`],
+                ["shield-checkmark", "Verified by Sotechy"],
                 ["sparkles", `Token: $${store.ticker}`],
-                ["location", store.city],
-                ["bicycle", `Delivers to ${store.delivery.states.join(", ")}`],
+                ...(store.sells.length ? [["pricetags", store.sells.join(" · ")]] : []),
+                ["bicycle", store.delivery.states.length ? `Delivers to ${store.delivery.states.join(", ")}${store.delivery.homeFrom ? `, from ${formatNaira(store.delivery.homeFrom)}` : ""}` : "Delivery areas are being set up"],
                 ...(store.delivery.pickup ? [["storefront", `Pickup at ${store.delivery.pickup}`]] : []),
               ].map(([icon, text]) => (
                 <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
@@ -204,22 +205,6 @@ export default function StoreScreen() {
             </View>
           )}
 
-          {tab === "reviews" && (
-            <View style={{ gap: space.md }}>
-              {REVIEWS.map((r) => (
-                <View key={r.name} style={{ backgroundColor: t.surface, borderRadius: radius.lg, padding: space.lg, gap: 6 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Ionicons key={i} name={i <= r.stars ? "star" : "star-outline"} size={14} color="#FDB913" />
-                    ))}
-                    <T color={t.muted} size={12} style={{ marginLeft: 6 }}>{r.name} · {r.ago}</T>
-                  </View>
-                  <T color={t.text} size={14}>{r.text}</T>
-                  {r.photo && <T color={t.dark ? t.accent : t.muted} size={12} weight={fonts.semibold}>Photo review · earned a 10% ${store.ticker} bonus</T>}
-                </View>
-              ))}
-            </View>
-          )}
         </View>
       </ScrollView>
     </View>

@@ -51,7 +51,7 @@ export default function WalletScreen() {
   const toast = useToast();
   const [sheet, setSheet] = useState<"send" | "receive" | "help" | null>(null);
   const [to, setTo] = useState("");
-  const [ticker, setTicker] = useState(wallet.balances[0].ticker);
+  const [ticker, setTicker] = useState(wallet.balances[0]?.ticker ?? "SOTECHY");
   const [amount, setAmount] = useState("");
 
   const total = wallet.balances.reduce((n, b) => n + tokenNaira(b.amount), 0);
@@ -61,6 +61,7 @@ export default function WalletScreen() {
   const value = Number(amount.replace(/\D/g, "")) || 0;
   const recipientOk = /^@?[a-z0-9._]{3,}$/i.test(to.trim()) || /^0x[0-9a-f]{40}$/i.test(to.trim());
   const copy = async () => {
+    if (!wallet.address) return toast("Your wallet address appears when tokens go live");
     await Clipboard.setStringAsync(wallet.address);
     toast("Wallet address copied");
   };
@@ -86,8 +87,8 @@ export default function WalletScreen() {
           </View>
           <Txt variant="label" color={colors.ink2}>≈ {formatNaira(Math.round(total))} to spend</Txt>
           <Pressable onPress={copy} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}>
-            <Txt variant="caption" color={colors.ink2}>@{user?.username ?? wallet.username}</Txt>
-            <Txt variant="caption">{shortAddress(wallet.address)}</Txt>
+            {user?.username ? <Txt variant="caption" color={colors.ink2}>@{user.username}</Txt> : null}
+            <Txt variant="caption">{wallet.address ? shortAddress(wallet.address) : "Wallet opens when tokens go live"}</Txt>
             <Ionicons name="copy-outline" size={13} color={colors.muted} />
           </Pressable>
           {pending > 0 && (
@@ -106,6 +107,7 @@ export default function WalletScreen() {
         <View style={{ gap: space.sm }}>
           <Txt variant="heading">By store</Txt>
           <View style={[ui.card, { paddingVertical: space.xs }]}>
+            {wallet.balances.length === 0 && <Txt variant="small" style={{ paddingVertical: space.md }}>No tokens yet. You earn them on every order once tokens go live.</Txt>}
             {wallet.balances.map((b, i) => {
               const store = storeByTicker(b.ticker);
               return (
@@ -133,6 +135,7 @@ export default function WalletScreen() {
         <View style={{ gap: space.sm }}>
           <Txt variant="heading">Activity</Txt>
           <View style={[ui.card, { paddingVertical: space.xs }]}>
+            {walletActivity.length === 0 && <Txt variant="small" style={{ paddingVertical: space.md }}>Tokens you earn, spend and send show here.</Txt>}
             {walletActivity.map((e, i) => {
               const k = EVENT[e.kind];
               return (
@@ -161,7 +164,7 @@ export default function WalletScreen() {
           </Pressable>
         </View>
         <Txt variant="caption" style={{ textAlign: "center" }}>
-          You earn 1 token per ₦1 at each store, plus 10% $SOTECHY at other stores and up to 10% more for a review. Sample wallet: balances come from Monad at launch.
+          You earn 1 token per ₦1 at each store, plus 10% $SOTECHY at other stores and up to 10% more for a review. Tokens go live soon, with balances read from your wallet on Monad.
         </Txt>
       </ScrollView>
 
@@ -274,10 +277,10 @@ export default function WalletScreen() {
           <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
             <Illo name="wallet" size={52} />
           </View>
-          <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 30, color: colors.ink }}>@{user?.username ?? wallet.username}</Text>
+          <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 30, color: colors.ink }}>{user?.username ? `@${user.username}` : "Your wallet"}</Text>
           <Txt variant="small" style={{ textAlign: "center" }}>Other Sotechy users can send you tokens with your username or this address.</Txt>
           <Pressable onPress={copy} style={{ flexDirection: "row", alignItems: "center", gap: space.sm, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt }}>
-            <Txt variant="caption" color={colors.ink2} style={{ fontFamily: fonts.medium }}>{wallet.address}</Txt>
+            <Txt variant="caption" color={colors.ink2} style={{ fontFamily: fonts.medium }}>{wallet.address ?? "Your address appears when tokens go live"}</Txt>
             <Ionicons name="copy-outline" size={16} color={colors.ink2} />
           </Pressable>
         </View>

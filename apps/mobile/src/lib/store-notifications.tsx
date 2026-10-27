@@ -1,6 +1,5 @@
 // Store notifications: customers subscribe to a store, and only subscribers get what that store sends.
 // New messages pop in at the top of the screen and land in the Notifications inbox.
-// Sample messages for now; real ones come from the merchant dashboard through push once the backend exists.
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
@@ -19,14 +18,8 @@ export interface StoreNotice {
   minsAgo: number;
 }
 
-/** What each store has sent (sample) */
-export const STORE_NOTICES: StoreNotice[] = [
-  { id: "n1", store: "xena", title: "Weekend sale: 10% off phones", body: "Every smartphone is 10% off until Sunday, and you still earn $XENA on the full price.", minsAgo: 25 },
-  { id: "n2", store: "sotechy", title: "New arrivals: inverters and solar", body: "3.5kVA inverters and 400W panels just landed at Etete Road. Pickup today.", minsAgo: 60 * 3 },
-  { id: "n3", store: "brighthome", title: "Free AC installation this month", body: "Buy any split air conditioner and we install it free in Enugu, Anambra and Imo.", minsAgo: 60 * 20 },
-  { id: "n4", store: "kola", title: "Generator service week", body: "Bring your generator in for a free check-up. Book a slot from the store page.", minsAgo: 60 * 30 },
-  { id: "n5", store: "xena", title: "Back in stock: 25W fast chargers", body: "The fast charger is back. Only 40 left.", minsAgo: 60 * 52 },
-];
+/** What stores have sent (none yet: store messages arrive once the merchant dashboard can send them) */
+export const STORE_NOTICES: StoreNotice[] = [];
 
 const SUBS_KEY = "sotechy_store_subs";
 const READ_KEY = "sotechy_store_read";
