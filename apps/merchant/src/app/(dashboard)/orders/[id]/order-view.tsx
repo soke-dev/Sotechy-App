@@ -7,7 +7,8 @@ import { useState, useTransition, type ReactNode } from "react";
 import { Illo } from "@/components/illustrations";
 import { btn, Card, Field, inputClass, Pill, ProductThumb } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
-import { formatNaira, formatTokens, PLATFORM_FEE } from "@/lib/money";
+import { DEFAULT_PAYOUT_SETTINGS, splitByPlan } from "@sotechy/shared";
+import { formatNaira, formatTokens } from "@/lib/money";
 import { orderAction } from "@/lib/market-actions";
 import { ORDER_STATUS, orderMoney, type Order } from "@/lib/mock";
 import { useAccount } from "@/components/account-context";
@@ -51,6 +52,23 @@ export function OrderView({ order }: { order: Order }) {
 
   const s = order.status;
   const m = orderMoney(order);
+  // What the store is paid and when, on its payout plan (the delivery fee comes with the first payment)
+  const terms = order.payoutTerms ?? { plan: DEFAULT_PAYOUT_SETTINGS.standard, feeRate: DEFAULT_PAYOUT_SETTINGS.feeRate, finalAfterHours: DEFAULT_PAYOUT_SETTINGS.finalAfterHours };
+  const pay = splitByPlan(order.subtotal, order.deliveryFee, terms.plan, terms.feeRate);
+  const receive = pay.first + pay.second;
+  const feePercent = Math.round(terms.feeRate * 1000) / 10;
+  /** Where each of the two payments is: paid, on its way, or not yet due */
+  const stageState = (stage: "first" | "final") => {
+    const p = order.payouts?.find((x) => x.stage === stage);
+    if (!p) return { label: stage === "first" ? "When you accept" : "After delivery", tone: "neutral" as const, done: false };
+    if (p.status === "paid") return { label: `Paid ${new Date(p.paidAt!).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}`, tone: "good" as const, done: true };
+    if (p.status === "cancelled") return { label: "Cancelled", tone: "neutral" as const, done: false };
+    if (p.status === "held") return { label: "On hold", tone: "warn" as const, done: false };
+    return { label: new Date(p.dueAt).getTime() > Date.now() ? `Due ${new Date(p.dueAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}` : "On its way", tone: "info" as const, done: false };
+  };
+  const firstState = stageState("first");
+  const finalState = stageState("final");
+  const afterDays = terms.finalAfterHours >= 48 && terms.finalAfterHours % 24 === 0 ? `${terms.finalAfterHours / 24} days` : `${terms.finalAfterHours} hours`;
   /** Sends the step to the server; the page reloads with the order's new state */
   const move = (action: "accept" | "ship" | "deliver" | "decline", note?: string) =>
     start(async () => {
@@ -206,12 +224,35 @@ export function OrderView({ order }: { order: Order }) {
           </Card>
 
           <Card title="Your money">
-            <MoneyRow label="Order total" value={formatNaira(m.total)} />
+            <MoneyRow label="Order total" value={formatNaira(order.subtotal + order.deliveryFee)} />
             {order.paidWithTokens > 0 && <MoneyRow label={`Paid with $${store.ticker}`} value={formatNaira(order.paidWithTokens)} tone="text-brand-strong" />}
-            <MoneyRow label={`Sotechy fee (${PLATFORM_FEE * 100}%)`} value={`−${formatNaira(m.fee)}`} />
+            <MoneyRow label={`Sotechy fee (${feePercent}%)`} value={`−${formatNaira(pay.fee)}`} />
             <div className="my-2 border-t border-line" />
-            <MoneyRow strong label="You receive" value={formatNaira(m.share)} />
-            <p className="mt-2 text-xs text-muted">Paid to your payout account on your payout plan, as you fill the order.</p>
+            <MoneyRow strong label="You receive" value={formatNaira(receive)} />
+            <div className="mt-2 flex flex-col gap-2">
+              {[
+                { name: "First payment", amount: pay.first, state: firstState },
+                { name: "Final payment", amount: pay.second, state: finalState },
+              ].map((r) => (
+                <div key={r.name} className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ${r.state.done ? "bg-good-soft" : "bg-surface-alt"}`}>
+                  <span className="min-w-0">
+                    <span className="block font-semibold">{r.name}</span>
+                    <span className={`block text-xs ${r.state.done ? "text-good" : "text-muted"}`}>
+                      {r.state.done && <Check size={12} className="mr-0.5 inline" />}
+                      {r.state.label}
+                    </span>
+                  </span>
+                  <span className={`font-semibold ${r.state.done ? "text-good" : ""}`}>{formatNaira(r.amount)}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              {firstState.done && finalState.done
+                ? "Paid in full to your payout account."
+                : firstState.done
+                  ? `First payment made. The final payment comes ${afterDays} after delivery.`
+                  : `Paid to your payout account: the first part when you accept, the rest ${afterDays} after delivery.`}
+            </p>
             {order.paidWithTokens > 0 && <p className="mt-3 text-xs text-muted">The ${store.ticker} part is paid to you in naira by Sotechy, like the rest of the order.</p>}
           </Card>
 
@@ -234,10 +275,32 @@ export function OrderView({ order }: { order: Order }) {
       <Modal open={dialog === "accept"} onClose={() => setDialog(null)} title="Accept this order?">
         <p className="text-sm text-ink-2">You&apos;re confirming you have the items and can {order.fulfilment === "pickup" ? "have them ready for pickup" : "deliver them"}.</p>
         <div className="my-4 rounded-2xl bg-good-soft p-4">
-          <p className="text-sm text-good">You receive for this order</p>
-          <p className="font-display text-2xl font-bold text-good">{formatNaira(m.share)}</p>
-          <p className="text-xs text-ink-2">Paid out on your payout plan. We tell the customer straight away.</p>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm font-semibold text-good">You receive</p>
+            <p className="font-display text-2xl font-bold text-good">{formatNaira(receive)}</p>
+          </div>
+          <dl className="mt-2 flex flex-col gap-1.5 border-t border-good/20 pt-2.5 text-sm">
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-2">
+                When you accept{order.deliveryFee > 0 && <span className="text-xs text-muted"> · incl. {formatNaira(order.deliveryFee)} delivery</span>}
+              </dt>
+              <dd className="font-semibold">{formatNaira(pay.first)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-2">
+                After delivery <span className="text-xs text-muted">· {afterDays} later</span>
+              </dt>
+              <dd className="font-semibold">{formatNaira(pay.second)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted">
+                Sotechy fee · {feePercent}% of {formatNaira(order.subtotal)}
+              </dt>
+              <dd className="text-muted">−{formatNaira(pay.fee)}</dd>
+            </div>
+          </dl>
         </div>
+        <p className="-mt-1 mb-4 text-xs text-muted">We tell the customer straight away.</p>
         {error && <p className="mb-3 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
         <button disabled={busy} onClick={() => move("accept")} className={`${btn.primary} w-full`}>
           {busy ? "Accepting…" : "Accept order"}

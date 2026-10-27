@@ -676,6 +676,10 @@ export interface MerchantOrder {
   createdAt: string;
   acceptBy?: string;
   history: { at: string; label: string; note?: string }[];
+  /** On a single order: how the store is paid for it */
+  payoutTerms?: { plan: import("./payouts").PayoutPlan; feeRate: number; finalAfterHours: number };
+  /** On a single order: its payments to the store so far */
+  payouts?: { stage: "first" | "final"; amount: number; status: import("./payouts").PayoutStatus; dueAt: string; paidAt: string | null }[];
 }
 
 export interface DeliveryZone {

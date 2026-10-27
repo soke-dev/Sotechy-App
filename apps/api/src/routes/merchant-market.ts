@@ -660,9 +660,20 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
   // --- Orders ---
   .get("/orders", async (c) => c.json(await ordersForDashboard(c.get("store").id)))
   .get("/orders/:id", async (c) => {
-    const [o] = await ordersForDashboard(c.get("store").id, [c.req.param("id")]);
+    const store = c.get("store");
+    const [o] = await ordersForDashboard(store.id, [c.req.param("id")]);
     if (!o) throw notFound("Order not found");
-    return c.json(o);
+    const settings = await payoutSettings();
+    const mp = schema.merchantPayouts;
+    const paid = await db
+      .select({ stage: mp.stage, amount: mp.amount, status: mp.status, dueAt: mp.dueAt, paidAt: mp.paidAt })
+      .from(mp)
+      .where(and(eq(mp.orderId, o.id), eq(mp.merchantId, store.id)));
+    return c.json({
+      ...o,
+      payoutTerms: { plan: store.payoutPlan ?? settings.standard, feeRate: settings.feeRate, finalAfterHours: settings.finalAfterHours },
+      payouts: paid.filter((p) => p.stage !== "payback").map((p) => ({ ...p, dueAt: p.dueAt.toISOString(), paidAt: p.paidAt?.toISOString() ?? null })),
+    });
   })
   .post("/orders/:id/:action", zValidator("json", z.object({ note: z.string().trim().max(300).optional() }).default({})), async (c) => {
     const store = c.get("store");
