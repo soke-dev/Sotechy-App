@@ -48,6 +48,7 @@ export function StoreStep({ firstName, needsUsername, phone, referral }: { first
   const [state, action, pending] = useActionState(openStore, null);
   const [kind, setKind] = useState<"individual" | "registered">("registered");
   const [same, setSame] = useState(true);
+  const [agreed, setAgreed] = useState(false);
 
   return (
     <>
@@ -89,10 +90,17 @@ export function StoreStep({ firstName, needsUsername, phone, referral }: { first
         </label>
         {!same && <PhoneField name="whatsapp" label="WhatsApp number" required />}
         <label className="flex items-start gap-3 text-sm text-ink-2">
-          <input type="checkbox" required className="mt-0.5" /> I agree to Sotechy&apos;s merchant terms.
+          <input type="checkbox" required checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-brand)]" />
+          <span>
+            I agree to Sotechy&apos;s{" "}
+            <Link href="/terms" target="_blank" className="font-semibold text-brand-strong underline">
+              merchant terms
+            </Link>
+            .
+          </span>
         </label>
         <FormError message={state?.error} />
-        <button disabled={pending} className={btn.primary}>{pending ? "Opening your store…" : "Continue to setup"}</button>
+        <button disabled={pending || !agreed} className={btn.primary}>{pending ? "Opening your store…" : "Continue to setup"}</button>
       </form>
       <form action={signOut} className="mt-6 text-center text-sm text-muted">
         Wrong account? <button className="font-semibold text-brand-strong hover:underline">Sign out</button>

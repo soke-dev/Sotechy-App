@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const OPEN = ["/login", "/signup", "/logout", "/forgot"];
+const OPEN = ["/login", "/signup", "/logout", "/forgot", "/terms"];
 
 // Optimistic check only: the API verifies the token on every request.
 export function proxy(request: NextRequest) {
