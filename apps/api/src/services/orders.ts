@@ -11,6 +11,7 @@ import { findPromotion } from "./promotions";
 import { deliveryFeeFor, getSetting, type DeliverySettings } from "./settings";
 import { agreedPriceFor, releaseOffers } from "./offers";
 import { payoutsForStatus } from "./payouts";
+import { tokensForStatus } from "./tokens";
 import { storeDeliveryCharge } from "./store-delivery";
 
 const { orders, orderItems, payments, inventory, productVariants, products, orderStatusHistory } = schema;
@@ -433,6 +434,7 @@ export async function updateOrderStatus(actor: AuthUser, orderId: string, to: Or
   });
   void notifyOrderStatus(orderId, to);
   if (updated.merchantId) await payoutsForStatus(orderId, to);
+  await tokensForStatus(orderId, to);
   return updated;
 }
 

@@ -1,67 +1,104 @@
-// The token contract on chain, for the admin: where it is, whether it's running, its limits,
-// and how much gas the operator wallet has left. Read live from the chain; no keys needed.
-import { deployments, sotechyTokensAbi } from "@sotechy/contracts";
+// The contracts on chain, for the admin: where they are, whether they're running, the operator's gas,
+// what's waiting to be written, and the button that sends a batch to Base.
+import { deployments, sotechyReceiptsAbi, sotechyTokensAbi, type ContractName } from "@sotechy/contracts";
 import { Hono } from "hono";
-import { createPublicClient, formatEther, http, type Chain } from "viem";
-import { base, baseSepolia, monad, monadTestnet } from "viem/chains";
-import type { AppEnv } from "../../lib/auth";
+import { formatEther } from "viem";
+import { audit } from "../../lib/audit";
+import { requirePassword, requireRole, type AppEnv } from "../../lib/auth";
+import { HttpError } from "../../lib/errors";
+import { CHAINS, currentContract, publicClient, queueStats, retryStuck, sendBaseBatch, type ChainName } from "../../services/chain";
+import { CROSS_BONUS, latestActivity, tokenRegistry } from "../../services/tokens";
+import { db } from "../../db/client";
 
-const CHAINS: Record<string, { chain: Chain; explorer: string; primary: boolean }> = {
-  monad: { chain: monad, explorer: "https://monadvision.com", primary: true },
-  base: { chain: base, explorer: "https://basescan.org", primary: false },
-  "monad-testnet": { chain: monadTestnet, explorer: "https://testnet.monadvision.com", primary: false },
-  "base-sepolia": { chain: baseSepolia, explorer: "https://sepolia.basescan.org", primary: false },
-};
+const ADMIN = requireRole("admin");
 
 /** Below this the operator could run out mid-day, so the admin is warned */
-const LOW_GAS = 2;
+const LOW_GAS = { monad: 2, base: 0.00005 } as const;
 
-async function chainStatus(name: string) {
-  const known = CHAINS[name];
-  const list = deployments[name] ?? [];
-  const current = list.at(-1);
-  if (!known || !current) return null;
-  const client = createPublicClient({ chain: known.chain, transport: http() });
-  const read = (functionName: "paused" | "retired" | "maxMintPerOp" | "maxMintPerDay" | "mintedToday") => client.readContract({ address: current.address, abi: sotechyTokensAbi, functionName });
+async function contractStatus(contract: ContractName, chain: ChainName) {
+  const current = currentContract(contract, chain);
+  if (!current) return null;
+  const { explorer } = CHAINS[chain];
   const base = {
-    chain: name,
-    chainName: known.chain.name,
-    chainId: current.chainId,
-    primary: known.primary,
-    symbol: known.chain.nativeCurrency.symbol,
+    contract,
     address: current.address,
     version: current.version,
     deployedAt: current.deployedAt,
-    contractUrl: `${known.explorer}/address/${current.address}`,
-    operator: { address: current.operator, url: `${known.explorer}/address/${current.operator}` },
-    owner: { address: current.owner, url: `${known.explorer}/address/${current.owner}` },
-    earlier: list.slice(0, -1).map((d) => ({ version: d.version, address: d.address, url: `${known.explorer}/address/${d.address}` })),
+    url: `${explorer}/address/${current.address}`,
+    earlier: (deployments[contract][chain] ?? []).slice(0, -1).map((d) => ({ version: d.version, address: d.address, url: `${explorer}/address/${d.address}` })),
   };
   try {
-    const [paused, retired, maxMintPerOp, maxMintPerDay, mintedToday, operatorWei, ownerWei] = await Promise.all([
-      read("paused"),
-      read("retired"),
-      read("maxMintPerOp"),
-      read("maxMintPerDay"),
-      read("mintedToday"),
-      client.getBalance({ address: current.operator }),
-      client.getBalance({ address: current.owner }),
-    ]);
-    const operatorBalance = Number(formatEther(operatorWei));
-    return {
-      ...base,
-      reachable: true as const,
-      state: retired ? "retired" : paused ? "paused" : "running",
-      limits: { perMint: Number(maxMintPerOp), perDay: Number(maxMintPerDay), mintedToday: Number(mintedToday) },
-      operator: { ...base.operator, balance: operatorBalance, low: operatorBalance < LOW_GAS },
-      owner: { ...base.owner, balance: Number(formatEther(ownerWei)) },
-    };
+    const client = publicClient(chain);
+    const abi = contract === "tokens" ? sotechyTokensAbi : sotechyReceiptsAbi;
+    const read = (functionName: "paused" | "retired") => client.readContract({ address: current.address, abi, functionName }) as Promise<boolean>;
+    const [paused, retired] = await Promise.all([read("paused"), read("retired")]);
+    let detail: Record<string, number> = {};
+    if (contract === "tokens") {
+      const r = (functionName: "maxMintPerOp" | "maxMintPerDay" | "mintedToday") => client.readContract({ address: current.address, abi: sotechyTokensAbi, functionName });
+      const [perMint, perDay, mintedToday] = await Promise.all([r("maxMintPerOp"), r("maxMintPerDay"), r("mintedToday")]);
+      detail = { perMint: Number(perMint), perDay: Number(perDay), mintedToday: Number(mintedToday) };
+    } else {
+      detail = { issued: Number(await client.readContract({ address: current.address, abi: sotechyReceiptsAbi, functionName: "totalIssued" })) };
+    }
+    return { ...base, reachable: true, state: retired ? "retired" : paused ? "paused" : "running", ...detail };
   } catch {
-    return { ...base, reachable: false as const };
+    return { ...base, reachable: false };
   }
 }
 
-export const adminChainRoutes = new Hono<AppEnv>().get("/chain", async (c) => {
-  const chains = (await Promise.all(Object.keys(deployments).map(chainStatus))).filter((x) => x !== null);
-  return c.json({ chains, lowGas: LOW_GAS });
-});
+async function chainStatus(chain: ChainName) {
+  const [tokens, receipts] = await Promise.all([contractStatus("tokens", chain), contractStatus("receipts", chain)]);
+  // Before a chain has contracts, its card still shows the wallets' gas (same wallets everywhere)
+  const any = currentContract("tokens", chain) ?? currentContract("receipts", chain) ?? currentContract("tokens", "monad");
+  if (!any) return null;
+  const { explorer, chain: c } = CHAINS[chain];
+  const wallet = async (address: `0x${string}`) => {
+    try {
+      return { address, url: `${explorer}/address/${address}`, balance: Number(formatEther(await publicClient(chain).getBalance({ address }))) };
+    } catch {
+      return { address, url: `${explorer}/address/${address}`, balance: null };
+    }
+  };
+  const [operator, owner] = await Promise.all([wallet(any.operator), wallet(any.owner)]);
+  return {
+    chain,
+    chainName: c.name,
+    primary: chain === "monad",
+    symbol: c.nativeCurrency.symbol,
+    operator: { ...operator, low: operator.balance !== null && operator.balance < LOW_GAS[chain] },
+    owner,
+    lowGas: LOW_GAS[chain],
+    contracts: [tokens, receipts].filter((x) => x !== null),
+  };
+}
+
+export const adminChainRoutes = new Hono<AppEnv>()
+  .get("/chain", async (c) => {
+    const [chains, queue, tokens, activity] = await Promise.all([Promise.all((["monad", "base"] as const).map(chainStatus)), queueStats(), tokenRegistry(), latestActivity()]);
+    const tokensContract = currentContract("tokens", "monad");
+    const explorer = CHAINS.monad.explorer;
+    return c.json({
+      chains: chains.filter((x) => x !== null),
+      queue,
+      tokens,
+      tokensUrl: tokensContract ? `${explorer}/address/${tokensContract.address}` : null,
+      activity: activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
+      rules: { perNaira: 1, crossBonus: CROSS_BONUS },
+    });
+  })
+  /** Copies everything Monad has onto Base, only when an admin asks */
+  .post("/chain/base-batch", ADMIN, requirePassword, async (c) => {
+    try {
+      const result = await sendBaseBatch();
+      await audit(db, { actorId: c.get("user").id, action: "chain.base_batch", entityType: "chain", details: result });
+      return c.json(result);
+    } catch (err) {
+      throw new HttpError(400, err instanceof Error ? err.message : "The Base batch failed");
+    }
+  })
+  /** Lets changes that failed too often on Monad go again */
+  .post("/chain/retry", ADMIN, async (c) => {
+    const retried = await retryStuck();
+    await audit(db, { actorId: c.get("user").id, action: "chain.retry", entityType: "chain", details: { retried } });
+    return c.json({ retried });
+  });

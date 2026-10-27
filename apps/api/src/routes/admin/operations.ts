@@ -12,6 +12,7 @@ import { cancelOrder, recordWalkInSale, updateOrderStatus, verifyPaymentManually
 import { lineSchema, loadOrderDetail, paymentMethodSchema } from "../orders";
 import { notifyOrderStatus } from "../../services/order-notices";
 import { payoutsForStatus } from "../../services/payouts";
+import { tokensForStatus } from "../../services/tokens";
 
 const { orders, payments, refunds, inventory, productVariants, products, branches, stockMovements, users } = schema;
 
@@ -138,6 +139,7 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
       if (status === "processed") {
         void notifyOrderStatus(refund.orderId, "refunded");
         await payoutsForStatus(refund.orderId, "refunded");
+        await tokensForStatus(refund.orderId, "refunded");
       }
       return c.json(refund);
     },

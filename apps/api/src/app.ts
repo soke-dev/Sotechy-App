@@ -14,6 +14,7 @@ import { adminOperationsRoutes } from "./routes/admin/operations";
 import { adminFeaturingRoutes } from "./routes/admin/featuring";
 import { adminPayoutRoutes } from "./routes/admin/payouts";
 import { authRoutes } from "./routes/auth";
+import { chainPublicRoutes } from "./routes/chain-public";
 import { devEmailRoutes } from "./routes/dev-emails";
 import { geoRoutes } from "./routes/geo";
 import { mediaRoutes } from "./routes/media";
@@ -46,6 +47,7 @@ export const app = new Hono()
   // Pictures used in emails (logo, illustrations), from apps/api/public/email
   .use("/email-assets/*", serveStatic({ root: "./public/email", rewriteRequestPath: (p) => p.replace(/^\/email-assets/, "") }))
   .route("/auth", authRoutes)
+  .route("/", chainPublicRoutes)
   .route("/store", storeRoutes)
   .route("/orders", orderRoutes)
   .route("/offers", offerRoutes)

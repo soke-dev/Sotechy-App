@@ -49,6 +49,16 @@ const schema = z.object({
   DIDIT_API_KEY: z.string().optional(),
   DIDIT_WORKFLOW_ID: z.string().optional(),
   DIDIT_WEBHOOK_SECRET: z.string().optional(),
+  /** The operator wallet's private key (0x…): writes token movements and receipts on chain. Never the owner key. */
+  CHAIN_OPERATOR_KEY: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{64}$/, "CHAIN_OPERATOR_KEY must be a 0x… private key")
+    .optional(),
+  /** Outside production, nothing is written on chain unless this is "true" (local runs must not spend gas) */
+  CHAIN_WRITES_IN_DEV: z.enum(["true", "false"]).default("false"),
+  /** Own RPC endpoints, if the public ones get slow or rate-limited */
+  MONAD_RPC_URL: z.string().url().optional(),
+  BASE_RPC_URL: z.string().url().optional(),
   /** The merchant dashboard, where Didit sends people back after their check */
   MERCHANT_APP_URL: z.string().default("https://merchant.sotechy.shop"),
 });

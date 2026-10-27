@@ -1,12 +1,41 @@
 "use client";
 
-import { Check, ExternalLink, KeyRound } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { ExternalLink } from "lucide-react";
+import type { ReactNode } from "react";
 import { formatNaira } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { RelTime } from "@/components/rel-time";
-import { buttonClass, Card, DataTable, Field, inputClass, PageHeader, Pill, StatCard } from "@/components/ui";
-import { FEE, formatTokens, reserve, reserveHealth, TOKEN_EVENT, TOKEN_VALUE, tokenEvents, tokens } from "@/lib/marketplace";
+import { Card, DataTable, PageHeader, Pill, StatCard } from "@/components/ui";
+import { formatTokens, reserve, reserveHealth, TOKEN_VALUE } from "@/lib/marketplace";
+
+export interface TokenRow {
+  tokenId: number;
+  ticker: string;
+  store: string;
+  supply: number;
+  minted: number;
+  holders: number;
+  onChain: boolean;
+}
+
+export interface TokenActivity {
+  id: string;
+  kind: "earned" | "bonus" | "sent" | "spent" | "refunded";
+  ticker: string;
+  amount: number;
+  from: string | null;
+  to: string | null;
+  at: string;
+  txUrl: string | null;
+}
+
+const ACTIVITY: Record<TokenActivity["kind"], { label: string; tone: "good" | "info" | "neutral" | "warn" | "bad" }> = {
+  earned: { label: "Earned", tone: "good" },
+  bonus: { label: "$SOTECHY bonus", tone: "info" },
+  sent: { label: "Sent", tone: "neutral" },
+  spent: { label: "Spent", tone: "warn" },
+  refunded: { label: "Taken back", tone: "bad" },
+};
 
 /** Half-circle gauge of how much of the token value the reserve covers */
 function CoverGauge({ cover }: { cover: number }) {
@@ -25,22 +54,27 @@ function CoverGauge({ cover }: { cover: number }) {
   );
 }
 
-export function TokensView({ chain }: { chain: ReactNode }) {
+export function TokensView({
+  chain,
+  tokens,
+  tokensUrl,
+  activity,
+  rules,
+}: {
+  chain: ReactNode;
+  tokens: TokenRow[];
+  tokensUrl: string | null;
+  activity: TokenActivity[];
+  rules: { perNaira: number; crossBonus: number };
+}) {
   const health = reserveHealth();
-  const [fee, setFee] = useState(FEE.rate * 100);
-  const [reserveShare, setReserveShare] = useState(FEE.reserveShare * 100);
-  const [bonus, setBonus] = useState(FEE.maxReviewBonus * 100);
-  const [cross, setCross] = useState(FEE.crossBonus * 100);
-  const [signed, setSigned] = useState(false);
-  const changed = fee !== FEE.rate * 100 || reserveShare !== FEE.reserveShare * 100 || bonus !== FEE.maxReviewBonus * 100 || cross !== FEE.crossBonus * 100;
-  const newValue = (fee / 100) * (reserveShare / 100) / (1 + bonus / 100);
 
   return (
     <>
       <PageHeader
         illo="coin"
         title="Tokens & reserve"
-        description="Every store's $TICKER token on Monad, the reserve that backs them, and the fee settings. The store numbers below fill in as stores start giving out tokens."
+        description="Every store's $TICKER token and every receipt, written on Monad, and the reserve that backs the tokens."
       />
       {chain}
 
@@ -63,90 +97,86 @@ export function TokensView({ chain }: { chain: ReactNode }) {
       </div>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <Card title="Token registry" description="One token per store. Sotechy's $SOTECHY is also given as a 10% bonus at other stores." padded={false}>
+        <Card title="Tokens" description="One per store, created on Monad when you approve the store. $SOTECHY is Sotechy's own." padded={false}>
           <div className="px-5 pb-5">
             <DataTable
               rows={tokens}
+              empty="No tokens yet"
               columns={[
                 {
                   header: "Token",
                   cell: (t) => (
                     <span className="flex flex-wrap items-baseline gap-x-2 md:block">
                       <span className="font-display font-bold text-brand-strong md:block">${t.ticker}</span>
-                      <span className="text-xs font-normal text-muted">{t.merchant}</span>
+                      <span className="text-xs font-normal text-muted">{t.store}</span>
                     </span>
                   ),
                 },
-                { header: "With customers", cell: (t) => <span className="font-semibold">{formatTokens(t.circulating)}</span> },
-                { header: "Pending", cell: (t) => <span className="text-muted">{formatTokens(t.pending)}</span> },
-                { header: "Spent", cell: (t) => formatTokens(t.redeemed) },
+                { header: "With customers", cell: (t) => <span className="font-semibold">{formatTokens(t.supply)}</span> },
+                { header: "Earned in all", cell: (t) => formatTokens(t.minted) },
                 { header: "Holders", cell: (t) => t.holders.toLocaleString() },
                 {
-                  header: "Contract",
+                  header: "On chain",
                   hideOnPhone: true,
-                  cell: (t) => (
-                    <a href="#" className="inline-flex items-center gap-1 whitespace-nowrap font-mono text-xs text-muted hover:text-ink">
-                      {t.contract} <ExternalLink size={12} />
-                    </a>
-                  ),
+                  cell: (t) =>
+                    t.onChain && tokensUrl ? (
+                      <a href={tokensUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-good hover:underline">
+                        Token #{t.tokenId} <ExternalLink size={12} />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted">Being created</span>
+                    ),
                 },
               ]}
             />
           </div>
         </Card>
 
-        <Card title="Fees and bonuses">
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Platform fee (%)">
-                <input type="number" step={0.1} min={0} value={fee} onChange={(e) => { setFee(Number(e.target.value)); setSigned(false); }} className={inputClass} />
-              </Field>
-              <Field label="To the reserve (%)" hint={`Rest is revenue: ${100 - reserveShare}%`}>
-                <input type="number" min={0} max={100} value={reserveShare} onChange={(e) => { setReserveShare(Number(e.target.value)); setSigned(false); }} className={inputClass} />
-              </Field>
-              <Field label="Max review bonus (%)">
-                <input type="number" min={0} value={bonus} onChange={(e) => { setBonus(Number(e.target.value)); setSigned(false); }} className={inputClass} />
-              </Field>
-              <Field label="$SOTECHY at other stores (%)">
-                <input type="number" min={0} value={cross} onChange={(e) => { setCross(Number(e.target.value)); setSigned(false); }} className={inputClass} />
-              </Field>
-            </div>
-            <p className="rounded-2xl bg-surface-alt px-3 py-2.5 text-sm">
-              Store value per token: <b>₦{newValue.toFixed(5)}</b>
-              {changed && <span className="text-muted"> (now ₦{TOKEN_VALUE.toFixed(5)})</span>}. Applies to orders placed after you save.
-            </p>
-            {signed ? (
-              <p className="flex items-center gap-2 rounded-2xl bg-good-soft px-3 py-2.5 text-sm text-good">
-                <Check size={16} /> Signed with the admin key and sent to Monad.
-              </p>
-            ) : (
-              <button disabled={!changed} onClick={() => setSigned(true)} className={buttonClass}>
-                <KeyRound size={16} /> Sign and save
-              </button>
-            )}
-          </div>
+        <Card title="How tokens are earned">
+          <ul className="flex flex-col gap-3 text-sm">
+            <li className="rounded-2xl bg-surface-alt px-4 py-3">
+              <b>{rules.perNaira} token per ₦1</b> of goods in the store&apos;s own token, when the order is delivered. Delivery fees don&apos;t earn.
+            </li>
+            <li className="rounded-2xl bg-surface-alt px-4 py-3">
+              <b>{Math.round(rules.crossBonus * 100)}% more in $SOTECHY</b> on orders from other stores.
+            </li>
+            <li className="rounded-2xl bg-surface-alt px-4 py-3">A refunded order takes back what it earned. Customers can send tokens to each other by @username.</li>
+          </ul>
+          <p className="mt-3 text-xs text-muted">Store value per token: ₦{TOKEN_VALUE.toFixed(5)}.</p>
         </Card>
       </div>
 
       <Card title="Latest token activity">
-        <ul className="flex flex-col divide-y divide-line">
-          {tokenEvents.map((e) => (
-            <li key={e.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft">
-                <Illo name="coin" size={26} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">
-                  {formatTokens(e.amount)} ${e.ticker}
+        {activity.length === 0 ? (
+          <p className="text-sm text-muted">Nothing yet. Tokens are earned as orders get delivered.</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-line">
+            {activity.map((e) => (
+              <li key={e.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft">
+                  <Illo name="coin" size={26} />
                 </span>
-                <span className="text-xs text-muted">
-                  {e.who} · <RelTime iso={e.at} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">
+                    {formatTokens(e.amount)} ${e.ticker}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {e.kind === "sent" ? `${e.from} → ${e.to}` : (e.to ?? e.from)} · <RelTime iso={e.at} />
+                    {e.txUrl && (
+                      <>
+                        {" · "}
+                        <a href={e.txUrl} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
+                          on Monad
+                        </a>
+                      </>
+                    )}
+                  </span>
                 </span>
-              </span>
-              <Pill tone={TOKEN_EVENT[e.kind].tone}>{TOKEN_EVENT[e.kind].label}</Pill>
-            </li>
-          ))}
-        </ul>
+                <Pill tone={ACTIVITY[e.kind].tone}>{ACTIVITY[e.kind].label}</Pill>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
     </>
   );

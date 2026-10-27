@@ -2,25 +2,32 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { formatNaira } from "@sotechy/shared";
+import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
+import { formatNaira, type WalletActivity } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { Sheet } from "@/components/shop-filters";
-import { openStore, StoreLogo } from "@/components/store-bits";
-import { router, Stack } from "expo-router";
+import { openStore } from "@/components/store-bits";
+import { Stack } from "expo-router";
 import { useToast } from "@/components/toast";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Chip, Divider, Txt, ui, type IconName } from "@/components/ui";
-import { ago, formatTokens, shortAddress, storeByTicker, tokenNaira, wallet, walletActivity, type WalletEventKind } from "@/lib/marketplace";
+import { formatTokens, shortAddress, tokenNaira } from "@/lib/marketplace";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { useAsync } from "@/lib/use-async";
 
-const EVENT: Record<WalletEventKind, { icon: IconName; tone: string; sign: "+" | "−" | "" }> = {
-  earned: { icon: "arrow-down", tone: colors.success, sign: "+" },
-  bonus: { icon: "star", tone: colors.brandPressed, sign: "+" },
-  received: { icon: "arrow-down", tone: colors.success, sign: "+" },
-  pending: { icon: "time-outline", tone: colors.warning, sign: "" },
-  spent: { icon: "bag-handle-outline", tone: colors.ink2, sign: "−" },
-  sent: { icon: "arrow-up", tone: colors.ink2, sign: "−" },
+const EVENT: Record<WalletActivity["kind"], { icon: IconName; tone: string; title: (e: WalletActivity) => string }> = {
+  earned: { icon: "arrow-down", tone: colors.success, title: (e) => `Earned at ${e.store}${e.order ? ` · ${e.order}` : ""}` },
+  bonus: { icon: "star", tone: colors.brandPressed, title: (e) => `$SOTECHY bonus${e.order ? ` · ${e.order}` : ""}` },
+  received: { icon: "arrow-down", tone: colors.success, title: (e) => `From @${e.who ?? "someone"}` },
+  spent: { icon: "bag-handle-outline", tone: colors.ink2, title: (e) => `Spent at ${e.store}` },
+  sent: { icon: "arrow-up", tone: colors.ink2, title: (e) => `To @${e.who ?? "someone"}` },
+  refunded: { icon: "return-up-back-outline", tone: colors.ink2, title: (e) => `Refunded order${e.order ? ` · ${e.order}` : ""}` },
+};
+
+const ago = (iso: string) => {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  return mins < 1 ? "just now" : mins < 60 ? `${mins} min ago` : mins < 60 * 24 ? `${Math.round(mins / 60)}h ago` : `${Math.round(mins / 60 / 24)}d ago`;
 };
 
 function ActionButton({ icon, label, onPress, primary }: { icon: IconName; label: string; onPress: () => void; primary?: boolean }) {
@@ -51,19 +58,39 @@ export default function WalletScreen() {
   const toast = useToast();
   const [sheet, setSheet] = useState<"send" | "receive" | "help" | null>(null);
   const [to, setTo] = useState("");
-  const [ticker, setTicker] = useState(wallet.balances[0]?.ticker ?? "SOTECHY");
+  const [picked, setTicker] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
+  const [sending, setSending] = useState(false);
+  const { data, loading, error, reload } = useAsync(() => api.wallet(), []);
+  const wallet = data ?? { address: null, addressUrl: null, balances: [], activity: [] };
+  const held = wallet.balances.filter((b) => b.amount > 0);
+  const ticker = picked ?? held[0]?.ticker ?? "SOTECHY";
 
   const total = wallet.balances.reduce((n, b) => n + tokenNaira(b.amount), 0);
   const pending = wallet.balances.reduce((n, b) => n + b.pending, 0);
   const totalTokens = wallet.balances.reduce((n, b) => n + b.amount, 0);
   const balance = wallet.balances.find((b) => b.ticker === ticker)?.amount ?? 0;
   const value = Number(amount.replace(/\D/g, "")) || 0;
-  const recipientOk = /^@?[a-z0-9._]{3,}$/i.test(to.trim()) || /^0x[0-9a-f]{40}$/i.test(to.trim());
+  const recipientOk = /^@?[a-z0-9._]{3,}$/i.test(to.trim());
   const copy = async () => {
-    if (!wallet.address) return toast("Your wallet address appears when tokens go live");
+    if (!wallet.address) return;
     await Clipboard.setStringAsync(wallet.address);
     toast("Wallet address copied");
+  };
+  const send = async () => {
+    setSending(true);
+    try {
+      const r = await api.sendTokens({ to: to.trim(), ticker, amount: value });
+      toast(`Sent ${formatTokens(r.amount)} $${r.ticker} to @${r.to}`);
+      setSheet(null);
+      setTo("");
+      setAmount("");
+      reload();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't send the tokens");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -77,7 +104,9 @@ export default function WalletScreen() {
           ),
         }}
       />
-      <ScrollView contentContainerStyle={{ padding: gutter, paddingBottom: space.xxl * 2, gap: space.lg }}>
+      <ScrollView contentContainerStyle={{ padding: gutter, paddingBottom: space.xxl * 2, gap: space.lg }} refreshControl={<RefreshControl refreshing={loading && !!data} onRefresh={reload} />}>
+        {!data && loading && <ActivityIndicator color={colors.ink} style={{ marginTop: space.xl }} />}
+        {error && <Txt variant="small" color={colors.danger}>{error}</Txt>}
         {/* Balance */}
         <View style={{ gap: 2, paddingTop: space.sm }}>
           <Txt variant="small">Your tokens</Txt>
@@ -88,8 +117,8 @@ export default function WalletScreen() {
           <Txt variant="label" color={colors.ink2}>≈ {formatNaira(Math.round(total))} to spend</Txt>
           <Pressable onPress={copy} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}>
             {user?.username ? <Txt variant="caption" color={colors.ink2}>@{user.username}</Txt> : null}
-            <Txt variant="caption">{wallet.address ? shortAddress(wallet.address) : "Wallet opens when tokens go live"}</Txt>
-            <Ionicons name="copy-outline" size={13} color={colors.muted} />
+            {wallet.address && <Txt variant="caption">{shortAddress(wallet.address)}</Txt>}
+            {wallet.address && <Ionicons name="copy-outline" size={13} color={colors.muted} />}
           </Pressable>
           {pending > 0 && (
             <Txt variant="caption" style={{ marginTop: 6 }}>
@@ -98,26 +127,25 @@ export default function WalletScreen() {
           )}
         </View>
         <View style={{ flexDirection: "row", gap: space.sm }}>
-          <ActionButton primary icon="arrow-up" label="Send" onPress={() => setSheet("send")} />
+          <ActionButton primary icon="arrow-up" label="Send" onPress={() => (held.length ? setSheet("send") : toast("You don't have tokens to send yet"))} />
           <ActionButton icon="arrow-down" label="Receive" onPress={() => setSheet("receive")} />
-          <ActionButton icon="storefront-outline" label="Spend" onPress={() => router.push("/stores")} />
+          <ActionButton icon="storefront-outline" label="Spend" onPress={() => toast("Paying with tokens at checkout is coming soon")} />
         </View>
 
         {/* Tokens */}
         <View style={{ gap: space.sm }}>
           <Txt variant="heading">By store</Txt>
           <View style={[ui.card, { paddingVertical: space.xs }]}>
-            {wallet.balances.length === 0 && <Txt variant="small" style={{ paddingVertical: space.md }}>No tokens yet. You earn them on every order once tokens go live.</Txt>}
+            {wallet.balances.length === 0 && <Txt variant="small" style={{ paddingVertical: space.md }}>No tokens yet. You earn them on every order, once it&apos;s delivered.</Txt>}
             {wallet.balances.map((b, i) => {
-              const store = storeByTicker(b.ticker);
               return (
                 <View key={b.ticker}>
                   {i > 0 && <Divider />}
-                  <Pressable onPress={() => store && openStore(store.slug)} style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>
-                    {store ? <StoreLogo store={store} size={38} /> : <Illo name="coin" size={38} />}
+                  <Pressable onPress={() => b.slug && openStore(b.slug)} style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>
+                    {b.logoUrl ? <Image source={{ uri: b.logoUrl }} style={{ width: 38, height: 38, borderRadius: 11 }} /> : <Illo name="coin" size={38} />}
                     <View style={{ flex: 1, gap: 1 }}>
                       <Txt variant="label" color={colors.brandPressed} style={{ fontFamily: fonts.bold }}>${b.ticker}</Txt>
-                      <Txt variant="caption">{b.ticker === "SOTECHY" ? "Spend at any Sotechy store" : `Spend at ${store?.name ?? "the store"}`}</Txt>
+                      <Txt variant="caption">{b.ticker === "SOTECHY" ? "Sotechy's own token" : b.store}</Txt>
                       {b.pending > 0 && <Txt variant="caption" color={colors.warning}>+{formatTokens(b.pending)} pending</Txt>}
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
@@ -135,36 +163,39 @@ export default function WalletScreen() {
         <View style={{ gap: space.sm }}>
           <Txt variant="heading">Activity</Txt>
           <View style={[ui.card, { paddingVertical: space.xs }]}>
-            {walletActivity.length === 0 && <Txt variant="small" style={{ paddingVertical: space.md }}>Tokens you earn, spend and send show here.</Txt>}
-            {walletActivity.map((e, i) => {
+            {wallet.activity.length === 0 && <Txt variant="small" style={{ paddingVertical: space.md }}>Tokens you earn and send show here.</Txt>}
+            {wallet.activity.map((e, i) => {
               const k = EVENT[e.kind];
               return (
                 <View key={e.id}>
                   {i > 0 && <Divider />}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>
+                  <Pressable disabled={!e.txUrl} onPress={() => e.txUrl && Linking.openURL(e.txUrl)} style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>
                     <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
                       <Ionicons name={k.icon} size={17} color={k.tone} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Txt variant="medium" numberOfLines={1} style={{ fontSize: 14 }}>{e.title}</Txt>
-                      <Txt variant="caption">{ago(e.minsAgo)}</Txt>
+                      <Txt variant="medium" numberOfLines={1} style={{ fontSize: 14 }}>{k.title(e)}</Txt>
+                      <Txt variant="caption">
+                        {ago(e.at)}
+                        {e.txUrl ? " · on Monad" : " · being recorded"}
+                      </Txt>
                     </View>
                     <Txt variant="label" color={k.tone}>
-                      {k.sign}
-                      {formatTokens(e.amount)} ${e.ticker}
+                      {e.amount > 0 ? "+" : "−"}
+                      {formatTokens(Math.abs(e.amount))} ${e.ticker}
                     </Txt>
-                  </View>
+                  </Pressable>
                 </View>
               );
             })}
           </View>
-          <Pressable onPress={() => toast("Opens your wallet on the Monad explorer")} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: space.sm }}>
+          <Pressable disabled={!wallet.addressUrl} onPress={() => wallet.addressUrl && Linking.openURL(wallet.addressUrl)} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: space.sm }}>
             <Ionicons name="open-outline" size={15} color={colors.brandPressed} />
             <Txt variant="label" color={colors.brandPressed}>See every transaction on Monad</Txt>
           </Pressable>
         </View>
         <Txt variant="caption" style={{ textAlign: "center" }}>
-          You earn 1 token per ₦1 at each store, plus 10% $SOTECHY at other stores and up to 10% more for a review. Tokens go live soon, with balances read from your wallet on Monad.
+          You earn 1 token per ₦1 at each store when your order is delivered, plus 10% in $SOTECHY at other stores. Every token and receipt is recorded on Monad.
         </Txt>
       </ScrollView>
 
@@ -176,13 +207,8 @@ export default function WalletScreen() {
           <Button
             title={value ? `Send ${formatTokens(value)} $${ticker}` : "Send"}
             icon="arrow-up"
-            disabled={!recipientOk || !value || value > balance}
-            onPress={() => {
-              toast(`Sent ${formatTokens(value)} $${ticker} to ${to.trim().startsWith("0x") ? shortAddress(to.trim()) : `@${to.trim().replace(/^@/, "")}`}`);
-              setSheet(null);
-              setTo("");
-              setAmount("");
-            }}
+            disabled={!recipientOk || !value || value > balance || sending}
+            onPress={send}
           />
         }
       >
@@ -192,16 +218,16 @@ export default function WalletScreen() {
             value={to}
             onChangeText={setTo}
             autoCapitalize="none"
-            placeholder="@username or Sotechy wallet address"
+            placeholder="@username"
             placeholderTextColor={colors.faint}
             style={{ height: 50, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: space.lg, fontFamily: fonts.medium, fontSize: 15, color: colors.ink }}
           />
-          <Txt variant="caption">You can only send to Sotechy wallets. Outside wallets can&apos;t receive store tokens.</Txt>
+          <Txt variant="caption">You can only send to people on Sotechy. Outside wallets can&apos;t receive store tokens.</Txt>
         </View>
         <View style={{ gap: space.sm }}>
           <Txt variant="label">Token</Txt>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
-            {wallet.balances.map((b) => (
+            {held.map((b) => (
               <Chip key={b.ticker} label={`$${b.ticker} · ${formatTokens(b.amount)}`} active={ticker === b.ticker} onPress={() => setTicker(b.ticker)} />
             ))}
           </View>
@@ -237,13 +263,13 @@ export default function WalletScreen() {
               title: "How you get them",
               icon: "add-circle-outline" as IconName,
               tone: colors.success,
-              items: ["1 token for every ₦1 you spend at a store", "10% extra in $SOTECHY when you buy from other stores", "Up to 10% more for reviewing what you bought (with a photo for the full 10%)", "Released when your order is delivered"],
+              items: ["1 token for every ₦1 you spend at a store", "10% extra in $SOTECHY when you buy from other stores", "Released when your order is delivered", "Coming soon: up to 10% more for reviewing what you bought"],
             },
             {
               title: "What you can do with them",
               icon: "checkmark-circle-outline" as IconName,
               tone: colors.success,
-              items: ["Pay at the store that gave them, like cash", "Mix tokens and money in one payment", "Spend $SOTECHY at any Sotechy store", "Send them to other Sotechy users by @username"],
+              items: ["Send them to other Sotechy users by @username", "Coming soon: pay at the store that gave them, like cash", "Coming soon: mix tokens and money in one payment, and spend $SOTECHY at any Sotechy store"],
             },
             {
               title: "What they are not",
@@ -278,9 +304,9 @@ export default function WalletScreen() {
             <Illo name="wallet" size={52} />
           </View>
           <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 30, color: colors.ink }}>{user?.username ? `@${user.username}` : "Your wallet"}</Text>
-          <Txt variant="small" style={{ textAlign: "center" }}>Other Sotechy users can send you tokens with your username or this address.</Txt>
+          <Txt variant="small" style={{ textAlign: "center" }}>Other Sotechy users send you tokens with your username. This is your wallet&apos;s address on Monad, where your tokens are recorded.</Txt>
           <Pressable onPress={copy} style={{ flexDirection: "row", alignItems: "center", gap: space.sm, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt }}>
-            <Txt variant="caption" color={colors.ink2} style={{ fontFamily: fonts.medium }}>{wallet.address ?? "Your address appears when tokens go live"}</Txt>
+            <Txt variant="caption" color={colors.ink2} style={{ fontFamily: fonts.medium }}>{wallet.address ?? ""}</Txt>
             <Ionicons name="copy-outline" size={16} color={colors.ink2} />
           </Pressable>
         </View>

@@ -1,14 +1,54 @@
 {
-  "monad": [
-    {
-      "chainId": 143,
-      "address": "0x04779caedcc9ecfd28a6a51cf85536be67db01db",
-      "version": 1,
-      "owner": "0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89",
-      "operator": "0x5AFD0A521E022904fD61B741CDd3Fc335936804c",
-      "txHash": "0xa1df999f60e37efd869e438f5f0e465ebbec77eb056d1546a58130dd73929f5f",
-      "block": 117064332,
-      "deployedAt": "2026-10-27T14:23:24.636Z"
-    }
-  ]
+  "tokens": {
+    "monad": [
+      {
+        "chainId": 143,
+        "address": "0x04779caedcc9ecfd28a6a51cf85536be67db01db",
+        "version": 1,
+        "owner": "0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89",
+        "operator": "0x5AFD0A521E022904fD61B741CDd3Fc335936804c",
+        "txHash": "0xa1df999f60e37efd869e438f5f0e465ebbec77eb056d1546a58130dd73929f5f",
+        "block": 117064332,
+        "deployedAt": "2026-10-27T14:23:24.636Z"
+      }
+    ],
+    "base": [
+      {
+        "chainId": 8453,
+        "address": "0x04779caedcc9ecfd28a6a51cf85536be67db01db",
+        "version": 1,
+        "owner": "0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89",
+        "operator": "0x5AFD0A521E022904fD61B741CDd3Fc335936804c",
+        "txHash": "0xda50a6af5b9dc559ecfef913c321196691ebeae7c05599ac5929a8347d0014cb",
+        "block": 53161663,
+        "deployedAt": "2026-10-27T14:51:11.803Z"
+      }
+    ]
+  },
+  "receipts": {
+    "monad": [
+      {
+        "chainId": 143,
+        "address": "0x2c9be1600f297f25f15907aae4f3ce5c0c3967a7",
+        "version": 1,
+        "owner": "0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89",
+        "operator": "0x5AFD0A521E022904fD61B741CDd3Fc335936804c",
+        "txHash": "0x0cddc9c4062ad4611c1de339fc4416612026ad7ab8b39e2fe39d7717ae06533f",
+        "block": 117067418,
+        "deployedAt": "2026-10-27T14:38:56.311Z"
+      }
+    ],
+    "base": [
+      {
+        "chainId": 8453,
+        "address": "0x2c9be1600f297f25f15907aae4f3ce5c0c3967a7",
+        "version": 1,
+        "owner": "0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89",
+        "operator": "0x5AFD0A521E022904fD61B741CDd3Fc335936804c",
+        "txHash": "0x1ea4f391c240e6e665312fe64d908a97884168087ae1dab6bc10cf7889dfc44f",
+        "block": 53161665,
+        "deployedAt": "2026-10-27T14:51:16.847Z"
+      }
+    ]
+  }
 }

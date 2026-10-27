@@ -752,6 +752,49 @@ export interface OfferView {
   messages: { id: string; from: "customer" | "store"; kind: "offer" | "counter" | "accept" | "decline"; amount: number | null; text: string | null; createdAt: string }[];
 }
 
+/** One token in the customer's wallet: what they hold and what's on the way from undelivered orders */
+export interface WalletBalance {
+  tokenId: number;
+  ticker: string;
+  store: string;
+  slug: string | null;
+  logoUrl: string | null;
+  amount: number;
+  pending: number;
+}
+
+export interface WalletActivity {
+  id: string;
+  kind: "earned" | "bonus" | "spent" | "sent" | "received" | "refunded";
+  ticker: string;
+  store: string;
+  /** Negative when tokens left the wallet */
+  amount: number;
+  /** The other person's @username, for sends */
+  who: string | null;
+  order: string | null;
+  at: string;
+  /** Where it's recorded on Monad, once written */
+  txUrl: string | null;
+}
+
+export interface WalletView {
+  address: string;
+  addressUrl: string;
+  contractUrl: string | null;
+  balances: WalletBalance[];
+  activity: WalletActivity[];
+}
+
+/** A delivered order's receipt: the full details, and its fingerprint on chain */
+export interface OrderReceipt {
+  id: number;
+  content: Record<string, unknown>;
+  fingerprint: string;
+  txUrl: string | null;
+  nftUrl: string | null;
+}
+
 /** A message a followed store sent */
 export interface StoreNoticeView {
   id: string;

@@ -240,6 +240,8 @@ export const merchants = pgTable("merchants", {
   tokenApprovedAt: timestamp({ withTimezone: true }),
   /** Where the token lives on chain (set when it's created on Monad) */
   tokenContract: text(),
+  /** The token's id in the Sotechy Tokens contract: 1 is $SOTECHY, stores follow in the order they're approved */
+  tokenId: integer().unique(),
   /** This store's own payout plan; null = the standard plan */
   payoutPlan: jsonb().$type<{ firstPercent: number; fee: "spread" | "first" | "last" }>(),
   createdAt: createdAt(),
@@ -905,4 +907,78 @@ export const featuredPurchases = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index().on(t.merchantId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
+// Store tokens: the ledger is what counts; the chain is a public copy of it
+// ---------------------------------------------------------------------------
+export const tokenEntries = pgTable(
+  "token_entries",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** 1 = $SOTECHY, otherwise merchants.tokenId */
+    tokenId: integer().notNull(),
+    /** "mint", "burn" or "move", as on chain */
+    kind: text().notNull(),
+    /** Who it comes from (burn, move) and goes to (mint, move); not foreign keys, so history outlives accounts */
+    fromUserId: uuid(),
+    toUserId: uuid(),
+    amount: integer().notNull(),
+    /** "earned", "bonus", "sent", "refunded" or "adjusted" */
+    reason: text().notNull(),
+    orderId: uuid(),
+    note: text(),
+    createdBy: uuid(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index().on(t.toUserId, t.createdAt),
+    index().on(t.fromUserId, t.createdAt),
+    index().on(t.tokenId),
+    // An order earns (or gives back) each token once
+    unique().on(t.orderId, t.reason, t.tokenId),
+    check("token_entries_amount_positive", sql`${t.amount} > 0`),
+  ],
+);
+
+/** Receipts for completed orders. The full receipt stays here; the chain gets its fingerprint. */
+export const receipts = pgTable("receipts", {
+  /** The receipt number, also its id on chain */
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  orderId: uuid()
+    .notNull()
+    .unique()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  userId: uuid().notNull(),
+  tokenId: integer().notNull(),
+  content: jsonb().$type<Record<string, unknown>>().notNull(),
+  /** keccak256 of the content (which includes a random salt, so it can't be guessed) */
+  fingerprint: text().notNull(),
+  createdAt: createdAt(),
+});
+
+/** What's waiting to be written on chain. Monad gets each one within seconds; Base when an admin sends a batch. */
+export const chainOps = pgTable(
+  "chain_ops",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    /** "tokens" or "receipts" */
+    contract: text().notNull(),
+    /** "register", "mint", "burn", "move" or "receipt" */
+    kind: text().notNull(),
+    /** What it came from (a ledger entry, a receipt, a store's token), so nothing is queued twice */
+    sourceId: text().notNull(),
+    data: jsonb().$type<Record<string, string | number>>().notNull(),
+    /** bytes32 recorded with the change on chain */
+    ref: text().notNull(),
+    monadTx: text(),
+    monadAt: timestamp({ withTimezone: true }),
+    monadError: text(),
+    monadTries: integer().notNull().default(0),
+    baseTx: text(),
+    baseAt: timestamp({ withTimezone: true }),
+    baseError: text(),
+    createdAt: createdAt(),
+  },
+  (t) => [unique().on(t.contract, t.kind, t.sourceId), index().on(t.monadAt), index().on(t.baseAt)],
 );

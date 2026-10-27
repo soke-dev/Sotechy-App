@@ -6,6 +6,8 @@ import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
+import { receiptFor, sendTokens, walletFor } from "../services/tokens";
+import { CHAINS, currentContract } from "../services/chain";
 import { catalogQuery } from "./store";
 
 const addressSchema = z.object({
@@ -28,6 +30,35 @@ async function liveStore(slug: string) {
 
 export const meRoutes = new Hono<AppEnv>()
   .use(requireAuth)
+  /** Token balances (held and on the way), activity, and the wallet's address on Monad */
+  .get("/wallet", async (c) => {
+    const wallet = await walletFor(c.get("user").id);
+    const explorer = CHAINS.monad.explorer;
+    const tokens = currentContract("tokens", "monad");
+    return c.json({
+      ...wallet,
+      addressUrl: `${explorer}/address/${wallet.address}`,
+      contractUrl: tokens ? `${explorer}/address/${tokens.address}` : null,
+      activity: wallet.activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
+    });
+  })
+  .post(
+    "/wallet/send",
+    zValidator("json", z.object({ to: z.string().min(1).max(60), ticker: z.string().min(1).max(12), amount: z.number().int().positive().max(1_000_000_000) })),
+    async (c) => c.json(await sendTokens(c.get("user").id, c.req.valid("json"))),
+  )
+  /** The full receipt of a delivered order, and where it's recorded on chain */
+  .get("/orders/:id/receipt", async (c) => {
+    const r = await receiptFor(c.get("user").id, c.req.param("id"));
+    if (!r) throw notFound("No receipt yet: it's issued when the order is delivered");
+    const contract = currentContract("receipts", "monad");
+    const explorer = CHAINS.monad.explorer;
+    return c.json({
+      ...r,
+      txUrl: r.tx ? `${explorer}/tx/${r.tx}` : null,
+      nftUrl: contract ? `${explorer}/nft/${contract.address}/${r.id}` : null,
+    });
+  })
   /** Stores this account follows (their slugs) */
   .get("/follows", async (c) => {
     const rows = await db

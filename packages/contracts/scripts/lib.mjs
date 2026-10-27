@@ -61,16 +61,27 @@ export function clients(chainName, privateKey) {
   };
 }
 
+/** The contracts in this folder, by the name the scripts use */
+export const CONTRACTS = { tokens: "SotechyTokens", receipts: "SotechyReceipts" };
+
+export function contractArg(args) {
+  const name = flag(args, "contract", "tokens");
+  if (!CONTRACTS[name]) fail(`Unknown contract "${name}". Use one of: ${Object.keys(CONTRACTS).join(", ")}`);
+  return name;
+}
+
+/** { tokens: { monad: [v1, v2…] }, receipts: { … } } */
 export function readDeployments() {
-  return existsSync(DEPLOYMENTS) ? JSON.parse(readFileSync(DEPLOYMENTS, "utf8")) : {};
+  const d = existsSync(DEPLOYMENTS) ? JSON.parse(readFileSync(DEPLOYMENTS, "utf8")) : {};
+  return Object.fromEntries(Object.keys(CONTRACTS).map((c) => [c, d[c] ?? {}]));
 }
 
 export function writeDeployments(d) {
   writeFileSync(DEPLOYMENTS, JSON.stringify(d, null, 2) + "\n");
 }
 
-export function readArtifact() {
-  const file = join(ROOT, "out", "SotechyTokens.sol", "SotechyTokens.json");
+export function readArtifact(contract = "tokens") {
+  const file = join(ROOT, "out", `${CONTRACTS[contract]}.sol`, `${CONTRACTS[contract]}.json`);
   if (!existsSync(file)) fail('No build yet: run "pnpm build" first.');
   const a = JSON.parse(readFileSync(file, "utf8"));
   return { abi: a.abi, bytecode: a.bytecode.object };

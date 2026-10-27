@@ -2,6 +2,8 @@ import type { Bank, PayoutAccount, PayoutPlan, PayoutRow } from "./payouts";
 import type {
   Address,
   OfferView,
+  OrderReceipt,
+  WalletView,
   StoreNoticeView,
   AddressInput,
   AddressSuggestion,
@@ -172,6 +174,10 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     follow: (slug: string) => send<{ following: boolean }>("POST", `/me/follows/${encodeURIComponent(slug)}`),
     unfollow: (slug: string) => send<{ following: boolean }>("DELETE", `/me/follows/${encodeURIComponent(slug)}`),
     storeNotices: () => get<StoreNoticeView[]>("/me/store-notices"),
+    /** Token balances, activity and the wallet's Monad address; sending tokens by @username */
+    wallet: () => get<WalletView>("/me/wallet"),
+    sendTokens: (input: { to: string; ticker: string; amount: number }) => send<{ id: string; to: string; ticker: string; amount: number }>("POST", "/me/wallet/send", input),
+    orderReceipt: (orderId: string) => get<OrderReceipt>(`/me/orders/${orderId}/receipt`),
     /** The customer's price offers */
     offers: () => get<OfferView[]>("/offers"),
     offer: (id: string) => get<OfferView>(`/offers/${id}`),

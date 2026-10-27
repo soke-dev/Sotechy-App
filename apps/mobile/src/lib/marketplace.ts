@@ -205,20 +205,6 @@ export const wallet: { address: string | null; balances: { ticker: string; amoun
   balances: [],
 };
 
-export type WalletEventKind = "earned" | "pending" | "spent" | "sent" | "received" | "bonus";
-
-export interface WalletEvent {
-  id: string;
-  kind: WalletEventKind;
-  ticker: string;
-  amount: number;
-  title: string;
-  minsAgo: number;
-}
-
-/** Token activity: none until the Monad contracts are live */
-export const walletActivity: WalletEvent[] = [];
-
 export const tokenNaira = (tokens: number) => tokens * TOKEN_VALUE;
 export const shortAddress = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 export const formatTokens = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M` : n.toLocaleString("en-NG"));

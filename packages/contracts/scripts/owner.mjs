@@ -1,21 +1,22 @@
 // The owner's controls, run from this computer with the owner key.
-//   pnpm owner status            [--chain monad]
+//   pnpm owner status            [--chain monad] [--contract tokens|receipts]
 //   pnpm owner pause | unpause
-//   pnpm owner limits <perMint> <perDay>
+//   pnpm owner limits <perMint> <perDay>   (tokens only)
 //   pnpm owner operator <address> on|off
 //   pnpm owner uri <https://...{id}.json>
 //   pnpm owner transfer <address>        (the new owner then runs "accept" with their key)
 //   pnpm owner accept
 //   pnpm owner retire --yes              (for good: when moving to a new contract)
 import { formatEther, getAddress } from "viem";
-import { chainArg, CHAINS, clients, fail, key, readArtifact, readDeployments } from "./lib.mjs";
+import { chainArg, CHAINS, clients, contractArg, fail, key, readArtifact, readDeployments } from "./lib.mjs";
 
 const args = process.argv.slice(2);
-const [command, ...rest] = args.filter((a, i) => !a.startsWith("--") && args[i - 1] !== "--chain");
+const [command, ...rest] = args.filter((a, i) => !a.startsWith("--") && args[i - 1] !== "--chain" && args[i - 1] !== "--contract");
 const name = chainArg(args);
-const current = (readDeployments()[name] ?? []).at(-1);
-if (!current) fail(`Nothing deployed on ${name} yet.`);
-const { abi } = readArtifact();
+const contract = contractArg(args);
+const current = (readDeployments()[contract][name] ?? []).at(-1);
+if (!current) fail(`No ${contract} contract on ${name} yet.`);
+const { abi } = readArtifact(contract);
 const { account, pub, wallet } = clients(name, key("OWNER_PRIVATE_KEY"));
 const address = current.address;
 const read = (functionName, a = []) => pub.readContract({ address, abi, functionName, args: a });
@@ -30,15 +31,22 @@ async function send(functionName, a = []) {
 switch (command) {
   case "status":
   case undefined: {
-    const [owner, paused, retired, perOp, perDay, today] = await Promise.all(["owner", "paused", "retired", "maxMintPerOp", "maxMintPerDay", "mintedToday"].map((f) => read(f)));
+    const [owner, paused, retired] = await Promise.all(["owner", "paused", "retired"].map((f) => read(f)));
     const operatorOn = await read("isOperator", [current.operator]);
     const gas = await pub.getBalance({ address: account.address });
+    let extra;
+    if (contract === "tokens") {
+      const [perOp, perDay, today] = await Promise.all(["maxMintPerOp", "maxMintPerDay", "mintedToday"].map((f) => read(f)));
+      extra = `Limits    ${perOp} per mint, ${perDay} a day (${today} minted on the last minting day)`;
+    } else {
+      extra = `Issued    ${await read("totalIssued")} receipts`;
+    }
     console.log(`
-  ${name} v${current.version} ${address}
+  ${contract} on ${name} v${current.version} ${address}
   Owner     ${owner}${getAddress(owner) === account.address ? " (this key)" : " (NOT this key)"}
   Operator  ${current.operator} ${operatorOn ? "on" : "off"}
   State     ${retired ? "retired" : paused ? "paused" : "running"}
-  Limits    ${perOp} per mint, ${perDay} a day (${today} minted on the last minting day)
+  ${extra}
   Owner gas ${formatEther(gas)} ${CHAINS[name].chain.nativeCurrency.symbol}
 `);
     break;
@@ -50,6 +58,7 @@ switch (command) {
     await send("setPaused", [false]);
     break;
   case "limits":
+    if (contract !== "tokens") fail("Only the tokens contract has mint limits.");
     if (rest.length !== 2) fail("Usage: pnpm owner limits <perMint> <perDay>");
     await send("setLimits", [BigInt(rest[0]), BigInt(rest[1])]);
     break;

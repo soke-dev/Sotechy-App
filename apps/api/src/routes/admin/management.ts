@@ -4,6 +4,7 @@ import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../../db/client";
+import { ensureStoreTokens } from "../../services/tokens";
 import { audit } from "../../lib/audit";
 import { hashPassword, MANAGERS, requireRole, type AppEnv, requirePassword } from "../../lib/auth";
 import { notFound } from "../../lib/errors";
@@ -368,6 +369,8 @@ export const adminManagementRoutes = new Hono<AppEnv>()
         await audit(tx, { actorId: actor.id, action: "merchant.status", entityType: "merchant", entityId: before.id, details: { from: before.status, to: status, note: note ?? null } });
         return row;
       });
+      // Gives the store its token id and queues the token for Monad
+      if (store.tokenApprovedAt && !store.tokenId) await ensureStoreTokens();
       if (status === "approved" && before.status !== "approved" && store.ownerId) {
         const [owner] = await db.select({ email: users.email, name: users.fullName }).from(users).where(eq(users.id, store.ownerId));
         if (owner) sendEmailLater(storeVerifiedEmail(store.contactEmail ?? owner.email, { name: owner.name, store: store.name }));
