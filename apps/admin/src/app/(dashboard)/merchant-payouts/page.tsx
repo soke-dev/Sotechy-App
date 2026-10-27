@@ -8,6 +8,9 @@ export interface AdminPayouts {
   ready: boolean;
   /** Local stand-in: transfers aren't real */
   testMode: boolean;
+  /** The service paying stores */
+  provider: "bachs" | "flutterwave";
+  providerName: string;
   balance: number | null;
   settings: PayoutSettings;
   payouts: AdminPayoutRow[];

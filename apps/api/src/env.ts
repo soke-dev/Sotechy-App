@@ -24,6 +24,13 @@ const schema = z.object({
   /** Address suggestions while typing (geoapify.com); empty = no suggestions */
   GEOAPIFY_API_KEY: z.string().optional(),
   /** Payouts to stores (Flutterwave v3 secret key, FLWSECK-…) and the secret hash set on its webhook */
+  /** Which service pays stores */
+  PAYOUT_PROVIDER: z.enum(["bachs", "flutterwave"]).default("bachs"),
+  /** Bachs API key (sk_live_… or sk_sandbox_…) and the signing secret of its webhook endpoint */
+  BACHS_SECRET_KEY: z.string().optional(),
+  BACHS_WEBHOOK_SECRET: z.string().optional(),
+  /** Only to point at another Bachs environment; otherwise chosen from the key */
+  BACHS_API_URL: z.string().url().optional(),
   FLUTTERWAVE_SECRET_KEY: z.string().optional(),
   FLUTTERWAVE_WEBHOOK_HASH: z.string().optional(),
   /** Outside production, emails are only printed unless this is "true" (so local runs don't use the Resend quota) */

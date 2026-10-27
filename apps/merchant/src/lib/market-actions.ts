@@ -76,7 +76,7 @@ export async function suggestAddresses(q: string): Promise<AddressSuggestion[]> 
   }
 }
 
-/** Banks a store can be paid into (from Flutterwave) */
+/** Banks a store can be paid into (from the payout service) */
 export async function listBanks(): Promise<Result<Bank[]>> {
   return attempt(() => api.banks());
 }

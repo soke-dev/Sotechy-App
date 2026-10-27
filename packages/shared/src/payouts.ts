@@ -19,6 +19,8 @@ export interface PayoutSettings {
   standard: PayoutPlan;
   /** Hours after delivery before the final payment is sent, so problems can be raised */
   finalAfterHours: number;
+  /** Naira Sotechy adds to each payout to cover the payout service's bank fee, so stores get the full amount */
+  bankFeeCover: number;
 }
 
 export const DEFAULT_PAYOUT_SETTINGS: PayoutSettings = {
@@ -26,6 +28,7 @@ export const DEFAULT_PAYOUT_SETTINGS: PayoutSettings = {
   feeRate: 0.02,
   standard: { firstPercent: 50, fee: "spread" },
   finalAfterHours: 48,
+  bankFeeCover: 50,
 };
 
 /** What the store receives at each step for an order. The delivery fee is always paid with the first

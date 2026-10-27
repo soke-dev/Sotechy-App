@@ -231,6 +231,8 @@ export const merchants = pgTable("merchants", {
   /** Whose name the account is in: "business", "owner", or null when it matches neither */
   payoutAccountMatch: text(),
   payoutVerifiedAt: timestamp({ withTimezone: true }),
+  /** The store's Bachs account that its payouts go through (Bachs only) */
+  payoutRecipientId: text(),
   /** When Sotechy approved the store and its token; the ticker can't change after this */
   tokenApprovedAt: timestamp({ withTimezone: true }),
   /** Where the token lives on chain (set when it's created on Monad) */
@@ -769,7 +771,10 @@ export const merchantPayouts = pgTable(
     dueAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     /** Sent to Flutterwave as the transfer reference, so a payout can never go out twice */
     reference: text().notNull().unique(),
+    /** The service that sent it ("bachs" or "flutterwave") and its ids there */
+    provider: text(),
     providerId: text(),
+    transferId: text(),
     /** The account it was sent to */
     bankCode: text(),
     bankName: text(),

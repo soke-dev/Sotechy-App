@@ -65,22 +65,22 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
       <PageHeader
         illo="bank"
         title="Store payouts"
-        description="Paid through Flutterwave: part when a store accepts an order (with the whole delivery fee), the rest after delivery. Each transfer has a fixed reference, so nothing can be paid twice."
+        description={`Paid through ${data.providerName}: part when a store accepts an order (with the whole delivery fee), the rest after delivery. Each payout has a fixed reference, so nothing can be paid twice.`}
       />
 
       {!data.ready && (
         <p className="mb-5 flex items-start gap-2 rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn">
           <AlertTriangle size={17} className="mt-0.5 shrink-0" />
-          Flutterwave isn&apos;t connected, so nothing can be sent yet. Add FLUTTERWAVE_SECRET_KEY and FLUTTERWAVE_WEBHOOK_HASH to the API service.
+          {data.providerName} isn&apos;t connected, so nothing can be sent yet. Add {data.provider === "bachs" ? "BACHS_SECRET_KEY and BACHS_WEBHOOK_SECRET" : "FLUTTERWAVE_SECRET_KEY and FLUTTERWAVE_WEBHOOK_HASH"} to the API service.
         </p>
       )}
       {data.testMode && (
-        <p className="mb-5 rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">Test mode: there&apos;s no Flutterwave key here, so payouts are pretend and no money moves.</p>
+        <p className="mb-5 rounded-2xl bg-surface-alt px-4 py-3 text-sm text-ink-2">Test mode: there&apos;s no {data.providerName} key here, so payouts are pretend and no money moves.</p>
       )}
       {error && <p className="mb-5 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
 
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard illo="wallet" tone="brand" label="Flutterwave balance" value={data.balance == null ? "—" : formatNaira(data.balance)} hint={data.balance != null && data.balance < sum(due) ? "Less than what's due: top it up" : "Available for payouts"} />
+        <StatCard illo="wallet" tone="brand" label={`${data.providerName} balance`} value={data.balance == null ? "—" : formatNaira(data.balance)} hint={data.balance != null && data.balance < sum(due) ? "Less than what's due: top it up" : "Available for payouts"} />
         <StatCard illo="bank" tone="info" label="Due now" value={formatNaira(sum(due))} hint={`${due.length} payout${due.length === 1 ? "" : "s"}`} />
         <StatCard illo="bike" tone="neutral" label="Coming up" value={formatNaira(sum(groups.waiting))} hint="Final payments after delivery" />
         <StatCard illo="doc" tone="bad" label="Owed back by stores" value={formatNaira(sum(owed))} hint={groups.failed.length ? `${groups.failed.length} failed transfer${groups.failed.length === 1 ? "" : "s"}` : "No failed transfers"} />
@@ -190,7 +190,7 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
       </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SettingsCard settings={data.settings} />
+        <SettingsCard settings={data.settings} provider={data.provider} />
         <StorePlans stores={stores} settings={data.settings} />
       </div>
 
@@ -207,7 +207,7 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
                 {new Date(confirm.dueAt).getTime() > now ? <span className="text-warn"> · not due yet, you&apos;re sending it early</span> : null}
               </p>
             </div>
-            <p className="text-sm text-muted">This sends real money from the Flutterwave balance. If the bank refuses it, you can retry safely: it can&apos;t be paid twice.</p>
+            <p className="text-sm text-muted">This sends real money from the {data.providerName} balance. If the bank refuses it, you can retry safely: it can&apos;t be paid twice.</p>
             <button disabled={busy} onClick={() => act(confirm.id, "send")} className={primaryButtonClass}>
               <Send size={15} /> {busy ? "Sending…" : `Send ${formatNaira(confirm.amount)}`}
             </button>
@@ -218,7 +218,7 @@ export function PayoutsView({ data, stores }: { data: AdminPayouts; stores: Admi
   );
 }
 
-function SettingsCard({ settings }: { settings: PayoutSettings }) {
+function SettingsCard({ settings, provider }: { settings: PayoutSettings; provider: AdminPayouts["provider"] }) {
   const router = useRouter();
   const [form, setForm] = useState(settings);
   const [saving, start] = useTransition();
@@ -250,6 +250,13 @@ function SettingsCard({ settings }: { settings: PayoutSettings }) {
             <input type="number" min={0} max={720} value={form.finalAfterHours} onChange={(e) => setForm({ ...form, finalAfterHours: Math.max(0, Math.round(Number(e.target.value))) })} className={inputClass} />
           </label>
         </div>
+        {provider === "bachs" && (
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="font-semibold text-ink-2">Bank fee Sotechy covers per payout (₦)</span>
+            <input type="number" min={0} max={5000} value={form.bankFeeCover} onChange={(e) => setForm({ ...form, bankFeeCover: Math.max(0, Math.round(Number(e.target.value))) })} className={inputClass} />
+            <span className="text-xs text-muted">Bachs adds its payout fee on top, so this much goes with each payout and stores get their full amount. Match it to the fee in your Bachs pricing.</span>
+          </label>
+        )}
         <PlanEditor plan={form.standard} rate={form.feeRate} onChange={(standard) => setForm({ ...form, standard })} />
         {msg && <p className={`rounded-2xl px-4 py-3 text-sm ${msg.ok ? "bg-good-soft text-good" : "bg-bad-soft text-bad"}`}>{msg.text}</p>}
         <div className="flex gap-2">

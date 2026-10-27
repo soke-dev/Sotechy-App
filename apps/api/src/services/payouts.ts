@@ -1,4 +1,4 @@
-// Paying marketplace stores for their orders, through Flutterwave.
+// Paying marketplace stores for their orders, through Bachs or Flutterwave (see payout-rail).
 // The first payment is set up when a store accepts an order; the final one falls due a while after it's
 // delivered, so problems can be raised first. An admin sends them (or, once switched on, they go out by
 // themselves). Each payout has a fixed reference, so retrying can never pay twice.
@@ -7,7 +7,7 @@ import { DEFAULT_PAYOUT_SETTINGS, splitByPlan, type OrderStatus, type PayoutSett
 import { db, schema, type Tx } from "../db/client";
 import { audit } from "../lib/audit";
 import { badRequest, HttpError, notFound } from "../lib/errors";
-import { getTransfer, sendTransfer, type Transfer } from "./flutterwave";
+import { provider, railCheck, railSend, type RailResult } from "./payout-rail";
 import { getSetting } from "./settings";
 
 const { merchantPayouts: payouts, orders, merchants } = schema;
@@ -75,6 +75,7 @@ export async function sendPayout(id: string, opts: { actorId: string | null; for
     if (!order || order.status === "cancelled" || order.status === "refunded") throw badRequest("The order was cancelled or refunded");
     const [store] = await tx.select().from(merchants).where(eq(merchants.id, p.merchantId));
     if (!store?.payoutBankCode || !store.payoutAccountNumber || !store.payoutVerifiedAt) throw badRequest("The store hasn't added a checked payout account");
+    if (provider() === "bachs" && !store.payoutRecipientId) throw badRequest("The store needs to save its payout account again before it can be paid");
     if (!opts.actorId && (!store.payoutAccountMatch || Date.now() - store.payoutVerifiedAt.getTime() < 86_400_000)) {
       throw badRequest("This account needs an admin to send the first payout");
     }
@@ -82,6 +83,7 @@ export async function sendPayout(id: string, opts: { actorId: string | null; for
       .update(payouts)
       .set({
         status: "sending",
+        provider: provider(),
         attempts: sql`${payouts.attempts} + 1`,
         sentAt: new Date(),
         failureReason: null,
@@ -93,34 +95,38 @@ export async function sendPayout(id: string, opts: { actorId: string | null; for
       .where(eq(payouts.id, id))
       .returning();
     await audit(tx, { actorId: opts.actorId, action: "payout.send", entityType: "payout", entityId: id, details: { amount: p.amount, stage: p.stage, auto: !opts.actorId } });
-    return { row, storeName: store.name, orderNumber: order.orderNumber };
+    return { row, recipientId: store.payoutRecipientId, orderNumber: order.orderNumber };
   });
 
   const { row } = claimed;
-  let transfer: Transfer;
+  const settings = await payoutSettings();
+  let sent: RailResult;
   try {
-    transfer = await sendTransfer({
+    sent = await railSend({
+      recipientId: claimed.recipientId,
       bankCode: row.bankCode!,
       accountNumber: row.accountNumber!,
       amount: row.amount,
+      cover: settings.bankFeeCover,
       reference: row.reference,
-      narration: `Sotechy order ${claimed.orderNumber} ${row.stage === "first" ? "first" : "final"} payment`,
+      group: claimed.orderNumber,
+      narration: `Sotechy ${claimed.orderNumber} ${row.stage === "first" ? "first" : "final"} payment`,
     });
   } catch (err) {
-    // Safe to retry: Flutterwave won't accept the same reference twice
-    const why = err instanceof Error ? err.message : "Flutterwave didn't answer";
+    // Safe to retry: the payout service won't accept the same reference twice
+    const why = err instanceof Error ? err.message : "The payout service didn't answer";
     await db.update(payouts).set({ status: "failed", failureReason: why }).where(eq(payouts.id, id));
     throw err instanceof HttpError ? err : new HttpError(502, why);
   }
-  await db.update(payouts).set({ providerId: transfer.id }).where(eq(payouts.id, id));
-  await applyTransfer(id, transfer);
+  await db.update(payouts).set({ providerId: sent.providerId, transferId: sent.transferId }).where(eq(payouts.id, id));
+  await applyTransfer(id, sent);
   const [done] = await db.select().from(payouts).where(eq(payouts.id, id));
   return done;
 }
 
-/** Records what Flutterwave says happened to a payout's transfer */
-async function applyTransfer(payoutId: string, t: Transfer) {
-  if (t.status === "SUCCESSFUL") {
+/** Records what the payout service says happened */
+async function applyTransfer(payoutId: string, t: Pick<RailResult, "status" | "failureReason">) {
+  if (t.status === "paid") {
     const [p] = await db
       .update(payouts)
       .set({ status: "paid", paidAt: new Date() })
@@ -131,34 +137,36 @@ async function applyTransfer(payoutId: string, t: Transfer) {
       const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, p.orderId));
       if (order?.status === "cancelled" || order?.status === "refunded") await unwind(p.orderId);
     }
-  } else if (t.status === "FAILED") {
+  } else if (t.status === "failed") {
     await db
       .update(payouts)
-      .set({ status: "failed", failureReason: t.completeMessage ?? "The bank didn't accept the transfer" })
+      .set({ status: "failed", failureReason: t.failureReason ?? "The bank didn't accept the payout" })
       .where(and(eq(payouts.id, payoutId), eq(payouts.status, "sending")));
   }
 }
 
-/** A Flutterwave webhook named this transfer: check it with Flutterwave before changing anything */
-export async function transferWebhook(ref: string, transferId: string) {
+/** A webhook named this payout: check it with the service that sent it before changing anything */
+export async function transferWebhook(ref: string, providerId: string) {
   const [p] = await db.select().from(payouts).where(eq(payouts.reference, ref));
   if (!p) return;
-  const t = await getTransfer(p.providerId ?? transferId);
+  const [store] = await db.select({ recipientId: merchants.payoutRecipientId }).from(merchants).where(eq(merchants.id, p.merchantId));
+  const t = await railCheck({ provider: p.provider, providerId: p.providerId ?? providerId, recipientId: store?.recipientId ?? null });
   if (t.reference !== p.reference) return;
-  if (!p.providerId) await db.update(payouts).set({ providerId: t.id }).where(eq(payouts.id, p.id));
+  if (!p.providerId) await db.update(payouts).set({ providerId: t.providerId }).where(eq(payouts.id, p.id));
   await applyTransfer(p.id, t);
 }
 
 /** Every couple of minutes: catch transfers whose webhook didn't arrive, and send due payouts when that's switched on */
 export async function payoutRound() {
   const stuck = await db
-    .select({ id: payouts.id, providerId: payouts.providerId })
+    .select({ id: payouts.id, provider: payouts.provider, providerId: payouts.providerId, recipientId: merchants.payoutRecipientId })
     .from(payouts)
+    .innerJoin(merchants, eq(merchants.id, payouts.merchantId))
     .where(and(eq(payouts.status, "sending"), lte(payouts.sentAt, new Date(Date.now() - 2 * 60_000))))
     .limit(25);
   for (const p of stuck) {
     if (!p.providerId) continue;
-    await getTransfer(p.providerId)
+    await railCheck({ provider: p.provider, providerId: p.providerId, recipientId: p.recipientId })
       .then((t) => applyTransfer(p.id, t))
       .catch((err) => console.warn("Payout check failed:", err instanceof Error ? err.message : err));
   }

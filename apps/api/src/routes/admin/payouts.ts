@@ -7,7 +7,7 @@ import { db, schema } from "../../db/client";
 import { audit } from "../../lib/audit";
 import { requireRole, type AppEnv } from "../../lib/auth";
 import { badRequest, notFound } from "../../lib/errors";
-import { flutterwaveReady, payoutBalance, standIn } from "../../services/flutterwave";
+import { provider, providerName, railBalance, railReady, railStandIn } from "../../services/payout-rail";
 import { payoutSettings, payoutsFor, sendPayout, toPayoutRow } from "../../services/payouts";
 
 // Moving money is for admins; managers can look
@@ -28,14 +28,16 @@ async function move(id: string, from: ("scheduled" | "failed" | "held" | "owed")
 
 export const adminPayoutRoutes = new Hono<AppEnv>()
   .get("/payouts", zValidator("query", z.object({ status: z.string().max(20).optional() })), async (c) => {
-    const [rows, settings, balance] = await Promise.all([payoutsFor({ status: c.req.valid("query").status }), payoutSettings(), payoutBalance()]);
+    const [rows, settings, balance] = await Promise.all([payoutsFor({ status: c.req.valid("query").status }), payoutSettings(), railBalance()]);
     const stores = await db
       .select({ id: schema.merchants.id, accountName: schema.merchants.payoutAccountName })
       .from(schema.merchants)
       .where(inArray(schema.merchants.id, [...new Set(rows.map((r) => r.p.merchantId))].concat("00000000-0000-0000-0000-000000000000")));
     return c.json({
-      ready: flutterwaveReady() || standIn(),
-      testMode: standIn(),
+      ready: railReady() || railStandIn(),
+      testMode: railStandIn(),
+      provider: provider(),
+      providerName: providerName(),
       balance,
       settings,
       payouts: rows.map((r) => ({
@@ -57,7 +59,7 @@ export const adminPayoutRoutes = new Hono<AppEnv>()
   .put(
     "/payout-settings",
     ADMIN,
-    zValidator("json", z.object({ autoSend: z.boolean(), feeRate: z.number().min(0).max(0.3), standard: plan, finalAfterHours: z.number().int().min(0).max(24 * 30) })),
+    zValidator("json", z.object({ autoSend: z.boolean(), feeRate: z.number().min(0).max(0.3), standard: plan, finalAfterHours: z.number().int().min(0).max(24 * 30), bankFeeCover: z.number().min(0).max(5_000).default(50) })),
     async (c) => {
       const value = c.req.valid("json");
       await db.transaction(async (tx) => {

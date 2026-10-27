@@ -12,7 +12,7 @@ import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem } from "@sotechy/shared";
 import { accountNameMatch, slugify } from "../lib/identity";
-import { nigerianBanks, resolveAccount } from "../services/flutterwave";
+import { railBanks, railRecipient, railResolve } from "../services/payout-rail";
 import { payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
 import { cancelOrder, updateOrderStatus } from "../services/orders";
 
@@ -347,7 +347,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
   })
 
   // --- Payouts: the account they go to, and what's been paid ---
-  .get("/banks", async (c) => c.json(await nigerianBanks()))
+  .get("/banks", async (c) => c.json(await railBanks()))
   /** Checks the account with the bank and saves it. Payouts only go automatically to an account in
    *  the business's or the owner's name; anything else waits for Sotechy. */
   .put(
@@ -356,11 +356,22 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     async (c) => {
       const { bankCode, accountNumber } = c.req.valid("json");
       const store = c.get("store");
-      const bank = (await nigerianBanks()).find((b) => b.code === bankCode);
+      const bank = (await railBanks()).find((b) => b.code === bankCode);
       if (!bank) throw badRequest("Choose your bank from the list");
-      const [owner] = await db.select({ fullName: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
-      const accountName = await resolveAccount(bankCode, accountNumber, owner?.fullName ?? store.name);
+      const [owner] = await db.select({ fullName: schema.users.fullName, email: schema.users.email }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
+      const accountName = await railResolve(bankCode, accountNumber, owner?.fullName ?? store.name);
       const match = accountNameMatch(accountName, [store.name, store.application?.registeredName], owner?.fullName ?? "");
+      // With Bachs, the store's own payout account there holds this bank account
+      const recipientId = await railRecipient({
+        existingId: store.payoutRecipientId,
+        storeId: store.id,
+        storeName: store.name,
+        email: store.contactEmail ?? owner?.email ?? "",
+        ownerName: owner?.fullName ?? store.name,
+        bankCode: bank.code,
+        accountNumber,
+        accountName,
+      });
       const verifiedAt = new Date();
       await db
         .update(schema.merchants)
@@ -371,6 +382,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
           payoutAccountName: accountName,
           payoutAccountMatch: match,
           payoutVerifiedAt: verifiedAt,
+          payoutRecipientId: recipientId ?? store.payoutRecipientId,
           // Setup shows the same account
           application: { ...(store.application ?? {}), bank: { bankName: bank.name, accountNumber } } as typeof store.application,
           updatedAt: verifiedAt,
