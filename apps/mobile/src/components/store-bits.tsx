@@ -85,7 +85,7 @@ export function FeaturedStoreCard({ store, width }: { store: MarketStore; width:
         )}
       </View>
       <View style={{ position: "absolute", top: 84, left: space.md }}>
-        <StoreLogo store={store} size={54} ring={colors.surface} />
+        <StoreLogo store={store} size={54} />
       </View>
       <View style={{ paddingHorizontal: space.md, paddingTop: 32, paddingBottom: space.md, gap: 3 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
@@ -117,7 +117,7 @@ export function StoreRow({ store }: { store: MarketStore }) {
       <View>
         <StoreCover store={store} style={{ width: 92, height: 92, borderRadius: radius.lg }} />
         <View style={{ position: "absolute", left: -6, bottom: -6 }}>
-          <StoreLogo store={store} size={40} ring={colors.surface} />
+          <StoreLogo store={store} size={40} />
         </View>
       </View>
       <View style={{ flex: 1, gap: 3, justifyContent: "center" }}>

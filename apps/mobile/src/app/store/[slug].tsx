@@ -147,8 +147,8 @@ export default function StoreScreen() {
 
         {/* Logo over the cover, then the name */}
         <View style={{ alignItems: "center", marginTop: -46, paddingHorizontal: gutter, gap: 6 }}>
-          <View style={{ width: 92, height: 92, borderRadius: 46, borderWidth: 4, borderColor: t.bg, overflow: "hidden", backgroundColor: t.surface }}>
-            <StoreLogo store={store} size={84} />
+          <View style={{ width: 88, height: 88, borderRadius: 44, overflow: "hidden", backgroundColor: t.surface }}>
+            <StoreLogo store={store} size={88} />
           </View>
           <T color={t.text} size={22} weight={fonts.displayHeavy} lines={2} style={{ textAlign: "center", letterSpacing: -0.3 }}>{store.name}</T>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>

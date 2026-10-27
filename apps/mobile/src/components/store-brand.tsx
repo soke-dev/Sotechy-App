@@ -9,7 +9,8 @@ import type { MarketStore, StoreProduct } from "@/lib/marketplace";
 
 /** A product's photo, or its drawn icon in the store's colour when it has no photo yet */
 export function ProductArt({ product, store, scale = 0.76 }: { product: StoreProduct; store: MarketStore; scale?: number }) {
-  if (product.image) return <Image source={product.image} style={{ width: `${scale * 100}%`, height: `${scale * 100}%` }} contentFit="contain" />;
+  // A photo fills the tile; only the drawn icon sits smaller in the middle
+  if (product.image) return <Image source={product.image} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" />;
   return (
     <View style={{ width: `${scale * 100}%`, height: `${scale * 100}%`, alignItems: "center", justifyContent: "center" }}>
       <View style={{ aspectRatio: 1, height: "72%", borderRadius: 999, backgroundColor: store.theme.accent, alignItems: "center", justifyContent: "center" }}>
@@ -52,13 +53,8 @@ export function BrandMark({ store, size }: { store: MarketStore; size: number })
         <Path d="M25 26 L19 36 H24 L22 43 L30 32 H25 Z" fill="#FFFFFF" />
       </Svg>
     );
-  // An uploaded logo on the store's colour
-  if (store.logo)
-    return (
-      <View style={{ width: size, height: size, backgroundColor: t.accent, alignItems: "center", justifyContent: "center" }}>
-        <Image source={store.logo} style={{ width: "76%", height: "76%" }} contentFit="contain" />
-      </View>
-    );
+  // An uploaded logo fills the mark
+  if (store.logo) return <Image source={store.logo} style={{ width: size, height: size, backgroundColor: t.accent }} contentFit="cover" />;
   // No logo yet: a monogram on the store's dark colour, with an accent bar
   const letters = store.name
     .split(/\s+/)

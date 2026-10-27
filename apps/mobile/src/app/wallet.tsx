@@ -1,7 +1,7 @@
 // The customer's Sotechy wallet: token balances per store, pending tokens, sending by @username, activity.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 import { formatNaira, type WalletActivity } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
@@ -11,7 +11,8 @@ import { router, Stack } from "expo-router";
 import { useToast } from "@/components/toast";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Button, Chip, Divider, Txt, ui, type IconName } from "@/components/ui";
+import { Button, Divider, Txt, ui, type IconName } from "@/components/ui";
+import { UserAvatar } from "@/components/user-avatar";
 import { formatTokens, shortAddress, tokenNaira } from "@/lib/marketplace";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
@@ -65,6 +66,28 @@ export default function WalletScreen() {
   const [picked, setTicker] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [sending, setSending] = useState(false);
+  const [choosingToken, setChoosingToken] = useState(false);
+  // Who the typed @username is, looked up as they type
+  const [recipient, setRecipient] = useState<{ state: "idle" | "looking" | "found" | "missing"; who?: Awaited<ReturnType<typeof api.walletRecipient>>; message?: string }>({ state: "idle" });
+  useEffect(() => {
+    const name = to.trim().replace(/^@/, "");
+    if (!/^[a-z0-9._]{3,}$/i.test(name)) {
+      setRecipient({ state: "idle" });
+      return;
+    }
+    setRecipient({ state: "looking" });
+    let live = true;
+    const t = setTimeout(() => {
+      api
+        .walletRecipient(name)
+        .then((who) => live && setRecipient({ state: "found", who }))
+        .catch((err) => live && setRecipient({ state: "missing", message: err instanceof Error ? err.message : `No one on Sotechy is @${name}` }));
+    }, 400);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [to]);
   const { data, loading, error, reload } = useAsync(() => api.wallet(), []);
   const wallet = data ?? { address: null, addressUrl: null, balances: [], activity: [] };
   const held = wallet.balances.filter((b) => b.amount > 0);
@@ -75,11 +98,17 @@ export default function WalletScreen() {
   const totalTokens = wallet.balances.reduce((n, b) => n + b.amount, 0);
   const balance = wallet.balances.find((b) => b.ticker === ticker)?.amount ?? 0;
   const value = Number(amount.replace(/\D/g, "")) || 0;
-  const recipientOk = /^@?[a-z0-9._]{3,}$/i.test(to.trim());
+  const recipientOk = recipient.state === "found" && !recipient.who?.isYou;
+  const chosen = held.find((b) => b.ticker === ticker);
   const copy = async () => {
     if (!wallet.address) return;
     await Clipboard.setStringAsync(wallet.address);
     toast("Wallet address copied");
+  };
+  const copyUsername = async () => {
+    if (!user?.username) return;
+    await Clipboard.setStringAsync(`@${user.username}`);
+    toast("Username copied");
   };
   const send = async () => {
     setSending(true);
@@ -149,8 +178,10 @@ export default function WalletScreen() {
                   <Pressable onPress={() => b.slug && openStore(b.slug)} style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>
                     {b.logoUrl ? <Image source={{ uri: b.logoUrl }} style={{ width: 38, height: 38, borderRadius: 11 }} /> : <Illo name="coin" size={38} />}
                     <View style={{ flex: 1, gap: 1 }}>
-                      <Txt variant="label" color={colors.brandPressed} style={{ fontFamily: fonts.bold }}>${b.ticker}</Txt>
-                      <Txt variant="caption">{b.ticker === "SOTECHY" ? "Sotechy's own token" : b.store}</Txt>
+                      <Txt variant="label" numberOfLines={1}>
+                        <Text style={{ fontFamily: fonts.bold, color: colors.brandPressed }}>${b.ticker}</Text>
+                        <Text style={{ fontFamily: fonts.medium, color: colors.ink2 }}> · {b.ticker === "SOTECHY" ? "Sotechy" : b.store}</Text>
+                      </Txt>
                       {b.pending > 0 && <Txt variant="caption" color={colors.warning}>+{formatTokens(b.pending)} pending</Txt>}
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
@@ -227,15 +258,58 @@ export default function WalletScreen() {
             placeholderTextColor={colors.faint}
             style={{ height: 50, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: space.lg, fontFamily: fonts.medium, fontSize: 15, color: colors.ink }}
           />
-          <Txt variant="caption">You can only send to people on Sotechy. Outside wallets can&apos;t receive store tokens.</Txt>
+          {recipient.state === "looking" && <Txt variant="caption">Looking up @{to.trim().replace(/^@/, "")}…</Txt>}
+          {recipient.state === "missing" && <Txt variant="caption" color={colors.danger}>{recipient.message}</Txt>}
+          {recipient.state === "found" && recipient.who && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderRadius: radius.lg, backgroundColor: recipient.who.isYou ? colors.dangerSoft : colors.successSoft }}>
+              <UserAvatar seed={recipient.who.seed} preset={recipient.who.avatarStyle} size={40} />
+              <View style={{ flex: 1 }}>
+                <Txt variant="label">{recipient.who.name ?? `@${recipient.who.username}`}</Txt>
+                <Txt variant="caption">{recipient.who.isYou ? "That's you. Pick someone else." : `@${recipient.who.username} · on Sotechy`}</Txt>
+              </View>
+              <Ionicons name={recipient.who.isYou ? "close-circle" : "checkmark-circle"} size={22} color={recipient.who.isYou ? colors.danger : colors.success} />
+            </View>
+          )}
+          {recipient.state === "idle" && <Txt variant="caption">You can only send to people on Sotechy. Outside wallets can&apos;t receive store tokens.</Txt>}
         </View>
         <View style={{ gap: space.sm }}>
           <Txt variant="label">Token</Txt>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
-            {held.map((b) => (
-              <Chip key={b.ticker} label={`$${b.ticker} · ${formatTokens(b.amount)}`} active={ticker === b.ticker} onPress={() => setTicker(b.ticker)} />
-            ))}
-          </View>
+          <Pressable
+            onPress={() => setChoosingToken(!choosingToken)}
+            style={{ flexDirection: "row", alignItems: "center", gap: space.md, height: 56, borderRadius: radius.lg, borderWidth: 1, borderColor: choosingToken ? colors.ink : colors.line, backgroundColor: colors.surface, paddingHorizontal: space.md }}
+          >
+            {chosen?.logoUrl ? <Image source={{ uri: chosen.logoUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} /> : <Illo name="coin" size={32} />}
+            <View style={{ flex: 1 }}>
+              <Txt variant="label" numberOfLines={1}>
+                <Text style={{ fontFamily: fonts.bold, color: colors.brandPressed }}>${ticker}</Text>
+                <Text style={{ fontFamily: fonts.medium, color: colors.ink2 }}> · {ticker === "SOTECHY" ? "Sotechy" : (chosen?.store ?? "")}</Text>
+              </Txt>
+              <Txt variant="caption">You have {formatTokens(balance)}</Txt>
+            </View>
+            <Ionicons name={choosingToken ? "chevron-up" : "chevron-down"} size={18} color={colors.ink2} />
+          </Pressable>
+          {choosingToken && (
+            <View style={{ borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, overflow: "hidden" }}>
+              {held.map((b, i) => (
+                <Pressable
+                  key={b.ticker}
+                  onPress={() => {
+                    setTicker(b.ticker);
+                    setChoosingToken(false);
+                  }}
+                  style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, paddingHorizontal: space.md, paddingVertical: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.line, backgroundColor: pressed || b.ticker === ticker ? colors.surfaceAlt : colors.surface })}
+                >
+                  {b.logoUrl ? <Image source={{ uri: b.logoUrl }} style={{ width: 28, height: 28, borderRadius: 14 }} /> : <Illo name="coin" size={28} />}
+                  <Txt variant="label" numberOfLines={1} style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: fonts.bold, color: colors.brandPressed }}>${b.ticker}</Text>
+                    <Text style={{ fontFamily: fonts.medium, color: colors.ink2 }}> · {b.ticker === "SOTECHY" ? "Sotechy" : b.store}</Text>
+                  </Txt>
+                  <Txt variant="label">{formatTokens(b.amount)}</Txt>
+                  {b.ticker === ticker && <Ionicons name="checkmark" size={18} color={colors.success} />}
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
         <View style={{ gap: space.sm }}>
           <View style={ui.between}>
@@ -308,7 +382,17 @@ export default function WalletScreen() {
           <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
             <Illo name="wallet" size={52} />
           </View>
-          <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 30, color: colors.ink }}>{user?.username ? `@${user.username}` : "Your wallet"}</Text>
+          {user?.username ? (
+            <Pressable onPress={copyUsername} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+              <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 30, color: colors.ink }}>@{user.username}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt }}>
+                <Ionicons name="copy-outline" size={14} color={colors.ink2} />
+                <Txt variant="caption" color={colors.ink2}>Copy</Txt>
+              </View>
+            </Pressable>
+          ) : (
+            <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 30, color: colors.ink }}>Your wallet</Text>
+          )}
           <Txt variant="small" style={{ textAlign: "center" }}>Other Sotechy users send you tokens with your username. This is your wallet&apos;s address on Monad, where your tokens are recorded.</Txt>
           <Pressable onPress={copy} style={{ flexDirection: "row", alignItems: "center", gap: space.sm, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt }}>
             <Txt variant="caption" color={colors.ink2} style={{ fontFamily: fonts.medium }}>{wallet.address ?? ""}</Txt>

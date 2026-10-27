@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
-import { Animated, Platform, Pressable, Text, View } from "react-native";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { Animated, Keyboard, Platform, Pressable, Text, View } from "react-native";
 import { FullWindowOverlay } from "react-native-screens";
 import { colors, fonts, radius } from "@/lib/theme";
 import type { IconName } from "./ui";
@@ -17,6 +17,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<{ message: string } & ToastOptions>({ message: "" });
   const anim = useRef(new Animated.Value(0)).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // With the keyboard open, the toast shows just above it instead of hidden behind it
+  const [keyboard, setKeyboard] = useState(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const shown = Keyboard.addListener(showEvent, (e) => setKeyboard(e.endCoordinates.height));
+    const hidden = Keyboard.addListener(hideEvent, () => setKeyboard(0));
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
 
   const show = useCallback(
     (message: string, options: ToastOptions = {}) => {
@@ -40,7 +52,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             position: "absolute",
             left: 16,
             right: 16,
-            bottom: 128,
+            bottom: keyboard ? keyboard + 12 : 128,
             alignItems: "center",
             opacity: anim,
             transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }],

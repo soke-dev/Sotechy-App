@@ -1,5 +1,5 @@
-// Product photo on a soft warm tile with a white glow and an optional small brand mark.
-// Product images are transparent cut-outs, so the tile shows through around the item.
+// Product photo filling its tile, with an optional small brand mark. Without a photo, the product's
+// icon sits on a soft warm tile with a white glow.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { View, type StyleProp, type ViewStyle } from "react-native";
@@ -14,7 +14,6 @@ export function ProductImage({
   name,
   style,
   radius = 0,
-  padding = 10,
   iconSize = 40,
   mark = false,
   dimmed = false,
@@ -23,6 +22,7 @@ export function ProductImage({
   name: string;
   style?: StyleProp<ViewStyle>;
   radius?: number;
+  /** No longer used: photos fill the tile */
   padding?: number;
   iconSize?: number;
   /** small white SoTechy mark in the corner (product cards) */
@@ -31,9 +31,9 @@ export function ProductImage({
 }) {
   return (
     <View style={[{ backgroundColor: TILE, borderRadius: radius, overflow: "hidden" }, style]}>
-      <View style={{ position: "absolute", top: "14%", left: "14%", right: "14%", bottom: "14%", borderRadius: 999, backgroundColor: GLOW, opacity: 0.7 }} />
+      {!uri && <View style={{ position: "absolute", top: "14%", left: "14%", right: "14%", bottom: "14%", borderRadius: 999, backgroundColor: GLOW, opacity: 0.7 }} />}
       {uri ? (
-        <Image source={{ uri }} style={{ flex: 1, margin: padding, opacity: dimmed ? 0.5 : 1 }} contentFit="contain" transition={150} />
+        <Image source={{ uri }} style={{ flex: 1, opacity: dimmed ? 0.5 : 1 }} contentFit="cover" transition={150} />
       ) : (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name={productIcon(name)} size={iconSize} color={lightPalette.faint} />

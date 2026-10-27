@@ -60,6 +60,24 @@ export const meRoutes = new Hono<AppEnv>()
       activity: wallet.activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
     });
   })
+  /** Who an @username is, shown before sending tokens: first name and last initial only */
+  .get("/wallet/recipient", zValidator("query", z.object({ username: z.string().min(1).max(60) })), async (c) => {
+    const username = c.req.valid("query").username.trim().replace(/^@/, "").toLowerCase();
+    const u = schema.users;
+    const [found] = await db
+      .select({ id: u.id, username: u.username, fullName: u.fullName, avatarStyle: u.avatarStyle })
+      .from(u)
+      .where(and(eq(u.username, username), eq(u.isActive, true)));
+    if (!found) throw notFound(`No one on Sotechy is @${username}`);
+    const [first, ...rest] = (found.fullName ?? "").trim().split(/\s+/).filter(Boolean);
+    return c.json({
+      username: found.username,
+      name: first ? `${first}${rest.length ? ` ${rest[rest.length - 1][0].toUpperCase()}.` : ""}` : null,
+      avatarStyle: found.avatarStyle,
+      seed: found.id,
+      isYou: found.id === c.get("user").id,
+    });
+  })
   .post(
     "/wallet/send",
     zValidator("json", z.object({ to: z.string().min(1).max(60), ticker: z.string().min(1).max(12), amount: z.number().int().positive().max(1_000_000_000) })),
