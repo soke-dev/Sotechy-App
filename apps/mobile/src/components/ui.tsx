@@ -1,8 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { useId, useState, type ComponentProps, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  InputAccessoryView,
+  Keyboard,
   Platform,
   Pressable,
   StyleSheet,
@@ -427,6 +429,7 @@ const localPart = (value: string) => {
 export function PhoneInput({ label, icon = "call-outline", value, onChange }: { label: string; icon?: IconName; value: string; onChange: (v: string) => void }) {
   const [focused, setFocused] = useState(false);
   const [left, setLeft] = useState(false);
+  const accessory = `phone-done-${useId()}`;
   const local = localPart(value);
   const wrong = left && !focused && local.length > 0 && !/^[789]\d{9}$/.test(local);
   const pretty = local.replace(/^(\d{3})(\d{0,3})(\d{0,4}).*/, (_, a, b, c) => [a, b, c].filter(Boolean).join(" "));
@@ -448,6 +451,7 @@ export function PhoneInput({ label, icon = "call-outline", value, onChange }: { 
             onChange(d ? `+234${d}` : "");
           }}
           keyboardType="phone-pad"
+          inputAccessoryViewID={Platform.OS === "ios" ? accessory : undefined}
           autoComplete="tel"
           placeholder="803 555 0142"
           placeholderTextColor={colors.faint}
@@ -460,6 +464,15 @@ export function PhoneInput({ label, icon = "call-outline", value, onChange }: { 
           style={{ flex: 1, fontFamily: fonts.body, fontSize: 15, color: colors.ink, paddingVertical: 12 }}
         />
       </View>
+      {Platform.OS === "ios" && (
+        <InputAccessoryView nativeID={accessory}>
+          <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: space.lg, paddingVertical: 8, backgroundColor: colors.surfaceAlt, borderTopWidth: 1, borderTopColor: colors.line }}>
+            <Pressable onPress={() => Keyboard.dismiss()} hitSlop={10}>
+              <Text style={{ fontFamily: fonts.semibold, fontSize: 16, color: colors.brandPressed }}>Done</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      )}
       {wrong && (
         <Txt variant="small" color={colors.danger}>
           {local.length < 10 ? `That's ${local.length} digits. Nigerian mobile numbers have 10 after +234.` : "Nigerian mobile numbers start with 7, 8 or 9 after +234."}

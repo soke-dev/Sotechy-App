@@ -58,7 +58,7 @@ export default function WelcomeScreen() {
 
   return (
     <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: gutter, paddingBottom: insets.bottom + space.xxl, gap: space.lg }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: gutter, paddingBottom: space.xl, gap: space.lg }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
         {/* Steps */}
         <View style={{ flexDirection: "row", gap: 6, alignSelf: "center" }}>
           {["username", "numbers"].map((s) => (
@@ -142,14 +142,19 @@ export default function WelcomeScreen() {
               {!same && <PhoneInput label="WhatsApp number" icon="logo-whatsapp" value={whatsapp} onChange={setWhatsapp} />}
             </View>
 
-            <Button title="Save and start shopping" icon="checkmark" variant="dark" loading={busy} disabled={!call.trim() && !whatsapp.trim()} onPress={() => saveNumbers(false)} />
-            <Button title="Skip for now" variant="ghost" disabled={busy} onPress={() => saveNumbers(true)} />
             <Pressable onPress={() => setStep("username")} style={{ alignSelf: "center" }}>
               <Txt variant="small">Change @{clean}</Txt>
             </Pressable>
           </>
         )}
       </ScrollView>
+      {/* Outside the scroll, so the keyboard pushes them up instead of covering them */}
+      {step === "numbers" && (
+        <View style={{ paddingHorizontal: gutter, paddingTop: space.sm, paddingBottom: insets.bottom + space.md, gap: space.xs, backgroundColor: colors.bg }}>
+          <Button title="Save and start shopping" icon="checkmark" variant="dark" loading={busy} disabled={!call.trim() && !whatsapp.trim()} onPress={() => saveNumbers(false)} />
+          <Button title="Skip for now" variant="ghost" disabled={busy} onPress={() => saveNumbers(true)} />
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
