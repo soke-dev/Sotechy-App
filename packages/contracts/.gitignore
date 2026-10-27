@@ -1,2 +1,4 @@
 out/
 cache/
+# The API reads the exported ABI; Railway has no forge to build it
+!dist/
