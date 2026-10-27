@@ -1,0 +1,18 @@
+{
+  "name": "@sotechy/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.ts",
+  "types": "./dist/index.ts",
+  "scripts": {
+    "build": "forge build && node scripts/export.mjs",
+    "test": "forge test -vv",
+    "wallets": "node scripts/wallets.mjs",
+    "chain:deploy": "node scripts/deploy.mjs",
+    "owner": "node scripts/owner.mjs"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  }
+}

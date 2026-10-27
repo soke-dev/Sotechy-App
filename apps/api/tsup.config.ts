@@ -6,6 +6,6 @@ export default defineConfig({
   target: "node20",
   platform: "node",
   clean: true,
-  // Bundle the workspace package (it ships TypeScript source)
-  noExternal: ["@sotechy/shared"],
+  // Bundle the workspace packages (they ship TypeScript source)
+  noExternal: ["@sotechy/shared", "@sotechy/contracts"],
 });
