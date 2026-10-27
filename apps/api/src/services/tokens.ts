@@ -79,7 +79,13 @@ export async function ensureStoreTokens() {
     await db.transaction(async (tx) => {
       // One at a time, so two approvals can't take the same number
       await tx.execute(sql`select pg_advisory_xact_lock(4207)`);
-      const [{ next }] = await tx.select({ next: sql<number>`coalesce(max(${merchants.tokenId}), ${SOTECHY_TOKEN.id}) + 1` }).from(merchants);
+      // Past the highest number any store has or that was ever created on chain (a deleted store's number isn't reused)
+      const [{ next }] = (
+        await tx.execute<{ next: number }>(sql`select greatest(
+          coalesce((select max(${merchants.tokenId}) from ${merchants}), ${SOTECHY_TOKEN.id}),
+          coalesce((select max((${chainOps.data}->>'tokenId')::int) from ${chainOps} where ${chainOps.contract} = 'tokens' and ${chainOps.kind} = 'register'), ${SOTECHY_TOKEN.id})
+        ) + 1 as next`)
+      ).rows;
       const [store] = await tx.update(merchants).set({ tokenId: next }).where(and(eq(merchants.id, id), isNull(merchants.tokenId))).returning();
       if (!store) return;
       await tx

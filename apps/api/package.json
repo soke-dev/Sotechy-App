@@ -13,6 +13,7 @@
     "db:migrate": "tsx --env-file-if-exists=.env src/db/migrate.ts",
     "db:migrate:prod": "node dist/db/migrate.js",
     "db:seed:prod": "node dist/db/seed.js",
+    "db:reset-accounts": "tsx --env-file-if-exists=.env src/db/reset-accounts.ts",
     "db:seed": "tsx --env-file-if-exists=.env src/db/seed.ts",
     "db:studio": "drizzle-kit studio"
   },
