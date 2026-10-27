@@ -5,12 +5,18 @@ import { btn, Card, Pill, ProductThumb, StatCard } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens } from "@/lib/money";
 import { api, getStoreSession } from "@/lib/api";
-import { ORDER_STATUS, orderMoney, orderTotal, token } from "@/lib/mock";
+import { ORDER_STATUS, orderMoney, orderTotal } from "@/lib/mock";
 import { tokenTicker } from "@/lib/token";
 
 export default async function HomePage() {
   const { user, store } = await getStoreSession();
-  const [orders, products, { salesByDay, offersWaiting }] = await Promise.all([api.merchantOrders(), api.merchantProducts(), api.merchantSummary()]);
+  const [orders, products, { salesByDay, offersWaiting }, tokenStats] = await Promise.all([
+    api.merchantOrders(),
+    api.merchantProducts(),
+    api.merchantSummary(),
+    api.get<{ withCustomers: number; holders: number; issued: number; pending: number; spent: number } | null>("/merchant/token").catch(() => null),
+  ]);
+  const token = tokenStats ?? { withCustomers: 0, holders: 0, issued: 0, pending: 0, spent: 0 };
   const waiting = orders.filter((o) => o.status === "new");
   const active = orders.filter((o) => ["accepted", "shipped", "delivered"].includes(o.status));
   const sales14 = salesByDay.reduce((n, d) => n + d.amount, 0);
@@ -103,7 +109,7 @@ export default async function HomePage() {
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard accent illo="wallet" label="Sales, last 14 days" value={formatNaira(sales14)} hint={`${orders.filter((o) => o.status === "completed").length} completed orders`} />
         <StatCard illo="bank" label="Owed to you" value={formatNaira(owedSecondHalf)} hint={`From ${active.length} order${active.length === 1 ? "" : "s"} in progress`} />
-        <StatCard illo="coin" label={`${tokenTicker(store) ?? "Tokens"} with customers`} value={formatTokens(token.circulating)} hint={`${token.holders} holders`} />
+        <StatCard illo="coin" label={`${tokenTicker(store) ?? "Tokens"} with customers`} value={formatTokens(token.withCustomers)} hint={`${token.holders} holders`} />
         <StatCard illo="heart" label="Store rating" value="New" hint="Ratings appear after your first reviews" />
       </div>
 
@@ -147,7 +153,7 @@ export default async function HomePage() {
               </div>
               <div>
                 <dt className="text-muted">Spent in your store</dt>
-                <dd className="font-semibold">{formatTokens(token.redeemed)}</dd>
+                <dd className="font-semibold">{formatTokens(token.spent)}</dd>
               </div>
             </dl>
             <p className="text-xs text-muted">Customers earn 1 {tokenTicker(store) ?? "token"} per ₦1 when an order completes, and spend it only at {store.name}.</p>

@@ -114,3 +114,13 @@ export async function buyFeaturing(months: number): Promise<Result<{ checkoutUrl
 export async function sendNotice(input: { title: string; body: string; productId?: string | null }): Promise<Result<MerchantNotice>> {
   return attempt(() => api.post<MerchantNotice>("/merchant/notices", input), ["/notifications"]);
 }
+
+/** A Sotechy customer for a walk-in sale, by @username or phone */
+export async function findWalkInCustomer(q: string): Promise<Result<{ id: string; name: string | null; username: string | null } | null>> {
+  return attempt(() => api.get<{ id: string; name: string | null; username: string | null } | null>(`/merchant/walk-in/customer?q=${encodeURIComponent(q)}`));
+}
+
+/** Records a walk-in sale and opens the payment for Sotechy's fee; tokens follow once it's paid */
+export async function startWalkIn(input: { customer: string; amount: number; note?: string }): Promise<Result<{ id: string; fee: number; checkoutUrl: string }>> {
+  return attempt(() => api.post<{ id: string; fee: number; checkoutUrl: string }>("/merchant/walk-in", input));
+}

@@ -60,27 +60,6 @@ export function payoutNameMatch(accountName: string, businessName: string, owner
 }
 export const PAYOUT_MATCH_LABEL = { business: "Matches your business name", owner: "Matches your own name" } as const;
 
-/** The store token's numbers (all zero until it's created on approval and customers start earning it) */
-export const token = {
-  storeValue: STORE_VALUE_PER_TOKEN,
-  issued: 0,
-  circulating: 0,
-  pending: 0,
-  holders: 0,
-  redeemed: 0,
-  recyclingPool: 0,
-  sotechyReserveWallet: 0,
-  reserveNaira: 0,
-  outstandingValueNaira: 0,
-  contract: null as string | null,
-  explorer: null as string | null,
-  posMintedThisMonth: 0,
-};
-
-export const tokenActivity: { kind: "mint" | "bonus" | "redeem" | "pos" | "transfer"; label: string; who: string; amount: number; at: string }[] = [];
-
-export const topHolders: { username: string; amount: number }[] = [];
-
 export const reviews: { id: string; product: string; customer: string; rating: number; text: string; photo: string | null; bonus: number; at: string; reply: string | null }[] = [];
 
 
