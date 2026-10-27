@@ -85,11 +85,20 @@ async function tellStorePaid(p: typeof payouts.$inferSelect) {
   if (row.ownerId) sendPushLater([row.ownerId], { title: "Payout sent", body: `₦${p.amount.toLocaleString("en-NG")} for ${row.orderNumber} is on its way to your bank`, data: { url: "/payouts" } });
 }
 
-/** The customer confirmed they got the order: the store's final payment is due now rather than after the wait */
-export async function finalDueNow(orderId: string) {
+/** The customer confirmed they got the order: the store's final payment is due now rather than after the wait.
+ *  `release` also frees one held because the customer had said it didn't arrive. */
+export async function finalDueNow(orderId: string, release = false) {
   await db
     .update(payouts)
-    .set({ dueAt: new Date() })
+    .set({ dueAt: new Date(), status: "scheduled" })
+    .where(and(eq(payouts.orderId, orderId), eq(payouts.stage, "final"), inArray(payouts.status, release ? ["scheduled", "held"] : ["scheduled"])));
+}
+
+/** The customer says it didn't arrive: the final payment waits for Sotechy to look into it */
+export async function holdFinal(orderId: string) {
+  await db
+    .update(payouts)
+    .set({ status: "held" })
     .where(and(eq(payouts.orderId, orderId), eq(payouts.stage, "final"), eq(payouts.status, "scheduled")));
 }
 

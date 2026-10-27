@@ -9,7 +9,9 @@ import { badRequest, HttpError, notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
 import { moneyMovesConfigured } from "../services/moneymoves";
 import { cancelOrder, placeOrder } from "../services/orders";
-import { finalDueNow } from "../services/payouts";
+import { finalDueNow, holdFinal } from "../services/payouts";
+import { sendEmailLater } from "../lib/email";
+import { orderNotReceivedEmail } from "../emails/templates";
 import { sendPushLater } from "../services/push";
 import { getSetting } from "../services/settings";
 
@@ -130,10 +132,41 @@ export const orderRoutes = new Hono<AppEnv>()
     } else {
       await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: "delivered", toStatus: "delivered", note: "Customer confirmed they got it", changedBy: user.id });
       if (o.merchantId) {
-        await finalDueNow(o.id);
+        await finalDueNow(o.id, !!o.customerIssueAt);
         const [store] = await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId));
         if (store?.ownerId) sendPushLater([store.ownerId], { title: "Delivery confirmed", body: `The customer got ${o.orderNumber}. Your final payment is on its way.`, data: { url: `/orders/${o.id}` } });
       }
+    }
+    return c.json(await loadOrderDetail(c.req.param("id")));
+  })
+  /** The store marked it delivered but the customer didn't get it: hold the final payment and tell Sotechy */
+  .post("/:id/not-received", zValidator("json", z.object({ note: z.string().trim().max(300).optional() }).default({})), async (c) => {
+    const user = c.get("user");
+    const note = c.req.valid("json").note || null;
+    const [o] = await db
+      .update(orders)
+      .set({ customerIssueAt: new Date(), customerIssueNote: note })
+      .where(
+        and(eq(orders.id, c.req.param("id")), eq(orders.customerId, user.id), eq(orders.status, "delivered"), sql`${orders.customerConfirmedAt} is null`, sql`${orders.customerIssueAt} is null`),
+      )
+      .returning();
+    if (!o) {
+      const [owned] = await db.select({ status: orders.status }).from(orders).where(and(eq(orders.id, c.req.param("id")), eq(orders.customerId, user.id)));
+      if (!owned) throw notFound("Order not found");
+      if (owned.status !== "delivered") throw badRequest("The store hasn't marked this order delivered yet");
+    } else {
+      await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: "delivered", toStatus: "delivered", note: note ? `Customer says they didn't get it: ${note}` : "Customer says they didn't get it", changedBy: user.id });
+      let storeName = "Sotechy";
+      if (o.merchantId) {
+        await holdFinal(o.id);
+        const [store] = await db.select({ name: schema.merchants.name, ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId));
+        storeName = store?.name ?? storeName;
+        if (store?.ownerId) sendPushLater([store.ownerId], { title: "Customer didn't get it", body: `The customer says ${o.orderNumber} hasn't reached them. Sotechy will be in touch.`, data: { url: `/orders/${o.id}` } });
+      }
+      const [me] = await db.select({ username: schema.users.username, fullName: schema.users.fullName, email: schema.users.email }).from(schema.users).where(eq(schema.users.id, user.id));
+      const customer = me?.username ? `@${me.username}` : (me?.fullName ?? me?.email ?? "The customer");
+      const admins = await db.select({ id: schema.users.id, email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.role, "admin"));
+      for (const a of admins) sendEmailLater(orderNotReceivedEmail(a.email, { name: a.name, store: storeName, orderNumber: o.orderNumber, customer, note, orderId: o.id }));
     }
     return c.json(await loadOrderDetail(c.req.param("id")));
   });

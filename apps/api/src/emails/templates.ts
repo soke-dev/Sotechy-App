@@ -338,6 +338,28 @@ export function payoutApprovalEmail(to: string, d: { name: string | null; store:
   });
 }
 
+export function orderNotReceivedEmail(to: string, d: { name: string | null; store: string; orderNumber: string; customer: string; note: string | null; orderId: string }) {
+  return build(to, `${d.orderNumber}: customer says it didn't arrive`, {
+    preheader: `${d.store} marked it delivered, but ${d.customer} says they didn't get it.`,
+    hero: "store-notice",
+    eyebrow: "Sotechy admin · Order review",
+    heading: "An order needs checking",
+    blocks: [
+      { kind: "text", text: `Hi ${first(d.name)}, **${d.store}** marked ${d.orderNumber} delivered, but the customer says they didn't get it. The store's final payment is on hold until it's sorted.` },
+      {
+        kind: "rows",
+        rows: [
+          { icon: "receipt", label: "Order", value: d.orderNumber },
+          { icon: "store", label: "Store", value: d.store },
+          { icon: "chat", label: "Customer", value: d.note ? `${d.customer}: "${d.note}"` : d.customer },
+        ],
+      },
+      { kind: "button", label: "Open order reviews", url: "https://admin.sotechy.shop/order-reviews" },
+    ],
+    reason: "You're getting this because you're a Sotechy admin.",
+  });
+}
+
 export function payoutAccountChangedEmail(to: string, d: { name: string | null; store: string; bank: string; last4: string; accountName: string }) {
   return build(to, `${d.store}'s payouts now go to ${d.bank} ••••${d.last4}`, {
     preheader: "Your default payout account changed. If this wasn't you, tell us now.",

@@ -3,7 +3,7 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db, schema } from "../db/client";
 
-export type CaseKind = "not_accepted" | "not_confirmed" | "payback";
+export type CaseKind = "not_received" | "not_accepted" | "not_confirmed" | "payback";
 export interface OrderCase {
   id: string;
   kind: CaseKind;
@@ -64,6 +64,27 @@ export async function orderCases(): Promise<OrderCase[]> {
         money: "The store's first payment may be out; the final payment waits until it's delivered.",
       });
     }
+  }
+
+  const missing = await db
+    .select({ id: o.id, number: o.orderNumber, total: o.total, at: o.customerIssueAt, note: o.customerIssueNote, store: schema.merchants.name, customer: schema.users.fullName })
+    .from(o)
+    .leftJoin(schema.merchants, eq(schema.merchants.id, o.merchantId))
+    .leftJoin(schema.users, eq(schema.users.id, o.customerId))
+    .where(and(isNotNull(o.customerIssueAt), sql`${o.customerConfirmedAt} is null`, eq(o.status, "delivered")));
+  for (const r of missing) {
+    cases.push({
+      id: `nr-${r.id}`,
+      kind: "not_received",
+      orderId: r.id,
+      order: r.number,
+      merchant: r.store ?? "Sotechy",
+      customer: r.customer ?? "Customer",
+      total: r.total,
+      openedAt: (r.at ?? new Date()).toISOString(),
+      detail: `Marked delivered, but the customer says they didn't get it.${r.note ? ` They said: "${r.note}"` : ""} Call both sides.`,
+      money: "The store's final payment is on hold. Once the customer has it, mark it received and the payment is due.",
+    });
   }
 
   const owed = await db

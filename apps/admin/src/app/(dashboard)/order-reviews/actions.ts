@@ -28,6 +28,11 @@ export async function markDelivered(orderId: string): Promise<Result> {
   return attempt(() => api.post(`/admin/orders/${orderId}/status`, { status: "delivered", note: "Confirmed by Sotechy" }));
 }
 
+/** The customer has the order after all: the store's final payment can go */
+export async function markReceived(orderId: string): Promise<Result> {
+  return attempt(() => api.post(`/admin/orders/${orderId}/received`, {}));
+}
+
 export async function markRepaid(payoutId: string, password: string): Promise<Result> {
   return attempt(() => withPassword("POST", `/admin/payouts/${payoutId}/settle`, {}, password));
 }

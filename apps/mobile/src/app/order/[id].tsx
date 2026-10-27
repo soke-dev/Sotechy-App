@@ -133,7 +133,7 @@ export default function OrderScreen() {
   const receipt = useAsync(() => api.orderReceipt(id).catch(() => null), [id]);
   const [cancelling, setCancelling] = useState(false);
   const [paying, setPaying] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState<"yes" | "no" | null>(null);
   const moneyMoves = useMoneyMoves();
   const [payOpen, setPayOpen] = useState(false);
   // After Money Moves closes, look for the payment for a minute (the webhook can take a few seconds).
@@ -166,17 +166,18 @@ export default function OrderScreen() {
   const history = [...order.history].reverse();
 
   /** The customer says they got it, so the store's last payment can go */
-  async function confirmReceived() {
-    setConfirming(true);
+  async function answerReceived(got: boolean) {
+    setConfirming(got ? "yes" : "no");
     try {
-      await api.confirmReceived(order!.id);
+      if (got) await api.confirmReceived(order!.id);
+      else await api.reportNotReceived(order!.id);
       tap();
-      toast("Thanks for confirming", { icon: "checkmark-circle" });
+      toast(got ? "Thanks for confirming" : "Thanks. Sotechy will get in touch about it", { icon: got ? "checkmark-circle" : "chatbubble-ellipses" });
       await reload();
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Couldn't confirm. Try again.", { icon: "alert-circle" });
+      toast(err instanceof Error ? err.message : "Couldn't send that. Try again.", { icon: "alert-circle" });
     } finally {
-      setConfirming(false);
+      setConfirming(null);
     }
   }
 
@@ -247,11 +248,26 @@ export default function OrderScreen() {
           <View style={[ui.row, { gap: space.md }]}>
             <Illo name="box" size={38} />
             <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="label">{order.fulfilmentType === "pickup" ? "Did you collect your order?" : "Did you get your order?"}</Txt>
-              <Txt variant="small">Let the store know it reached you. If something&apos;s wrong, contact support instead.</Txt>
+              <Txt variant="label">
+                {order.customerIssueAt ? "We're looking into it" : order.fulfilmentType === "pickup" ? "Did you collect your order?" : "Did you get your order?"}
+              </Txt>
+              <Txt variant="small">
+                {order.customerIssueAt
+                  ? "You told us it hasn't reached you. Sotechy is checking with the store and will contact you. Tap below once you have it."
+                  : "The store marked it delivered. Let us know if it reached you."}
+              </Txt>
             </View>
           </View>
-          <Button title="Yes, I got it" icon="checkmark-circle" variant="dark" loading={confirming} onPress={confirmReceived} />
+          <View style={[ui.row, { gap: space.sm }]}>
+            {!order.customerIssueAt && (
+              <View style={{ flex: 1 }}>
+                <Button title="Not received" variant="outline" loading={confirming === "no"} disabled={!!confirming} onPress={() => answerReceived(false)} />
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Button title={order.customerIssueAt ? "I've got it now" : "Received"} icon="checkmark-circle" variant="dark" loading={confirming === "yes"} disabled={!!confirming} onPress={() => answerReceived(true)} />
+            </View>
+          </View>
         </View>
       )}
 

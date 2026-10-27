@@ -243,6 +243,8 @@ export interface Order {
   reservationExpiresAt: string | null;
   /** When the customer said they got it */
   customerConfirmedAt?: string | null;
+  /** When the customer said it didn't arrive (Sotechy follows up) */
+  customerIssueAt?: string | null;
   createdAt: string;
 }
 

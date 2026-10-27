@@ -553,6 +553,9 @@ export const orders = pgTable(
     reservationExpiresAt: timestamp({ withTimezone: true }),
     /** The customer said they got it; the store's final payment falls due then */
     customerConfirmedAt: timestamp({ withTimezone: true }),
+    /** The customer said they didn't get it, after the store marked it delivered: Sotechy follows up */
+    customerIssueAt: timestamp({ withTimezone: true }),
+    customerIssueNote: text(),
     notes: text(),
     createdBy: uuid().references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),

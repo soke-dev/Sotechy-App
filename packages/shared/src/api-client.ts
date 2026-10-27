@@ -206,6 +206,8 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     cancelOrder: (id: string) => send<Order>("POST", `/orders/${id}/cancel`),
     /** The customer got their order */
     confirmReceived: (id: string) => send<OrderDetail>("POST", `/orders/${id}/received`),
+    /** The store marked it delivered, but it didn't reach the customer */
+    reportNotReceived: (id: string, note?: string) => send<OrderDetail>("POST", `/orders/${id}/not-received`, { note }),
     startOnlinePayment: (orderId: string) =>
       send<{ checkoutUrl: string }>("POST", `/payments/online/initialize`, { orderId }),
     wishlist: () => get<CatalogProduct[]>("/me/wishlist"),

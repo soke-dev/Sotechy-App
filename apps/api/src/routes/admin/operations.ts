@@ -1,6 +1,6 @@
 // Orders, payments, refunds, inventory and walk-in sales.
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq, type SQL } from "drizzle-orm";
+import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../../db/client";
@@ -11,7 +11,7 @@ import { adjustStock, transferStock } from "../../services/inventory";
 import { cancelOrder, recordWalkInSale, updateOrderStatus, verifyPaymentManually } from "../../services/orders";
 import { lineSchema, loadOrderDetail, paymentMethodSchema } from "../orders";
 import { notifyOrderStatus } from "../../services/order-notices";
-import { payoutsForStatus } from "../../services/payouts";
+import { finalDueNow, payoutsForStatus } from "../../services/payouts";
 import { tokensForStatus } from "../../services/tokens";
 
 const { orders, payments, refunds, inventory, productVariants, products, branches, stockMovements, users } = schema;
@@ -85,6 +85,19 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
   .post("/orders/:id/status", zValidator("json", z.object({ status: orderStatusSchema, note: z.string().max(500).optional() })), async (c) => {
     const { status, note } = c.req.valid("json");
     return c.json(await updateOrderStatus(c.get("user"), c.req.param("id"), status, note));
+  })
+  /** Sorted out: the customer has the order now, so the store's final payment can go */
+  .post("/orders/:id/received", async (c) => {
+    const [o] = await db
+      .update(orders)
+      .set({ customerConfirmedAt: new Date() })
+      .where(and(eq(orders.id, c.req.param("id")), eq(orders.status, "delivered"), sql`${orders.customerConfirmedAt} is null`))
+      .returning();
+    if (!o) throw badRequest("This order isn't waiting on the customer");
+    await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: "delivered", toStatus: "delivered", note: "Sotechy confirmed the customer got it", changedBy: c.get("user").id });
+    if (o.merchantId) await finalDueNow(o.id, true);
+    await audit(db, { actorId: c.get("user").id, action: "order.received", entityType: "order", entityId: o.id });
+    return c.json({ ok: true });
   })
   .post("/orders/:id/cancel", zValidator("json", z.object({ note: z.string().max(500).optional() })), async (c) => {
     return c.json(await cancelOrder(c.get("user"), c.req.param("id"), c.req.valid("json").note));

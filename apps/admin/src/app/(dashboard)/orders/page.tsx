@@ -11,6 +11,7 @@ import type { AdminOrderRow } from "@/lib/types";
 import type { CaseKind, OrderCase } from "../order-reviews/order-reviews";
 
 const CASE_KIND: Record<CaseKind, { label: string; tone: "warn" | "info" | "bad"; illo: "box" | "bike" | "bank" }> = {
+  not_received: { label: "Customer didn't get it", tone: "bad", illo: "bike" },
   not_accepted: { label: "Not accepted in 24h", tone: "warn", illo: "box" },
   not_confirmed: { label: "Not delivered in 7 days", tone: "info", illo: "bike" },
   payback: { label: "Store owes it back", tone: "bad", illo: "bank" },
