@@ -167,12 +167,16 @@ export async function bachsBalance(): Promise<number | null> {
   }
 }
 
-/** Bachs signs each delivery: HMAC-SHA256 of "<timestamp>.<raw body>", sent as t=…,v1=… (several v1 while a secret rotates) */
+/** Bachs signs each delivery: HMAC-SHA256 of "<timestamp>.<raw body>", sent as t=…,v1=… (several v1 while a secret
+ *  rotates). Its docs and dashboard name the header differently, so either name is accepted, and a bare signature
+ *  takes its time from the timestamp header. */
 export function bachsWebhookIsGenuine(raw: string, header: (name: string) => string | undefined) {
   const secret = env.BACHS_WEBHOOK_SECRET;
-  const sig = header("x-bachs-signature-v2");
+  const sig = header("x-bachs-signature-v2") ?? header("bachs-signature-v2") ?? header("bachs-signature") ?? header("x-bachs-signature");
   if (!secret || !sig) return false;
-  const parts = sig.split(",").map((p) => p.trim().split("="));
+  const parts = sig.includes("=")
+    ? sig.split(",").map((p) => p.trim().split("="))
+    : [["t", header("x-bachs-timestamp") ?? header("bachs-timestamp") ?? ""], ["v1", sig.trim()]];
   const t = parts.find(([k]) => k === "t")?.[1];
   if (!t || Math.abs(Date.now() / 1000 - Number(t)) > 300) return false;
   const expected = createHmac("sha256", secret).update(`${t}.${raw}`).digest("hex");
