@@ -1,11 +1,10 @@
 // A merchant's storefront, drawn in the store's own theme (chosen in the merchant dashboard).
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
-import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
@@ -13,7 +12,7 @@ import { Illo } from "@/components/illustrations";
 import { openProduct, StoreLogo } from "@/components/store-bits";
 import { useHeldTokens } from "@/lib/held-tokens";
 import { EmptyState, ErrorView, IconButton, Loading, tap } from "@/components/ui";
-import { CROSS_BONUS, formatTokens, loadStore, tileColor, tokenNaira, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { formatTokens, loadStore, tileColor, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { ProductArt, StoreCover } from "@/components/store-brand";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { fonts, gutter, radius, space } from "@/lib/theme";
@@ -64,12 +63,28 @@ function ProductTile({ p, store, width }: { p: StoreProduct; store: MarketStore;
   );
 }
 
+// Delivery times stores choose from, fastest first
+const TIMES = ["Same day", "Same day – 1 day", "1–2 days", "2–3 days", "3–5 days", "5–7 days"];
+const fastest = (store: MarketStore) => store.areas.map((a) => a.days).sort((a, b) => TIMES.indexOf(a) - TIMES.indexOf(b))[0] ?? null;
+
+/** One column of the delivery / time / rating strip */
+function Fact({ label, children, color, muted, divider }: { label: string; children: React.ReactNode; color: string; muted: string; divider?: string }) {
+  return (
+    <View style={{ flex: 1, alignItems: "center", gap: 4, paddingVertical: space.md, borderLeftWidth: divider ? 1 : 0, borderLeftColor: divider }}>
+      <T color={muted} size={12}>{label}</T>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>{children}</View>
+    </View>
+  );
+}
+
 export default function StoreScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const loaded = useAsync(() => loadStore(slug ?? ""), [slug]);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>("products");
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
   const subs = useStoreNotifications();
   const held = useHeldTokens(loaded.data?.ticker ?? "");
 
@@ -77,10 +92,13 @@ export default function StoreScreen() {
   if (loaded.error) return <ErrorView message={loaded.error} onRetry={loaded.reload} />;
   const store = loaded.data;
   if (!store) return <EmptyState illo="store" title="Store not found" message="It may have closed or changed its link." />;
-  const products = store.products;
+  const q = query.trim().toLowerCase();
+  const products = q ? store.products.filter((p) => p.name.toLowerCase().includes(q)) : store.products;
 
   const t = store.theme;
   const following = subs.isSubscribed(store.slug);
+  const favourite = subs.isFavourite(store.slug);
+  const time = fastest(store);
   const tileWidth = (Math.min(width, 720) - gutter * 2 - space.md) / 2;
 
   return (
@@ -95,71 +113,107 @@ export default function StoreScreen() {
           </View>
         ) : null}
 
-        {/* Cover */}
-        <View style={{ height: 210 + (store.announcement ? 0 : insets.top) }}>
+        {/* Cover, with back on the left and favourite, search and cart on the right */}
+        <View style={{ height: 200 + (store.announcement ? 0 : insets.top) }}>
           <StoreCover store={store} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
-          <LinearGradient colors={["rgba(0,0,0,0.45)", "transparent", "rgba(0,0,0,0.5)"]} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
-          <View style={{ paddingTop: (store.announcement ? 0 : insets.top) + space.sm, paddingHorizontal: gutter, flexDirection: "row", justifyContent: "space-between" }}>
-            <IconButton icon="chevron-back" tone="glass" onPress={() => (router.canGoBack() ? router.back() : router.replace("/stores"))} />
+          <LinearGradient colors={["rgba(0,0,0,0.4)", "transparent"]} style={{ position: "absolute", top: 0, left: 0, right: 0, height: 110 }} />
+          <View style={{ paddingTop: (store.announcement ? 0 : insets.top) + space.sm, paddingHorizontal: gutter, flexDirection: "row", alignItems: "center", gap: space.sm }}>
+            <IconButton icon="arrow-back" tone="glass" onPress={() => (router.canGoBack() ? router.back() : router.replace("/stores"))} />
+            <View style={{ flex: 1 }} />
+            {!store.isSotechy && (
+              <Pressable
+                onPress={() => {
+                  tap();
+                  subs.toggleFavourite(store.slug);
+                }}
+                accessibilityLabel={favourite ? "Remove from favourites" : "Add to favourites"}
+                style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.92)", alignItems: "center", justifyContent: "center" }}
+              >
+                <Ionicons name={favourite ? "heart" : "heart-outline"} size={21} color={favourite ? "#E5484D" : "#17120E"} />
+              </Pressable>
+            )}
+            <IconButton
+              icon="search"
+              tone="glass"
+              onPress={() => {
+                setSearching(!searching);
+                setQuery("");
+                setTab("products");
+              }}
+            />
             <CartButton />
           </View>
         </View>
 
-        {/* Name card */}
-        <View style={{ marginTop: -48, marginHorizontal: gutter, backgroundColor: t.surface, borderRadius: radius.xl, padding: space.lg, gap: space.md }}>
-          <View style={{ flexDirection: "row", gap: space.md, alignItems: "center" }}>
-            <StoreLogo store={store} size={64} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <T color={t.text} size={21} weight={fonts.displayHeavy} lines={2} style={{ flexShrink: 1, letterSpacing: -0.3 }}>{store.name}</T>
-                <Ionicons name="checkmark-circle" size={18} color={t.accent} />
-              </View>
-              <T color={t.muted} size={13.5} lines={2}>{store.tagline}</T>
-            </View>
+        {/* Logo over the cover, then the name */}
+        <View style={{ alignItems: "center", marginTop: -46, paddingHorizontal: gutter, gap: 6 }}>
+          <View style={{ width: 92, height: 92, borderRadius: 46, borderWidth: 4, borderColor: t.bg, overflow: "hidden", backgroundColor: t.surface }}>
+            <StoreLogo store={store} size={84} />
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, flexWrap: "wrap" }}>
+          <T color={t.text} size={22} weight={fonts.displayHeavy} lines={2} style={{ textAlign: "center", letterSpacing: -0.3 }}>{store.name}</T>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Ionicons name="star" size={14} color="#FDB913" />
-              <T color={t.text} size={13} weight={fonts.bold}>{store.rating ?? "New store"}</T>
+              <Ionicons name="shield-checkmark" size={15} color="#1C8A4C" />
+              <T color="#1C8A4C" size={13.5} weight={fonts.semibold}>Verified</T>
             </View>
-            <T color={t.muted} size={13}>
-              {products.length} product{products.length === 1 ? "" : "s"}
-            </T>
-            {store.delivery.states.length > 0 && <T color={t.muted} size={13}>Delivers to {store.delivery.states.length === 1 ? store.delivery.states[0] : `${store.delivery.states.length} states`}</T>}
-          </View>
-          <View style={{ flexDirection: "row", gap: space.sm }}>
-            <Pressable
-              onPress={() => {
-                tap();
-                subs.toggle(store.slug);
-              }}
-              style={{ flex: 1, height: 44, borderRadius: radius.pill, backgroundColor: following ? "transparent" : t.accent, borderWidth: following ? 1.5 : 0, borderColor: t.accent, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
-            >
-              <Ionicons name={following ? "notifications" : "notifications-outline"} size={17} color={following ? t.accent : t.onAccent} />
-              <T color={following ? t.accent : t.onAccent} weight={fonts.semibold}>{following ? "Subscribed" : "Get their updates"}</T>
-            </Pressable>
+            {store.delivery.states.length > 0 && (
+              <>
+                <View style={{ width: 1, height: 14, backgroundColor: t.muted, opacity: 0.4 }} />
+                <T color={t.muted} size={13.5}>Delivers to {store.delivery.states.length === 1 ? store.delivery.states[0] : `${store.delivery.states.length} states`}</T>
+              </>
+            )}
           </View>
         </View>
 
-        {/* Earn this store's token */}
-        <Pressable
-          onPress={() => router.push("/wallet")}
-          style={{ marginTop: space.md, marginHorizontal: gutter, borderRadius: radius.xl, padding: space.lg, backgroundColor: t.hero, flexDirection: "row", alignItems: "center", gap: space.md, overflow: "hidden" }}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <T color={t.onHero} size={16} weight={fonts.bold}>Earn ${store.ticker} on every order</T>
-            <T color="rgba(255,255,255,0.7)" size={12.5}>
-              1 ${store.ticker} per ₦1{store.isSotechy ? "" : `, plus ${CROSS_BONUS * 100}% $SOTECHY`}. Spend it here like cash.
-            </T>
-            {held > 0 && (
-              <T color={t.accent === "#17120E" ? "#FDB913" : t.accent} size={12.5} weight={fonts.bold} style={{ marginTop: 4 }}>
-                You have {formatTokens(held)} ${store.ticker} ≈ {formatNaira(Math.round(tokenNaira(held)))}
-              </T>
-            )}
-          </View>
-          <Illo name="coin" size={48} />
-        </Pressable>
+        {/* Delivery fee, time and rating */}
+        <View style={{ marginTop: space.md, marginHorizontal: gutter, flexDirection: "row", borderRadius: radius.lg, borderWidth: 1, borderColor: t.muted + "33", backgroundColor: t.surface }}>
+          <Fact label="Delivery" color={t.text} muted={t.muted}>
+            <T color={t.text} size={14.5} weight={fonts.bold}>{store.delivery.homeFrom != null ? (store.delivery.homeFrom ? `From ${formatNaira(store.delivery.homeFrom)}` : "Free") : store.delivery.pickup ? "Pickup" : "—"}</T>
+          </Fact>
+          <Fact label="Delivery time" color={t.text} muted={t.muted} divider={t.muted + "33"}>
+            <Ionicons name="time-outline" size={14} color={t.text} />
+            <T color={t.text} size={14.5} weight={fonts.bold}>{time ?? "—"}</T>
+          </Fact>
+          <Fact label="Rating" color={t.text} muted={t.muted} divider={t.muted + "33"}>
+            <Ionicons name="star" size={14} color="#FDB913" />
+            <T color={t.text} size={14.5} weight={fonts.bold}>{store.rating ?? "New"}</T>
+            {store.ratingCount > 0 && <T color={t.muted} size={12.5}>({store.ratingCount.toLocaleString("en-NG")})</T>}
+          </Fact>
+        </View>
 
+        {/* Updates and the store's token, side by side */}
+        <View style={{ marginTop: space.md, marginHorizontal: gutter, flexDirection: "row", gap: space.sm }}>
+          <Pressable
+            onPress={() => {
+              tap();
+              subs.toggle(store.slug);
+            }}
+            style={{ flex: 1, height: 44, borderRadius: radius.pill, backgroundColor: following ? "transparent" : t.accent, borderWidth: following ? 1.5 : 0, borderColor: t.accent, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
+          >
+            <Ionicons name={following ? "notifications" : "notifications-outline"} size={17} color={following ? t.accent : t.onAccent} />
+            <T color={following ? t.accent : t.onAccent} weight={fonts.semibold} size={14}>{following ? "Subscribed" : "Get their updates"}</T>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/wallet")}
+            accessibilityLabel={`Earn $${store.ticker} on every order${held > 0 ? `. You have ${formatTokens(held)}` : ""}`}
+            style={{ height: 44, borderRadius: radius.pill, backgroundColor: t.hero, paddingLeft: 6, paddingRight: 14, flexDirection: "row", alignItems: "center", gap: 6 }}
+          >
+            <Illo name="coin" size={30} />
+            <T color={t.onHero} size={13.5} weight={fonts.bold}>{held > 0 ? `${formatTokens(held)} $${store.ticker}` : `Earn $${store.ticker}`}</T>
+          </Pressable>
+        </View>
+
+        {searching && (
+          <View style={{ marginTop: space.md, marginHorizontal: gutter, flexDirection: "row", alignItems: "center", gap: space.sm, height: 46, borderRadius: radius.pill, backgroundColor: t.surface, paddingHorizontal: space.md }}>
+            <Ionicons name="search" size={17} color={t.muted} />
+            <TextInput autoFocus value={query} onChangeText={setQuery} placeholder={`Search ${store.name}`} placeholderTextColor={t.muted} style={{ flex: 1, fontFamily: fonts.body, fontSize: 15, color: t.text }} />
+            {query ? (
+              <Pressable onPress={() => setQuery("")} hitSlop={8}>
+                <Ionicons name="close-circle" size={18} color={t.muted} />
+              </Pressable>
+            ) : null}
+          </View>
+        )}
 
         {/* Tabs */}
         <View style={{ marginTop: space.lg, marginHorizontal: gutter, flexDirection: "row", backgroundColor: t.surface, borderRadius: radius.pill, padding: 4 }}>

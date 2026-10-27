@@ -174,6 +174,10 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     follow: (slug: string) => send<{ following: boolean }>("POST", `/me/follows/${encodeURIComponent(slug)}`),
     unfollow: (slug: string) => send<{ following: boolean }>("DELETE", `/me/follows/${encodeURIComponent(slug)}`),
     storeNotices: () => get<StoreNoticeView[]>("/me/store-notices"),
+    /** Stores saved with the heart */
+    favouriteStores: () => get<string[]>("/me/favourite-stores"),
+    favouriteStore: (slug: string) => send<{ favourite: boolean }>("POST", `/me/favourite-stores/${encodeURIComponent(slug)}`),
+    unfavouriteStore: (slug: string) => send<{ favourite: boolean }>("DELETE", `/me/favourite-stores/${encodeURIComponent(slug)}`),
     /** Token balances, activity and the wallet's Monad address; sending tokens by @username */
     wallet: () => get<WalletView>("/me/wallet"),
     sendTokens: (input: { to: string; ticker: string; amount: number }) => send<{ id: string; to: string; ticker: string; amount: number }>("POST", "/me/wallet/send", input),

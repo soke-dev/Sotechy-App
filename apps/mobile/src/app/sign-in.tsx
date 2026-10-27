@@ -9,7 +9,7 @@ import { useFeatures } from "@/lib/store-config";
 import { Illo } from "@/components/illustrations";
 import { Burst } from "@/components/tab-icons";
 import { Button, Input, Txt, ui } from "@/components/ui";
-import { API_URL, DEMO_MODE } from "@/lib/api";
+import { API_URL } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
@@ -247,7 +247,7 @@ export default function SignInScreen() {
           )}
 
           <Txt variant="caption" style={{ textAlign: "center", fontFamily: fonts.medium }}>
-            {DEMO_MODE ? "Demo mode: any email and password, or Google, signs you in." : "By continuing you agree to Sotechy's terms and privacy policy. No crypto wallet needed to shop."}
+            By continuing you agree to Sotechy&apos;s terms and privacy policy. No crypto wallet needed to shop.
           </Txt>
         </View>
       </ScrollView>

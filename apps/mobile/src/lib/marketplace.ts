@@ -55,6 +55,8 @@ export interface MarketStore {
   about: string;
   /** Average review score; null until it has reviews */
   rating: number | null;
+  /** How many reviews it's from */
+  ratingCount: number;
   /** What the store sells (from its setup) */
   sells: string[];
   logo?: Img;
@@ -83,9 +85,9 @@ export const SOTECHY_STORE: MarketStore = {
   tagline: "Phones, power and home, from Benin City",
   about: "Sotechy's own store. Genuine products with warranty, pickup at Etete Road and delivery across Edo, Delta, Lagos and Abuja.",
   rating: null,
+  ratingCount: 0,
   sells: [],
   logo: require("../../assets/brand/sotechy-icon-512.png"),
-  cover: require("../../assets/demo/store-front.jpg"),
   theme: THEMES.sotechy,
   delivery: { states: ["Edo", "Delta", "Lagos", "FCT Abuja"], homeFrom: null, pickup: "No. 20 Etete Road, Benin City" },
   isSotechy: true,
@@ -124,6 +126,7 @@ export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "bra
     tagline: s.tagline ?? s.sells.slice(0, 2).join(" · "),
     about: s.tagline ?? `${s.name} sells ${s.sells.slice(0, 3).join(", ").toLowerCase() || "on Sotechy"}.`,
     rating: s.ratingAverage ?? null,
+    ratingCount: s.ratingCount ?? 0,
     sells: s.sells,
     logo: s.logoUrl ? { uri: s.logoUrl } : undefined,
     cover: s.coverUrl ? { uri: s.coverUrl } : undefined,

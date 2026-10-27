@@ -4,9 +4,8 @@ import { Pressable, ScrollView, Switch, View } from "react-native";
 import { BUSINESS } from "@sotechy/shared";
 import { useDialog } from "@/components/dialog";
 import { useTabBarInset } from "@/components/tab-bar";
-import { Button, Divider, ListRow, Pill, ScreenHeader, tap, Txt, ui } from "@/components/ui";
+import { Button, Divider, ListRow, ScreenHeader, tap, Txt, ui } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
-import { DEMO_MODE } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useThemeMode } from "@/lib/theme-mode";
@@ -129,11 +128,6 @@ export default function AccountScreen() {
         )}
 
         <View style={{ alignItems: "center", gap: 4 }}>
-          {DEMO_MODE && (
-            <View style={{ alignSelf: "center" }}>
-              <Pill label="Demo mode · dummy data" tone="warning" />
-            </View>
-          )}
           <Txt variant="caption">{BUSINESS.name} · {BUSINESS.headOffice}</Txt>
         </View>
       </ScrollView>

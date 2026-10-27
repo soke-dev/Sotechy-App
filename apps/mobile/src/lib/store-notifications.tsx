@@ -21,14 +21,19 @@ interface StoreNotificationsState {
   unread: number;
   markAllRead: () => void;
   reload: () => void;
+  /** Stores saved with the heart */
+  favourites: string[];
+  isFavourite: (slug: string) => boolean;
+  toggleFavourite: (slug: string) => void;
 }
 
-const Ctx = createContext<StoreNotificationsState>({ subscribed: [], isSubscribed: () => false, toggle: () => {}, inbox: [], unread: 0, markAllRead: () => {}, reload: () => {} });
+const Ctx = createContext<StoreNotificationsState>({ subscribed: [], isSubscribed: () => false, toggle: () => {}, inbox: [], unread: 0, markAllRead: () => {}, reload: () => {}, favourites: [], isFavourite: () => false, toggleFavourite: () => {} });
 export const useStoreNotifications = () => useContext(Ctx);
 
 export function StoreNotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [subscribed, setSubscribed] = useState<string[]>([]);
+  const [favourites, setFavourites] = useState<string[]>([]);
   const [inbox, setInbox] = useState<StoreNotice[]>([]);
   const [read, setRead] = useState<string[]>([]);
 
@@ -41,10 +46,12 @@ export function StoreNotificationsProvider({ children }: { children: ReactNode }
   const reload = useCallback(() => {
     if (!user) {
       setSubscribed([]);
+      setFavourites([]);
       setInbox([]);
       return;
     }
     api.follows().then(setSubscribed, () => {});
+    api.favouriteStores().then(setFavourites, () => {});
     api.storeNotices().then(setInbox, () => {});
   }, [user]);
   useEffect(() => reload(), [reload]);
@@ -62,6 +69,16 @@ export function StoreNotificationsProvider({ children }: { children: ReactNode }
     [subscribed, user, reload],
   );
 
+  const toggleFavourite = useCallback(
+    (slug: string) => {
+      if (!user) return router.push("/sign-in");
+      const on = !favourites.includes(slug);
+      setFavourites((f) => (on ? [...f, slug] : f.filter((x) => x !== slug)));
+      (on ? api.favouriteStore(slug) : api.unfavouriteStore(slug)).catch(() => setFavourites((f) => (on ? f.filter((x) => x !== slug) : [...f, slug])));
+    },
+    [favourites, user],
+  );
+
   const unread = inbox.filter((n) => !read.includes(n.id)).length;
   const markAllRead = useCallback(() => {
     const next = [...new Set([...read, ...inbox.map((n) => n.id)])].slice(-500);
@@ -70,8 +87,8 @@ export function StoreNotificationsProvider({ children }: { children: ReactNode }
   }, [read, inbox]);
 
   const value = useMemo(
-    () => ({ subscribed, isSubscribed: (s: string) => subscribed.includes(s), toggle, inbox, unread, markAllRead, reload }),
-    [subscribed, toggle, inbox, unread, markAllRead, reload],
+    () => ({ subscribed, isSubscribed: (s: string) => subscribed.includes(s), toggle, inbox, unread, markAllRead, reload, favourites, isFavourite: (s: string) => favourites.includes(s), toggleFavourite }),
+    [subscribed, toggle, inbox, unread, markAllRead, reload, favourites, toggleFavourite],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

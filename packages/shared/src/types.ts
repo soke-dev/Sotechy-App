@@ -567,6 +567,8 @@ export interface MarketStore {
   featuredUntil: string | null;
   productCount?: number;
   ratingAverage?: number | null;
+  /** How many reviews the rating is from */
+  ratingCount?: number;
   /** States the store's approved delivery areas cover, and its cheapest door delivery */
   deliveryStates: string[];
   deliveryFrom: number | null;

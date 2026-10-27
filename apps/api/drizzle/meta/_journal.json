@@ -113,6 +113,13 @@
       "when": 1793115401753,
       "tag": "0015_payout_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793117019166,
+      "tag": "0016_store_favourites",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,6 @@ import { router, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Linking, Pressable, ScrollView, View } from "react-native";
 import type { Banner as AdminBanner } from "@sotechy/shared";
-import { demoMedia } from "@/lib/mock-api";
 import { useStoreConfig } from "@/lib/store-config";
 import { colors as theme, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
 
@@ -41,70 +40,31 @@ interface Slide {
   outlined?: boolean;
 }
 
-// Built-in banners, shown until banners are added in Admin → Home banners.
+// Shown until banners are added in Admin → Home banners: what Sotechy is, no offers
 const builtInSlides: Slide[] = [
   {
     bg: colors.ink,
     fg: colors.white,
     accent: colors.brandYellow,
-    overline: "Home appliance week",
-    title: "Fridges, cookers\n& ACs",
-    subtitle: "Up to 15% off selected items",
-    cta: "Shop now",
+    overline: "Verified stores",
+    title: "Shop stores\nyou can trust",
+    subtitle: "Every store is checked by Sotechy",
+    cta: "Browse stores",
     circle: colors.brand,
-    action: { pathname: "/shop", params: { category: "home-appliances" } },
-    art: [{ source: demoMedia.cutoutHome, w: 0.52, h: 0.72, right: 0.01, bottom: 0.1 }],
+    action: "/stores",
+    photo: require("../../assets/brand/sotechy-icon-512.png"),
   },
   {
     bg: colors.brandSoft,
     fg: colors.ink,
     accent: colors.brandPressed,
-    overline: "Beat the heat",
-    title: "Stay cool\nall season",
-    subtitle: "Split ACs & fridges from Hisense",
-    cta: "Shop cooling",
+    overline: "Store tokens",
+    title: "Earn on every\norder",
+    subtitle: "1 token per ₦1, spend it like cash",
+    cta: "See your wallet",
     circle: colors.brandYellow,
-    action: { pathname: "/shop", params: { category: "fans-cooling" } },
-    art: [
-      { source: demoMedia.fridge, w: 0.3, h: 0.82, right: 0.13, bottom: 0.06 },
-      { source: demoMedia.ac, w: 0.34, h: 0.24, right: 0.0, bottom: 0.14 },
-    ],
-  },
-  {
-    bg: colors.brandYellow,
-    fg: colors.ink,
-    accent: colors.ink2,
-    overline: "Kitchen upgrades",
-    title: "Heat it up\nin seconds",
-    subtitle: "Microwaves & gas cookers",
-    cta: "Shop kitchen",
-    circle: colors.white,
-    action: { pathname: "/shop", params: { category: "cookers-microwaves" } },
-    art: [{ source: demoMedia.microwave, w: 0.44, h: 0.52, right: 0.04, bottom: 0.22 }],
-  },
-  {
-    bg: colors.ink,
-    fg: colors.white,
-    accent: colors.brandYellow,
-    overline: "Power solutions",
-    title: "Power that\nkeeps going",
-    subtitle: "Generators & stabilizers",
-    cta: "Shop power",
-    circle: colors.brandYellow,
-    action: { pathname: "/shop", params: { category: "power-solutions" } },
-    photo: demoMedia.power,
-  },
-  {
-    bg: colors.surface,
-    fg: colors.ink,
-    accent: colors.brandPressed,
-    overline: "Benin City",
-    title: "Walk in.\nGet Techy.",
-    subtitle: "No. 20 Etete Road · Mon–Sat",
-    cta: "Get directions",
-    circle: colors.brand,
-    action: () => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent("No. 20 Etete Road, Benin City, Nigeria")}`),
-    photo: demoMedia.storeFront,
+    action: "/wallet",
+    badge: "$",
     outlined: true,
   },
 ];

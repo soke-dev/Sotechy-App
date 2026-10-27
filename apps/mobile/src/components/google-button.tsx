@@ -4,7 +4,6 @@ import { requireOptionalNativeModule } from "expo";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { ActivityIndicator, Platform, Pressable, Text } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { DEMO_MODE } from "@/lib/api";
 import { colors, fonts, radius } from "@/lib/theme";
 
 export interface GoogleButtonProps {
@@ -63,7 +62,6 @@ export function GoogleButtonView({ onPress, busy, disabled }: { onPress: () => v
 }
 
 export function GoogleButton({ onIdToken, onError, busy, onTest }: GoogleButtonProps) {
-  if (DEMO_MODE) return <GoogleButtonView busy={busy} onPress={() => onIdToken("demo-google-id-token")} />;
   // Wherever real Google sign-in can't run (Expo Go, an older build, no client IDs), sign in a test account while testing
   if (inExpoGo || !nativeReady || !configured) {
     if (onTest) return <GoogleButtonView busy={busy} onPress={onTest} />;

@@ -77,6 +77,25 @@ export const meRoutes = new Hono<AppEnv>()
       nftUrl: contract ? `${explorer}/nft/${contract.address}/${r.id}` : null,
     });
   })
+  /** Stores this account saved with the heart (their slugs) */
+  .get("/favourite-stores", async (c) => {
+    const rows = await db
+      .select({ slug: schema.merchants.slug })
+      .from(schema.storeFavourites)
+      .innerJoin(schema.merchants, eq(schema.merchants.id, schema.storeFavourites.merchantId))
+      .where(eq(schema.storeFavourites.userId, c.get("user").id));
+    return c.json(rows.map((r) => r.slug));
+  })
+  .post("/favourite-stores/:slug", async (c) => {
+    const store = await liveStore(c.req.param("slug"));
+    await db.insert(schema.storeFavourites).values({ userId: c.get("user").id, merchantId: store.id }).onConflictDoNothing();
+    return c.json({ favourite: true });
+  })
+  .delete("/favourite-stores/:slug", async (c) => {
+    const store = await liveStore(c.req.param("slug"));
+    await db.delete(schema.storeFavourites).where(and(eq(schema.storeFavourites.userId, c.get("user").id), eq(schema.storeFavourites.merchantId, store.id)));
+    return c.json({ favourite: false });
+  })
   /** Stores this account follows (their slugs) */
   .get("/follows", async (c) => {
     const rows = await db

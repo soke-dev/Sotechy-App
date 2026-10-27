@@ -20,7 +20,6 @@ import { useAuth } from "@/lib/auth";
 import { byFeatured, SOTECHY_STORE, tileColor, toStoreProduct, useStores, type Img as MarketImg } from "@/lib/marketplace";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { useFeatures } from "@/lib/store-config";
-import { demoMedia } from "@/lib/mock-api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
@@ -304,18 +303,6 @@ export default function HomeScreen() {
         );
       })}
 
-      {/* Brands */}
-      <View style={{ paddingHorizontal: gutter }}>
-        <SectionHeader title="Brands we stock" />
-        <View style={[ui.row, { gap: space.md }]}>
-          {demoMedia.brands.map((src, i) => (
-            <View key={i} style={{ flex: 1, height: 64, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center", paddingHorizontal: space.lg }}>
-              <Image source={src} style={{ width: "100%", height: 30 }} contentFit="contain" />
-            </View>
-          ))}
-        </View>
-      </View>
-
       {/* Can't find it */}
       <Pressable
         onPress={async () => {
@@ -336,8 +323,10 @@ export default function HomeScreen() {
       {/* Store */}
       {headOffice && (
         <View style={{ marginHorizontal: gutter, borderRadius: radius.xl, overflow: "hidden", height: Math.round(contentWidth * 0.72) }}>
-          <Image source={demoMedia.storeFront} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" />
-          <LinearGradient colors={["transparent", "rgba(23,18,14,0.88)"]} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "70%" }} />
+          <LinearGradient colors={[colors.brand, "#17120E"]} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+          <View style={{ position: "absolute", right: space.xl, top: space.xl }}>
+            <Illo name="store" size={72} />
+          </View>
           <View style={{ flex: 1, justifyContent: "flex-end", padding: space.xl, gap: 6 }}>
             <Txt variant="overline" color={colors.brandYellow}>Visit Sotechy&apos;s shop</Txt>
             <Txt variant="title" color={colors.white}>{headOffice.address}, {headOffice.city}</Txt>

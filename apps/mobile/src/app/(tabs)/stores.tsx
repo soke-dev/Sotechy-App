@@ -1,3 +1,4 @@
+import { useStoreNotifications } from "@/lib/store-notifications";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
@@ -18,6 +19,8 @@ export default function StoresScreen() {
   const params = useLocalSearchParams<{ kind?: string }>();
   const [kind, setKind] = useState<string>(params.kind ?? "");
   const { stores, error, loading, reload } = useStores();
+  const { favourites } = useStoreNotifications();
+  const SAVED = "__saved";
   // The tab stays mounted: follow a type picked on Home
   useEffect(() => {
     if (params.kind !== undefined) setKind(params.kind);
@@ -31,10 +34,10 @@ export default function StoresScreen() {
   const counts = new Map<string, number>();
   for (const s of stores) for (const k of s.sells) counts.set(k, (counts.get(k) ?? 0) + 1);
   const kinds = [...counts].sort((a, b) => b[1] - a[1]).map(([k]) => k);
-  if (kind && !kinds.includes(kind)) kinds.unshift(kind);
+  if (kind && kind !== SAVED && !kinds.includes(kind)) kinds.unshift(kind);
   const term = q.trim().toLowerCase();
   const shown = all
-    .filter((s) => !kind || s.sells.includes(kind) || (s.isSotechy && SOTECHY_KINDS.test(kind)))
+    .filter((s) => !kind || (kind === SAVED ? favourites.includes(s.slug) : s.sells.includes(kind) || (s.isSotechy && SOTECHY_KINDS.test(kind))))
     .filter((s) => !term || `${s.name} ${s.tagline} ${s.ticker} ${s.sells.join(" ")}`.toLowerCase().includes(term));
 
   return (
@@ -47,10 +50,11 @@ export default function StoresScreen() {
       >
         <Input icon="search" placeholder="Search stores or $TICKER" value={q} onChangeText={setQ} />
 
-        {kinds.length > 0 && (
+        {(kinds.length > 0 || favourites.length > 0) && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }} style={{ marginHorizontal: -gutter }}>
             <View style={{ width: gutter - space.sm }} />
             <Chip label="All stores" active={!kind} onPress={() => setKind("")} />
+            {favourites.length > 0 && <Chip label={`♥ Saved (${favourites.length})`} active={kind === SAVED} onPress={() => setKind(kind === SAVED ? "" : SAVED)} />}
             {kinds.map((k) => (
               <Chip key={k} label={k} active={kind === k} onPress={() => setKind(kind === k ? "" : k)} />
             ))}

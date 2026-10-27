@@ -218,6 +218,7 @@ export const storeRoutes = new Hono()
         featuredUntil: m.featuredUntil,
         productCount: sql<number>`(select count(*)::int from products p where p.merchant_id = "merchants"."id" and p.is_published)`,
         ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
+        ratingCount: sql<number>`(select count(*)::int from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
         ...storeDelivery,
       })
       .from(m)
@@ -240,6 +241,9 @@ export const storeRoutes = new Hono()
         sells: m.sells,
         featuredUntil: m.featuredUntil,
         branchId: branches.id,
+        // The store's rating: every published review of its products
+        ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
+        ratingCount: sql<number>`(select count(*)::int from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
         ...storeDelivery,
         pickupPoints: sql<string[]>`(select coalesce(array_agg(distinct z.pickup_point), '{}') from delivery_zones z where ${liveZone} and z.pickup_point is not null)`,
       })

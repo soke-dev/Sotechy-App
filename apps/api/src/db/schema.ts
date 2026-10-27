@@ -875,6 +875,21 @@ export const storeFollows = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.merchantId] }), index().on(t.merchantId)],
 );
 
+/** Stores a customer saved with the heart */
+export const storeFavourites = pgTable(
+  "store_favourites",
+  {
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.merchantId] }), index().on(t.merchantId)],
+);
+
 export const storeNotices = pgTable(
   "store_notices",
   {
