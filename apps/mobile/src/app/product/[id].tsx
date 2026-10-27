@@ -38,7 +38,6 @@ import { useCart } from "@/lib/cart";
 import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
-import { openWhatsApp } from "@/lib/whatsapp";
 import { sellerOf, useAddToCart } from "@/components/add-to-cart";
 
 type Tab = "overview" | "about" | "reviews";
@@ -499,21 +498,6 @@ export default function ProductScreen() {
             <View style={{ position: "absolute", left: gutter, bottom: radius.xl + space.md + 8, backgroundColor: "rgba(23,18,14,0.7)", borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
               <Txt variant="caption" color={colors.white}>{imageIndex + 1} / {product.images.length}</Txt>
             </View>
-          )}
-          {features.whatsapp && (
-            <Pressable
-              onPress={() =>
-                openWhatsApp(
-                  config.data?.support.whatsapp,
-                  `Hello Sotechy, I'd like to order: ${product.name}${product.variants.length > 1 && variant ? ` (${variant.name})` : ""} – ${formatNaira(variant?.price)}`,
-                )
-              }
-              accessibilityLabel="Order on WhatsApp"
-              style={({ pressed }) => ({ position: "absolute", right: gutter, bottom: radius.xl + space.md, flexDirection: "row", alignItems: "center", gap: 6, height: 40, paddingLeft: 14, paddingRight: 12, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : `${colors.surface}F2` })}
-            >
-              <Txt variant="label">Order on</Txt>
-              <Ionicons name="logo-whatsapp" size={21} color={colors.brandPressed} />
-            </Pressable>
           )}
           <View style={[ui.between, { position: "absolute", top: insets.top + space.sm, left: gutter, right: gutter }]}>
             <IconButton icon="chevron-back" tone="glass" onPress={() => router.back()} />
