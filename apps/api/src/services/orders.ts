@@ -2,6 +2,7 @@
 // database transactions with row locks, so online and in-store sales cannot oversell.
 import { and, eq, inArray, lt, sql } from "drizzle-orm";
 import type { OrderStatus, PaymentMethodCode, PlaceOrderInput } from "@sotechy/shared";
+import { notifyOrderStatus } from "./order-notices";
 import { db, schema, type Tx } from "../db/client";
 import { audit } from "../lib/audit";
 import type { AuthUser } from "../lib/auth";
@@ -301,7 +302,8 @@ export async function confirmPayment(
     note?: string;
   },
 ) {
-  return db.transaction(async (tx) => {
+  let paidOrderId: string | null = null;
+  const result = await db.transaction(async (tx) => {
     const [payment] = await tx.select().from(payments).where(eq(payments.id, paymentId)).for("update");
     if (!payment) throw notFound("Payment not found");
     if (payment.status === "confirmed") return { payment, alreadyConfirmed: true };
@@ -330,6 +332,7 @@ export async function confirmPayment(
       await tx.update(orders).set({ status: "paid", reservationExpiresAt: null }).where(eq(orders.id, order.id));
       await recordStatus(tx, order.id, order.status, "paid", opts.verifiedBy, "Payment confirmed");
       await bumpPromotionUsage(tx, order.promotionId);
+      paidOrderId = order.id;
     } else {
       // Money arrived for an order that was cancelled/expired: needs a manual refund or reinstatement.
       await audit(tx, {
@@ -350,6 +353,8 @@ export async function confirmPayment(
     });
     return { payment: updated, alreadyConfirmed: false };
   });
+  if (paidOrderId) void notifyOrderStatus(paidOrderId, "paid");
+  return result;
 }
 
 /** Manager confirms a bank transfer / in-store crypto transfer after checking the account or chain. */
@@ -380,7 +385,7 @@ const TRANSITIONS: Partial<Record<OrderStatus, OrderStatus[]>> = {
 };
 
 export async function updateOrderStatus(actor: AuthUser, orderId: string, to: OrderStatus, note?: string) {
-  return db.transaction(async (tx) => {
+  const updated = await db.transaction(async (tx) => {
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId)).for("update");
     if (!order) throw notFound("Order not found");
     if (!TRANSITIONS[order.status]?.includes(to)) {
@@ -394,10 +399,12 @@ export async function updateOrderStatus(actor: AuthUser, orderId: string, to: Or
     await audit(tx, { actorId: actor.id, action: "order.status", entityType: "order", entityId: orderId, details: { from: order.status, to } });
     return updated;
   });
+  void notifyOrderStatus(orderId, to);
+  return updated;
 }
 
 export async function cancelOrder(actor: AuthUser, orderId: string, note?: string) {
-  return db.transaction(async (tx) => {
+  const updated = await db.transaction(async (tx) => {
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId)).for("update");
     if (!order) throw notFound("Order not found");
 
@@ -437,6 +444,9 @@ export async function cancelOrder(actor: AuthUser, orderId: string, note?: strin
     await audit(tx, { actorId: actor.id, action: "order.cancel", entityType: "order", entityId: orderId, details: { from: order.status } });
     return updated;
   });
+  // Customers who cancel their own unpaid order don't need telling
+  if (actor.id !== updated.customerId) void notifyOrderStatus(orderId, "cancelled");
+  return updated;
 }
 
 /** Cancels unpaid orders whose stock hold has expired. Runs on an interval from index.ts. */
@@ -448,14 +458,16 @@ export async function releaseExpiredReservations() {
     .limit(100);
 
   for (const { id } of expired) {
-    await db.transaction(async (tx) => {
+    const cancelled = await db.transaction(async (tx) => {
       const [order] = await tx.select().from(orders).where(eq(orders.id, id)).for("update", { skipLocked: true });
-      if (!order || order.status !== "pending_payment") return;
+      if (!order || order.status !== "pending_payment") return false;
       await releaseReservedStock(tx, order);
       await tx.update(payments).set({ status: "expired" }).where(and(eq(payments.orderId, id), eq(payments.status, "pending")));
       await tx.update(orders).set({ status: "cancelled", reservationExpiresAt: null }).where(eq(orders.id, id));
       await recordStatus(tx, id, "pending_payment", "cancelled", null, "Payment window expired");
+      return true;
     });
+    if (cancelled) void notifyOrderStatus(id, "cancelled");
   }
   return expired.length;
 }

@@ -21,6 +21,27 @@ const addressSchema = z.object({
 
 export const meRoutes = new Hono<AppEnv>()
   .use(requireAuth)
+  /** This phone wants push notifications for the signed-in account */
+  .post(
+    "/push-devices",
+    zValidator("json", z.object({ token: z.string().regex(/^Expo(nent)?PushToken\[.+\]$/, "Not an Expo push token"), platform: z.enum(["android", "ios"]) })),
+    async (c) => {
+      const { token, platform } = c.req.valid("json");
+      const userId = c.get("user").id;
+      await db
+        .insert(schema.pushDevices)
+        .values({ token, platform, userId })
+        .onConflictDoUpdate({ target: schema.pushDevices.token, set: { userId, platform, updatedAt: new Date() } });
+      return c.json({ ok: true });
+    },
+  )
+  /** Signing out on this phone: stop sending it this account's notifications */
+  .delete("/push-devices", zValidator("json", z.object({ token: z.string() })), async (c) => {
+    await db
+      .delete(schema.pushDevices)
+      .where(and(eq(schema.pushDevices.token, c.req.valid("json").token), eq(schema.pushDevices.userId, c.get("user").id)));
+    return c.json({ ok: true });
+  })
   .get("/wishlist", async (c) => {
     const saved = await db.select({ productId: schema.wishlists.productId }).from(schema.wishlists).where(eq(schema.wishlists.userId, c.get("user").id));
     if (saved.length === 0) return c.json([]);

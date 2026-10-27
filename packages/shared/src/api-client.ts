@@ -69,6 +69,9 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch }:
       send<AuthResponse>("POST", "/auth/register", input),
     login: (input: { email: string; password: string }) => send<AuthResponse>("POST", "/auth/login", input),
     googleSignIn: (idToken: string) => send<AuthResponse>("POST", "/auth/google", { idToken }),
+    /** Push notifications for this phone (Expo push token) */
+    registerPushDevice: (input: { token: string; platform: "android" | "ios" }) => send<{ ok: true }>("POST", "/me/push-devices", input),
+    unregisterPushDevice: (token: string) => send<{ ok: true }>("DELETE", "/me/push-devices", { token }),
     /** Emails a 6-digit code if the account exists (the answer is the same either way) */
     forgotPassword: (email: string) => send<{ ok: true }>("POST", "/auth/password/forgot", { email }),
     resetPassword: (input: { email: string; code: string; password: string }) => send<AuthResponse>("POST", "/auth/password/reset", input),

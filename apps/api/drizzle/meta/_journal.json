@@ -29,6 +29,13 @@
       "when": 1793078916541,
       "tag": "0003_password_resets",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793083631354,
+      "tag": "0004_push_devices",
+      "breakpoints": true
     }
   ]
 }

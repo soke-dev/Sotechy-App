@@ -59,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     updateProfile: async (input) => setUser(await api.updateProfile(input)),
     signOut: async () => {
+      // Loaded here so the auth module doesn't pull in notifications at startup
+      await (await import("./push")).forgetPushDevice();
       setApiToken(null);
       await tokenStore.clear();
       setUser(null);

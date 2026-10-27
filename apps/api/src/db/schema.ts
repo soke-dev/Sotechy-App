@@ -99,6 +99,19 @@ export const users = pgTable("users", {
   updatedAt: updatedAt(),
 });
 
+/** Phones that get push notifications for an account (Expo push tokens) */
+export const pushDevices = pgTable("push_devices", {
+  id: uuid().primaryKey().defaultRandom(),
+  userId: uuid()
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  /** ExponentPushToken[…]; a phone moves to whoever signs in on it last */
+  token: text().notNull().unique(),
+  platform: text().notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 /** Emailed 6-digit codes for resetting a password. Only a hash of the code is kept. */
 export const passwordResets = pgTable("password_resets", {
   id: uuid().primaryKey().defaultRandom(),

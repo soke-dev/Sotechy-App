@@ -22,6 +22,7 @@ import { CartProvider } from "@/lib/cart";
 import { StoreConfigProvider, useFeatures } from "@/lib/store-config";
 import { AccountExtrasProvider } from "@/lib/account-extras";
 import { OffersProvider } from "@/lib/offers";
+import { PushNotifications } from "@/lib/push";
 import { StoreNotificationsProvider } from "@/lib/store-notifications";
 import { colors, fonts } from "@/lib/theme";
 import { ThemeModeProvider, useThemeMode } from "@/lib/theme-mode";
@@ -50,6 +51,7 @@ function ThemedNavigator() {
   return (
     <>
       <StatusBar style={resolved === "dark" ? "light" : "dark"} />
+      <PushNotifications />
       <Stack
         key={resolved}
         screenOptions={{
