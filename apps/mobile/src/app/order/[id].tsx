@@ -15,6 +15,7 @@ import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { Illo, type IlloName } from "@/components/illustrations";
+import { LinearGradient } from "expo-linear-gradient";
 import { ProductImage } from "@/components/product-image";
 
 function Section({ title, illo, right, children }: { title: string; illo: IlloName; right?: ReactNode; children: ReactNode }) {
@@ -133,6 +134,7 @@ export default function OrderScreen() {
   const receipt = useAsync(() => api.orderReceipt(id).catch(() => null), [id]);
   const [cancelling, setCancelling] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [allUpdates, setAllUpdates] = useState(false);
   const [confirming, setConfirming] = useState<"yes" | "no" | null>(null);
   const moneyMoves = useMoneyMoves();
   const [payOpen, setPayOpen] = useState(false);
@@ -329,8 +331,10 @@ export default function OrderScreen() {
       )}
 
       <Section title="Order updates" illo="receipt">
-        {history.map((h, i) => {
+        {/* The latest two, fading out, until "View all updates" opens the rest */}
+        {(allUpdates ? history : history.slice(0, 2)).map((h, i) => {
           const latest = i === 0;
+          const fading = !allUpdates && history.length > 2 && i === 1;
           return (
             <View key={h.id} style={{ flexDirection: "row", gap: space.md }}>
               <View style={{ alignItems: "center", width: 14 }}>
@@ -342,9 +346,23 @@ export default function OrderScreen() {
                 {h.note ? <Txt variant="small">{h.note}</Txt> : null}
                 <Txt variant="caption" color={colors.faint}>{formatDate(h.createdAt)}</Txt>
               </View>
+              {fading && <LinearGradient pointerEvents="none" colors={[colors.surface + "00", colors.surface + "E6"]} locations={[0.15, 1]} style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }} />}
             </View>
           );
         })}
+        {history.length > 2 && (
+          <Pressable
+            onPress={() => {
+              tap();
+              setAllUpdates(!allUpdates);
+            }}
+            hitSlop={6}
+            style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: space.xs }}
+          >
+            <Txt variant="label" color={colors.brandPressed}>{allUpdates ? "Show less" : `View all updates (${history.length})`}</Txt>
+            <Ionicons name={allUpdates ? "chevron-up" : "chevron-down"} size={16} color={colors.brandPressed} />
+          </Pressable>
+        )}
       </Section>
 
       <Section title={`Items (${order.items.reduce((n, i) => n + i.quantity, 0)})`} illo="box" right={finished ? <Button title="Buy again" size="sm" variant="outline" icon="refresh" onPress={buyAgain} /> : undefined}>
