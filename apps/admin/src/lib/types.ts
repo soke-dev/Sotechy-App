@@ -159,7 +159,7 @@ export interface SupportThread {
   orderId: string | null;
   createdAt: string;
   customer: { id: string | null; email: string | null; fullName: string | null; username: string | null; phone: string | null };
-  messages: { id: string; fromStaff: boolean; body: string; createdAt: string }[];
+  messages: { id: string; fromStaff: boolean; body: string; imageUrl?: string | null; createdAt: string }[];
 }
 
 export interface ReviewRow {

@@ -190,6 +190,13 @@
       "when": 1793170446825,
       "tag": "0026_pickup_places",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793170795596,
+      "tag": "0027_support_images_store_promos",
+      "breakpoints": true
     }
   ]
 }

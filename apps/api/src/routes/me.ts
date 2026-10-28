@@ -282,11 +282,20 @@ export const meRoutes = new Hono<AppEnv>()
   .get("/pulse", async (c) => c.json({ v: await customerPulse(c.get("user").id) }))
   /** The customer's live chat with Sotechy: their open conversation and its messages */
   .get("/support/chat", async (c) => c.json(await chatFor(c.get("user").id)))
-  .post("/support/chat", zValidator("json", z.object({ message: z.string().trim().min(1).max(2000), orderId: z.uuid().optional() })), async (c) => {
-    const { message, orderId } = c.req.valid("json");
-    await postChatMessage(c.get("user").id, message, orderId);
+  .post(
+    "/support/chat",
+    zValidator(
+      "json",
+      z
+        .object({ message: z.string().trim().max(2000).default(""), imageUrl: z.string().url().max(500).optional(), orderId: z.uuid().optional() })
+        .refine((v) => v.message.length > 0 || !!v.imageUrl, "Write a message or add a photo"),
+    ),
+    async (c) => {
+    const { message, orderId, imageUrl } = c.req.valid("json");
+    await postChatMessage(c.get("user").id, message, orderId, imageUrl);
     return c.json(await chatFor(c.get("user").id), 201);
-  })
+    },
+  )
   .post(
     "/support",
     zValidator("json", z.object({ subject: z.string().min(3).max(150), message: z.string().min(5).max(5000), orderId: z.uuid().optional() })),

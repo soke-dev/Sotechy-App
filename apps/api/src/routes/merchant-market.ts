@@ -303,6 +303,21 @@ function pickupColumns(pickup: { fee: number; point: string; address?: string | 
   return { pickupFee: pickup.fee, pickupPoint: places[0].name, pickupAddress: places[0].address || null, pickupPlaces: places };
 }
 
+/** A store's promo code: a percentage or an amount off its own products */
+const storePromoFields = z.object({
+  name: z.string().trim().min(2).max(80),
+  code: z.string().trim().min(3).max(20).regex(/^[A-Za-z0-9]+$/, "Use letters and numbers only"),
+  discountType: z.enum(["percentage", "fixed"]),
+  value: z.number().positive().max(1_000_000),
+  maxDiscountAmount: z.number().positive().nullable().optional(),
+  minOrderAmount: z.number().positive().nullable().optional(),
+  startsAt: z.coerce.date().nullable().optional(),
+  endsAt: z.coerce.date().nullable().optional(),
+  usageLimit: z.number().int().positive().nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+const storePromo = storePromoFields.refine((v) => v.discountType !== "percentage" || v.value <= 90, "A percentage can be up to 90%");
+
 const zoneInput = z.object({
   state: z.string().trim().min(2).max(40),
   areas: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
@@ -788,6 +803,34 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     return c.json(rows);
   })
 
+  // --- The store's own promo codes (it gives the discount) ---
+  .get("/promotions", async (c) => {
+    const p = schema.promotions;
+    return c.json(await db.select().from(p).where(eq(p.merchantId, c.get("store").id)).orderBy(desc(p.createdAt)));
+  })
+  .post("/promotions", zValidator("json", storePromo), async (c) => {
+    const input = c.req.valid("json");
+    const code = input.code.trim().toUpperCase();
+    const [taken] = await db.select({ id: schema.promotions.id }).from(schema.promotions).where(sql`upper(${schema.promotions.code}) = ${code}`);
+    if (taken) throw conflict("That code is already used on Sotechy. Try another.");
+    const [row] = await db.insert(schema.promotions).values({ ...input, code, merchantId: c.get("store").id }).returning();
+    return c.json(row, 201);
+  })
+  .patch("/promotions/:id", zValidator("json", storePromoFields.partial()), async (c) => {
+    const input = c.req.valid("json");
+    const [row] = await db
+      .update(schema.promotions)
+      .set({ ...input, ...(input.code && { code: input.code.trim().toUpperCase() }) })
+      .where(and(eq(schema.promotions.id, c.req.param("id")), eq(schema.promotions.merchantId, c.get("store").id)))
+      .returning();
+    if (!row) throw notFound("Promo code not found");
+    return c.json(row);
+  })
+  .delete("/promotions/:id", async (c) => {
+    const [row] = await db.delete(schema.promotions).where(and(eq(schema.promotions.id, c.req.param("id")), eq(schema.promotions.merchantId, c.get("store").id))).returning({ id: schema.promotions.id });
+    if (!row) throw notFound("Promo code not found");
+    return c.json({ ok: true });
+  })
   /** Changes since the dashboard last looked, so open pages refresh by themselves */
   .get("/summary/pulse", async (c) => c.json({ v: await storePulse(c.get("store").id) }))
   // --- The bell: what needs the store now, and the latest goings-on (under /summary so every role can read it) ---

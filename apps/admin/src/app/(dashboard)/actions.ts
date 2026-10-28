@@ -392,7 +392,14 @@ export async function updateTicket(_: Prev, f: FormData) {
 
 /** A staff reply in a live-chat conversation; the customer sees it in the app */
 export async function replyToTicket(_: Prev, f: FormData) {
-  return run(() => api.post(`/admin/support/${str(f, "id")}/reply`, { message: str(f, "message") }), ["/support", `/support/${str(f, "id")}`], "Sent");
+  return run(
+    async () => {
+      const [imageUrl] = await uploadImages(f.getAll("image"));
+      return api.post(`/admin/support/${str(f, "id")}/reply`, { message: str(f, "message") ?? "", ...(imageUrl && { imageUrl }) });
+    },
+    ["/support", `/support/${str(f, "id")}`],
+    "Sent",
+  );
 }
 
 // --- App switches, banners, exchange rate, customers ---------------------------

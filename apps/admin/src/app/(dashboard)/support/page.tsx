@@ -1,6 +1,7 @@
 import { LifeBuoy } from "lucide-react";
 import { formatDate } from "@sotechy/shared";
 import { Card, DataTable, ErrorNote, PageHeader, StatusBadge } from "@/components/ui";
+import { LivePulse } from "@/components/auto-refresh";
 import { load } from "@/lib/api";
 import type { SupportTicketRow } from "@/lib/types";
 
@@ -9,6 +10,7 @@ export default async function SupportPage() {
   return (
     <>
       <PageHeader icon={LifeBuoy} title="Support" description="Live chats and messages from the customer app. Open one to read it and reply; the customer sees your answer in the app." />
+      <LivePulse seconds={3} />
       <Card>
         <ErrorNote error={error} />
         <DataTable

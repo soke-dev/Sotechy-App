@@ -164,7 +164,10 @@ export const adminManagementRoutes = new Hono<AppEnv>()
   })
 
   // --- Promotions ---
-  .get("/promotions", async (c) => c.json(await db.select().from(promotions).orderBy(desc(promotions.createdAt))))
+  .get("/promotions", async (c) => {
+    const rows = await db.select({ p: promotions, storeName: schema.merchants.name }).from(promotions).leftJoin(schema.merchants, eq(schema.merchants.id, promotions.merchantId)).orderBy(desc(promotions.createdAt));
+    return c.json(rows.map((r) => ({ ...r.p, storeName: r.storeName })));
+  })
   .post("/promotions", requireRole(...MANAGERS), zValidator("json", promotionFields), async (c) => {
     const [row] = await db.insert(promotions).values(c.req.valid("json")).returning();
     await audit(db, { actorId: c.get("user").id, action: "promotion.create", entityType: "promotion", entityId: row.id });
@@ -302,7 +305,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     const ids = rows.map((r) => r.ticket.id);
     const latest = ids.length
       ? await db
-          .selectDistinctOn([schema.supportMessages.ticketId], { ticketId: schema.supportMessages.ticketId, body: schema.supportMessages.body, fromStaff: schema.supportMessages.fromStaff })
+          .selectDistinctOn([schema.supportMessages.ticketId], { ticketId: schema.supportMessages.ticketId, body: schema.supportMessages.body, imageUrl: schema.supportMessages.imageUrl, fromStaff: schema.supportMessages.fromStaff })
           .from(schema.supportMessages)
           .where(inArray(schema.supportMessages.ticketId, ids))
           .orderBy(schema.supportMessages.ticketId, desc(schema.supportMessages.createdAt))
@@ -310,15 +313,17 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     return c.json(
       rows.map((r) => {
         const last = latest.find((m) => m.ticketId === r.ticket.id);
-        return { ...r.ticket, customerEmail: r.customerEmail, customerName: r.customerName, username: r.username, lastMessage: last?.body ?? r.ticket.message, lastFromStaff: last?.fromStaff ?? false };
+        return { ...r.ticket, customerEmail: r.customerEmail, customerName: r.customerName, username: r.username, lastMessage: (last?.body || (last?.imageUrl ? "Photo" : "")) || r.ticket.message, lastFromStaff: last?.fromStaff ?? false };
       }),
     );
   })
   /** Changes anywhere admins look, so open pages refresh by themselves */
   .get("/pulse", async (c) => c.json({ v: await adminPulse() }))
   .get("/support/:id", async (c) => c.json(await ticketThread(c.req.param("id"))))
-  .post("/support/:id/reply", zValidator("json", z.object({ message: z.string().trim().min(1).max(2000) })), async (c) =>
-    c.json(await replyToTicket(c.req.param("id"), c.get("user").id, c.req.valid("json").message)),
+  .post(
+    "/support/:id/reply",
+    zValidator("json", z.object({ message: z.string().trim().max(2000).default(""), imageUrl: z.string().url().max(500).optional() }).refine((v) => v.message.length > 0 || !!v.imageUrl, "Write a reply or add a photo")),
+    async (c) => c.json(await replyToTicket(c.req.param("id"), c.get("user").id, c.req.valid("json").message, c.req.valid("json").imageUrl)),
   )
   .patch("/support/:id", zValidator("json", z.object({ status: z.enum(["open", "pending", "resolved", "closed"]) })), async (c) => {
     const [row] = await db.update(supportTickets).set(c.req.valid("json")).where(eq(supportTickets.id, c.req.param("id"))).returning();
@@ -382,10 +387,12 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       .select({
         merchants: sql<number>`(select count(*)::int from merchants m where m.status = 'pending' and m.submitted_at is not null)`,
         zones: sql<number>`(select count(*)::int from delivery_zones z where z.review = 'pending')`,
+        // Conversations waiting on Sotechy's answer
+        support: sql<number>`(select count(*)::int from support_tickets t where t.status = 'open')`,
       })
       .from(users)
       .limit(1);
-    return c.json({ merchants: row?.merchants ?? 0, zones: row?.zones ?? 0, cases: (await orderCases()).length });
+    return c.json({ merchants: row?.merchants ?? 0, zones: row?.zones ?? 0, support: row?.support ?? 0, cases: (await orderCases()).length });
   })
   /** Every store's delivery areas, waiting ones first */
   .get("/delivery-zones", async (c) => {

@@ -56,6 +56,53 @@ function FulfilmentCard({ illo, title, subtitle, active, locked, lockedNote = "N
   );
 }
 
+interface Spot {
+  key: string;
+  name: string;
+  address: string;
+  fee: number | null;
+  days: string;
+  state: string;
+}
+
+/** A pickup point, drawn like a saved delivery address: in the list it's picked with the circle; on the page, Change opens the list */
+function PickupCard({ spot, selected, count, onPress, onChange }: { spot: Spot; selected?: boolean; count?: number; onPress?: () => void; onChange?: () => void }) {
+  const picking = selected !== undefined;
+  return (
+    <Pressable
+      onPress={() => {
+        tap();
+        (onPress ?? onChange)?.();
+      }}
+      disabled={!onPress && !(onChange && (count ?? 0) > 1)}
+      style={{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: selected ? 1.5 : 1, borderColor: selected ? colors.ink : colors.line, padding: space.lg, gap: space.md }}
+    >
+      <View style={{ flexDirection: "row", gap: space.md }}>
+        <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
+          <Illo name="pin" size={28} />
+        </View>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Txt variant="label">{spot.name}</Txt>
+          <Txt variant="small">{spot.address || spot.state}</Txt>
+          <Txt variant="caption">
+            {spot.fee ? formatNaira(spot.fee) : "Free"} · {spot.days}
+          </Txt>
+        </View>
+        {picking && <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: selected ? 7 : 1.5, borderColor: selected ? colors.ink : colors.faint, marginTop: 2 }} />}
+      </View>
+      {onChange && (count ?? 0) > 1 && (
+        <View style={[ui.between, { gap: space.sm }]}>
+          <Txt variant="small">{count} pickup locations</Txt>
+          <View style={[ui.row, { gap: 4 }]}>
+            <Txt variant="label" color={colors.brandPressed}>Change</Txt>
+            <Ionicons name="chevron-down" size={16} color={colors.brandPressed} />
+          </View>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
 export default function CheckoutScreen() {
   const cart = useCart();
   const { user, updateProfile } = useAuth();
@@ -190,7 +237,8 @@ export default function CheckoutScreen() {
     setCheckingPromo(true);
     setPromoError(null);
     try {
-      const result = await api.checkPromo({ code, subtotal: cart.subtotal });
+      // A store's own codes only work in that store
+      const result = await api.checkPromo({ code, subtotal: cart.subtotal, store: seller?.slug });
       setPromo(result);
       tap();
       return result;
@@ -332,26 +380,8 @@ export default function CheckoutScreen() {
         </Section>
 
         <Section step={2} title={fulfilment === "pickup" ? "Pickup location" : "Home delivery details"}>
-          {/* The chosen pickup point; the others are one tap away */}
-          {fulfilment === "pickup" && seller && spot && (
-            <View style={{ gap: space.sm }}>
-              <OptionRow
-                illo="pin"
-                title={spot.name || seller.name}
-                subtitle={`${spot.address ? `${spot.address} · ` : `${spot.state} · `}${spot.fee ? formatNaira(spot.fee) : "Free"} · ${spot.days}`}
-                selected
-                onPress={() => spots.length > 1 && setPlacesOpen(true)}
-              />
-              {spots.length > 1 && (
-                <Pressable onPress={() => setPlacesOpen(true)} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start" }}>
-                  <Txt variant="label" color={colors.brandPressed}>
-                    +{spots.length - 1} more location{spots.length - 1 === 1 ? "" : "s"}
-                  </Txt>
-                  <Ionicons name="chevron-down" size={16} color={colors.brandPressed} />
-                </Pressable>
-              )}
-            </View>
-          )}
+          {/* The chosen pickup point, in the same card as a delivery address; Change opens every point */}
+          {fulfilment === "pickup" && seller && spot && <PickupCard spot={spot} count={spots.length} onChange={() => setPlacesOpen(true)} />}
           {fulfilment === "pickup" &&
             !seller &&
             cfg.branches.map((b) => (
@@ -564,17 +594,15 @@ export default function CheckoutScreen() {
           </Pressable>
         </View>
       </Sheet>
-      <Sheet visible={placesOpen} title="Choose a pickup location" onClose={() => setPlacesOpen(false)}>
-        <View style={{ gap: space.sm }}>
-          {spots.map((s) => (
-            <OptionRow
-              key={s.key}
-              illo="pin"
-              title={s.name}
-              subtitle={`${s.address ? `${s.address} · ` : `${s.state} · `}${s.fee ? formatNaira(s.fee) : "Free"} · ${s.days}`}
-              selected={spot?.key === s.key}
+      <Sheet visible={placesOpen} title="Pickup location" onClose={() => setPlacesOpen(false)}>
+        <View style={{ gap: space.md }}>
+          {spots.map((sp) => (
+            <PickupCard
+              key={sp.key}
+              spot={sp}
+              selected={spot?.key === sp.key}
               onPress={() => {
-                chooseSpot(s);
+                chooseSpot(sp);
                 setPlacesOpen(false);
               }}
             />

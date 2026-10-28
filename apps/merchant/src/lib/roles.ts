@@ -32,6 +32,7 @@ const PAGE_AREA: Record<string, string> = {
   "/payouts": "finance",
   "/featured": "finance",
   "/walk-in": "orders",
+  "/promotions": "orders",
 };
 
 /** Whether the menu shows a page to this role */

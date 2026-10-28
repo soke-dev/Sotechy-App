@@ -3,6 +3,7 @@ import Link from "next/link";
 import { formatDate } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { Card, ErrorNote, inputClass, PageHeader, StatusBadge } from "@/components/ui";
+import { LivePulse } from "@/components/auto-refresh";
 import { load } from "@/lib/api";
 import type { SupportThread } from "@/lib/types";
 import { replyToTicket, updateTicket } from "../../actions";
@@ -18,13 +19,21 @@ export default async function SupportThreadPage({ params }: { params: Promise<{ 
       <Link href="/support" className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-ink">
         <ArrowLeft size={15} /> Support
       </Link>
+      {/* Checks for the customer's new messages every couple of seconds while open */}
+      <LivePulse seconds={2} />
       <PageHeader title={who} description={`${t.subject} · started ${formatDate(t.createdAt)}`} actions={<StatusBadge status={t.status} />} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2" title="Conversation">
           <ul className="flex flex-col gap-2">
             {t.messages.map((m) => (
               <li key={m.id} className={`flex flex-col ${m.fromStaff ? "items-end" : "items-start"}`}>
-                <p className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm ${m.fromStaff ? "rounded-br-md bg-brand text-white" : "rounded-bl-md bg-surface-alt"}`}>{m.body}</p>
+                {m.imageUrl && (
+                  <a href={m.imageUrl} target="_blank" rel="noreferrer" className="mb-1 block max-w-[70%] overflow-hidden rounded-2xl border border-line">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={m.imageUrl} alt="Photo" className="max-h-72 w-full object-cover" />
+                  </a>
+                )}
+                {m.body && <p className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm ${m.fromStaff ? "rounded-br-md bg-brand text-white" : "rounded-bl-md bg-surface-alt"}`}>{m.body}</p>}
                 <span className="mt-0.5 text-[11px] text-muted">
                   {m.fromStaff ? "Sotechy · " : ""}
                   {formatDate(m.createdAt)}
@@ -35,7 +44,10 @@ export default async function SupportThreadPage({ params }: { params: Promise<{ 
           <div className="mt-4 border-t border-line pt-4">
             <ActionForm action={replyToTicket} submitLabel="Send reply" className="flex flex-col gap-2">
               <input type="hidden" name="id" value={t.id} />
-              <textarea name="message" required rows={3} placeholder={`Reply to ${who.split(" ")[0]}…`} className={`${inputClass} min-h-24`} />
+              <textarea name="message" rows={3} placeholder={`Reply to ${who.split(" ")[0]}…`} className={`${inputClass} min-h-24`} />
+              <label className="flex items-center gap-2 text-sm text-muted">
+                Photo (optional) <input name="image" type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" />
+              </label>
             </ActionForm>
             <p className="mt-2 text-xs text-muted">They see it in the app&apos;s live chat and get a notification.</p>
           </div>

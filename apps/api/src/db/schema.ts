@@ -533,6 +533,8 @@ export const promotions = pgTable("promotions", {
   usageLimit: integer(),
   usageCount: integer().notNull().default(0),
   isActive: boolean().notNull().default(false),
+  /** A store's own code: only for its orders, and the store gives the discount (its payout is on the discounted price) */
+  merchantId: uuid().references(() => merchants.id, { onDelete: "cascade" }),
   createdAt: createdAt(),
 });
 
@@ -755,7 +757,9 @@ export const supportMessages = pgTable(
       .references(() => supportTickets.id, { onDelete: "cascade" }),
     fromStaff: boolean().notNull().default(false),
     authorId: uuid().references(() => users.id, { onDelete: "set null" }),
+    /** Empty when the message is only a photo */
     body: text().notNull(),
+    imageUrl: text(),
     createdAt: createdAt(),
   },
   (t) => [index().on(t.ticketId, t.createdAt)],

@@ -340,6 +340,9 @@ export interface Promotion {
   usageLimit: number | null;
   usageCount: number;
   isActive: boolean;
+  /** A store's own code (null for Sotechy's), and the store's name in admin */
+  merchantId?: string | null;
+  storeName?: string | null;
 }
 
 export interface User {
@@ -901,5 +904,5 @@ export interface AppNotification {
 /** A customer's live chat with Sotechy */
 export interface SupportChat {
   ticketId: string | null;
-  messages: { id: string; fromStaff: boolean; body: string; createdAt: string }[];
+  messages: { id: string; fromStaff: boolean; body: string; imageUrl?: string | null; createdAt: string }[];
 }

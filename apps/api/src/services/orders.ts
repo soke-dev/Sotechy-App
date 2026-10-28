@@ -202,6 +202,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
           })
         : { fee: input.fulfilmentType === "delivery" ? deliveryFeeFor(await getSetting<DeliverySettings>("delivery", tx), subtotal) : 0, zoneId: null };
       const { promotion, discount } = await findPromotion(tx, {
+        merchantId: branch.merchantId,
         subtotal,
         paymentMethod: input.paymentMethod,
         cryptoAsset: input.cryptoAsset,

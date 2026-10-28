@@ -159,11 +159,13 @@ export const storeRoutes = new Hono()
       banners: bannerRows,
     });
   })
-  .post("/promo/check", zValidator("json", z.object({ code: z.string().trim().min(1).max(40), subtotal: z.number().nonnegative() })), async (c) => {
+  .post("/promo/check", zValidator("json", z.object({ code: z.string().trim().min(1).max(40), subtotal: z.number().nonnegative(), store: z.string().max(80).optional() })), async (c) => {
     // Preview only: the discount is worked out again from real prices when the order is placed.
     await requireFeature("promoCodes", "Promo codes can't be used right now");
-    const { code, subtotal } = c.req.valid("json");
-    const { promotion, discount } = await db.transaction((tx) => findPromotion(tx, { subtotal, paymentMethod: "online", code }));
+    const { code, subtotal, store } = c.req.valid("json");
+    // A store's own codes only work in that store
+    const [seller] = store ? await db.select({ id: schema.merchants.id }).from(schema.merchants).where(eq(schema.merchants.slug, store)) : [];
+    const { promotion, discount } = await db.transaction((tx) => findPromotion(tx, { subtotal, paymentMethod: "online", code, merchantId: seller?.id ?? null }));
     return c.json({ code: promotion!.code ?? code.toUpperCase(), name: promotion!.name, discount });
   })
   .get("/fx", async (c) => {

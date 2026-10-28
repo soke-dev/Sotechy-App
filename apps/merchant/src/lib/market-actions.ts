@@ -4,7 +4,7 @@
 // storefront and setup. Each returns { error } instead of throwing, so forms can show what went wrong.
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { MerchantAttention, AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantNotice, MerchantOrder, MerchantProduct, MerchantProductInput, OfferView, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
+import type { Promotion, MerchantAttention, AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantNotice, MerchantOrder, MerchantProduct, MerchantProductInput, OfferView, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
 import { api, errorMessage, TOKEN_COOKIE } from "./api";
 
 type Result<T> = { ok: T } | { error: string };
@@ -25,6 +25,29 @@ export async function loadPulse(): Promise<string | null> {
     .get<{ v: string }>("/merchant/summary/pulse")
     .then((r) => r.v)
     .catch(() => null);
+}
+
+/** The store's own promo codes */
+export interface StorePromoInput {
+  name: string;
+  code: string;
+  discountType: "percentage" | "fixed";
+  value: number;
+  maxDiscountAmount?: number | null;
+  minOrderAmount?: number | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  usageLimit?: number | null;
+  isActive?: boolean;
+}
+export async function createPromo(input: StorePromoInput) {
+  return attempt(() => api.post<Promotion>("/merchant/promotions", input), ["/promotions"]);
+}
+export async function updatePromo(id: string, patch: Partial<StorePromoInput>) {
+  return attempt(() => api.patch<Promotion>(`/merchant/promotions/${id}`, patch), ["/promotions"]);
+}
+export async function deletePromo(id: string) {
+  return attempt(() => api.delete<{ ok: true }>(`/merchant/promotions/${id}`), ["/promotions"]);
 }
 
 /** The bell's contents, checked again while the dashboard is open */

@@ -9,7 +9,7 @@ import { logout } from "./actions";
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const [user, queue] = await Promise.all([getCurrentUser(), load<Queue>("/admin/queue")]);
   return (
-    <QueueProvider value={queue.data ?? { merchants: 0, zones: 0, cases: 0 }}>
+    <QueueProvider value={queue.data ?? { merchants: 0, zones: 0, cases: 0, support: 0 }}>
       <AdminShell user={{ name: user.fullName ?? user.email, email: user.email, role: ROLE_LABELS[user.role] }} signOut={logout}>
         <LivePulse />
         {children}

@@ -37,7 +37,10 @@ export async function payoutsForStatus(orderId: string, status: OrderStatus) {
 async function schedule(order: typeof orders.$inferSelect, stage: "first" | "final") {
   const settings = await payoutSettings();
   const [store] = await db.select({ plan: merchants.payoutPlan }).from(merchants).where(eq(merchants.id, order.merchantId!));
-  const split = splitByPlan(order.subtotal, order.deliveryFee, store?.plan ?? settings.standard, settings.feeRate);
+  // A store's own promo code comes out of its share; Sotechy's codes don't change what the store is paid
+  const [promo] = order.promotionId ? await db.select({ merchantId: schema.promotions.merchantId }).from(schema.promotions).where(eq(schema.promotions.id, order.promotionId)) : [];
+  const goods = promo?.merchantId === order.merchantId ? Math.max(0, order.subtotal - order.discountTotal) : order.subtotal;
+  const split = splitByPlan(goods, order.deliveryFee, store?.plan ?? settings.standard, settings.feeRate);
   const amount = stage === "first" ? split.first : split.second;
   if (amount <= 0) return;
   const dueAt = stage === "first" ? new Date() : new Date(Date.now() + settings.finalAfterHours * 3_600_000);

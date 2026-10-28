@@ -7,9 +7,11 @@ export interface Queue {
   merchants: number;
   zones: number;
   cases: number;
+  /** Support conversations waiting on Sotechy */
+  support: number;
 }
 
-const QueueContext = createContext<Queue>({ merchants: 0, zones: 0, cases: 0 });
+const QueueContext = createContext<Queue>({ merchants: 0, zones: 0, cases: 0, support: 0 });
 
 export function QueueProvider({ value, children }: { value: Queue; children: ReactNode }) {
   return <QueueContext value={value}>{children}</QueueContext>;

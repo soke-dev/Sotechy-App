@@ -8,7 +8,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 /** Picks the best eligible promotion. Codeless promotions (e.g. the $MOVE offer) apply automatically. */
 export async function findPromotion(
   tx: Tx,
-  opts: { subtotal: number; paymentMethod: PaymentMethodCode; cryptoAsset?: string | null; code?: string | null },
+  opts: { subtotal: number; paymentMethod: PaymentMethodCode; cryptoAsset?: string | null; code?: string | null; merchantId?: string | null },
 ) {
   const p = schema.promotions;
   const now = new Date();
@@ -28,6 +28,8 @@ export async function findPromotion(
   let best: (typeof rows)[number] | null = null;
   let bestDiscount = 0;
   for (const promo of rows) {
+    // A store's own code only works on that store's orders
+    if (promo.merchantId && promo.merchantId !== (opts.merchantId ?? null)) continue;
     if (promo.paymentMethod && promo.paymentMethod !== opts.paymentMethod) continue;
     if (promo.cryptoAsset && promo.cryptoAsset !== opts.cryptoAsset) continue;
     if (promo.minOrderAmount != null && opts.subtotal < promo.minOrderAmount) continue;

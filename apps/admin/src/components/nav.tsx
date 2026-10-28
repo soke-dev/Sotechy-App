@@ -87,10 +87,11 @@ export const NAV: NavGroup[] = [
     illo: "user",
     pages: [
       { href: "/customers", label: "Customers", icon: Users, illo: "user" },
-      { href: "/support", label: "Support", icon: LifeBuoy, illo: "chat" },
       { href: "/reviews", label: "Reviews", icon: Star, illo: "heart" },
     ],
   },
+  // Its own item, with the count of chats waiting for an answer
+  { label: "Support", illo: "chat", pages: [{ href: "/support", label: "Support", icon: LifeBuoy, illo: "chat", countKey: "support" }] },
   { label: "Tokens", illo: "coin", pages: [{ href: "/tokens", label: "Tokens & reserve", icon: Coins, illo: "coin" }] },
   {
     label: "Reports",

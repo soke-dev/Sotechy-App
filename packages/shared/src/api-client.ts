@@ -155,7 +155,7 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     // Storefront
     storeConfig: () => get<StoreConfig>("/store/config"),
     exchangeRate: () => get<ExchangeRate>("/store/fx"),
-    checkPromo: (input: { code: string; subtotal: number }) => send<PromoCheck>("POST", "/store/promo/check", input),
+    checkPromo: (input: { code: string; subtotal: number; store?: string }) => send<PromoCheck>("POST", "/store/promo/check", input),
     categories: () => get<Category[]>("/store/categories"),
     products: ({ brands, ...params }: ProductQuery = {}) => {
       const qs = new URLSearchParams();
@@ -228,7 +228,7 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     pulse: () => get<{ v: string }>("/me/pulse"),
     /** Live chat with Sotechy: the open conversation, and sending to it */
     supportChat: () => get<SupportChat>("/me/support/chat"),
-    sendSupportChat: (message: string, orderId?: string) => send<SupportChat>("POST", "/me/support/chat", { message, orderId }),
+    sendSupportChat: (message: string, orderId?: string, imageUrl?: string) => send<SupportChat>("POST", "/me/support/chat", { message, orderId, imageUrl }),
     createSupportTicket: (input: { subject: string; message: string; orderId?: string }) =>
       send<{ id: string }>("POST", "/me/support", input),
   };

@@ -4,6 +4,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { router, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import {
@@ -20,7 +21,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "@/lib/api";
+import { api, uploadPhoto } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
@@ -38,6 +39,8 @@ interface Message {
   at: number;
   /** Sent but not saved yet */
   sending?: boolean;
+  /** A photo with (or instead of) the words */
+  imageUrl?: string | null;
 }
 
 const TOPICS: { label: string; reply: Omit<Message, "id" | "from" | "at"> }[] = [
@@ -197,7 +200,7 @@ export function SupportChatModal({ visible, onClose, orderId }: { visible: boole
   );
 }
 
-const POLL_MS = 4000;
+const POLL_MS = 3000;
 
 export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?: string }) {
   const insets = useSafeAreaInsets();
@@ -213,8 +216,26 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
   ]);
   // The saved conversation with the team, checked every few seconds while the chat is open
   const [thread, setThread] = useState<Message[]>([]);
-  const fromServer = (chat: { messages: { id: string; fromStaff: boolean; body: string; createdAt: string }[] }) =>
-    chat.messages.map((m): Message => ({ id: m.id, from: m.fromStaff ? "agent" : "user", text: m.body, at: Date.parse(m.createdAt) }));
+  const fromServer = (chat: { messages: { id: string; fromStaff: boolean; body: string; imageUrl?: string | null; createdAt: string }[] }) =>
+    chat.messages.map((m): Message => ({ id: m.id, from: m.fromStaff ? "agent" : "user", text: m.body, imageUrl: m.imageUrl, at: Date.parse(m.createdAt) }));
+  // A photo: picked, uploaded, then sent like a message
+  const [uploading, setUploading] = useState(false);
+  async function sendPhoto() {
+    if (!user) return router.push("/sign-in");
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.7 });
+    if (picked.canceled || !picked.assets[0]) return;
+    setUploading(true);
+    try {
+      const url = await uploadPhoto(picked.assets[0]);
+      const chat = await api.sendSupportChat("", orderId, url);
+      setThread(fromServer(chat));
+      setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
+    } catch (err) {
+      push({ from: "agent", text: err instanceof Error ? `That photo didn't send: ${err.message}` : "That photo didn't send. Try again." });
+    } finally {
+      setUploading(false);
+    }
+  }
   useEffect(() => {
     if (!user) return;
     let live = true;
@@ -336,6 +357,10 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
           <ScrollView ref={scroll} contentContainerStyle={{ padding: space.lg, gap: space.sm }} keyboardShouldPersistTaps="handled">
             {shown.map((m) => (
               <View key={m.id} style={{ alignItems: m.from === "user" ? "flex-end" : "flex-start", gap: 6, opacity: m.sending ? 0.6 : 1 }}>
+                {m.imageUrl ? (
+                  <Image source={{ uri: m.imageUrl }} style={{ width: 200, height: 200, borderRadius: 16, backgroundColor: colors.surfaceAlt }} contentFit="cover" />
+                ) : null}
+                {m.text ? (
                 <View
                   style={{
                     maxWidth: "84%",
@@ -351,6 +376,7 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
                 >
                   <Txt variant="body" color={m.from === "user" ? colors.white : colors.ink} style={{ fontSize: 14.5 }}>{m.text}</Txt>
                 </View>
+                ) : null}
                 {m.actions?.map((a) => (
                   <Pressable
                     key={a.label}
@@ -374,6 +400,11 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
 
           {/* Composer */}
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.sm, paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: Math.max(insets.bottom, space.md), borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.surface }}>
+            {user ? (
+              <Pressable onPress={sendPhoto} disabled={uploading} accessibilityLabel="Send a photo" style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.line }}>
+                <Ionicons name={uploading ? "hourglass-outline" : "image-outline"} size={20} color={colors.ink2} />
+              </Pressable>
+            ) : null}
             <TextInput
               value={text}
               onChangeText={setText}

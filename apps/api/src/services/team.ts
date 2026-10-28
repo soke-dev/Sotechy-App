@@ -32,7 +32,7 @@ export async function storeAccess(userId: string): Promise<{ store: Store; role:
 
 // Which parts of /merchant each role can use, by the first part of the path
 const AREAS: Record<Exclude<TeamRole, "admin" | "viewer">, string[]> = {
-  orders: ["orders", "offers", "customers", "walk-in", "notices"],
+  orders: ["orders", "offers", "customers", "walk-in", "notices", "promotions"],
   catalogue: ["products", "media", "delivery-zones", "storefront", "reviews", "notices"],
   finance: ["payouts", "banks", "featuring", "token", "walk-in"],
 };
