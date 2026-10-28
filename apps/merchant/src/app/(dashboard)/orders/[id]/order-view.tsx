@@ -412,7 +412,9 @@ export function OrderView({ order }: { order: Order }) {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">Customer collects at</p>
               <p className="mt-0.5 font-semibold">{order.pickupPoint ?? "Your approved pickup location"}</p>
             </div>
-            <p className="text-sm text-ink-2">WeWe&apos;ll tell the customer it&apos;s ready to collect there.apos;ll tell the customer itWe&apos;ll tell the customer it&apos;s ready to collect there.apos;s available for pickup there. They tap We&apos;ll tell the customer it&apos;s ready to collect there.quot;IWe&apos;ll tell the customer it&apos;s ready to collect there.apos;ve picked it upWe&apos;ll tell the customer it&apos;s ready to collect there.quot; in the app once they have it, or you can mark it collected when you hand it over.</p>
+            <p className="text-sm text-ink-2">
+              We&apos;ll tell the customer it&apos;s available for pickup there. They tap &quot;I&apos;ve picked it up&quot; in the app once they have it, or you can mark it collected when you hand it over.
+            </p>
             <button type="button" onClick={() => setOtherPlace(true)} className="self-start text-sm font-semibold text-brand-strong hover:underline">
               Use another location
             </button>
