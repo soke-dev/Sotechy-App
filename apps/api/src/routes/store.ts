@@ -103,7 +103,18 @@ function baseFilters({ q, category, store }: { q?: string; category?: string; st
   else if (store) filters.push(sql`${products.merchantId} = (select m.id from merchants m where m.slug = ${store})`);
   if (q) {
     const term = `%${q}%`;
-    filters.push(or(ilike(products.name, term), ilike(products.brand, term), ilike(products.model, term)));
+    // A store's name finds its products; "sotechy" (or the start of it) finds Sotechy's own
+    const words = q.trim().toLowerCase();
+    const meansSotechy = words.length >= 3 && ("sotechy".startsWith(words) || words.includes("sotechy"));
+    filters.push(
+      or(
+        ilike(products.name, term),
+        ilike(products.brand, term),
+        ilike(products.model, term),
+        sql`${products.merchantId} in (select m.id from merchants m where m.name ilike ${term} or m.slug ilike ${term})`,
+        ...(meansSotechy ? [isNull(products.merchantId)] : []),
+      ),
+    );
   }
   // One category, or several joined with "|" (a whole department from the app's menu)
   const names = category ? [...new Set(category.split("|").map((x) => x.trim()).filter(Boolean))].slice(0, 120) : [];
