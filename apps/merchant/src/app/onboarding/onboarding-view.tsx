@@ -58,6 +58,13 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
   const router = useRouter();
   const [kind, setKind] = useState<Kind>(start.kind);
   const [structure, setStructure] = useState<BusinessStructure>(app?.structure ?? "LTD");
+  // CAC numbers carry their prefix: RC (companies), BN (business names), IT (incorporated trustees)
+  const cacPrefix = structure === "BN" ? "BN" : structure === "IT" ? "IT" : "RC";
+  /** Upper case, no spaces, and the prefix added when only the digits were typed */
+  const cleanRegNo = (v: string) => {
+    const t = v.toUpperCase().replace(/\s+/g, "");
+    return /^\d+$/.test(t) ? `${cacPrefix}${t}` : t;
+  };
   const [business, setBusiness] = useState({
     registeredName: app?.registeredName ?? "",
     registrationNumber: app?.registrationNumber ?? "",
@@ -168,7 +175,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
     sellerKind: kind,
     sells,
     structure: kind === "registered" ? structure : null,
-    ...(kind === "registered" ? business : { registeredName: null, registrationNumber: null, registeredOn: null, tin: null, businessAddress: ownAddress.trim() || null }),
+    ...(kind === "registered" ? { ...business, registrationNumber: cleanRegNo(business.registrationNumber) || "" } : { registeredName: null, registrationNumber: null, registeredOn: null, tin: null, businessAddress: ownAddress.trim() || null }),
     businessMapUrl: mapUrl.trim() && !badMapUrl ? mapUrl.trim() : null,
     website: website.trim() || null,
     socials: Object.values(socials).some((v) => v.trim()) ? { instagram: socials.instagram.trim() || null, x: socials.x.trim() || null, facebook: socials.facebook.trim() || null, tiktok: socials.tiktok.trim() || null } : null,
@@ -299,8 +306,16 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                     <input value={business.registeredName} onChange={(e) => setBusiness({ ...business, registeredName: e.target.value })} className={inputClass} placeholder="e.g. Xena Gadgets Ltd" />
                   </Field>
                 </div>
-                <Field label={`${structure === "BN" ? "BN" : structure === "IT" ? "IT" : "RC"} number`} required>
-                  <input value={business.registrationNumber} onChange={(e) => setBusiness({ ...business, registrationNumber: e.target.value })} inputMode="numeric" className={inputClass} placeholder="e.g. 1234567" />
+                <Field label="Registration number" required hint="Include the CAC prefix, e.g. RC123456 for a company, BN123456 for a business name, or IT123456 for incorporated trustees.">
+                  <input
+                    value={business.registrationNumber}
+                    onChange={(e) => setBusiness({ ...business, registrationNumber: e.target.value.toUpperCase() })}
+                    onBlur={(e) => e.target.value.trim() && setBusiness({ ...business, registrationNumber: cleanRegNo(e.target.value) })}
+                    autoCapitalize="characters"
+                    maxLength={30}
+                    className={inputClass}
+                    placeholder={`e.g. ${cacPrefix}1234567`}
+                  />
                 </Field>
                 <Field label="Date registered">
                   <input value={business.registeredOn} onChange={(e) => setBusiness({ ...business, registeredOn: e.target.value })} type="date" className={inputClass} />
