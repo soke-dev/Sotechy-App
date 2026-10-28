@@ -305,6 +305,8 @@ export default function HomeScreen() {
               const all = [
                 ...tops.map((c) => ({ key: c.id, label: c.name, image: c.imageUrl, icon: productIcon(c.name), onPress: () => shop({ category: c.slug }) })),
                 ...STORE_KINDS.map((k) => ({ key: k.kind, label: k.label, image: null, icon: k.icon, onPress: () => router.push({ pathname: "/stores", params: { kind: k.kind } }) })),
+                // Last: everything else, in Shop
+                { key: "more", label: "Much more", image: null, icon: "apps-outline" as IconName, onPress: () => shop({}) },
               ];
               return (
                 <View key={row} style={{ flexDirection: "row", gap: space.sm }}>
