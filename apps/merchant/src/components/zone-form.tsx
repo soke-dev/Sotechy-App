@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Clock, Home, Plus, Store, X } from "lucide-react";
+import { Check, Clock, Home, MapPin, Pencil, Plus, Store, X } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
 import { btn, Field, inputClass } from "./ui";
 import { formatNaira } from "@/lib/money";
@@ -47,6 +47,14 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
     zone?.pickup?.places?.length ? zone.pickup.places : zone?.pickup ? [{ name: zone.pickup.point, address: zone.pickup.address ?? "" }] : [{ name: "", address: "" }],
   );
   const setPlace = (i: number, patch: Partial<{ name: string; address: string; mapUrl: string }>) => setPlaces((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  // Which pickup points are open for editing: saved ones fold down to a summary with an Edit button
+  const [editing, setEditing] = useState<boolean[]>(() => places.map((p) => !(p.name.trim().length >= 3 && p.address.trim().length >= 3)));
+  const setOpen = (i: number, open: boolean) => setEditing((e) => places.map((_, j) => (j === i ? open : (e[j] ?? false))));
+  const placeReady = (p: { name: string; address: string; mapUrl?: string | null }) => p.name.trim().length >= 3 && p.address.trim().length >= 3 && !(p.mapUrl?.trim() && !isMapLink(p.mapUrl));
+  const removePlace = (i: number) => {
+    setPlaces(places.filter((_, j) => j !== i));
+    setEditing(editing.filter((_, j) => j !== i));
+  };
   // A map link is optional; without one, Directions searches the address
   const cleanPlaces = places.map((p) => ({ name: p.name.trim(), address: p.address.trim(), ...(p.mapUrl?.trim() ? { mapUrl: p.mapUrl.trim() } : {}) }));
   const badLink = cleanPlaces.some((p) => p.mapUrl && !isMapLink(p.mapUrl));
@@ -187,29 +195,67 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
             <Field required label="Pickup price (₦)">
               <input type="number" inputMode="numeric" min={0} value={pickupFee || ""} onChange={(e) => setPickupFee(Number(e.target.value))} className={inputClass} placeholder="0 = free" />
             </Field>
-            {places.map((p, i) => (
-              <div key={i} className="flex flex-col gap-2 rounded-2xl border border-line p-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold">Pickup point {i + 1}</p>
+            {places.map((p, i) =>
+              editing[i] ? (
+                <div key={i} className="flex flex-col gap-2 rounded-2xl border border-line p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold">Pickup point {i + 1}</p>
+                    {places.length > 1 && (
+                      <button type="button" onClick={() => removePlace(i)} className="text-xs font-semibold text-muted hover:text-bad">
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <Field required label="Name" hint={i === 0 ? "What customers look for, e.g. the park, courier office or your shop's name." : undefined}>
+                    <input value={p.name} onChange={(e) => setPlace(i, { name: e.target.value })} maxLength={140} className={inputClass} placeholder="e.g. Edo Line Park" />
+                  </Field>
+                  <Field required label="Address">
+                    <AddressInput value={p.address} onChange={(v) => setPlace(i, { address: v })} placeholder="e.g. 2 Ring Road, Benin City" />
+                  </Field>
+                  <Field label="Google Maps link" hint={p.mapUrl?.trim() && !isMapLink(p.mapUrl) ? "That isn't a Google Maps link. In Google Maps, tap Share and copy the link." : "Optional. Takes customers to the exact spot; without it we search the address."}>
+                    <input value={p.mapUrl ?? ""} onChange={(e) => setPlace(i, { mapUrl: e.target.value })} inputMode="url" maxLength={500} className={inputClass} placeholder="https://maps.app.goo.gl/…" />
+                  </Field>
+                  <button type="button" disabled={!placeReady(p)} onClick={() => setOpen(i, false)} className={`${btn.dark} self-end`}>
+                    <Check size={15} /> Save pickup point
+                  </button>
+                </div>
+              ) : (
+                // Saved: a short summary; Edit opens it again
+                <div key={i} className="flex items-center gap-3 rounded-2xl border border-line px-3 py-2.5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-strong">
+                    <Store size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{p.name}</p>
+                    <p className="truncate text-xs text-muted">
+                      {p.address}
+                      {p.mapUrl?.trim() ? (
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 text-good">
+                          <MapPin size={11} /> Map link
+                        </span>
+                      ) : null}
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => setOpen(i, true)} className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-xs font-semibold hover:bg-surface-alt">
+                    <Pencil size={12} /> Edit
+                  </button>
                   {places.length > 1 && (
-                    <button type="button" onClick={() => setPlaces(places.filter((_, j) => j !== i))} className="text-xs font-semibold text-muted hover:text-bad">
-                      Remove
+                    <button type="button" onClick={() => removePlace(i)} aria-label={`Remove ${p.name}`} className="flex h-7 w-7 items-center justify-center rounded-full text-muted hover:bg-bad-soft hover:text-bad">
+                      <X size={14} />
                     </button>
                   )}
                 </div>
-                <Field required label="Name" hint={i === 0 ? "What customers look for, e.g. the park, courier office or your shop's name." : undefined}>
-                  <input value={p.name} onChange={(e) => setPlace(i, { name: e.target.value })} maxLength={140} className={inputClass} placeholder="e.g. Edo Line Park" />
-                </Field>
-                <Field required label="Address">
-                  <AddressInput value={p.address} onChange={(v) => setPlace(i, { address: v })} placeholder="e.g. 2 Ring Road, Benin City" />
-                </Field>
-                <Field label="Google Maps link" hint={p.mapUrl?.trim() && !isMapLink(p.mapUrl) ? "That isn't a Google Maps link. In Google Maps, tap Share and copy the link." : "Optional. Takes customers to the exact spot; without it we search the address."}>
-                  <input value={p.mapUrl ?? ""} onChange={(e) => setPlace(i, { mapUrl: e.target.value })} inputMode="url" maxLength={500} className={inputClass} placeholder="https://maps.app.goo.gl/…" />
-                </Field>
-              </div>
-            ))}
+              ),
+            )}
             {places.length < 5 && (
-              <button type="button" onClick={() => setPlaces([...places, { name: "", address: "" }])} className="self-start text-sm font-semibold text-brand-strong hover:underline">
+              <button
+                type="button"
+                onClick={() => {
+                  setPlaces([...places, { name: "", address: "" }]);
+                  setEditing([...editing, true]);
+                }}
+                className="self-start text-sm font-semibold text-brand-strong hover:underline"
+              >
                 + Add another pickup point ({places.length}/5)
               </button>
             )}
