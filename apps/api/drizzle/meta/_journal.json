@@ -169,6 +169,13 @@
       "when": 1793167840348,
       "tag": "0023_payback_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793168814487,
+      "tag": "0024_notifications",
+      "breakpoints": true
     }
   ]
 }

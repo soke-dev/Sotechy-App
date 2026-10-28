@@ -100,11 +100,13 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
     if (approve) {
       // The customer sees the new place in their order updates
       await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: o.status, toStatus: o.status, note: `Pickup location changed to ${o.pickupChangePoint}`, changedBy: c.get("user").id });
-      if (o.customerId) sendPushLater([o.customerId], { title: "New pickup location", body: `Collect ${o.orderNumber} at ${o.pickupChangePoint}`, data: { url: `/order/${o.id}` } });
+      if (o.customerId) sendPushLater([o.customerId], { kind: "order", title: "New pickup location", body: `Collect ${o.orderNumber} at ${o.pickupChangePoint}`, data: { url: `/order/${o.id}` } });
     }
     const [store] = o.merchantId ? await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId)) : [];
     if (store?.ownerId)
       sendPushLater([store.ownerId], {
+        audience: "store",
+        kind: "order",
         title: approve ? "Pickup location approved" : "Pickup location declined",
         body: approve ? `${o.orderNumber} is collected at ${o.pickupChangePoint}` : `Use your approved pickup location for ${o.orderNumber}`,
         data: { url: `/orders/${o.id}` },

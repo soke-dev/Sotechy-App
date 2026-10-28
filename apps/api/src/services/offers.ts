@@ -76,9 +76,9 @@ export const storeOffers = (merchantId: string, id?: string) => views(and(eq(off
 
 async function notifyStore(merchantId: string, title: string, body: string, offerId: string) {
   const [store] = await db.select({ ownerId: merchants.ownerId }).from(merchants).where(eq(merchants.id, merchantId));
-  if (store?.ownerId) sendPushLater([store.ownerId], { title, body, data: { url: `/offers/${offerId}` } });
+  if (store?.ownerId) sendPushLater([store.ownerId], { audience: "store", kind: "offer", title, body, data: { url: `/offers/${offerId}` } });
 }
-const notifyCustomer = (customerId: string, title: string, body: string, offerId: string) => sendPushLater([customerId], { title, body, data: { url: `/offer/${offerId}` } });
+const notifyCustomer = (customerId: string, title: string, body: string, offerId: string) => sendPushLater([customerId], { kind: "offer", title, body, data: { url: `/offer/${offerId}` } });
 
 // Who to email about an offer: the store (its contact email, or the owner's) and the customer
 async function offerPeople(merchantId: string, customerId: string) {

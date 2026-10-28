@@ -77,7 +77,7 @@ export async function notifyOrderStatus(orderId: string, status: OrderStatus) {
     if (status === "paid" && found.merchant) notifyMerchantOfOrder(found.merchant, found.customer, found.data);
     if (!found.customerId) return; // walk-in sale without an account
     const { title, body } = push(found.data.number, found.data.fulfilment === "pickup");
-    sendPushLater([found.customerId], { title, body, data: { url: `/order/${orderId}` } });
+    sendPushLater([found.customerId], { kind: "order", title, body, data: { url: `/order/${orderId}` } });
     const email = found.email ? orderUpdateEmail(found.email, status, { name: found.name, order: found.data }) : null;
     if (email) sendEmailLater(email);
   } catch (err) {
@@ -90,7 +90,7 @@ const RESPOND_HOURS = 24;
 function notifyMerchantOfOrder(store: typeof schema.merchants.$inferSelect, customer: string, order: OrderEmailData) {
   // No tap-through link: merchants handle orders in the web dashboard, not the shopping app
   if (store.ownerId) {
-    sendPushLater([store.ownerId], { title: `New order ${order.number}`, body: `${customer} ordered from ${store.name}. Accept it within ${RESPOND_HOURS} hours.` });
+    sendPushLater([store.ownerId], { audience: "store", kind: "order", title: `New order ${order.number}`, body: `${customer} ordered from ${store.name}. Accept it within ${RESPOND_HOURS} hours.` });
   }
   if (store.contactEmail) {
     sendEmailLater(newOrderEmail(store.contactEmail, { store: store.name, order, customer, respondBy: new Date(Date.now() + RESPOND_HOURS * 3_600_000) }));

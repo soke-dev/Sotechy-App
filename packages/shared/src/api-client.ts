@@ -28,6 +28,7 @@ import type {
   Order,
   OrderDetail,
   SupportChat,
+  AppNotification,
   OrderSummary,
   PlaceOrderInput,
   ProductDetail,
@@ -175,6 +176,9 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     follow: (slug: string) => send<{ following: boolean }>("POST", `/me/follows/${encodeURIComponent(slug)}`),
     unfollow: (slug: string) => send<{ following: boolean }>("DELETE", `/me/follows/${encodeURIComponent(slug)}`),
     storeNotices: () => get<StoreNoticeView[]>("/me/store-notices"),
+    /** Orders, offers, support, tokens and security notifications */
+    notifications: () => get<AppNotification[]>("/me/notifications"),
+    markNotificationsRead: () => send<{ ok: true }>("POST", "/me/notifications/read"),
     /** Stores saved with the heart */
     favouriteStores: () => get<string[]>("/me/favourite-stores"),
     favouriteStore: (slug: string) => send<{ favourite: boolean }>("POST", `/me/favourite-stores/${encodeURIComponent(slug)}`),

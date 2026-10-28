@@ -40,5 +40,6 @@ export const customerPulse = (userId: string) =>
     (select max(updated_at) from orders where customer_id = ${userId}),
     (select max(updated_at) from offers where customer_id = ${userId}),
     (select max(m.created_at) from support_messages m join support_tickets t on t.id = m.ticket_id where t.customer_id = ${userId}),
-    (select max(created_at) from token_entries where to_user_id = ${userId} or from_user_id = ${userId})
+    (select max(created_at) from token_entries where to_user_id = ${userId} or from_user_id = ${userId}),
+    (select max(created_at) from notifications where user_id = ${userId})
   ) as v`);

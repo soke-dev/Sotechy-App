@@ -79,6 +79,6 @@ export async function replyToTicket(ticketId: string, staffId: string, body: str
   if (!existing) await db.insert(messages).values({ ticketId, authorId: t.customerId, body: t.message, createdAt: t.createdAt });
   await db.insert(messages).values({ ticketId, fromStaff: true, authorId: staffId, body });
   await db.update(tickets).set({ lastMessageAt: new Date(), status: "pending" }).where(eq(tickets.id, ticketId));
-  if (t.customerId) sendPushLater([t.customerId], { title: "Sotechy Support replied", body: body.slice(0, 140), data: { url: "/support?chat=1" } });
+  if (t.customerId) sendPushLater([t.customerId], { kind: "support", title: "Sotechy Support replied", body: body.slice(0, 140), data: { url: "/support?chat=1" } });
   return ticketThread(ticketId);
 }

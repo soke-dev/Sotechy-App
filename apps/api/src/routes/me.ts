@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../db/client";
@@ -262,6 +262,22 @@ export const meRoutes = new Hono<AppEnv>()
       return c.json({ ...row, bonus }, 201);
     },
   )
+  /** The customer's notifications: orders, offers, support, tokens and account security */
+  .get("/notifications", async (c) => {
+    const n = schema.notifications;
+    const items = await db
+      .select({ id: n.id, kind: n.kind, title: n.title, body: n.body, url: n.url, readAt: n.readAt, createdAt: n.createdAt })
+      .from(n)
+      .where(and(eq(n.userId, c.get("user").id), eq(n.audience, "customer")))
+      .orderBy(desc(n.createdAt))
+      .limit(100);
+    return c.json(items.map((x) => ({ ...x, readAt: x.readAt?.toISOString() ?? null, createdAt: x.createdAt.toISOString() })));
+  })
+  .post("/notifications/read", async (c) => {
+    const n = schema.notifications;
+    await db.update(n).set({ readAt: new Date() }).where(and(eq(n.userId, c.get("user").id), sql`${n.readAt} is null`));
+    return c.json({ ok: true });
+  })
   /** Changes to this customer's orders, offers, chat or tokens, so open screens refresh by themselves */
   .get("/pulse", async (c) => c.json({ v: await customerPulse(c.get("user").id) }))
   /** The customer's live chat with Sotechy: their open conversation and its messages */

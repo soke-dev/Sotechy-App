@@ -8,6 +8,10 @@ export interface Push {
   body: string;
   /** `url` is the app screen to open when tapped, e.g. "/order/123" */
   data?: { url?: string } & Record<string, unknown>;
+  /** What it's about, for the app's Notifications screen (order, offer, support, tokens, security) */
+  kind?: string;
+  /** Store owners' notices are for their dashboard, not the customer app's list */
+  audience?: "customer" | "store";
 }
 
 interface Ticket {
@@ -33,7 +37,16 @@ export async function sendPush(userIds: string[], push: Push) {
   }
 }
 
-/** For notices nobody should wait on: failures are logged, never thrown */
+/** Saves a notification for each account (so it shows in the app's list) without sending a push */
+export async function recordNotice(userIds: string[], push: Push) {
+  if (!userIds.length) return;
+  await db.insert(schema.notifications).values(
+    userIds.map((userId) => ({ userId, audience: push.audience ?? "customer", kind: push.kind ?? "other", title: push.title, body: push.body, url: push.data?.url ?? null })),
+  );
+}
+
+/** For notices nobody should wait on: kept for the Notifications screen, then pushed. Failures are logged, never thrown */
 export function sendPushLater(userIds: string[], push: Push) {
+  recordNotice(userIds, push).catch((err) => console.error("Notice not saved:", err instanceof Error ? err.message : err));
   sendPush(userIds, push).catch((err) => console.error("Push failed:", err instanceof Error ? err.message : err));
 }

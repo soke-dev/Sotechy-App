@@ -874,6 +874,17 @@ export interface MerchantAttention {
   recent: { id: string; title: string; hint: string; href: string; illo: string; at: string }[];
 }
 
+/** Something the customer was told: an order step, an offer, a support reply, tokens or account security */
+export interface AppNotification {
+  id: string;
+  kind: "order" | "offer" | "support" | "tokens" | "security" | string;
+  title: string;
+  body: string;
+  url: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
 /** A customer's live chat with Sotechy */
 export interface SupportChat {
   ticketId: string | null;

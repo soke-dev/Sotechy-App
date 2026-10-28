@@ -151,6 +151,29 @@ export const users = pgTable("users", {
   updatedAt: updatedAt(),
 });
 
+/** Every notification an account gets, kept so the app's Notifications screen can list them
+ *  (pushes are sent too when the account has a phone registered). */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** "customer" for the app; "store" for a store owner's dashboard */
+    audience: text().$type<"customer" | "store">().notNull().default("customer"),
+    /** order, offer, support, tokens, security, store */
+    kind: text().notNull(),
+    title: text().notNull(),
+    body: text().notNull(),
+    /** The app screen it opens */
+    url: text(),
+    readAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.userId, t.createdAt)],
+);
+
 /** Phones that get push notifications for an account (Expo push tokens) */
 export const pushDevices = pgTable("push_devices", {
   id: uuid().primaryKey().defaultRandom(),

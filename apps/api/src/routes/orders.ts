@@ -135,7 +135,7 @@ export const orderRoutes = new Hono<AppEnv>()
     if (o.merchantId) {
       await finalDueNow(o.id);
       const [store] = await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId));
-      if (store?.ownerId) sendPushLater([store.ownerId], { title: "Order collected", body: `The customer collected ${o.orderNumber}. Your final payment is on its way.`, data: { url: `/orders/${o.id}` } });
+      if (store?.ownerId) sendPushLater([store.ownerId], { audience: "store", kind: "order", title: "Order collected", body: `The customer collected ${o.orderNumber}. Your final payment is on its way.`, data: { url: `/orders/${o.id}` } });
     }
     return c.json(await loadOrderDetail(o.id));
   })
@@ -156,7 +156,7 @@ export const orderRoutes = new Hono<AppEnv>()
       if (o.merchantId) {
         await finalDueNow(o.id, !!o.customerIssueAt);
         const [store] = await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId));
-        if (store?.ownerId) sendPushLater([store.ownerId], { title: "Delivery confirmed", body: `The customer got ${o.orderNumber}. Your final payment is on its way.`, data: { url: `/orders/${o.id}` } });
+        if (store?.ownerId) sendPushLater([store.ownerId], { audience: "store", kind: "order", title: "Delivery confirmed", body: `The customer got ${o.orderNumber}. Your final payment is on its way.`, data: { url: `/orders/${o.id}` } });
       }
     }
     return c.json(await loadOrderDetail(c.req.param("id")));
@@ -183,7 +183,7 @@ export const orderRoutes = new Hono<AppEnv>()
         await holdFinal(o.id);
         const [store] = await db.select({ name: schema.merchants.name, ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId));
         storeName = store?.name ?? storeName;
-        if (store?.ownerId) sendPushLater([store.ownerId], { title: "Customer didn't get it", body: `The customer says ${o.orderNumber} hasn't reached them. Sotechy will be in touch.`, data: { url: `/orders/${o.id}` } });
+        if (store?.ownerId) sendPushLater([store.ownerId], { audience: "store", kind: "order", title: "Customer didn't get it", body: `The customer says ${o.orderNumber} hasn't reached them. Sotechy will be in touch.`, data: { url: `/orders/${o.id}` } });
       }
       const [me] = await db.select({ username: schema.users.username, fullName: schema.users.fullName, email: schema.users.email }).from(schema.users).where(eq(schema.users.id, user.id));
       const customer = me?.username ? `@${me.username}` : (me?.fullName ?? me?.email ?? "The customer");

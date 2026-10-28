@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { and, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import { recordNotice } from "../services/push";
 import { db, schema } from "../db/client";
 import { checkPassword, hashPassword, issueToken, requireAuth, STAFF, type AppEnv } from "../lib/auth";
 import { env } from "../env";
@@ -28,6 +29,12 @@ const signInFields = z.object({
   email: z.string().trim().min(3).max(120).transform((e) => e.toLowerCase().replace(/^@/, "")),
   password: z.string().min(1),
 });
+
+/** Account security events, listed in the app's Notifications (no push: it's the person's own action) */
+const securityNotice = (userId: string, title: string, body: string) =>
+  recordNotice([userId], { kind: "security", title, body, data: { url: "/profile" } }).catch(() => {});
+/** "on an iPhone" from the browser or app's user agent, when it says */
+const device = (ua?: string) => (!ua ? "" : /iphone|ipad|ios/i.test(ua) ? " on an iPhone" : /android/i.test(ua) ? " on an Android phone" : /windows|macintosh|linux/i.test(ua) ? " on a computer" : "");
 
 export const authRoutes = new Hono<AppEnv>()
   .post(
@@ -104,6 +111,7 @@ export const authRoutes = new Hono<AppEnv>()
       }
       await db.delete(schema.passwordResets).where(eq(schema.passwordResets.userId, user.id));
       const [updated] = await db.update(schema.users).set({ passwordHash: await hashPassword(input.password) }).where(eq(schema.users.id, user.id)).returning();
+      await securityNotice(user.id, "Password changed", "Your password was reset with a code sent to your email. If this wasn't you, contact support now.");
       return c.json({ token: await issueToken(updated), user: publicUser(updated) });
     },
   )
@@ -115,6 +123,7 @@ export const authRoutes = new Hono<AppEnv>()
     if (!user || !user.isActive || !(await checkPassword(input.password, user.passwordHash!))) {
       throw unauthorized("Incorrect email, username or password");
     }
+    await securityNotice(user.id, "New sign-in", `Signed in with your password${device(c.req.header("user-agent"))}. If this wasn't you, change your password.`);
     return c.json({ token: await issueToken(user), user: publicUser(user) });
   })
   /**
@@ -182,6 +191,7 @@ export const authRoutes = new Hono<AppEnv>()
       [user] = await db.insert(schema.users).values({ email, googleId: g.sub, fullName: g.name ?? null, avatarUrl: g.picture ?? null }).returning();
     }
     if (!user.isActive) throw unauthorized("This account is disabled");
+    await securityNotice(user.id, "New sign-in", `Signed in with Google${device(c.req.header("user-agent"))}. If this wasn't you, contact support now.`);
     return c.json({ token: await issueToken(user), user: publicUser(user) });
   })
   /** Is this username free? Signed-in users may "check" their own current one. */

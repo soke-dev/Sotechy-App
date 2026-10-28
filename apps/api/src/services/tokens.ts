@@ -13,6 +13,7 @@ import { getAddress, keccak256, stringToHex, toBytes, type Address, type Hex } f
 import { TOKEN_RULES, tokensToNaira, type OrderStatus } from "@sotechy/shared";
 import { db, schema, type Tx } from "../db/client";
 import { badRequest, notFound } from "../lib/errors";
+import { sendPushLater } from "./push";
 
 const { tokenEntries: entries, chainOps, receipts, merchants, orders, users, reserveEntries } = schema;
 
@@ -449,6 +450,8 @@ export async function sendTokens(fromUserId: string, input: { to: string; ticker
     const has = await balanceOf(tx, fromUserId, tokenId);
     if (input.amount > has) throw badRequest(`You have ${has.toLocaleString("en-NG")} $${ticker}`);
     const row = await record(tx, { tokenId, kind: "move", fromUserId, toUserId: to.id, amount: input.amount, reason: "sent", createdBy: fromUserId });
+    const [sender] = await tx.select({ username: users.username }).from(users).where(eq(users.id, fromUserId));
+    sendPushLater([to.id], { kind: "tokens", title: `You received ${input.amount.toLocaleString("en-NG")} $${ticker}`, body: `From ${sender?.username ? `@${sender.username}` : "a Sotechy user"}`, data: { url: "/wallet" } });
     return { id: row!.id, to: to.username, ticker, amount: input.amount };
   });
 }

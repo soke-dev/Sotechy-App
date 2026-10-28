@@ -83,7 +83,7 @@ async function tellStorePaid(p: typeof payouts.$inferSelect) {
       }),
     );
   }
-  if (row.ownerId) sendPushLater([row.ownerId], { title: "Payout sent", body: `₦${p.amount.toLocaleString("en-NG")} for ${row.orderNumber} is on its way to your bank`, data: { url: "/payouts" } });
+  if (row.ownerId) sendPushLater([row.ownerId], { audience: "store", kind: "payout", title: "Payout sent", body: `₦${p.amount.toLocaleString("en-NG")} for ${row.orderNumber} is on its way to your bank`, data: { url: "/payouts" } });
 }
 
 /** The customer confirmed they got the order: the store's final payment is due now rather than after the wait.
@@ -138,7 +138,7 @@ async function tellStoreToPayBack(p: { merchantId: string; orderNumber: string; 
   for (const to of [...new Set([row.contactEmail, row.email].filter((e): e is string => !!e).map((e) => e.toLowerCase()))]) {
     sendEmailLater(paybackRequestEmail(to, { store: row.store, orderNumber: p.orderNumber, amount: p.amount, ...account }));
   }
-  if (row.ownerId) sendPushLater([row.ownerId], { title: "Payback needed", body: `${p.orderNumber} was cancelled. Please send back ₦${p.amount.toLocaleString("en-NG")}.`, data: { url: "/orders" } });
+  if (row.ownerId) sendPushLater([row.ownerId], { audience: "store", kind: "payout", title: "Payback needed", body: `${p.orderNumber} was cancelled. Please send back ₦${p.amount.toLocaleString("en-NG")}.`, data: { url: "/orders" } });
 }
 
 /** The store says it has sent a payback: noted with its reference, and admins are told to check */
