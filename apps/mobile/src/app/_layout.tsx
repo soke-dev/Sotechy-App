@@ -9,17 +9,15 @@ import { router, Stack, usePathname, type Href } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { CartFeedbackProvider } from "@/components/cart-feedback";
 import { DialogProvider } from "@/components/dialog";
 import { MenuProvider } from "@/components/menu";
-import { MaintenanceScreen } from "@/components/maintenance";
 import { ToastProvider } from "@/components/toast";
 import { AuthProvider } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
-import { StoreConfigProvider, useFeatures } from "@/lib/store-config";
+import { StoreConfigProvider } from "@/lib/store-config";
 import { AccountExtrasProvider } from "@/lib/account-extras";
 import { PushNotifications } from "@/lib/push";
 import { StoreNotificationsProvider } from "@/lib/store-notifications";
@@ -32,7 +30,6 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 /** The navigator re-mounts when the theme changes so every screen re-reads the palette; we return to the same page. */
 function ThemedNavigator() {
   const { resolved } = useThemeMode();
-  const { maintenance } = useFeatures();
   const pathname = usePathname();
   const lastPath = useRef(pathname);
   const lastTheme = useRef(resolved);
@@ -82,12 +79,6 @@ function ThemedNavigator() {
         <Stack.Screen name="addresses" options={{ title: "Saved addresses" }} />
         <Stack.Screen name="address/[id]" options={{ title: "Address" }} />
       </Stack>
-      {/* Admin → App switches → Maintenance mode covers the whole app */}
-      {maintenance && (
-        <View style={StyleSheet.absoluteFill}>
-          <MaintenanceScreen />
-        </View>
-      )}
     </>
   );
 }

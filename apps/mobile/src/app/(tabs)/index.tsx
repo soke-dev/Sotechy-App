@@ -10,6 +10,7 @@ import { HeroCarousel } from "@/components/hero-carousel";
 import { MenuButton } from "@/components/menu";
 import { ProductRail } from "@/components/product-rail";
 import { SupportChat } from "@/components/support-chat";
+import { MaintenanceNotice } from "@/components/maintenance";
 import { useTabBarInset } from "@/components/tab-bar";
 import { FeaturedStoreCard, MarketRail, openStore } from "@/components/store-bits";
 import { AccountIcon } from "@/components/tab-icons";
@@ -138,6 +139,7 @@ export default function HomeScreen() {
     >
       {/* Header, search and WhatsApp ordering */}
       <View style={{ paddingHorizontal: gutter, gap: space.md }}>
+        <MaintenanceNotice />
         <View style={ui.between}>
           <View style={[ui.row, { gap: space.md }]}>
             <MenuButton />

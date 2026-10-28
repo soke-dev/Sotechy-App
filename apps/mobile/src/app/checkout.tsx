@@ -124,7 +124,7 @@ export default function CheckoutScreen() {
   const canDelivery = features.delivery && itemsDelivery && storeDelivery;
   const fulfilment: FulfilmentType = chosenFulfilment === "pickup" && !canPickup && canDelivery ? "delivery" : chosenFulfilment === "delivery" && !canDelivery && canPickup ? "pickup" : chosenFulfilment;
   const onlyOne = canPickup !== canDelivery && !!products.data;
-  const paused = !features.ordering || (!features.delivery && !features.pickup);
+  const paused = features.maintenance || !features.ordering || (!features.delivery && !features.pickup);
   // Neither way works: the store's areas are still being approved, or the items want different ones
   const noWay = !!products.data && storeLoaded && !canPickup && !canDelivery && !paused;
   const notSetUp = !!seller && storeLoaded && areas.length === 0;
@@ -254,7 +254,7 @@ export default function CheckoutScreen() {
             <Ionicons name="pause-circle" size={26} color={colors.warning} />
             <View style={{ flex: 1, gap: 2 }}>
               <Txt variant="label">Ordering is paused right now</Txt>
-              <Txt variant="small" color={colors.ink2}>Your cart is saved. Please check back soon, or contact us to order.</Txt>
+              <Txt variant="small" color={colors.ink2}>{features.maintenance && features.maintenanceMessage ? `${features.maintenanceMessage} ` : ""}Your cart is saved. Please check back soon, or contact us to order.</Txt>
             </View>
           </View>
         )}

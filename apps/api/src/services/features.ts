@@ -11,10 +11,11 @@ export async function getFeatures(tx: typeof db | Tx = db): Promise<AppFeatures>
 
 type Switch = { [K in keyof AppFeatures]: AppFeatures[K] extends boolean ? K : never }[keyof AppFeatures];
 
-/** Throws 403 with `message` when the switch is off (maintenance blocks everything that changes data). */
+/** Throws 403 with `message` when the switch is off. Maintenance mode stops new orders and new accounts
+ *  (the app stays open for browsing and everything else). */
 export async function requireFeature(key: Switch, message: string, tx: typeof db | Tx = db) {
   const features = await getFeatures(tx);
-  if (features.maintenance) throw new HttpError(503, features.maintenanceMessage || "The shop is under maintenance");
+  if (features.maintenance && (key === "ordering" || key === "signups")) throw new HttpError(503, features.maintenanceMessage || "The shop is under maintenance");
   if (!features[key]) throw new HttpError(403, message);
   return features;
 }

@@ -53,8 +53,8 @@ export default async function SwitchesPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="Maintenance mode">
           <LiveSwitch
-            label="Show maintenance screen"
-            description="Customers see a notice instead of the shop, and no orders can be placed."
+            label="Maintenance mode"
+            description="The app stays open for browsing with a notice showing this message; new orders and new accounts are paused."
             initial={f.maintenance}
             onChange={setFeature.bind(null, "maintenance")}
             danger

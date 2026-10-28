@@ -20,8 +20,9 @@ export default function SignInScreen() {
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const [chosenMode, setMode] = useState<Mode>("signin");
   const features = useFeatures();
-  // With sign-ups switched off in admin, only signing in is offered.
-  const mode: Mode = features.signups ? chosenMode : "signin";
+  // With sign-ups switched off in admin, or during maintenance, only signing in is offered.
+  const signupsOpen = features.signups && !features.maintenance;
+  const mode: Mode = signupsOpen ? chosenMode : "signin";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -237,7 +238,12 @@ export default function SignInScreen() {
             disabled={!email || password.length < (mode === "signup" ? 8 : 1) || (mode === "signup" && confirm !== password) || loading === "google"}
           />
 
-          {features.signups && (
+          {features.maintenance && (
+            <Txt variant="small" color={colors.ink2} style={{ textAlign: "center" }}>
+              New accounts are paused while we make improvements. You can still sign in.
+            </Txt>
+          )}
+          {signupsOpen && (
             <Pressable onPress={switchMode} style={{ alignSelf: "center", paddingVertical: space.sm }}>
               <Txt variant="small" style={{ fontSize: 14 }}>
                 {mode === "signin" ? "New to Sotechy? " : "Already have an account? "}

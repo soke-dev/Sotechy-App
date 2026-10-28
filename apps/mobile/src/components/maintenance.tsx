@@ -8,6 +8,24 @@ import { colors, gutter, space } from "@/lib/theme";
 import { Illo } from "./illustrations";
 import { Button, Txt } from "./ui";
 
+/** Maintenance mode: the app stays open; this notice says ordering and new accounts are paused */
+export function MaintenanceNotice() {
+  const { features } = useStoreConfig();
+  if (!features.maintenance) return null;
+  return (
+    <View style={{ flexDirection: "row", gap: space.md, alignItems: "center", backgroundColor: colors.warningSoft, borderRadius: 16, padding: space.md }}>
+      <Illo name="store" size={34} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Txt variant="label">We&apos;re making improvements</Txt>
+        <Txt variant="small" color={colors.ink2}>
+          {features.maintenanceMessage || "We'll be back shortly."} You can keep browsing; new orders and sign-ups are paused for now.
+        </Txt>
+      </View>
+    </View>
+  );
+}
+
+/** The old full-screen cover; kept, not used while maintenance only pauses ordering and sign-ups */
 export function MaintenanceScreen() {
   const insets = useSafeAreaInsets();
   const { config, features, reload } = useStoreConfig();

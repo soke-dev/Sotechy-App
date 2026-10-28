@@ -187,7 +187,7 @@ export const authRoutes = new Hono<AppEnv>()
       [user] = await db.update(schema.users).set({ googleId: g.sub, avatarUrl: user.avatarUrl ?? g.picture ?? null }).where(eq(schema.users.id, user.id)).returning();
     }
     if (!user) {
-      if (!features.signups) throw forbidden("New accounts can't be created right now");
+      if (!features.signups || features.maintenance) throw forbidden(features.maintenance ? features.maintenanceMessage || "New accounts can't be created right now" : "New accounts can't be created right now");
       [user] = await db.insert(schema.users).values({ email, googleId: g.sub, fullName: g.name ?? null, avatarUrl: g.picture ?? null }).returning();
     }
     if (!user.isActive) throw unauthorized("This account is disabled");
