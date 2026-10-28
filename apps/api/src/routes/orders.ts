@@ -44,6 +44,12 @@ const placeOrderSchema = z.object({
 });
 
 /** Full order with items, payments, history and how-to-pay instructions. */
+/** The products a customer has reviewed */
+async function reviewedBy(userId: string) {
+  const rows = await db.select({ productId: schema.productReviews.productId }).from(schema.productReviews).where(eq(schema.productReviews.userId, userId));
+  return new Set(rows.map((r) => r.productId));
+}
+
 export async function loadOrderDetail(orderId: string) {
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
   if (!order) return null;
@@ -83,8 +89,11 @@ export async function loadOrderDetail(orderId: string) {
   }
   // The store's token can pay towards its orders (with $SOTECHY)
   const [seller] = order.merchantId ? await db.select({ ticker: schema.merchants.ticker }).from(schema.merchants).where(eq(schema.merchants.id, order.merchantId)) : [];
+  const reviewed = order.customerId ? await reviewedBy(order.customerId) : new Set<string>();
   const { idempotencyKey: _k, pickupChangePoint: _p, pickupChangeStatus: _ps, pickupChangeAt: _pa, ...publicOrder } = order;
-  return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation, storeTicker: seller?.ticker ?? null };
+  return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation, storeTicker: seller?.ticker ?? null,
+    // Products in it the customer has already reviewed (one review each)
+    reviewedProductIds: items.map((i) => i.productId).filter((id): id is string => !!id && reviewed.has(id)) };
 }
 
 /** Order items with the product's first photo, for thumbnails. */
@@ -114,7 +123,13 @@ export const orderRoutes = new Hono<AppEnv>()
   .get("/", async (c) => {
     const rows = await db.select().from(orders).where(eq(orders.customerId, c.get("user").id)).orderBy(desc(orders.createdAt)).limit(100);
     const items = await itemsWithImages(rows.map((r) => r.id));
-    return c.json(rows.map(({ idempotencyKey: _k, ...o }) => ({ ...o, items: items.filter((i) => i.orderId === o.id) })));
+    const reviewed = await reviewedBy(c.get("user").id);
+    return c.json(
+      rows.map(({ idempotencyKey: _k, ...o }) => {
+        const mine = items.filter((i) => i.orderId === o.id);
+        return { ...o, items: mine, reviewedProductIds: mine.map((i) => i.productId).filter((id): id is string => !!id && reviewed.has(id)) };
+      }),
+    );
   })
   .get("/:id", async (c) => {
     const user = c.get("user");

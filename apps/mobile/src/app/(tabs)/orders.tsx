@@ -107,7 +107,7 @@ function OrderCard({ order }: { order: OrderSummary }) {
           <Button title="Pay now" size="sm" icon="wallet-outline" onPress={open} />
         ) : finished ? (
           <View style={[ui.row, { gap: space.xs }]}>
-            {order.status === "delivered" && (
+            {order.status === "delivered" && order.items.some((i) => i.productId && !order.reviewedProductIds?.includes(i.productId)) && (
               <Button title="Review" size="sm" variant="outline" icon="star-outline" onPress={() => router.push({ pathname: "/order/[id]", params: { id: order.id, review: "1" } })} />
             )}
             <Button title={order.status === "delivered" ? "Buy again" : "Order again"} size="sm" variant="outline" icon="refresh" onPress={buyAgain} />

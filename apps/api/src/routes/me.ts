@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
-import { badRequest, notFound } from "../lib/errors";
+import { badRequest, conflict, notFound } from "../lib/errors";
 import { publicApiUrl } from "../env";
 import { requireFeature } from "../services/features";
 import { noRecipient, receiptFor, recipientFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
@@ -252,11 +252,13 @@ export const meRoutes = new Hono<AppEnv>()
         .where(and(eq(schema.orders.customerId, userId), eq(schema.orders.status, "delivered"), eq(schema.productVariants.productId, input.productId)))
         .limit(1);
       const values = { rating: input.rating, title: input.title ?? null, body: input.body, photos: input.photos ?? [], verified: purchased.length > 0 };
+      // One review per product per customer, and it's final once posted
       const [row] = await db
         .insert(schema.productReviews)
         .values({ ...values, productId: input.productId, userId })
-        .onConflictDoUpdate({ target: [schema.productReviews.productId, schema.productReviews.userId], set: { ...values, isPublished: true } })
+        .onConflictDoNothing({ target: [schema.productReviews.productId, schema.productReviews.userId] })
         .returning();
+      if (!row) throw conflict("You've already reviewed this product");
       // Reviewing something they had delivered earns a bonus in the store's token
       const bonus = row.verified ? await reviewBonus(userId, input.productId, row.photos.length > 0).catch(() => null) : null;
       return c.json({ ...row, bonus }, 201);

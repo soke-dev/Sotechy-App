@@ -149,7 +149,7 @@ export default function OrderScreen() {
   useEffect(() => {
     if (reviewAsked || order?.status !== "delivered") return;
     setReviewAsked(true);
-    const items = [...new Map(order.items.filter((i) => i.productId).map((i) => [i.productId!, { productId: i.productId!, name: i.productName }])).values()];
+    const items = [...new Map(order.items.filter((i) => i.productId && !order.reviewedProductIds?.includes(i.productId)).map((i) => [i.productId!, { productId: i.productId!, name: i.productName }])).values()];
     if (items.length === 1) setReviewing(items[0]);
     else if (items.length > 1) setPickingReview(true);
   }, [order, reviewAsked]);
@@ -280,7 +280,7 @@ export default function OrderScreen() {
     }
   }
 
-  const reviewable = [...new Map(order.items.filter((i) => i.productId).map((i) => [i.productId!, { productId: i.productId!, name: i.productName, imageUrl: i.imageUrl ?? null }])).values()];
+  const reviewable = [...new Map(order.items.filter((i) => i.productId && !order.reviewedProductIds?.includes(i.productId)).map((i) => [i.productId!, { productId: i.productId!, name: i.productName, imageUrl: i.imageUrl ?? null }])).values()];
   function startReview() {
     tap();
     if (reviewable.length === 1) setReviewing(reviewable[0]);
@@ -289,6 +289,7 @@ export default function OrderScreen() {
   async function submitReview(input: { rating: number; title: string; body: string; photos: string[] }) {
     const r = await api.submitReview({ productId: reviewing!.productId, rating: input.rating, title: input.title || null, body: input.body, photos: input.photos });
     setReviewing(null);
+    void reload();
     if (r.bonus) {
       void refreshHeldTokens();
       toast(`Thanks! You earned ${r.bonus.amount.toLocaleString("en-NG")} tokens for your review`, { icon: "star" });

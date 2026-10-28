@@ -247,6 +247,8 @@ export interface Order {
   customerIssueAt?: string | null;
   /** Where a pickup order is collected (a store's approved pickup location, or an approved change) */
   pickupLocation?: string | null;
+  /** Products in it the customer has already reviewed (one review each) */
+  reviewedProductIds?: string[];
   /** Tokens put towards it (held until it's paid), and the selling store's ticker */
   tokensUsed?: { tokenId: number; ticker: string; amount: number }[] | null;
   storeTicker?: string | null;

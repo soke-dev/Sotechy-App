@@ -369,7 +369,8 @@ function ReviewsTab({ data, loading, mine, onWrite }: { data: ProductReviews | u
         </View>
       )}
 
-      <Button title={mine ? "Edit your review" : "Write a review"} icon={mine ? "create-outline" : "star-outline"} variant="outline" onPress={onWrite} />
+      {/* One review per product: once it's posted, it's final */}
+      {!mine && <Button title="Write a review" icon="star-outline" variant="outline" onPress={onWrite} />}
 
       {visible.map((r) => (
         <ReviewItem key={r.id} review={r} />
