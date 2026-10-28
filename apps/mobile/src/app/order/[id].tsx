@@ -325,19 +325,7 @@ export default function OrderScreen() {
               <Txt variant="small">{order.pickupLocation ? `Collect it at ${order.pickupLocation}.` : "It's waiting at the pickup location."} Tap below once you have it.</Txt>
             </View>
           </View>
-          {order.customerIssueAt && (
-            <Txt variant="small" color={colors.ink2}>You told us it wasn&apos;t there. Sotechy is checking with the store and will contact you.</Txt>
-          )}
-          <View style={[ui.row, { gap: space.sm }]}>
-            {!order.customerIssueAt && (
-              <View style={{ flex: 1 }}>
-                <Button title="Not there" variant="outline" loading={confirming === "no"} disabled={!!confirming} onPress={() => answerReceived(false)} />
-              </View>
-            )}
-            <View style={{ flex: 1 }}>
-              <Button title="I've picked it up" icon="checkmark-circle" variant="dark" loading={confirming === "picked"} disabled={!!confirming} onPress={pickedUp} />
-            </View>
-          </View>
+          <Button title="I've picked it up" icon="checkmark-circle" variant="dark" loading={confirming === "picked"} disabled={!!confirming} onPress={pickedUp} />
         </View>
       )}
 
