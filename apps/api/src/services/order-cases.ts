@@ -110,7 +110,7 @@ export async function orderCases(): Promise<OrderCase[]> {
   }
 
   const owed = await db
-    .select({ id: schema.merchantPayouts.id, amount: schema.merchantPayouts.amount, createdAt: schema.merchantPayouts.createdAt, orderId: o.id, number: o.orderNumber, total: o.total, store: schema.merchants.name, customer: schema.users.fullName })
+    .select({ id: schema.merchantPayouts.id, amount: schema.merchantPayouts.amount, createdAt: schema.merchantPayouts.createdAt, claimedAt: schema.merchantPayouts.paybackClaimedAt, claimRef: schema.merchantPayouts.paybackReference, orderId: o.id, number: o.orderNumber, total: o.total, store: schema.merchants.name, customer: schema.users.fullName })
     .from(schema.merchantPayouts)
     .innerJoin(o, eq(o.id, schema.merchantPayouts.orderId))
     .innerJoin(schema.merchants, eq(schema.merchants.id, schema.merchantPayouts.merchantId))
@@ -127,7 +127,9 @@ export async function orderCases(): Promise<OrderCase[]> {
       total: p.total,
       openedAt: p.createdAt.toISOString(),
       detail: `The order was cancelled after ${p.store} was paid. They owe it back.`,
-      money: `${p.store} owes ${naira(p.amount)}. Mark it repaid once you've collected it.`,
+      money: p.claimedAt
+        ? `${p.store} says it sent ${naira(p.amount)}${p.claimRef ? ` (reference ${p.claimRef})` : ""}. Check your account, then mark it repaid.`
+        : `${p.store} owes ${naira(p.amount)}. Mark it repaid once you've collected it.`,
       payoutId: p.id,
     });
   }

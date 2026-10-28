@@ -13,7 +13,7 @@ import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem } from "@sotechy/shared";
 import { slugify } from "../lib/identity";
 import { railBanks } from "../services/payout-rail";
-import { buyFeaturing, featuredCount, featuringSettings, purchasesOf } from "../services/featuring";
+import { buyFeaturing, featuredCount, featuringSettings, purchasesOf, storeFeatureCount } from "../services/featuring";
 import { roleAllows, storeAccess, type StoreRole } from "../services/team";
 import { addPayoutAccount, makeDefault, payoutAccountsOf, removePayoutAccount } from "../services/payout-accounts";
 import { findCustomer, startWalkIn, walkInsOf } from "../services/walk-in";
@@ -21,7 +21,8 @@ import { storeTokenStats } from "../services/tokens";
 import { CHAINS, currentContract } from "../services/chain";
 import { answerOffer, storeOffers } from "../services/offers";
 import { sendPushLater } from "../services/push";
-import { payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
+import { claimPayback, payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
+import { paybackAccount } from "../services/payback-account";
 import { sendEmailLater } from "../lib/email";
 import { storePulse } from "../services/pulse";
 import { pickupChangeEmail } from "../emails/templates";
@@ -356,8 +357,8 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
   // --- Paid featuring ---
   .get("/featuring", async (c) => {
     const store = c.get("store");
-    const [settings, taken, purchases] = await Promise.all([featuringSettings(), featuredCount(), purchasesOf(store.id)]);
-    return c.json({ ...settings, spotsLeft: Math.max(0, settings.maxStores - taken), featuredUntil: store.featuredUntil, purchases });
+    const [settings, taken, purchases, mine] = await Promise.all([featuringSettings(), featuredCount(), purchasesOf(store.id), storeFeatureCount(store.id)]);
+    return c.json({ ...settings, spotsLeft: Math.max(0, settings.maxStores - taken), featuredUntil: store.featuredUntil, purchases, activeFeatures: mine });
   })
   .post(
     "/featuring",
@@ -685,6 +686,10 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     if (!o) throw notFound("Order not found");
     const settings = await payoutSettings();
     const mp = schema.merchantPayouts;
+    const [payback] = await db
+      .select({ amount: mp.amount, status: mp.status, claimedAt: mp.paybackClaimedAt, reference: mp.paybackReference })
+      .from(mp)
+      .where(and(eq(mp.orderId, o.id), eq(mp.merchantId, store.id), eq(mp.stage, "payback")));
     const paid = await db
       .select({ stage: mp.stage, amount: mp.amount, status: mp.status, dueAt: mp.dueAt, paidAt: mp.paidAt })
       .from(mp)
@@ -693,6 +698,12 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       ...o,
       payoutTerms: { plan: store.payoutPlan ?? settings.standard, feeRate: settings.feeRate, finalAfterHours: settings.finalAfterHours },
       payouts: paid.filter((p) => p.stage !== "payback").map((p) => ({ ...p, dueAt: p.dueAt.toISOString(), paidAt: p.paidAt?.toISOString() ?? null })),
+      // Money the store owes back for this order, and where to send it
+      ...(payback && {
+        status: payback.status === "owed" ? "payback" : o.status,
+        payback: { amount: payback.amount, settled: payback.status === "settled", claimedAt: payback.claimedAt?.toISOString() ?? null, reference: payback.reference },
+        paybackAccount: await paybackAccount(),
+      }),
     });
   })
   .post("/orders/:id/:action", zValidator("json", z.object({ note: z.string().trim().max(300).optional() }).default({})), async (c) => {
@@ -704,6 +715,9 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     if (action === "accept") {
       if (o.status !== "paid") throw conflict("This order can't be accepted now");
       await updateOrderStatus(actor, o.id, "processing", note ?? "Store accepted the order");
+    } else if (action === "payback-sent") {
+      // The store sent back money for a cancelled order; an admin checks it arrived
+      await claimPayback(store.id, o.id, note?.trim() || null);
     } else if (action === "pickup-change") {
       // Handing it over somewhere else needs Sotechy's approval first
       const point = note?.trim();

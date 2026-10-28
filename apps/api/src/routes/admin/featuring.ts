@@ -32,7 +32,7 @@ export const adminFeaturingRoutes = new Hono<AppEnv>()
     ]);
     return c.json({ settings, featured, purchases, revenueThisMonth: revenue?.total ?? 0 });
   })
-  .put("/featuring-settings", ADMIN, requirePassword, zValidator("json", z.object({ pricePerMonth: z.number().int().min(0).max(1_000_000), maxStores: z.number().int().min(1).max(50) })), async (c) => {
+  .put("/featuring-settings", ADMIN, requirePassword, zValidator("json", z.object({ pricePerMonth: z.number().int().min(0).max(1_000_000), maxStores: z.number().int().min(1).max(50), maxPerStore: z.number().int().min(1).max(12).default(2) })), async (c) => {
     const value = c.req.valid("json");
     await db.transaction(async (tx) => {
       await tx.insert(schema.appSettings).values({ key: "featuring", value }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value } });

@@ -353,6 +353,50 @@ export function supportChatEmail(to: string, d: { name: string | null; customer:
   });
 }
 
+export function paybackRequestEmail(to: string, d: { store: string; orderNumber: string; amount: number; bankName: string; accountName: string; accountNumber: string }) {
+  return build(to, `Please pay back ${formatNaira(d.amount)} for ${d.orderNumber}`, {
+    preheader: `${d.orderNumber} was cancelled after you were paid. Send it back to Sotechy's account.`,
+    hero: "payout",
+    eyebrow: `${d.store} \u00b7 Payback`,
+    heading: "An order you were paid for was cancelled",
+    blocks: [
+      { kind: "text", text: `${d.orderNumber} won't be fulfilled, so Sotechy is refunding the customer. You were already paid **${formatNaira(d.amount)}** for it. Please send it back to this account, then tap **I've paid it back** on the order in your dashboard.` },
+      {
+        kind: "rows",
+        rows: [
+          { icon: "bank", label: "Bank", value: d.bankName },
+          { icon: "receipt", label: "Account", value: `${d.accountNumber} \u00b7 ${d.accountName}` },
+          { icon: "tag", label: "Amount", value: formatNaira(d.amount) },
+          { icon: "doc", label: "Narration", value: d.orderNumber },
+        ],
+      },
+      { kind: "button", label: "Open your orders", url: "https://merchant.sotechy.shop/orders" },
+    ],
+    reason: "You're getting this because you sell on Sotechy.",
+  });
+}
+
+export function paybackClaimedEmail(to: string, d: { name: string | null; store: string; orderNumber: string; amount: number; reference: string | null }) {
+  return build(to, `${d.store} says it paid back ${formatNaira(d.amount)}`, {
+    preheader: `For ${d.orderNumber}${d.reference ? `, reference ${d.reference}` : ""}. Check your account, then mark it repaid.`,
+    hero: "payout",
+    eyebrow: "Sotechy admin \u00b7 Payback",
+    heading: "A store sent a payback",
+    blocks: [
+      { kind: "text", text: `Hi ${first(d.name)}, **${d.store}** says it has sent back the money for ${d.orderNumber}. Check it arrived, then mark it repaid in Order reviews.` },
+      {
+        kind: "rows",
+        rows: [
+          { icon: "tag", label: "Amount", value: formatNaira(d.amount) },
+          { icon: "receipt", label: "Their reference", value: d.reference ?? "None given" },
+        ],
+      },
+      { kind: "button", label: "Open order reviews", url: "https://admin.sotechy.shop/order-reviews" },
+    ],
+    reason: "You're getting this because you're a Sotechy admin.",
+  });
+}
+
 export function pickupChangeEmail(to: string, d: { name: string | null; store: string; orderNumber: string; from: string | null; to: string }) {
   return build(to, `${d.store} wants another pickup location for ${d.orderNumber}`, {
     preheader: `New location: ${d.to}. Approve or decline it.`,

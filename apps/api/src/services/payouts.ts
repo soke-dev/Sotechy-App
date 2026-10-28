@@ -11,7 +11,8 @@ import { provider, railCheck, railSend, type RailResult } from "./payout-rail";
 import { sendEmailLater } from "../lib/email";
 import { sendWhatsAppLater } from "../lib/whatsapp";
 import { env } from "../env";
-import { payoutApprovalEmail, payoutSentEmail } from "../emails/templates";
+import { paybackClaimedEmail, paybackRequestEmail, payoutApprovalEmail, payoutSentEmail } from "../emails/templates";
+import { paybackAccount } from "./payback-account";
 import { sendPushLater } from "./push";
 import { getSetting } from "./settings";
 
@@ -104,7 +105,7 @@ export async function holdFinal(orderId: string) {
 
 /** A cancelled or refunded order: payouts not yet sent are called off, and what was already paid is owed back */
 async function unwind(orderId: string) {
-  await db.transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
     await tx
       .update(payouts)
       .set({ status: "cancelled" })
@@ -114,13 +115,44 @@ async function unwind(orderId: string) {
       .from(payouts)
       .where(and(eq(payouts.orderId, orderId), eq(payouts.status, "paid"), inArray(payouts.stage, ["first", "final"])));
     const owed = paid.reduce((n, p) => n + p.amount, 0);
-    if (!owed) return;
+    if (!owed) return null;
     const [order] = await tx.select({ orderNumber: orders.orderNumber }).from(orders).where(eq(orders.id, orderId));
     await tx
       .insert(payouts)
       .values({ merchantId: paid[0].merchantId, orderId, stage: "payback", amount: owed, status: "owed", reference: reference(order.orderNumber, "payback") })
       .onConflictDoUpdate({ target: payouts.reference, set: { amount: owed } });
+    return { merchantId: paid[0].merchantId, orderNumber: order.orderNumber, amount: owed };
   });
+  if (created) void tellStoreToPayBack(created);
+}
+
+/** The store hears it owes money back, and where to send it */
+async function tellStoreToPayBack(p: { merchantId: string; orderNumber: string; amount: number }) {
+  const [row] = await db
+    .select({ store: merchants.name, ownerId: merchants.ownerId, contactEmail: merchants.contactEmail, email: schema.users.email })
+    .from(merchants)
+    .leftJoin(schema.users, eq(schema.users.id, merchants.ownerId))
+    .where(eq(merchants.id, p.merchantId));
+  if (!row) return;
+  const account = await paybackAccount();
+  for (const to of [...new Set([row.contactEmail, row.email].filter((e): e is string => !!e).map((e) => e.toLowerCase()))]) {
+    sendEmailLater(paybackRequestEmail(to, { store: row.store, orderNumber: p.orderNumber, amount: p.amount, ...account }));
+  }
+  if (row.ownerId) sendPushLater([row.ownerId], { title: "Payback needed", body: `${p.orderNumber} was cancelled. Please send back ₦${p.amount.toLocaleString("en-NG")}.`, data: { url: "/orders" } });
+}
+
+/** The store says it has sent a payback: noted with its reference, and admins are told to check */
+export async function claimPayback(merchantId: string, orderId: string, ref: string | null) {
+  const [p] = await db
+    .update(payouts)
+    .set({ paybackClaimedAt: new Date(), paybackReference: ref })
+    .where(and(eq(payouts.orderId, orderId), eq(payouts.merchantId, merchantId), eq(payouts.stage, "payback"), eq(payouts.status, "owed")))
+    .returning();
+  if (!p) throw badRequest("There's nothing to pay back on this order");
+  const [info] = await db.select({ store: merchants.name, orderNumber: orders.orderNumber }).from(merchants).innerJoin(orders, eq(orders.id, p.orderId)).where(eq(merchants.id, merchantId));
+  const admins = await db.select({ email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.role, "admin"));
+  for (const a of admins) sendEmailLater(paybackClaimedEmail(a.email, { name: a.name, store: info?.store ?? "A store", orderNumber: info?.orderNumber ?? "", amount: p.amount, reference: ref }));
+  return p;
 }
 
 /** Sends one payout. Admins can send before it's due (`force`); automatic sending only sends what's due

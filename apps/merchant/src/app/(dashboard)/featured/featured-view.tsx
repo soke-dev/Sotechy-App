@@ -4,10 +4,9 @@
 // The monthly price and how many stores can be featured at once are set by Sotechy.
 import { ArrowRight, Check, CreditCard, ImagePlus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
-import type { IlloName } from "@/components/illustrations";
 import { useAccount } from "@/components/account-context";
 import { BANNER_SPEC, ImageCropper } from "@/components/image-cropper";
-import { btn, Card, Field, inputClass, PageHeader, Pill, StatCard } from "@/components/ui";
+import { btn, Card, Field, inputClass, PageHeader, Pill } from "@/components/ui";
 import { Sheet } from "@/components/zone-form";
 import { buyFeaturing, uploadFiles } from "@/lib/market-actions";
 import { formatNaira } from "@/lib/money";
@@ -15,6 +14,9 @@ import { formatNaira } from "@/lib/money";
 export interface Featuring {
   pricePerMonth: number;
   maxStores: number;
+  /** Features one store can hold at a time, and how many this store holds */
+  maxPerStore: number;
+  activeFeatures: number;
   spotsLeft: number;
   featuredUntil: string | null;
   purchases: {
@@ -61,12 +63,12 @@ function BannerPreview({ imageUrl, title, cta }: { imageUrl: string | null; titl
 }
 
 const DAY = 86_400_000;
-const BENEFITS: { illo: IlloName; title: string; text: string }[] = [
-  { illo: "home", title: "Top of Home", text: "Your store leads the “Stores on Sotechy” row on the app's Home." },
-  { illo: "bag", title: "First in Shop", text: "Your products lead the Shop grid and the store product rows." },
-  { illo: "store", title: "First in Stores", text: "You're listed at the top of the Stores tab, with a Featured label." },
-  { illo: "sparkle", title: "Featured label", text: "A gold ★ Featured tag on your store and products everywhere they appear." },
-  { illo: "receipt", title: "Your own Home banner", text: "A banner you design, at the front of the app's Home slides. Tapping it opens your store." },
+const BENEFITS: { title: string; text: string }[] = [
+  { title: "Your own Home banner", text: "At the front of the app's Home slides. Tapping it opens your store." },
+  { title: "First on Home", text: "You lead the “Stores on Sotechy” row." },
+  { title: "First in Shop", text: "Your products come before other stores'." },
+  { title: "Top of Stores", text: "Listed first in the Stores tab." },
+  { title: "★ Featured label", text: "On your store and products everywhere." },
 ];
 const fmtDate = (d: string | number) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(d));
 
@@ -101,6 +103,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
   const total = data.pricePerMonth * months;
   const newUntil = (active ? until! : now) + months * 30 * DAY;
   const full = !active && data.spotsLeft === 0;
+  const atLimit = data.activeFeatures >= data.maxPerStore;
   const approved = store.status === "approved";
 
   const pay = () =>
@@ -113,52 +116,69 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
 
   return (
     <>
-      <PageHeader illo="sparkle" title="Get featured" description="Pay to be shown first in the Sotechy app: on Home, in Shop and in the Stores tab, with a Featured label." />
+      <PageHeader illo="sparkle" title="Get featured" description="Be the first store customers see in the Sotechy app, with your own banner on Home." />
       {justPaid && (
         <p className="mb-4 flex items-center gap-2 rounded-2xl bg-good-soft px-4 py-3 text-sm font-semibold text-good">
           <Check size={16} /> Thanks! Your feature starts as soon as Money Moves confirms the payment, usually within a minute.
         </p>
       )}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
-        <StatCard accent illo="sparkle" label="Status" value={active ? "Featured" : "Not featured"} hint={active ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left, until ${fmtDate(until!)}` : "Shown in normal order"} />
-        <StatCard illo="wallet" label="Price a month" value={formatNaira(data.pricePerMonth)} hint="Set by Sotechy" />
-        <StatCard illo="store" label="Spots left" value={`${data.spotsLeft} of ${data.maxStores}`} hint="Stores featured at once" />
+      {/* Where you stand, in one strip */}
+      <div className="mb-4 grid grid-cols-3 divide-x divide-line rounded-2xl border border-line bg-surface text-sm">
+        <div className="min-w-0 px-3 py-3 sm:px-4">
+          <p className="text-xs text-muted">Status</p>
+          <p className={`font-display font-bold ${active ? "text-good" : ""}`}>{active ? "Featured" : "Not featured"}</p>
+          <p className="truncate text-xs text-muted">{active ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "Normal order"}</p>
+        </div>
+        <div className="min-w-0 px-3 py-3 sm:px-4">
+          <p className="text-xs text-muted">Price</p>
+          <p className="font-display font-bold">{formatNaira(data.pricePerMonth)}</p>
+          <p className="text-xs text-muted">a month</p>
+        </div>
+        <div className="min-w-0 px-3 py-3 sm:px-4">
+          <p className="text-xs text-muted">Spots</p>
+          <p className="font-display font-bold">
+            {data.spotsLeft} of {data.maxStores}
+          </p>
+          <p className="truncate text-xs text-muted">left right now</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr]">
         <Card title={active ? "Add more time" : "Feature your store"} description={active ? "Extra months start when your current feature ends." : "Starts as soon as your payment is confirmed."}>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <div className="grid grid-cols-3 gap-2">
               {[1, 2, 3].map((m) => (
-                <button key={m} type="button" onClick={() => setMonths(m)} className={`rounded-2xl border p-3 text-left transition ${months === m ? "border-ink ring-1 ring-ink" : "border-line hover:border-faint"}`}>
-                  <span className="block font-semibold">
+                <button key={m} type="button" onClick={() => setMonths(m)} className={`rounded-xl border px-3 py-2 text-left transition ${months === m ? "border-ink ring-1 ring-ink" : "border-line hover:border-faint"}`}>
+                  <span className="block text-sm font-semibold">
                     {m} month{m === 1 ? "" : "s"}
                   </span>
-                  <span className="block text-sm text-muted">{formatNaira(data.pricePerMonth * m)}</span>
+                  <span className="block text-xs text-muted">{formatNaira(data.pricePerMonth * m)}</span>
                 </button>
               ))}
             </div>
-            <p className="text-sm text-muted">Featured until {fmtDate(newUntil)}</p>
+            <p className="text-xs text-muted">Featured until {fmtDate(newUntil)} · includes one Home banner (design it below)</p>
             {error && <p className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
-            {needsImage && <p className="text-xs text-warn">Add your banner picture below, or switch the banner off.</p>}
-            <button disabled={busy || full || !approved || needsImage || uploading} onClick={pay} className={btn.primary}>
+            {needsImage && <p className="text-xs text-warn">Add your banner picture below, or untick “Add a banner”.</p>}
+            <button disabled={busy || full || atLimit || !approved || needsImage || uploading} onClick={pay} className={btn.primary}>
               <CreditCard size={16} /> {busy ? "Opening payment…" : `Pay ${formatNaira(total)}`}
             </button>
             {!approved && <p className="text-xs text-warn">You can be featured once Sotechy approves your store.</p>}
-            {full && <p className="text-xs text-warn">All featured spots are taken right now. A spot opens when another store&apos;s feature ends.</p>}
-            <p className="text-xs text-muted">Paid securely through Money Moves. Not refundable once it starts.</p>
+            {full && <p className="text-xs text-warn">All {data.maxStores} featured spots are taken. One opens when another store&apos;s feature ends.</p>}
+            {atLimit && <p className="text-xs text-warn">You have {data.activeFeatures} features already, the most a store can hold at a time. Buy another when one ends.</p>}
+            <p className="text-xs text-muted">
+              Up to {data.maxStores} stores are featured at once, and a store can hold {data.maxPerStore} features at a time. Paid through Money Moves; not refundable once it starts.
+            </p>
           </div>
         </Card>
 
         <Card title="What you get">
-          <ul className="flex flex-col gap-3">
+          <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
             {BENEFITS.map((b) => (
-              <li key={b.title} className="flex gap-3">
-                <Check size={18} className="mt-0.5 shrink-0 text-good" />
-                <span>
-                  <span className="block font-semibold">{b.title}</span>
-                  <span className="block text-sm text-muted">{b.text}</span>
+              <li key={b.title} className="flex gap-2">
+                <Check size={16} className="mt-0.5 shrink-0 text-good" />
+                <span className="text-sm">
+                  <span className="font-semibold">{b.title}.</span> <span className="text-muted">{b.text}</span>
                 </span>
               </li>
             ))}
@@ -170,7 +190,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
         {cropping && <ImageCropper file={cropping} spec={BANNER_SPEC} onDone={upload} onCancel={() => setCropping(null)} />}
       </Sheet>
       <Card
-        className="mt-6"
+        className="mt-4"
         title="Your Home banner"
         description="Included with this payment: one banner, shown at the front of the app's Home slides for the months you pay for, then it switches off. Want another banner? That's another feature payment."
         actions={
@@ -212,7 +232,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
         )}
       </Card>
 
-      <Card className="mt-6" title="Payments">
+      <Card className="mt-4" title="Payments">
         {data.purchases.length ? (
           <ul className="flex flex-col divide-y divide-line">
             {data.purchases.map((h) => (

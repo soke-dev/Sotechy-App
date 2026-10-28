@@ -133,7 +133,7 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     deleteDeliveryZone: (id: string) => send<{ deleted: true }>("DELETE", `/merchant/delivery-zones/${encodeURIComponent(id)}`),
     merchantOrders: () => get<MerchantOrder[]>("/merchant/orders"),
     merchantOrder: (id: string) => get<MerchantOrder>(`/merchant/orders/${encodeURIComponent(id)}`),
-    merchantOrderAction: (id: string, action: "accept" | "ship" | "deliver" | "decline" | "pickup-change", note?: string) =>
+    merchantOrderAction: (id: string, action: "accept" | "ship" | "deliver" | "decline" | "pickup-change" | "payback-sent", note?: string) =>
       send<MerchantOrder>("POST", `/merchant/orders/${encodeURIComponent(id)}/${action}`, note ? { note } : {}),
     merchantCustomers: () => get<MerchantCustomer[]>("/merchant/customers"),
     merchantSummary: () => get<MerchantSummary>("/merchant/summary"),

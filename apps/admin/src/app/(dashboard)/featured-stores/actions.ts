@@ -16,7 +16,7 @@ async function attempt(fn: () => Promise<unknown>): Promise<Result> {
   }
 }
 
-export async function saveFeaturingSettings(settings: { pricePerMonth: number; maxStores: number }, password: string): Promise<Result> {
+export async function saveFeaturingSettings(settings: { pricePerMonth: number; maxStores: number; maxPerStore: number }, password: string): Promise<Result> {
   return attempt(() => withPassword("PUT", "/admin/featuring-settings", settings, password));
 }
 

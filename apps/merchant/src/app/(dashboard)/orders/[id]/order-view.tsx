@@ -77,9 +77,10 @@ export function OrderView({ order }: { order: Order }) {
   const [tracking, setTracking] = useState("");
   const [otherPlace, setOtherPlace] = useState(false);
   const [newPoint, setNewPoint] = useState("");
+  const [paybackRef, setPaybackRef] = useState("");
   const change = order.pickupChange;
   const waiting = change?.status === "pending";
-  const move = (action: "accept" | "ship" | "deliver" | "decline" | "pickup-change", note?: string) =>
+  const move = (action: "accept" | "ship" | "deliver" | "decline" | "pickup-change" | "payback-sent", note?: string) =>
     start(async () => {
       setError(null);
       const r = await orderAction(order.id, action, note);
@@ -141,9 +142,15 @@ export function OrderView({ order }: { order: Order }) {
                 : "When you mark it, we update the customer on WhatsApp and email straight away."
           }
         >
-          <button onClick={() => setDialog("ship")} disabled={waiting} className={btn.dark}>
-            {order.fulfilment === "pickup" ? <Store size={16} /> : <Truck size={16} />} {order.fulfilment === "pickup" ? "Ready for pickup" : "Mark as shipped"}
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            <button onClick={() => setDialog("ship")} disabled={waiting} className={btn.dark}>
+              {order.fulfilment === "pickup" ? <Store size={16} /> : <Truck size={16} />} {order.fulfilment === "pickup" ? "Ready for pickup" : "Mark as shipped"}
+            </button>
+            {/* Backing out after accepting: the customer is refunded and anything already paid comes back */}
+            <button onClick={() => setDialog("decline")} className="text-xs font-semibold text-muted hover:text-bad hover:underline">
+              Can&apos;t fulfil it anymore?
+            </button>
+          </div>
         </NextStep>
       )}
       {s === "shipped" && (
@@ -166,16 +173,33 @@ export function OrderView({ order }: { order: Order }) {
       )}
       {s === "completed" && <NextStep illo="sparkle" title="Completed" body={`Delivered, and the customer earns their $${store.ticker}. Your money is paid out on your payout plan.`} />}
       {s === "declined" && <NextStep illo="doc" title="You declined this order" body="The customer was refunded and their pending tokens were cancelled." />}
-      {s === "payback" && (
+      {s === "payback" && order.payback && (
         <section className="mb-6 rounded-2xl border-2 border-bad/30 bg-bad-soft p-6">
-          <p className="text-xl font-bold text-bad">Please pay back {formatNaira(m.first)}</p>
-          <p className="mt-1 text-sm text-ink-2">This order couldn&apos;t be shipped, so Sotechy is refunding the customer. Send the first 50% back to Sotechy&apos;s account below and tap &quot;I&apos;ve paid it back&quot;.</p>
-          <div className="mt-4 grid gap-2 rounded-2xl bg-surface p-4 text-sm sm:grid-cols-3">
-            <p><span className="text-muted">Bank</span><br /><b>Sotechy (via Money Moves)</b></p>
-            <p><span className="text-muted">Account</span><br /><b>To be set in admin</b></p>
-            <p><span className="text-muted">Reference</span><br /><b>{order.number}</b></p>
+          <p className="text-xl font-bold text-bad">Please pay back {formatNaira(order.payback.amount)}</p>
+          <p className="mt-1 text-sm text-ink-2">
+            This order was cancelled after you were paid for it, so Sotechy is refunding the customer. Send what you were paid back to Sotechy&apos;s account, using the order number as the narration, then tell us below.
+          </p>
+          <div className="mt-4 grid gap-2 rounded-2xl bg-surface p-4 text-sm sm:grid-cols-4">
+            <p><span className="text-muted">Bank</span><br /><b>{order.paybackAccount?.bankName}</b></p>
+            <p><span className="text-muted">Account number</span><br /><b>{order.paybackAccount?.accountNumber}</b></p>
+            <p><span className="text-muted">Account name</span><br /><b>{order.paybackAccount?.accountName}</b></p>
+            <p><span className="text-muted">Narration</span><br /><b>{order.number}</b></p>
           </div>
-          <button className={`${btn.dark} mt-4`}>I&apos;ve paid it back</button>
+          {order.payback.claimedAt ? (
+            <p className="mt-4 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-ink-2">
+              Thanks, you told us you sent it{order.payback.reference ? ` (reference ${order.payback.reference})` : ""}. Sotechy is checking it arrived.
+            </p>
+          ) : (
+            <div className="mt-4 flex flex-wrap items-end gap-2">
+              <Field label="Bank reference (optional)">
+                <input value={paybackRef} onChange={(e) => setPaybackRef(e.target.value)} maxLength={100} placeholder="Session ID from your bank" className={inputClass} />
+              </Field>
+              <button disabled={busy} onClick={() => move("payback-sent", paybackRef)} className={btn.dark}>
+                {busy ? "Sending…" : "I've paid it back"}
+              </button>
+            </div>
+          )}
+          {error && <p className="mt-3 rounded-2xl bg-surface px-3 py-2 text-sm text-bad">{error}</p>}
         </section>
       )}
 
@@ -339,8 +363,11 @@ export function OrderView({ order }: { order: Order }) {
         </button>
       </Modal>
 
-      <Modal open={dialog === "decline"} onClose={() => setDialog(null)} title="Decline this order?">
-        <p className="mb-4 text-sm text-ink-2">The customer is refunded in full and their pending tokens are cancelled.</p>
+      <Modal open={dialog === "decline"} onClose={() => setDialog(null)} title={s === "accepted" ? "Can't fulfil this order?" : "Decline this order?"}>
+        <p className="mb-4 text-sm text-ink-2">
+          The customer is refunded in full and their pending tokens are cancelled.
+          {s === "accepted" && firstState.done ? ` You were already paid ${formatNaira(pay.first)} for it: we'll show you where to send it back.` : ""}
+        </p>
         <div className="mb-4 flex flex-col gap-2">
           {DECLINE_REASONS.map((r) => (
             <label key={r} className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm ${reason === r ? "border-ink" : "border-line"}`}>
@@ -350,7 +377,7 @@ export function OrderView({ order }: { order: Order }) {
         </div>
         {error && <p className="mb-3 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
         <button disabled={busy} onClick={() => move("decline", reason)} className={`${btn.danger} w-full`}>
-          {busy ? "Declining…" : "Decline order"}
+          {busy ? "Saving…" : s === "accepted" ? "Cancel the order" : "Decline order"}
         </button>
       </Modal>
 

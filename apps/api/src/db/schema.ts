@@ -834,6 +834,9 @@ export const merchantPayouts = pgTable(
     accountNumber: text(),
     accountName: text(),
     failureReason: text(),
+    /** A payback the store says it has sent, with its bank reference, waiting for an admin to check */
+    paybackClaimedAt: timestamp({ withTimezone: true }),
+    paybackReference: text(),
     attempts: integer().notNull().default(0),
     sentAt: timestamp({ withTimezone: true }),
     paidAt: timestamp({ withTimezone: true }),

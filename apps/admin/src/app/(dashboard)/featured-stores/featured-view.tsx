@@ -11,7 +11,7 @@ import type { AdminStore } from "../merchants/store-types";
 import { featureStore, saveFeaturingSettings } from "./actions";
 
 export interface AdminFeaturing {
-  settings: { pricePerMonth: number; maxStores: number };
+  settings: { pricePerMonth: number; maxStores: number; maxPerStore?: number };
   featured: { id: string; name: string; slug: string; ticker: string; logoUrl: string | null; featuredUntil: string }[];
   purchases: { id: string; months: number; amount: number; paidAt: string | null; until: string | null; storeName: string; storeId: string }[];
   revenueThisMonth: number;
@@ -25,10 +25,11 @@ export function FeaturedView({ data, stores }: { data: AdminFeaturing; stores: A
   const [error, setError] = useState<string | null>(null);
   const [price, setPrice] = useState(data.settings.pricePerMonth);
   const [slots, setSlots] = useState(data.settings.maxStores);
+  const [perStore, setPerStore] = useState(data.settings.maxPerStore ?? 2);
   const [storeId, setStoreId] = useState("");
   const [days, setDays] = useState(30);
   const { ask, prompt } = usePasswordPrompt();
-  const changed = price !== data.settings.pricePerMonth || slots !== data.settings.maxStores;
+  const changed = price !== data.settings.pricePerMonth || slots !== data.settings.maxStores || perStore !== (data.settings.maxPerStore ?? 2);
 
   const run = (title: string, fn: (password: string) => Promise<{ ok: true } | { error: string }>, after?: () => void) =>
     start(async () => {
@@ -64,11 +65,14 @@ export function FeaturedView({ data, stores }: { data: AdminFeaturing; stores: A
               <Field label="Most stores featured at once" hint="Fewer spots keep featured stores special.">
                 <input type="number" min={1} max={50} value={slots} onChange={(e) => setSlots(Math.max(1, Number(e.target.value)))} className={`${inputClass} w-full`} />
               </Field>
+              <Field label="Features one store can hold at a time" hint="Running or waiting to start. Each is one paid feature with its own banner.">
+                <input type="number" min={1} max={12} value={perStore} onChange={(e) => setPerStore(Math.max(1, Number(e.target.value)))} className={`${inputClass} w-full`} />
+              </Field>
               <div className="flex gap-2">
-                <button disabled={!changed || busy} onClick={() => { setPrice(data.settings.pricePerMonth); setSlots(data.settings.maxStores); }} className={`${secondaryButtonClass} flex-1`}>
+                <button disabled={!changed || busy} onClick={() => { setPrice(data.settings.pricePerMonth); setSlots(data.settings.maxStores); setPerStore(data.settings.maxPerStore ?? 2); }} className={`${secondaryButtonClass} flex-1`}>
                   Undo
                 </button>
-                <button disabled={!changed || busy} onClick={() => run("Save featuring price and spots?", (pw) => saveFeaturingSettings({ pricePerMonth: price, maxStores: slots }, pw))} className={`${buttonClass} flex-1`}>
+                <button disabled={!changed || busy} onClick={() => run("Save featuring price and spots?", (pw) => saveFeaturingSettings({ pricePerMonth: price, maxStores: slots, maxPerStore: perStore }, pw))} className={`${buttonClass} flex-1`}>
                   Save
                 </button>
               </div>

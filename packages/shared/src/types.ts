@@ -681,6 +681,9 @@ export interface MerchantOrder {
   fulfilment: "delivery" | "pickup";
   /** Where the customer collects a pickup order */
   pickupPoint?: string;
+  /** Money the store owes back for a cancelled order it was paid for */
+  payback?: { amount: number; settled: boolean; claimedAt: string | null; reference: string | null };
+  paybackAccount?: { bankName: string; accountName: string; accountNumber: string };
   /** The store asked to use another pickup location for this order */
   pickupChange?: { point: string; status: "pending" | "approved" | "declined" };
   items: { name: string; image: string | null; qty: number; price: number; option?: string }[];

@@ -13,13 +13,22 @@ export interface FeaturingSettings {
   pricePerMonth: number;
   /** Most stores featured at once, so being featured still means something */
   maxStores: number;
+  /** Most features one store can hold at a time (running or waiting to start) */
+  maxPerStore: number;
 }
-const DEFAULTS: FeaturingSettings = { pricePerMonth: 2_000, maxStores: 8 };
+const DEFAULTS: FeaturingSettings = { pricePerMonth: 2_000, maxStores: 10, maxPerStore: 2 };
 const MONTH_MS = 30 * 86_400_000;
 export const FEATURE_REF = "feat-";
 
 export async function featuringSettings(): Promise<FeaturingSettings> {
   return { ...DEFAULTS, ...(await getSetting<Partial<FeaturingSettings>>("featuring")) };
+}
+
+/** A store's features running or still to come */
+export async function storeFeatureCount(merchantId: string) {
+  const fp = schema.featuredPurchases;
+  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(fp).where(and(eq(fp.merchantId, merchantId), eq(fp.status, "paid"), gt(fp.until, new Date())));
+  return row?.n ?? 0;
 }
 
 /** How many stores are featured right now */
@@ -41,6 +50,8 @@ export async function buyFeaturing(store: typeof schema.merchants.$inferSelect, 
   const settings = await featuringSettings();
   const already = !!store.featuredUntil && store.featuredUntil > new Date();
   if (!already && (await featuredCount()) >= settings.maxStores) throw conflict("All featured spots are taken right now. Try again in a few days.");
+  if ((await storeFeatureCount(store.id)) >= settings.maxPerStore)
+    throw conflict(`A store can have ${settings.maxPerStore} features at a time. You can buy another when one ends.`);
   const amount = settings.pricePerMonth * months;
   const [purchase] = await db.insert(schema.featuredPurchases).values({ merchantId: store.id, months, amount }).returning();
   if (banner) {
