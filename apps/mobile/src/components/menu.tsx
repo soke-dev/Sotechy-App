@@ -240,7 +240,7 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
               onPress={() => Linking.openURL(directionsUrl(`${headOffice.address}, ${headOffice.city}, Nigeria`, headOffice.mapUrl))}
               style={[ui.row, { gap: space.md }]}
             >
-              <Illo name="pin" size={26} />
+              <Image source={require("../../assets/brand/sotechy-office.jpg")} style={{ width: 44, height: 44, borderRadius: 12 }} contentFit="cover" contentPosition="top" />
               <View style={{ flex: 1 }}>
                 <Txt variant="label">Sotechy head office</Txt>
                 <Txt variant="caption" numberOfLines={1}>{headOffice.address}, {headOffice.city}{headOffice.openingHours ? ` · ${headOffice.openingHours}` : ""}</Txt>

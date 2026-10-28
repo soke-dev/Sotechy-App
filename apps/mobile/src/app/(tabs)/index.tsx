@@ -366,15 +366,13 @@ export default function HomeScreen() {
         <Ionicons name="chevron-forward" size={18} color={colors.faint} />
       </Pressable>
 
-      {/* Store */}
+      {/* Sotechy head office: a photo of the shop, darkened at the bottom for the text */}
       {headOffice && (
-        <View style={{ marginHorizontal: gutter, borderRadius: radius.xl, overflow: "hidden", height: Math.round(contentWidth * 0.72) }}>
-          <LinearGradient colors={[colors.brand, "#17120E"]} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
-          <View style={{ position: "absolute", right: space.xl, top: space.xl }}>
-            <Illo name="store" size={72} />
-          </View>
+        <View style={{ marginHorizontal: gutter, borderRadius: radius.xl, overflow: "hidden", height: Math.round(contentWidth * 1.05), backgroundColor: colors.panel }}>
+          <Image source={require("../../../assets/brand/sotechy-office.jpg")} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" contentPosition="top" />
+          <LinearGradient colors={["transparent", "rgba(23,18,14,0.55)", "rgba(23,18,14,0.92)"]} locations={[0.3, 0.6, 1]} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
           <View style={{ flex: 1, justifyContent: "flex-end", padding: space.xl, gap: 6 }}>
-            <Txt variant="overline" color={colors.brandYellow}>Visit Sotechy&apos;s shop</Txt>
+            <Txt variant="overline" color={colors.brandYellow}>Visit Sotechy head office</Txt>
             <Txt variant="title" color={colors.white}>{headOffice.address}, {headOffice.city}</Txt>
             {headOffice.openingHours ? <Txt variant="small" color="#E2DAD1">{headOffice.openingHours} · Pick up online orders here</Txt> : null}
             <Button
