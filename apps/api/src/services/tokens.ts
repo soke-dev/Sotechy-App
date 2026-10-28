@@ -123,6 +123,8 @@ async function settleDelivered(orderId: string) {
   if (!order) return;
   const tokenId = await tokenOf(order.merchantId);
   const goods = Math.max(0, order.subtotal - order.discountTotal);
+  // What the customer earned this time (nothing if it was already settled), to tell them
+  let earned: { amount: number; bonus: number } | null = null;
   await db.transaction(async (tx) => {
     const feeRate = await currentFeeRate(tx);
     if (goods > 0) await toReserve(tx, { kind: "fee_share", amount: round2(goods * feeRate * TOKEN_RULES.reserveShare), orderId, sourceKey: `fee:${orderId}` });
@@ -133,12 +135,25 @@ async function settleDelivered(orderId: string) {
     if (!order.customerId || !tokenId) return;
     const amount = earning(order);
     if (amount > 0) {
-      await record(tx, { tokenId, kind: "mint", toUserId: order.customerId, amount, reason: "earned", orderId, sourceKey: `earn:${orderId}:${tokenId}` });
+      const minted = await record(tx, { tokenId, kind: "mint", toUserId: order.customerId, amount, reason: "earned", orderId, sourceKey: `earn:${orderId}:${tokenId}` });
       const bonus = Math.floor(amount * CROSS_BONUS);
-      if (tokenId !== SOTECHY_TOKEN.id && bonus > 0) await record(tx, { tokenId: SOTECHY_TOKEN.id, kind: "mint", toUserId: order.customerId, amount: bonus, reason: "bonus", orderId, sourceKey: `bonus:${orderId}` });
+      const gotBonus = tokenId !== SOTECHY_TOKEN.id && bonus > 0;
+      if (gotBonus) await record(tx, { tokenId: SOTECHY_TOKEN.id, kind: "mint", toUserId: order.customerId, amount: bonus, reason: "bonus", orderId, sourceKey: `bonus:${orderId}` });
+      if (minted) earned = { amount, bonus: gotBonus ? bonus : 0 };
     }
     await issueReceipt(tx, order, tokenId);
   });
+  // "You earned 850 $STAND", plus the $SOTECHY bonus from another store
+  const got = earned as { amount: number; bonus: number } | null;
+  if (got && order.customerId) {
+    const ticker = tokenId === SOTECHY_TOKEN.id ? SOTECHY_TOKEN.ticker : ((await db.select({ ticker: merchants.ticker }).from(merchants).where(eq(merchants.tokenId, tokenId!)))[0]?.ticker ?? "tokens");
+    sendPushLater([order.customerId], {
+      kind: "tokens",
+      title: `You earned ${got.amount.toLocaleString("en-NG")} $${ticker}`,
+      body: got.bonus ? `Plus ${got.bonus.toLocaleString("en-NG")} $SOTECHY, for order ${order.orderNumber}. Spend them at checkout.` : `For order ${order.orderNumber}. Spend them at checkout.`,
+      data: { url: "/wallet" },
+    });
+  }
 }
 
 async function currentFeeRate(tx: Tx) {
