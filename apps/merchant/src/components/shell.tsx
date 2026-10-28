@@ -2,7 +2,7 @@
 
 import type { StoreRole } from "@sotechy/shared";
 import { roleSees } from "@/lib/roles";
-import { ExternalLink, LogOut, X } from "lucide-react";
+import { ExternalLink, Headset, LogOut, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -134,13 +134,26 @@ function NavList({ store, onNavigate }: { store: ShellStore; onNavigate?: () => 
   );
 }
 
+/** Sotechy's official WhatsApp */
+const SOTECHY_WHATSAPP = "2348071473936";
+
 function Sidebar({ store, user, onNavigate }: { store: ShellStore; user: ShellUser; onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 px-5 pb-4 pt-6">
+      {/* In the phone drawer, room is left on the right for its close button */}
+      <div className={`flex items-center gap-2 px-5 pb-4 pt-6 ${onNavigate ? "pr-14" : ""}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/light-logo-small.png" alt="SoTechy" className="h-8" />
         <span className="rounded-md bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-strong">Merchant</span>
+        {/* Help from Sotechy on WhatsApp, with the store named */}
+        <a
+          href={`https://wa.me/${SOTECHY_WHATSAPP}?text=${encodeURIComponent(`Hi Sotechy, I need help with my store, ${store.name}.`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-3 py-1.5 text-xs font-semibold text-ink-2 hover:bg-line hover:text-ink"
+        >
+          <Headset size={14} /> Support
+        </a>
       </div>
       <div className="px-4 pb-4">
         <StoreCard store={store} />
