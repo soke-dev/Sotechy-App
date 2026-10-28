@@ -153,11 +153,6 @@ export default function WalletScreen() {
             <Txt variant="label" color={colors.muted}>tokens</Txt>
           </View>
           <Txt variant="label" color={colors.ink2}>≈ {formatNaira(Math.round(total))} to spend</Txt>
-          {(data?.totalEarned ?? 0) > 0 && (
-            <Txt variant="small" color={colors.success}>
-              {formatTokens(data!.totalEarned!)} tokens earned in all
-            </Txt>
-          )}
           <Pressable onPress={copy} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" }}>
             {user?.username ? <Txt variant="caption" color={colors.ink2}>@{user.username}</Txt> : null}
             {wallet.address && <Txt variant="caption">{shortAddress(wallet.address)}</Txt>}
@@ -191,7 +186,7 @@ export default function WalletScreen() {
                         <Text style={{ fontFamily: fonts.bold, color: colors.brandPressed }}>${b.ticker}</Text>
                         <Text style={{ fontFamily: fonts.medium, color: colors.ink2 }}> · {b.ticker === "SOTECHY" ? "Sotechy" : b.store}</Text>
                       </Txt>
-                      {(b.earned ?? 0) > 0 && <Txt variant="caption">{formatTokens(b.earned!)} earned in all</Txt>}
+                      {(b.earned ?? 0) > 0 && <Txt variant="caption">{formatTokens(b.earned!)} earned all time</Txt>}
                       {b.pending > 0 && <Txt variant="caption" color={colors.warning}>+{formatTokens(b.pending)} pending</Txt>}
                       {(b.held ?? 0) > 0 && <Txt variant="caption" color={colors.ink2}>{formatTokens(b.held!)} held for an order you haven&apos;t paid yet</Txt>}
                     </View>

@@ -18,6 +18,7 @@ import { Illo, type IlloName } from "@/components/illustrations";
 import { LinearGradient } from "expo-linear-gradient";
 import { SupportChatModal } from "@/components/support-chat";
 import { ProductImage } from "@/components/product-image";
+import { ReceiptSheet } from "@/components/receipt-sheet";
 import { ReviewSheet } from "@/components/review-sheet";
 import { Sheet } from "@/components/shop-filters";
 import { refreshHeldTokens } from "@/lib/held-tokens";
@@ -141,6 +142,7 @@ export default function OrderScreen() {
   const [cancelling, setCancelling] = useState(false);
   const [paying, setPaying] = useState(false);
   const [allUpdates, setAllUpdates] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   // Reviewing from the order: pick the item first when there's more than one
   const [pickingReview, setPickingReview] = useState(false);
@@ -539,21 +541,21 @@ export default function OrderScreen() {
 
       {order.status === "delivered" && receipt.data && (
         <Pressable
-          disabled={!receipt.data.nftUrl && !receipt.data.txUrl}
           onPress={() => {
-            const url = receipt.data?.nftUrl ?? receipt.data?.txUrl;
-            if (url) Linking.openURL(url);
+            tap();
+            setReceiptOpen(true);
           }}
           style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, padding: space.lg, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, backgroundColor: pressed ? colors.surfaceAlt : colors.surface })}
         >
           <Illo name="receipt" size={40} />
           <View style={{ flex: 1, gap: 2 }}>
             <Txt variant="label">Receipt #{receipt.data.id}</Txt>
-            <Txt variant="caption">{receipt.data.txUrl ? "Recorded on Monad. Tap to see it. Only a fingerprint is public, never your details or what you paid." : "Being recorded on Monad…"}</Txt>
+            <Txt variant="caption">View your receipt</Txt>
           </View>
-          {receipt.data.txUrl && <Ionicons name="open-outline" size={18} color={colors.muted} />}
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </Pressable>
       )}
+      {receipt.data && <ReceiptSheet visible={receiptOpen} onClose={() => setReceiptOpen(false)} receipt={receipt.data} order={order} />}
 
       <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.xl, padding: space.lg, gap: space.md }}>
         <View style={{ gap: 2 }}>

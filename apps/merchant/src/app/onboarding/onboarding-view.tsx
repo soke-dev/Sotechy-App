@@ -4,7 +4,7 @@ import { ArrowLeft, Building2, Check, ChevronRight, CircleHelp, FileText, Globe,
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
-import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerIdeas, tickerProblem, type BusinessStructure, type KycStatus, type MerchantApplicationInput } from "@sotechy/shared";
+import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, TOKEN_RULES, TOKEN_VALUE, tickerIdeas, tickerProblem, tokensToNaira, type BusinessStructure, type KycStatus, type MerchantApplicationInput } from "@sotechy/shared";
 import { checkTicker, saveApplication, uploadFiles } from "@/lib/market-actions";
 import { IdCheck } from "@/components/id-check";
 import { SellsPicker } from "@/components/sells-picker";
@@ -618,27 +618,76 @@ function Option({ on, onClick, icon, title, body }: { on: boolean; onClick: () =
 }
 
 /** The ? next to the ticker: what a store token is, when asked */
+/** The "?" beside the ticker: what a store token is, what it's for, what it's worth and where that value comes from */
 function TokenHelp() {
   const [open, setOpen] = useState(false);
+  const fee = TOKEN_RULES.feeRate * 100;
+  const reserve = TOKEN_RULES.feeRate * TOKEN_RULES.reserveShare * 100;
+  const parts: { title: string; body: ReactNode }[] = [
+    {
+      title: "What it is",
+      body: <>Your store gets its own reward token on the Monad blockchain, named by this ticker (like $XENA for Xena Gadgets). It&apos;s created when Sotechy approves your store.</>,
+    },
+    {
+      title: "What it's used for",
+      body: (
+        <>
+          Customers earn 1 of your tokens for every ₦1 they spend with you, released when the order is delivered, plus {SOTECHY_CROSS_BONUS * 100}% in $SOTECHY. They also earn more for reviewing what they bought. Your tokens can only be spent at your store, so every token is a reason to come back to you.
+        </>
+      ),
+    },
+    {
+      title: "What it's worth",
+      body: (
+        <>
+          1 token = ₦{TOKEN_VALUE.toFixed(5)} at your store, so 10,000 tokens take about {formatNaira(tokensToNaira(10_000))} off an order. Customers mix tokens with money, and at least {formatNaira(TOKEN_RULES.minCashPerOrder)} of every order is paid in money.
+        </>
+      ),
+    },
+    {
+      title: "How it gets its value",
+      body: (
+        <>
+          Every sale pays Sotechy a {fee}% fee, and half of it ({reserve}% of the sale) goes into a token reserve. When a customer pays with your tokens, the reserve pays you that amount in naira, so you never lose money on a token sale. It costs you nothing extra.
+        </>
+      ),
+    },
+  ];
   return (
-    <span className="relative">
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="What is a store token?" className="flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-surface-alt hover:text-ink">
+    <>
+      <button type="button" onClick={() => setOpen(true)} aria-label="What is a store token?" className="flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-surface-alt hover:text-ink">
         <CircleHelp size={17} />
       </button>
       {open && (
-        <span className="absolute left-0 top-8 z-30 block w-[min(340px,80vw)] rounded-2xl border border-line bg-surface p-4 text-sm shadow-[0_18px_40px_-18px_rgba(23,18,14,0.35)]">
-          <span className="mb-2 flex items-center justify-between">
-            <b>What is a store token?</b>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-muted hover:text-ink">
-              <X size={15} />
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={() => setOpen(false)}>
+          <div role="dialog" aria-label="What is a store token?" onClick={(e) => e.stopPropagation()} className="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-surface p-6 shadow-xl sm:rounded-3xl">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-soft">
+                  <Illo name="sparkle" size={30} />
+                </span>
+                <h3 className="font-display text-xl font-bold">Your store token</h3>
+              </div>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-alt text-ink">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex flex-col gap-4 text-sm">
+              {parts.map((p) => (
+                <div key={p.title}>
+                  <p className="font-semibold">{p.title}</p>
+                  <p className="mt-1 text-ink-2">{p.body}</p>
+                </div>
+              ))}
+              <p className="rounded-xl bg-surface-alt px-4 py-3 text-muted">It&apos;s a reward, not money or an investment. Customers can&apos;t cash it out, sell it or send it outside Sotechy, and its value doesn&apos;t go up.</p>
+            </div>
+            <button type="button" onClick={() => setOpen(false)} className={`${btn.primary} mt-5 w-full`}>
+              Got it
             </button>
-          </span>
-          <span className="block text-ink-2">Your store gets its own reward token on the Monad blockchain, named by this ticker.</span>
-          <span className="mt-2 block text-ink-2">Customers earn 1 token per ₦1 they spend with you when an order completes, plus {SOTECHY_CROSS_BONUS * 100}% in $SOTECHY. They can only spend it at your store, so it brings them back, and Sotechy pays you in naira for what they spend.</span>
-          <span className="mt-2 block text-muted">It&apos;s a reward, not money or an investment, and it can&apos;t be cashed out.</span>
-        </span>
+          </div>
+        </div>
       )}
-    </span>
+    </>
   );
 }
 
