@@ -389,10 +389,21 @@ export const adminManagementRoutes = new Hono<AppEnv>()
         zones: sql<number>`(select count(*)::int from delivery_zones z where z.review = 'pending')`,
         // Conversations waiting on Sotechy's answer
         support: sql<number>`(select count(*)::int from support_tickets t where t.status = 'open')`,
+        // Store payouts to send now (due, or failed and needing another go)
+        payouts: sql<number>`(select count(*)::int from merchant_payouts p where p.stage <> 'payback' and ((p.status = 'scheduled' and p.due_at <= now()) or p.status = 'failed'))`,
+        // Customers' refunds waiting to be approved or sent
+        refunds: sql<number>`(select count(*)::int from refunds r where r.status in ('requested', 'approved'))`,
       })
       .from(users)
       .limit(1);
-    return c.json({ merchants: row?.merchants ?? 0, zones: row?.zones ?? 0, support: row?.support ?? 0, cases: (await orderCases()).length });
+    return c.json({
+      merchants: row?.merchants ?? 0,
+      zones: row?.zones ?? 0,
+      support: row?.support ?? 0,
+      payouts: row?.payouts ?? 0,
+      refunds: row?.refunds ?? 0,
+      cases: (await orderCases()).length,
+    });
   })
   /** Every store's delivery areas, waiting ones first */
   .get("/delivery-zones", async (c) => {

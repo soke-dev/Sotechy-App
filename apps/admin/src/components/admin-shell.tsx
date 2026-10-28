@@ -57,7 +57,7 @@ function Sidebar({ user, signOut, onNavigate }: { user: ShellUser; signOut: (for
             Control room
           </p>
           <p className="mt-1 text-xs text-white/50">
-            {queue.merchants + queue.zones + queue.cases} things need a decision today
+            {((n) => (n === 1 ? "1 thing needs" : `${n} things need`))(queue.merchants + queue.zones + queue.cases + queue.payouts + queue.refunds + queue.support)} a decision today
           </p>
         </div>
       </div>

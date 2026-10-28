@@ -57,7 +57,7 @@ export const NAV: NavGroup[] = [
     pages: [
       { href: "/orders", label: "Orders", icon: ShoppingBag, illo: "receipt" },
       { href: "/order-reviews", label: "Order reviews", icon: Gavel, illo: "shield", countKey: "cases" },
-      { href: "/payments", label: "Payments & refunds", icon: CreditCard, illo: "card" },
+      { href: "/payments", label: "Payments & refunds", icon: CreditCard, illo: "card", countKey: "refunds" },
       { href: "/pos", label: "Walk-in sale", icon: ScanBarcode, illo: "cart" },
     ],
   },
@@ -67,7 +67,7 @@ export const NAV: NavGroup[] = [
     pages: [
       { href: "/merchants", label: "Merchants", icon: Store, illo: "store", countKey: "merchants" },
       { href: "/delivery-areas", label: "Delivery areas", icon: MapPin, illo: "pin", countKey: "zones" },
-      { href: "/merchant-payouts", label: "Merchant payouts", icon: Banknote, illo: "bank" },
+      { href: "/merchant-payouts", label: "Merchant payouts", icon: Banknote, illo: "bank", countKey: "payouts" },
       { href: "/featured-stores", label: "Featured stores", icon: Sparkles, illo: "sparkle" },
     ],
   },
