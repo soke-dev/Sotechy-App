@@ -28,6 +28,7 @@ import { storePulse } from "../services/pulse";
 import { pickupChangeEmail } from "../emails/templates";
 import { answerSchema } from "./offers";
 import { cancelOrder, updateOrderStatus } from "../services/orders";
+import { compressImage } from "../lib/images";
 
 type Store = typeof schema.merchants.$inferSelect;
 type StoreEnv = AppEnv & { Variables: { store: Store; storeRole: StoreRole } };
@@ -373,10 +374,13 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     const saved = [];
     for (const file of files.slice(0, 10)) {
       if (!(kind === "document" ? DOC_TYPES : IMAGE_TYPES).includes(file.type)) throw badRequest(`${file.name}: use ${kind === "document" ? "a PDF, JPG or PNG" : "a JPG, PNG or WebP image"}`);
-      if (file.size > (kind === "document" ? 10 : 5) * 1024 * 1024) throw badRequest(`${file.name} is too large (max ${kind === "document" ? 10 : 5} MB)`);
+      // Photos can be big (they're shrunk below); documents are kept exactly as sent
+      if (file.size > (kind === "document" ? 10 : 15) * 1024 * 1024) throw badRequest(`${file.name} is too large (max ${kind === "document" ? 10 : 15} MB)`);
+      const raw = Buffer.from(await file.arrayBuffer());
+      const img = kind === "document" ? { data: raw, type: file.type, filename: file.name.slice(0, 200) } : await compressImage(raw, file.type, file.name.slice(0, 200));
       const [row] = await db
         .insert(schema.media)
-        .values({ filename: file.name.slice(0, 200), contentType: file.type, size: file.size, data: Buffer.from(await file.arrayBuffer()), isPrivate: kind === "document", createdBy: c.get("user").id })
+        .values({ filename: img.filename, contentType: img.type, size: img.data.length, data: img.data, isPrivate: kind === "document", createdBy: c.get("user").id })
         .returning({ id: schema.media.id, filename: schema.media.filename });
       saved.push({ ...row, url: kind === "document" ? `/media/private/${row.id}` : `${publicApiUrl || new URL(c.req.url).origin}/media/${row.id}` });
     }

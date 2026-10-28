@@ -12,6 +12,7 @@ import { chatById, chatFor, chatsFor, postChatMessage, startNewChat } from "../s
 import { customerPulse } from "../services/pulse";
 import { CHAINS, currentContract } from "../services/chain";
 import { catalogQuery } from "./store";
+import { compressImage } from "../lib/images";
 
 const addressSchema = z.object({
   label: z.string().max(40).nullable().optional(),
@@ -33,7 +34,7 @@ async function liveStore(slug: string) {
 
 export const meRoutes = new Hono<AppEnv>()
   .use(requireAuth)
-  /** A photo for a review (JPG, PNG or WebP, up to 5 MB each) */
+  /** A photo for a review (JPG, PNG or WebP, up to 15 MB each; stored shrunk) */
   .post("/media", async (c) => {
     const body = await c.req.parseBody({ all: true });
     const files = [body.file].flat().filter((f): f is File => f instanceof File);
@@ -41,10 +42,11 @@ export const meRoutes = new Hono<AppEnv>()
     const saved = [];
     for (const file of files.slice(0, 4)) {
       if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw badRequest("Use a JPG, PNG or WebP photo");
-      if (file.size > 5 * 1024 * 1024) throw badRequest("That photo is too large (max 5 MB)");
+      if (file.size > 15 * 1024 * 1024) throw badRequest("That photo is too large (max 15 MB)");
+      const img = await compressImage(Buffer.from(await file.arrayBuffer()), file.type, file.name.slice(0, 200));
       const [row] = await db
         .insert(schema.media)
-        .values({ filename: file.name.slice(0, 200), contentType: file.type, size: file.size, data: Buffer.from(await file.arrayBuffer()), isPrivate: false, createdBy: c.get("user").id })
+        .values({ filename: img.filename, contentType: img.type, size: img.data.length, data: img.data, isPrivate: false, createdBy: c.get("user").id })
         .returning({ id: schema.media.id });
       saved.push({ id: row.id, url: `${publicApiUrl || new URL(c.req.url).origin}/media/${row.id}` });
     }

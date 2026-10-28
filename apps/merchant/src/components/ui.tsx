@@ -73,15 +73,18 @@ export function Pill({ children, tone = "neutral", dot = true }: { children: Rea
 export function ProductThumb({ src, size = 56, rounded = "rounded-2xl" }: { src: string | null; size?: number | "fluid"; rounded?: string }) {
   const box = size === "fluid" ? { className: "aspect-square w-full", style: undefined } : { className: "shrink-0", style: { width: size, height: size } };
   return (
-    <span className={`relative flex items-center justify-center overflow-hidden bg-brand ${box.className} ${rounded}`} style={box.style}>
-      <span className="absolute inset-[18%] rounded-full bg-white/25" />
+    <span className={`relative flex items-center justify-center overflow-hidden ${src ? "bg-surface-alt" : "bg-brand"} ${box.className} ${rounded}`} style={box.style}>
       {src ? (
+        // A photo fills its tile; the orange tile is only for "no photo yet"
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" className="relative h-[78%] w-[78%] object-contain" />
+        <img src={src} alt="" className="h-full w-full object-cover" />
       ) : (
-        <span className="relative">
-          <Illo name="box" size={typeof size === "number" ? Math.round(size * 0.5) : 40} />
-        </span>
+        <>
+          <span className="absolute inset-[18%] rounded-full bg-white/25" />
+          <span className="relative">
+            <Illo name="box" size={typeof size === "number" ? Math.round(size * 0.5) : 40} />
+          </span>
+        </>
       )}
     </span>
   );

@@ -12,6 +12,7 @@ import { MANAGERS, requireRole, type AppEnv } from "../../lib/auth";
 import { badRequest, notFound } from "../../lib/errors";
 import { getFeatures } from "../../services/features";
 import { getAccount, getUsdRate, moneyMovesConfigured, moneyMovesMode } from "../../services/moneymoves";
+import { compressImage } from "../../lib/images";
 
 const { media, banners, appSettings } = schema;
 const ADMIN = requireRole("admin");
@@ -66,9 +67,11 @@ export const adminContentRoutes = new Hono<AppEnv>()
     for (const file of files) {
       if (!IMAGE_TYPES.includes(file.type)) throw badRequest(`${file.name}: use a JPG, PNG, WebP or GIF image`);
       if (file.size > MAX_IMAGE_BYTES) throw badRequest(`${file.name} is larger than 5 MB`);
+      // Banners are wide, so they keep a little more size
+      const img = await compressImage(Buffer.from(await file.arrayBuffer()), file.type, file.name.slice(0, 200), 2000);
       const [row] = await db
         .insert(media)
-        .values({ filename: file.name.slice(0, 200), contentType: file.type, size: file.size, data: Buffer.from(await file.arrayBuffer()), createdBy: c.get("user").id })
+        .values({ filename: img.filename, contentType: img.type, size: img.data.length, data: img.data, createdBy: c.get("user").id })
         .returning({ id: media.id, filename: media.filename, contentType: media.contentType, size: media.size });
       saved.push({ ...row, url: `${publicApiUrl || new URL(c.req.url).origin}/media/${row.id}` });
     }
