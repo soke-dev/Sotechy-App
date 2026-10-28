@@ -33,6 +33,9 @@ function FiltersButton({ count, onPress }: { count: number; onPress: () => void 
   );
 }
 
+/** The floating live chat bubble on Shop (off for now) */
+const SHOP_CHAT_BUBBLE = false;
+
 export default function ShopScreen() {
   const params = useLocalSearchParams<{ q?: string; category?: string; label?: string; sort?: string; focus?: string; featured?: string; seller?: string }>();
   const { width } = useWindowDimensions();
@@ -195,7 +198,8 @@ export default function ShopScreen() {
           keyboardDismissMode="on-drag"
         />
       )}
-      {features.liveChat && <SupportChat bottomOffset={tabInset} />}
+      {/* Live chat bubble hidden on Shop for now (chat is still in the menu and on orders) */}
+      {SHOP_CHAT_BUBBLE && features.liveChat && <SupportChat bottomOffset={tabInset} />}
 
       <FilterSheet
         visible={sheet === "filters"}
