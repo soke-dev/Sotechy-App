@@ -266,26 +266,28 @@ export default function HomeScreen() {
       )}
 
       {/* How store tokens work */}
-      <View style={{ marginHorizontal: gutter, borderRadius: radius.xl, backgroundColor: colors.brandSoft, padding: space.lg, gap: space.md }}>
-        <View style={ui.between}>
-          <Txt variant="title" style={{ fontFamily: fonts.displayHeavy, fontSize: 21 }}>Earn while you shop</Txt>
-          <Illo name="coin" size={30} />
-        </View>
-        {[
-          { illo: "coin" as const, title: "1 token for every ₦1", text: "Each store gives its own token, like $XENA. Spend it there like cash." },
-          { illo: "tag" as const, title: "+10% $SOTECHY at other stores", text: "Spend $SOTECHY at any Sotechy store." },
-          { illo: "heart" as const, title: "Up to 10% more for a review", text: "Review what you bought, with a photo for the full 10%." },
-        ].map((x) => (
-          <View key={x.title} style={{ flexDirection: "row", gap: space.md, alignItems: "center" }}>
-            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-              <Illo name={x.illo} size={28} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Txt variant="label">{x.title}</Txt>
-              <Txt variant="small" color={colors.ink2}>{x.text}</Txt>
-            </View>
+      <View style={{ marginHorizontal: gutter, borderRadius: radius.xl, backgroundColor: colors.brandSoft, padding: space.lg, gap: space.sm }}>
+        <View style={{ flexDirection: "row", gap: space.md, alignItems: "center" }}>
+          <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+            <Illo name="coin" size={28} />
           </View>
-        ))}
+          <View style={{ flex: 1 }}>
+            <Txt variant="title" style={{ fontFamily: fonts.displayHeavy, fontSize: 19 }}>Earn while you shop</Txt>
+            <Txt variant="small" color={colors.ink2}>1 token for every ₦1, spent at the store like cash.</Txt>
+          </View>
+        </View>
+        {/* The extras, small, underneath */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.xs }}>
+          {[
+            { icon: "add-circle" as IconName, text: "+10% at other stores" },
+            { icon: "star" as IconName, text: "Up to 10% more for a review" },
+          ].map((x) => (
+            <View key={x.text} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface }}>
+              <Ionicons name={x.icon} size={13} color={colors.brandPressed} />
+              <Txt variant="caption" color={colors.ink} style={{ fontFamily: fonts.medium }}>{x.text}</Txt>
+            </View>
+          ))}
+        </View>
       </View>
 
       {/* Categories */}
@@ -313,7 +315,7 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
-      <MarketRail title="Fresh from stores on Sotechy" subtitle="Verified shops, each with its own token" items={storeItems} onSeeAll={() => router.push("/stores")} />
+      <MarketRail title="Fresh from the stores" subtitle="Verified shops, each with its own token" items={storeItems} onSeeAll={() => router.push("/stores")} />
 
       <ProductRail title="Top deals" subtitle="Sold by Sotechy" products={deals} dark onSeeAll={() => shop({ featured: "1" })} />
 
