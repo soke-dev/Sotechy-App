@@ -34,7 +34,7 @@ function FiltersButton({ count, onPress }: { count: number; onPress: () => void 
 }
 
 export default function ShopScreen() {
-  const params = useLocalSearchParams<{ q?: string; category?: string; sort?: string; focus?: string; featured?: string; seller?: string }>();
+  const params = useLocalSearchParams<{ q?: string; category?: string; label?: string; sort?: string; focus?: string; featured?: string; seller?: string }>();
   const { width } = useWindowDimensions();
   const tabInset = useTabBarInset();
   const [query, setQuery] = useState(params.q ?? "");
@@ -93,7 +93,7 @@ export default function ShopScreen() {
 
   return (
     <View style={ui.screen}>
-      <ScreenHeader title={group?.name ?? (filters.deals ? "Deals" : "Shop")} right={<View style={{ flexDirection: "row", gap: space.sm }}><CartButton /><MenuButton /></View>} />
+      <ScreenHeader title={group?.name ?? (category && category === params.category && params.label ? params.label : filters.deals ? "Deals" : "Shop")} right={<View style={{ flexDirection: "row", gap: space.sm }}><CartButton /><MenuButton /></View>} />
       {/* Whose products */}
       <View style={{ paddingHorizontal: gutter, paddingBottom: space.sm }}>
         <View style={{ flexDirection: "row", backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, padding: 3 }}>

@@ -279,7 +279,6 @@ export default function HomeScreen() {
         {/* The extras, small, underneath */}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.xs }}>
           {[
-            { icon: "add-circle" as IconName, text: "+10% at other stores" },
             { icon: "star" as IconName, text: "Up to 10% more for a review" },
           ].map((x) => (
             <View key={x.text} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface }}>

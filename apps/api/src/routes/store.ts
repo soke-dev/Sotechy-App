@@ -105,12 +105,16 @@ function baseFilters({ q, category, store }: { q?: string; category?: string; st
     const term = `%${q}%`;
     filters.push(or(ilike(products.name, term), ilike(products.brand, term), ilike(products.model, term)));
   }
-  if (category) {
-    // Store products use the store's own category names
-    filters.push(sql`(${products.storeCategory} = ${category} or ${products.categoryId} in (
+  // One category, or several joined with "|" (a whole department from the app's menu)
+  const names = category ? [...new Set(category.split("|").map((x) => x.trim()).filter(Boolean))].slice(0, 120) : [];
+  if (names.length) {
+    const list = sql.join(names.map((n) => sql`${n}`), sql`, `);
+    const lower = sql.join(names.map((n) => sql`${n.toLowerCase()}`), sql`, `);
+    // Store products use the store's own category names; Sotechy's match by slug, id or name, sub-categories included
+    filters.push(sql`(${products.storeCategory} in (${list}) or ${products.categoryId} in (
       select c.id from categories c
-      where c.slug = ${category} or c.id::text = ${category}
-         or c.parent_id in (select p.id from categories p where p.slug = ${category} or p.id::text = ${category})))`);
+      where c.slug in (${list}) or c.id::text in (${list}) or lower(c.name) in (${lower})
+         or c.parent_id in (select p.id from categories p where p.slug in (${list}) or p.id::text in (${list}) or lower(p.name) in (${lower}))))`);
   }
   return filters;
 }

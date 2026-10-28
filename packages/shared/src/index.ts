@@ -5,3 +5,4 @@ export * from "./api-client";
 export * from "./delivery";
 export * from "./payouts";
 export * from "./nigeria";
+export * from "./market-categories";

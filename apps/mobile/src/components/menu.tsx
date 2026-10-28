@@ -1,4 +1,4 @@
-// Slide-out menu: account, quick links, expandable categories and store contacts.
+// Slide-out menu: quick links, categories that open into sub-menus, and the head office pinned at the bottom.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { router, type Href } from "expo-router";
@@ -17,7 +17,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { Category } from "@sotechy/shared";
+import { anyCategory, MARKET_DEPARTMENTS, type Category } from "@sotechy/shared";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, radius, space } from "@/lib/theme";
@@ -73,16 +73,38 @@ function QuickLink({ illo, label, onPress }: { illo: IlloName; label: string; on
   );
 }
 
-function CategoryThumb({ category }: { category: Category }) {
-  return (
-    <View style={{ width: 44, height: 44, borderRadius: 12, overflow: "hidden", backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
-      {category.imageUrl ? (
-        <Image source={{ uri: category.imageUrl }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-      ) : (
-        <Ionicons name={productIcon(category.name)} size={20} color={colors.ink2} />
-      )}
-    </View>
-  );
+/** One place in the categories menu: what "Shop all" filters by, and what opens under it */
+interface MenuNode {
+  key: string;
+  label: string;
+  icon?: IconName;
+  value: string;
+  children?: MenuNode[];
+}
+
+/** Every department, its sections and their categories, with Sotechy's own catalogue folded in */
+function categoryTree(all: Category[]): MenuNode[] {
+  const tops = all.filter((c) => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
+  const kidsOf = (id: string) => all.filter((c) => c.parentId === id).sort((a, b) => a.sortOrder - b.sortOrder);
+  const covered = new Set(MARKET_DEPARTMENTS.flatMap((d) => d.sotechy ?? []));
+  const leaf = (label: string, value = label): MenuNode => ({ key: value, label, value });
+
+  const departments = MARKET_DEPARTMENTS.map((d): MenuNode => {
+    const own = tops.filter((c) => d.sotechy?.includes(c.slug));
+    const ownKids = own.flatMap((c) => kidsOf(c.id));
+    const sections: MenuNode[] = d.sections.map((x) => ({ key: `${d.name}/${x.name}`, label: x.name, value: anyCategory(...x.items), children: x.items.map((i) => leaf(i)) }));
+    // Sotechy's own sub-categories in this department, as a section of their own
+    if (ownKids.length) sections.unshift({ key: `${d.name}/sotechy`, label: "Sold by Sotechy", value: anyCategory(...own.map((c) => c.slug)), children: ownKids.map((k) => leaf(k.name, k.slug)) });
+    return { key: d.name, label: d.name, icon: d.icon as IconName, value: anyCategory(...d.sections.flatMap((x) => x.items), ...own.map((c) => c.slug)), children: sections };
+  });
+  // Any other Sotechy category added later still shows
+  const extra = tops
+    .filter((c) => !covered.has(c.slug))
+    .map((c): MenuNode => {
+      const kids = kidsOf(c.id);
+      return { key: c.id, label: c.name, icon: productIcon(c.name), value: c.slug, children: kids.length ? kids.map((k) => leaf(k.name, k.slug)) : undefined };
+    });
+  return [...departments, ...extra];
 }
 
 function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => void }) {
@@ -92,23 +114,23 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
   const { user } = useAuth();
   const categories = useAsync(() => api.categories());
   const config = useAsync(() => api.storeConfig());
-  const [expanded, setExpanded] = useState<string | null>(null);
-
-  const all = categories.data ?? [];
-  const tops = all.filter((c) => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
-  const childrenOf = (id: string) => all.filter((c) => c.parentId === id).sort((a, b) => a.sortOrder - b.sortOrder);
+  const [path, setPath] = useState<MenuNode[]>([]);
+  const roots = categoryTree(categories.data ?? []);
+  const here = path[path.length - 1];
   const support = config.data?.support;
+  const headOffice = config.data?.branches[0];
 
   const go = (href: Href) => {
     onClose();
     router.push(href);
   };
-  const shopCategory = (slug: string) => go({ pathname: "/shop", params: { category: slug } });
-
-  const toggle = (id: string) => {
+  const shopNode = (n: MenuNode) => go({ pathname: "/shop", params: { category: n.value, label: n.label } });
+  const step = (next: MenuNode[]) => {
     if (Platform.OS !== "web") LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpanded((current) => (current === id ? null : id));
+    setPath(next);
   };
+  const open = (n: MenuNode) => step([...path, n]);
+  const back = () => step(path.slice(0, -1));
 
 
   return (
@@ -131,7 +153,7 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
           transform: [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [-panelWidth, 0] }) }],
         }}
       >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.xxl, paddingHorizontal: space.lg, gap: space.xl }}>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top + space.md, paddingBottom: space.xl, paddingHorizontal: space.lg, gap: space.xl }}>
           {/* Header */}
           <View style={ui.between}>
             <Image source={require("../../assets/brand/light-logo-small.png")} style={{ width: 104, height: 44 }} contentFit="contain" contentPosition="left" />
@@ -162,86 +184,45 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
             </Pressable>
           )}
 
-          {/* Categories */}
+          {/* Categories: department → section → category, each opening the next */}
           <View style={{ gap: space.sm }}>
             <Txt variant="overline" style={{ paddingHorizontal: 4 }}>All categories</Txt>
             <View style={[ui.card, { padding: 0, overflow: "hidden" }]}>
-              {tops.map((c, i) => {
-                const kids = childrenOf(c.id);
-                const isOpen = expanded === c.id;
-                return (
-                  <View key={c.id}>
-                    {i > 0 && <Divider style={{ marginLeft: 70 }} />}
-                    <Pressable
-                      onPress={() => (kids.length ? toggle(c.id) : shopCategory(c.slug))}
-                      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md, paddingHorizontal: space.md, backgroundColor: pressed ? colors.surfaceAlt : "transparent" })}
-                    >
-                      <CategoryThumb category={c} />
-                      <View style={{ flex: 1 }}>
-                        <Txt variant="label">{c.name}</Txt>
-                        {kids.length > 0 && <Txt variant="caption">{kids.length} sections</Txt>}
-                      </View>
-                      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: isOpen ? colors.inverse : colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
-                        <Ionicons
-                          name={kids.length ? "chevron-down" : "chevron-forward"}
-                          size={15}
-                          color={isOpen ? colors.onInverse : colors.ink}
-                          style={{ transform: [{ rotate: isOpen ? "180deg" : "0deg" }] }}
-                        />
-                      </View>
-                    </Pressable>
-                    {isOpen && (
-                      <View style={{ marginLeft: 70, marginRight: space.md, marginBottom: space.md, borderLeftWidth: 2, borderLeftColor: colors.brand, paddingLeft: space.md }}>
-                        <Pressable onPress={() => shopCategory(c.slug)} style={[ui.between, { paddingVertical: 9 }]}>
-                          <Txt variant="label" color={colors.brandPressed}>Shop all {c.name}</Txt>
-                          <Ionicons name="arrow-forward" size={15} color={colors.brandPressed} />
-                        </Pressable>
-                        {kids.map((k) => (
-                          <Pressable key={k.id} onPress={() => shopCategory(k.slug)} style={[ui.between, { paddingVertical: 9 }]}>
-                            <Txt variant="medium" color={colors.ink2}>{k.name}</Txt>
-                            <Ionicons name="chevron-forward" size={14} color={colors.faint} />
-                          </Pressable>
-                        ))}
+              {here && (
+                <>
+                  <Pressable onPress={back} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: space.md, paddingVertical: 12, backgroundColor: pressed ? colors.surfaceAlt : colors.brandSoft })}>
+                    <Ionicons name="chevron-back" size={17} color={colors.brandPressed} />
+                    <Txt variant="label" color={colors.brandPressed} numberOfLines={1} style={{ flex: 1 }}>
+                      {path.length > 1 ? path[path.length - 2].label : "All categories"}
+                    </Txt>
+                  </Pressable>
+                  <Pressable onPress={() => shopNode(here)} style={({ pressed }) => [ui.between, { paddingHorizontal: space.md, paddingVertical: 13, backgroundColor: pressed ? colors.surfaceAlt : "transparent" }]}>
+                    <Txt variant="label" numberOfLines={1} style={{ flex: 1 }}>Shop all {here.label}</Txt>
+                    <Ionicons name="arrow-forward" size={16} color={colors.ink} />
+                  </Pressable>
+                  <Divider />
+                </>
+              )}
+              {(here?.children ?? roots).map((n, i) => (
+                <View key={n.key}>
+                  {i > 0 && <Divider style={{ marginLeft: n.icon ? 58 : space.md }} />}
+                  <Pressable
+                    onPress={() => (n.children?.length ? open(n) : shopNode(n))}
+                    style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: n.icon ? 10 : 12, paddingHorizontal: space.md, backgroundColor: pressed ? colors.surfaceAlt : "transparent" })}
+                  >
+                    {n.icon && (
+                      <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons name={n.icon} size={17} color={colors.ink2} />
                       </View>
                     )}
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Stores & help */}
-          <View style={{ gap: space.sm }}>
-            <Txt variant="overline" style={{ paddingHorizontal: 4 }}>Our stores</Txt>
-            <View style={[ui.card, { gap: space.md }]}>
-              {(config.data?.branches ?? []).map((b, i) => (
-                <View key={b.id} style={{ gap: space.md }}>
-                  {i > 0 && <Divider />}
-                  <Pressable
-                    onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${b.address}, ${b.city}, Nigeria`)}`)}
-                    style={[ui.row, { gap: space.md }]}
-                  >
-                    <Illo name="pin" size={28} />
                     <View style={{ flex: 1 }}>
-                      <Txt variant="label">{b.name}</Txt>
-                      <Txt variant="caption">{b.address}, {b.city}{b.openingHours ? ` · ${b.openingHours}` : ""}</Txt>
+                      <Txt variant={n.icon ? "label" : "medium"} numberOfLines={1}>{n.label}</Txt>
+                      {n.children?.length ? <Txt variant="caption">{n.children.length} {here ? "kinds" : "sections"}</Txt> : null}
                     </View>
-                    <Ionicons name="navigate-outline" size={16} color={colors.brandPressed} />
+                    <Ionicons name="chevron-forward" size={15} color={n.children?.length ? colors.ink : colors.faint} />
                   </Pressable>
                 </View>
               ))}
-              <View style={[ui.row, { gap: space.sm }]}>
-                <Button title="Live chat" icon="chatbubbles-outline" variant="outline" size="sm" style={{ flex: 1 }} onPress={() => go("/support?chat=1")} />
-                <Button
-                  title="WhatsApp"
-                  icon="logo-whatsapp"
-                  variant="outline"
-                  size="sm"
-                  style={{ flex: 1 }}
-                  disabled={!support?.whatsapp}
-                  onPress={() => Linking.openURL(`https://wa.me/${support?.whatsapp?.replace(/[^\d]/g, "")}`)}
-                />
-              </View>
             </View>
           </View>
 
@@ -250,6 +231,35 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
             <Txt variant="caption">Help, delivery & returns</Txt>
           </Pressable>
         </ScrollView>
+
+        {/* Sotechy head office: stays in view while the categories scroll */}
+        <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: insets.bottom + space.md, gap: space.sm }}>
+          {headOffice && (
+            <Pressable
+              onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${headOffice.address}, ${headOffice.city}, Nigeria`)}`)}
+              style={[ui.row, { gap: space.md }]}
+            >
+              <Illo name="pin" size={26} />
+              <View style={{ flex: 1 }}>
+                <Txt variant="label">Sotechy head office</Txt>
+                <Txt variant="caption" numberOfLines={1}>{headOffice.address}, {headOffice.city}{headOffice.openingHours ? ` · ${headOffice.openingHours}` : ""}</Txt>
+              </View>
+              <Ionicons name="navigate-outline" size={16} color={colors.brandPressed} />
+            </Pressable>
+          )}
+          <View style={[ui.row, { gap: space.sm }]}>
+            <Button title="Live chat" icon="chatbubbles-outline" variant="outline" size="sm" style={{ flex: 1 }} onPress={() => go("/support?chat=1")} />
+            <Button
+              title="WhatsApp"
+              icon="logo-whatsapp"
+              variant="outline"
+              size="sm"
+              style={{ flex: 1 }}
+              disabled={!support?.whatsapp}
+              onPress={() => Linking.openURL(`https://wa.me/${support?.whatsapp?.replace(/[^\d]/g, "")}`)}
+            />
+          </View>
+        </View>
       </Animated.View>
     </View>
   );
