@@ -225,6 +225,8 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     confirmReceived: (id: string) => send<OrderDetail>("POST", `/orders/${id}/received`),
     /** The store marked it delivered, but it didn't reach the customer */
     reportNotReceived: (id: string, note?: string) => send<OrderDetail>("POST", `/orders/${id}/not-received`, { note }),
+    /** Asks Money Moves whether the order's payment is in (settling it if so) and returns the order's status */
+    checkOnlinePayment: (orderId: string) => send<{ status: string }>("POST", `/payments/online/check`, { orderId }),
     startOnlinePayment: (orderId: string, method: "stablecoin" | "bank" = "stablecoin") =>
       send<{ checkoutUrl: string }>("POST", `/payments/online/initialize`, { orderId, method }),
     wishlist: () => get<CatalogProduct[]>("/me/wishlist"),

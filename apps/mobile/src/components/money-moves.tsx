@@ -67,10 +67,11 @@ const RETURN_SCHEME = "sotechy://";
 const CHECK_EVERY_MS = 3000;
 
 /** Paid, or further along: anything but waiting, failed or cancelled */
-async function isPaid(orderId: string) {
+export async function isPaid(orderId: string) {
   try {
-    const o = await api.order(orderId);
-    return !["pending_payment", "payment_failed", "cancelled", "refunded"].includes(o.status);
+    // Asks Money Moves itself, so the order turns paid as soon as the payment is matched (not only on the webhook)
+    const { status } = await api.checkOnlinePayment(orderId).catch(() => api.order(orderId));
+    return !["pending_payment", "payment_failed", "cancelled", "refunded"].includes(status);
   } catch {
     return false;
   }

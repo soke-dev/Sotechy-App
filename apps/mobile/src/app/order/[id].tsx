@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { directionsUrl, formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderDetail } from "@sotechy/shared";
 import { useDialog } from "@/components/dialog";
-import { PayChoiceSheet, useMoneyMoves, type PayMethod } from "@/components/money-moves";
+import { isPaid, PayChoiceSheet, useMoneyMoves, type PayMethod } from "@/components/money-moves";
 import { useToast } from "@/components/toast";
 import { Button, Divider, ErrorView, Loading, SummaryRow, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -132,6 +132,9 @@ function Hero({ order, onCopy }: { order: OrderDetail; onCopy: (v: string) => vo
   );
 }
 
+/** How long the order screen keeps looking for a payment after the payment window closes */
+const WATCH_MS = 10 * 60_000;
+
 export default function OrderScreen() {
   // review=1 comes from the Orders tab's Review button: the review opens once the order has loaded
   const { id, checking, review } = useLocalSearchParams<{ id: string; checking?: string; review?: string }>();
@@ -161,14 +164,15 @@ export default function OrderScreen() {
   // Tokens towards an unpaid order: only held, so they can be changed before paying
   const wallet = useAsync(async () => api.wallet().catch(() => null), [id]);
   const [tokenOn, setTokenOn] = useState<Record<string, boolean> | null>(null);
-  // After Money Moves closes, look for the payment for a minute (the webhook can take a few seconds).
-  const [watchUntil, setWatchUntil] = useState(checking ? Date.now() + 60_000 : 0);
+  // After Money Moves closes, keep looking for the payment for ten minutes: a bank transfer is matched
+  // about a minute after it reaches the account, and some banks take longer to send it.
+  const [watchUntil, setWatchUntil] = useState(checking ? Date.now() + WATCH_MS : 0);
   const watching = !!order && order.status === "pending_payment" && watchUntil > Date.now();
   useEffect(() => {
     if (!watching) return;
-    const t = setTimeout(reload, 4000);
+    const t = setTimeout(() => void isPaid(id).finally(reload), 4000);
     return () => clearTimeout(t);
-  }, [watching, order, reload]);
+  }, [watching, order, reload, id]);
   useEffect(() => {
     if (watchUntil && order?.status === "paid") {
       setWatchUntil(0);
@@ -273,7 +277,7 @@ export default function OrderScreen() {
         void refreshHeldTokens();
       }
       const paid = await moneyMoves.pay({ id: order!.id, orderNumber: order!.orderNumber, total }, method);
-      if (!paid) setWatchUntil(Date.now() + 60_000);
+      if (!paid) setWatchUntil(Date.now() + WATCH_MS);
       await reload();
     } catch (err) {
       toast(err instanceof Error ? err.message : "Payment didn't open", { icon: "alert-circle" });
@@ -315,7 +319,7 @@ export default function OrderScreen() {
       {watching && (
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: space.md }}>
           <ActivityIndicator color={colors.brandPressed} />
-          <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>Checking for your Money Moves payment. This usually takes a few seconds.</Txt>
+          <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>Checking for your payment. Stablecoin shows in seconds; a bank transfer usually within a minute or two of sending.</Txt>
         </View>
       )}
 

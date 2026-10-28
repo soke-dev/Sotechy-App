@@ -59,7 +59,35 @@ export async function settleFromMoneyMoves(paymentId: string) {
   // "expired": nothing to do. The order's stock hold lapses on its own and the customer can pay again.
 }
 
+/** When each payment was last asked about, so a waiting app can't call Money Moves more than every few seconds */
+const lastAsked = new Map<string, number>();
+const ASK_EVERY_MS = 4000;
+
 export const paymentRoutes = new Hono<AppEnv>()
+  /**
+   * The app asks this while the customer waits. If the order's checkout is paid on Money Moves we settle it
+   * straight away, without waiting for the webhook (a bank transfer is matched about a minute after it lands).
+   */
+  .post("/online/check", requireAuth, zValidator("json", z.object({ orderId: z.uuid() })), async (c) => {
+    const { orderId } = c.req.valid("json");
+    const status = async () =>
+      (await db.select({ status: schema.orders.status }).from(schema.orders).where(and(eq(schema.orders.id, orderId), eq(schema.orders.customerId, c.get("user").id))))[0]?.status;
+    const before = await status();
+    if (!before) throw notFound("Order not found");
+    if (before !== "pending_payment") return c.json({ status: before });
+    const [payment] = await db
+      .select()
+      .from(schema.payments)
+      .where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.status, "pending")));
+    const saved = payment && savedCheckout(payment.raw);
+    if (!saved || Date.now() - (lastAsked.get(payment.id) ?? 0) < ASK_EVERY_MS) return c.json({ status: before });
+    lastAsked.set(payment.id, Date.now());
+    if (lastAsked.size > 5000) lastAsked.clear();
+    const checkout = await retrieveCheckout(saved.id, !!saved.bank).catch(() => null);
+    if (checkout?.status === "paid" && checkout.payment) await settleFromMoneyMoves(checkout.payment.id).catch(() => {});
+    return c.json({ status: (await status()) ?? before });
+  })
+
   /**
    * Opens (or reuses) a Money Moves checkout for one of the customer's unpaid orders: stablecoin on the hosted
    * checkout, or `method: "bank"` for a direct checkout (bank transfer to our account).
