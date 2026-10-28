@@ -124,7 +124,7 @@ export default function OrdersScreen() {
   const { user } = useAuth();
   const tabInset = useTabBarInset();
   const [segment, setSegment] = useState<Segment>("all");
-  const orders = useAsync(async () => (user ? api.myOrders() : []), [user?.id]);
+  const orders = useAsync(async () => (user ? api.myOrders() : []), [user?.id], { live: true });
 
   // Tabs stay mounted, so refresh when the tab comes back into view (e.g. after checkout).
   useFocusEffect(

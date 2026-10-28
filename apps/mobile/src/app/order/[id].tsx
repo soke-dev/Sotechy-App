@@ -133,7 +133,7 @@ function Hero({ order, onCopy }: { order: OrderDetail; onCopy: (v: string) => vo
 export default function OrderScreen() {
   // review=1 comes from the Orders tab's Review button: the review opens once the order has loaded
   const { id, checking, review } = useLocalSearchParams<{ id: string; checking?: string; review?: string }>();
-  const { data: order, error, loading, reload } = useAsync(() => api.order(id), [id]);
+  const { data: order, error, loading, reload } = useAsync(() => api.order(id), [id], { live: true });
   const config = useAsync(() => api.storeConfig());
   // Delivered orders have a receipt, recorded on Monad (none before then)
   const receipt = useAsync(() => api.orderReceipt(id).catch(() => null), [id]);

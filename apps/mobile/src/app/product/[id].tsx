@@ -403,7 +403,7 @@ export default function ProductScreen() {
   const config = useAsync(() => api.storeConfig());
   const fx = useAsync(() => api.exchangeRate());
   // This customer's offers, to show the one on this product instead of "Make an offer"
-  const offers = useAsync(async () => (user ? api.offers() : ([] as OfferView[])), [user?.id]);
+  const offers = useAsync(async () => (user ? api.offers() : ([] as OfferView[])), [user?.id], { live: true });
   useFocusEffect(
     useCallback(() => {
       offers.reload();

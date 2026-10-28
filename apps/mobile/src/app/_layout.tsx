@@ -23,6 +23,7 @@ import { StoreConfigProvider, useFeatures } from "@/lib/store-config";
 import { AccountExtrasProvider } from "@/lib/account-extras";
 import { PushNotifications } from "@/lib/push";
 import { StoreNotificationsProvider } from "@/lib/store-notifications";
+import { PulseProvider } from "@/lib/pulse";
 import { colors, fonts } from "@/lib/theme";
 import { ThemeModeProvider, useThemeMode } from "@/lib/theme-mode";
 
@@ -114,6 +115,7 @@ export default function RootLayout() {
         <ThemeModeProvider>
           <StoreConfigProvider>
             <AuthProvider>
+              <PulseProvider>
               <CartProvider>
                 <ToastProvider>
                   <CartFeedbackProvider>
@@ -129,6 +131,7 @@ export default function RootLayout() {
                   </CartFeedbackProvider>
                 </ToastProvider>
               </CartProvider>
+              </PulseProvider>
             </AuthProvider>
           </StoreConfigProvider>
         </ThemeModeProvider>

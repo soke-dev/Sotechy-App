@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { MerchantAttention } from "@sotechy/shared";
-import { loadAttention } from "@/lib/market-actions";
+import { loadAttention, loadPulse } from "@/lib/market-actions";
 import { signOut } from "@/lib/session-actions";
 import { formatNaira } from "@/lib/money";
 import { Illo, type IlloName } from "./illustrations";
@@ -80,6 +80,8 @@ function Row({ href, illo, title, hint, onClick }: { href: string; illo: IlloNam
   );
 }
 
+const SEEN_KEY = "sotechy_bell_seen";
+
 const ago = (iso: string) => {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
   return mins < 1 ? "just now" : mins < 60 ? `${mins} min ago` : mins < 1440 ? `${Math.round(mins / 60)}h ago` : `${Math.round(mins / 1440)}d ago`;
@@ -99,8 +101,10 @@ export function TopBar({
   user: { name: string; role: string; avatar?: string | null };
 }) {
   const hidden = useSyncExternalStore(hiddenStore.subscribe, hiddenStore.get, () => false);
-  // The bell checks again every 30 seconds and whenever it's opened, so it never goes stale
+  // Live: every few seconds the dashboard asks whether anything changed, and refreshes the bell and
+  // the open page when it did. The bell also checks whenever it's opened.
   const [attention, setAttention] = useState<MerchantAttention | null>(null);
+  const pulse = useRef<string | null>(null);
   const router = useRouter();
   // The sidebar's Orders and Offers badges come from the page; refresh it when the bell sees new numbers
   useEffect(() => {
@@ -113,14 +117,48 @@ export function TopBar({
   }, []);
   useEffect(() => {
     refresh();
-    const t = setInterval(() => document.visibilityState === "visible" && refresh(), 30_000);
-    return () => clearInterval(t);
+    const check = async () => {
+      if (document.visibilityState !== "visible") return;
+      const v = await loadPulse();
+      if (!v) return;
+      if (pulse.current && v !== pulse.current) {
+        refresh();
+        router.refresh();
+      }
+      pulse.current = v;
+    };
+    void check();
+    const t = setInterval(check, 6000);
+    window.addEventListener("focus", check);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("focus", check);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh]);
+  // Unread: recent activity since the bell was last opened, remembered on this browser
+  const [seenAt, setSeenAt] = useState(() => {
+    try {
+      return localStorage.getItem(SEEN_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const unseen = (attention?.recent ?? []).filter((r) => r.at > seenAt).length;
+  const markSeen = () => {
+    const now = new Date().toISOString();
+    setSeenAt(now);
+    try {
+      localStorage.setItem(SEEN_KEY, now);
+    } catch {
+      // Not remembered; fine
+    }
+  };
   const needs = attention?.needs ?? [
     ...(newOrders ? [{ key: "new", count: newOrders, title: `${newOrders} new order${newOrders === 1 ? "" : "s"}`, hint: "Accept within 24 hours", href: "/orders", illo: "box" }] : []),
     ...(offersWaiting ? [{ key: "offers", count: offersWaiting, title: `${offersWaiting} price offer${offersWaiting === 1 ? "" : "s"}`, hint: "Accept, counter or decline", href: "/offers", illo: "tag" }] : []),
   ];
-  const alerts = needs.reduce((n, x) => n + x.count, 0);
+  const alerts = needs.reduce((n, x) => n + x.count, 0) + unseen;
   const initials = user.name
     .split(/\s+/)
     .filter(Boolean)
@@ -153,7 +191,11 @@ export function TopBar({
         {/* What needs attention */}
         <Popover
           wide
-          onOpen={refresh}
+          onOpen={() => {
+            refresh();
+            // Opening counts as reading; the dots stay until it closes
+            setTimeout(markSeen, 4000);
+          }}
           label={alerts ? `${alerts} things need you` : "Notifications"}
           button={
             <span className="relative flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface hover:bg-surface-alt">
@@ -174,10 +216,13 @@ export function TopBar({
                   <p className="px-4 pb-1 pt-3 text-xs font-semibold text-muted">Recent</p>
                   <div className="max-h-72 overflow-y-auto">
                     {attention.recent.map((r) => (
-                      <Link key={r.id} href={r.href} onClick={close} className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-surface-alt">
+                      <Link key={r.id} href={r.href} onClick={close} className={`flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-surface-alt ${r.at > seenAt ? "bg-brand-soft/50" : ""}`}>
                         <Illo name={r.illo as IlloName} size={22} />
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate font-medium">{r.title}</span>
+                          <span className="flex items-center gap-1.5">
+                            {r.at > seenAt && <span className="h-2 w-2 shrink-0 rounded-full bg-brand" aria-label="New" />}
+                            <span className="block truncate font-medium">{r.title}</span>
+                          </span>
                           <span className="block truncate text-xs text-muted">
                             {r.hint} · {ago(r.at)}
                           </span>

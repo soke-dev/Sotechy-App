@@ -30,8 +30,10 @@ export async function sendEmail(email: Email): Promise<void> {
     if (env.NODE_ENV === "production") throw new Error(why);
     // Locally, test addresses (like admin@local.test) are refused; print it so codes can still be used
     console.log(`\n[email not sent: ${why}] to ${email.to}: ${email.subject}\n${email.text}\n`);
-  } else if (env.NODE_ENV !== "production") {
-    console.log(`[email sent] to ${email.to}: ${email.subject}`);
+  } else {
+    // Logged in production too (address partly hidden), so a missing email can be traced
+    const to = email.to.replace(/^(.{2}).*(@.*)$/, "$1…$2");
+    console.log(`[email sent] to ${to}: ${email.subject}`);
   }
 }
 

@@ -89,7 +89,7 @@ export default function WalletScreen() {
       clearTimeout(t);
     };
   }, [to]);
-  const { data, loading, error, reload } = useAsync(() => api.wallet(), []);
+  const { data, loading, error, reload } = useAsync(() => api.wallet(), [], { live: true });
   const wallet = data ?? { address: null, addressUrl: null, balances: [], activity: [] };
   const held = wallet.balances.filter((b) => b.amount > 0);
   // Nothing is picked until the customer chooses a token

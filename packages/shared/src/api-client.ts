@@ -218,6 +218,8 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
       send<{ checkoutUrl: string }>("POST", `/payments/online/initialize`, { orderId }),
     wishlist: () => get<CatalogProduct[]>("/me/wishlist"),
     toggleWishlist: (productId: string) => send<{ saved: boolean }>("POST", `/me/wishlist/${productId}`),
+    /** When anything of the customer's last changed; live screens reload when it moves */
+    pulse: () => get<{ v: string }>("/me/pulse"),
     /** Live chat with Sotechy: the open conversation, and sending to it */
     supportChat: () => get<SupportChat>("/me/support/chat"),
     sendSupportChat: (message: string, orderId?: string) => send<SupportChat>("POST", "/me/support/chat", { message, orderId }),

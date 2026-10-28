@@ -17,6 +17,7 @@ import { salesSummary } from "../../services/reports";
 import { paymentMethodSchema } from "../orders";
 import { orderCases } from "../../services/order-cases";
 import { replyToTicket, ticketThread } from "../../services/support-chat";
+import { adminPulse } from "../../services/pulse";
 
 const { users, branches, promotions, paymentMethods, cryptoAssets, appSettings, suppliers, purchaseOrders, purchaseOrderItems, supportTickets, auditLogs } =
   schema;
@@ -313,6 +314,8 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       }),
     );
   })
+  /** Changes anywhere admins look, so open pages refresh by themselves */
+  .get("/pulse", async (c) => c.json({ v: await adminPulse() }))
   .get("/support/:id", async (c) => c.json(await ticketThread(c.req.param("id"))))
   .post("/support/:id/reply", zValidator("json", z.object({ message: z.string().trim().min(1).max(2000) })), async (c) =>
     c.json(await replyToTicket(c.req.param("id"), c.get("user").id, c.req.valid("json").message)),

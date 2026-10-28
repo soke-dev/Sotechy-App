@@ -9,6 +9,7 @@ import { publicApiUrl } from "../env";
 import { requireFeature } from "../services/features";
 import { noRecipient, receiptFor, recipientFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
 import { chatFor, postChatMessage } from "../services/support-chat";
+import { customerPulse } from "../services/pulse";
 import { CHAINS, currentContract } from "../services/chain";
 import { catalogQuery } from "./store";
 
@@ -261,6 +262,8 @@ export const meRoutes = new Hono<AppEnv>()
       return c.json({ ...row, bonus }, 201);
     },
   )
+  /** Changes to this customer's orders, offers, chat or tokens, so open screens refresh by themselves */
+  .get("/pulse", async (c) => c.json({ v: await customerPulse(c.get("user").id) }))
   /** The customer's live chat with Sotechy: their open conversation and its messages */
   .get("/support/chat", async (c) => c.json(await chatFor(c.get("user").id)))
   .post("/support/chat", zValidator("json", z.object({ message: z.string().trim().min(1).max(2000), orderId: z.uuid().optional() })), async (c) => {

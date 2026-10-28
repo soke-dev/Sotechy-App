@@ -42,6 +42,14 @@ async function run(fn: () => Promise<unknown>, paths: string[], message = "Saved
   return { message };
 }
 
+/** When anything admins watch last changed; open pages refresh when it moves */
+export async function loadAdminPulse(): Promise<string | null> {
+  return api
+    .get<{ v: string }>("/admin/pulse")
+    .then((r) => r.v)
+    .catch(() => null);
+}
+
 export async function logout() {
   (await cookies()).delete(TOKEN_COOKIE);
   redirect("/login");

@@ -21,7 +21,7 @@ export const OFFER_LABEL: Record<OfferStatus, { label: string; tone: "warning" |
 };
 
 export default function OffersScreen() {
-  const offers = useAsync(() => api.offers());
+  const offers = useAsync(() => api.offers(), [], { live: true });
   useFocusEffect(
     useCallback(() => {
       offers.reload();

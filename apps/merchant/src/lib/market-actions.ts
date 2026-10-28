@@ -19,6 +19,14 @@ async function attempt<T>(fn: () => Promise<T>, revalidate?: string[]): Promise<
   }
 }
 
+/** When anything of the store's last changed; the dashboard refreshes when it moves */
+export async function loadPulse(): Promise<string | null> {
+  return api
+    .get<{ v: string }>("/merchant/summary/pulse")
+    .then((r) => r.v)
+    .catch(() => null);
+}
+
 /** The bell's contents, checked again while the dashboard is open */
 export async function loadAttention(): Promise<MerchantAttention | null> {
   return api.get<MerchantAttention>("/merchant/summary/attention").catch(() => null);

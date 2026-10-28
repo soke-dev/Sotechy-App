@@ -2,7 +2,6 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
-import { AutoRefresh } from "@/components/auto-refresh";
 import { Card, ErrorNote, inputClass, PageHeader, StatusBadge } from "@/components/ui";
 import { load } from "@/lib/api";
 import type { SupportThread } from "@/lib/types";
@@ -20,8 +19,6 @@ export default async function SupportThreadPage({ params }: { params: Promise<{ 
         <ArrowLeft size={15} /> Support
       </Link>
       <PageHeader title={who} description={`${t.subject} · started ${formatDate(t.createdAt)}`} actions={<StatusBadge status={t.status} />} />
-      {/* The customer's new messages appear without reloading */}
-      <AutoRefresh seconds={5} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2" title="Conversation">
           <ul className="flex flex-col gap-2">

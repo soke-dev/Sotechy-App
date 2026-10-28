@@ -23,6 +23,7 @@ import { answerOffer, storeOffers } from "../services/offers";
 import { sendPushLater } from "../services/push";
 import { payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
 import { sendEmailLater } from "../lib/email";
+import { storePulse } from "../services/pulse";
 import { pickupChangeEmail } from "../emails/templates";
 import { answerSchema } from "./offers";
 import { cancelOrder, updateOrderStatus } from "../services/orders";
@@ -740,6 +741,8 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     return c.json(rows);
   })
 
+  /** Changes since the dashboard last looked, so open pages refresh by themselves */
+  .get("/summary/pulse", async (c) => c.json({ v: await storePulse(c.get("store").id) }))
   // --- The bell: what needs the store now, and the latest goings-on (under /summary so every role can read it) ---
   .get("/summary/attention", async (c) => {
     const storeId = c.get("store").id;

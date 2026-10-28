@@ -68,7 +68,7 @@ export default function OfferScreen() {
   // New offers arrive with what's being offered on: /offer/new?variant=&name=&price=&image=&store=
   const params = useLocalSearchParams<{ id: string; variant?: string; name?: string; price?: string; image?: string; store?: string }>();
   const isNew = params.id === "new";
-  const offer = useAsync(async () => (isNew ? null : api.offer(params.id)), [params.id]);
+  const offer = useAsync(async () => (isNew ? null : api.offer(params.id)), [params.id], { live: true });
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const addToCart = useAddToCart();

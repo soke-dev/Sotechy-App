@@ -1,16 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { loadAdminPulse } from "@/app/(dashboard)/actions";
 
-/** Re-renders the page from the server every few seconds, so new messages show up on their own */
-export function AutoRefresh({ seconds }: { seconds: number }) {
+/** Live admin: every few seconds asks the API whether anything changed (orders, offers, payouts, stores,
+ *  areas, chats, reviews, sign-ups) and re-renders the open page from the server when it did. */
+export function LivePulse({ seconds = 6 }: { seconds?: number }) {
   const router = useRouter();
+  const last = useRef<string | null>(null);
   useEffect(() => {
-    const t = setInterval(() => {
-      if (document.visibilityState === "visible") router.refresh();
-    }, seconds * 1000);
-    return () => clearInterval(t);
+    const check = async () => {
+      if (document.visibilityState !== "visible") return;
+      const v = await loadAdminPulse();
+      if (!v) return;
+      if (last.current && v !== last.current) router.refresh();
+      last.current = v;
+    };
+    void check();
+    const t = setInterval(check, seconds * 1000);
+    window.addEventListener("focus", check);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("focus", check);
+    };
   }, [router, seconds]);
   return null;
 }
