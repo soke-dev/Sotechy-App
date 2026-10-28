@@ -67,6 +67,8 @@ const wrongTries = new Map<string, { count: number; since: number }>();
 
 /** For actions that move money or open stores: the admin types their password again (header x-confirm-password) */
 export const requirePassword = createMiddleware<AppEnv>(async (c, next) => {
+  // Switched off for now (ADMIN_PASSWORD_CHECKS=on brings it back)
+  if (env.ADMIN_PASSWORD_CHECKS !== "on") return next();
   const user = c.get("user");
   const given = c.req.header("x-confirm-password");
   if (!given) throw new HttpError(428, "Enter your password to confirm this");

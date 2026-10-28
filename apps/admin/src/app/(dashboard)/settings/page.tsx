@@ -4,7 +4,7 @@ import { ActionForm } from "@/components/action-form";
 import { SwitchField } from "@/components/switch";
 import { Card, ErrorNote, Field, inputClass, PageHeader } from "@/components/ui";
 import { load } from "@/lib/api";
-import { saveFx, saveSetting, updateCryptoAsset, updatePaymentMethod } from "../actions";
+import { saveFx, saveSetting, updatePaymentMethod } from "../actions";
 
 interface MoneyMovesStatus {
   configured: boolean;
@@ -111,18 +111,6 @@ export default async function SettingsPage() {
               </ActionForm>
             ))}
           </div>
-        </Card>
-
-        <Card title="Crypto assets">
-          <p className="mb-3 text-xs text-muted">Public receiving addresses only. Never enter private keys or seed phrases.</p>
-          {data.cryptoAssets.map((a) => (
-            <ActionForm key={a.id} action={updateCryptoAsset}>
-              <input type="hidden" name="id" value={a.id} />
-              <span className="w-40 text-sm font-medium">{a.symbol} · {a.network}</span>
-              <input name="receivingAddress" defaultValue={a.receivingAddress ?? ""} placeholder="Receiving address" className={`${inputClass} min-w-80 flex-1`} />
-              <SwitchField name="isEnabled" label="Enabled" defaultChecked={a.isEnabled} />
-            </ActionForm>
-          ))}
         </Card>
 
         <Card title="Bank transfer details (shown to customers)">

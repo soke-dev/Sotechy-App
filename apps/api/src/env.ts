@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  /** "on" makes admins re-enter their password for money moves and approvals; off for now */
+  ADMIN_PASSWORD_CHECKS: z.enum(["on", "off"]).default("off"),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),

@@ -2,6 +2,8 @@
 
 // Asks for the admin's password before an action that moves money or opens a store.
 // const { ask, prompt } = usePasswordPrompt(); … const password = await ask("Approve this store?"); render {prompt}
+// Switched off for now: ask() answers straight away unless NEXT_PUBLIC_ADMIN_PASSWORD_CHECKS=on (and the API's
+// ADMIN_PASSWORD_CHECKS=on) bring the check back.
 import { Lock } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { inputClass, primaryButtonClass, Sheet } from "./ui";
@@ -19,6 +21,7 @@ export function usePasswordPrompt() {
   };
   const ask = (title: string, detail?: ReactNode) =>
     new Promise<string | null>((res) => {
+      if (process.env.NEXT_PUBLIC_ADMIN_PASSWORD_CHECKS !== "on") return res("-");
       resolve.current = res;
       // Callers ask from inside startTransition, where React holds state updates back until the
       // transition ends; but it can't end until the password is given. Opening on the next tick

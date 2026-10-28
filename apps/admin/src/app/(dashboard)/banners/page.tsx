@@ -7,7 +7,8 @@ import { load } from "@/lib/api";
 import { deleteBanner, saveBanner, setBannerActive } from "../actions";
 
 type AdminBanner = Banner & { storeName?: string | null };
-type StoreRow = { store: { slug: string; name: string; status: string } };
+/** The admin store list is flat: one object per store */
+type StoreRow = { slug: string; name: string; status: string };
 
 const STYLES = {
   dark: { bg: "#17120E", fg: "#FFFFFF", accent: "#FDB913", circle: "#F7931E", cta: "bg-white text-ink" },
@@ -22,7 +23,7 @@ function linkLabel(b: Banner, stores: StoreRow[]) {
   if (b.linkType === "deals") return "Opens: Deals";
   if (b.linkType === "stores") return "Opens: all stores";
   if (b.linkType === "wallet") return "Opens: the wallet";
-  if (b.linkType === "store") return `Opens the store: ${stores.find((s) => s.store.slug === b.linkValue)?.store.name ?? b.linkValue}`;
+  if (b.linkType === "store") return `Opens the store: ${stores.find((s) => s.slug === b.linkValue)?.name ?? b.linkValue}`;
   if (b.linkType === "none" || !b.linkValue) return "No link";
   return `Opens ${b.linkType}: ${b.linkValue}`;
 }
@@ -121,7 +122,7 @@ function BannerFields({ banner, categories, stores }: { banner?: Banner; categor
       <SwitchField name="isActive" label="Show in the app" defaultChecked={banner?.isActive ?? true} />
       <datalist id="banner-links">
         {stores.map((s) => (
-          <option key={`s-${s.store.slug}`} value={s.store.slug}>Store: {s.store.name}</option>
+          <option key={`s-${s.slug}`} value={s.slug}>Store: {s.name}</option>
         ))}
         {categories.map((c) => (
           <option key={c.id} value={c.slug}>Category: {c.name}</option>
@@ -134,7 +135,7 @@ function BannerFields({ banner, categories, stores }: { banner?: Banner; categor
 export default async function BannersPage() {
   const [banners, categories, merchants] = await Promise.all([load<AdminBanner[]>("/admin/banners"), load<Category[]>("/admin/categories"), load<StoreRow[]>("/admin/merchants")]);
   const cats = categories.data ?? [];
-  const stores = (merchants.data ?? []).filter((m) => m.store.status === "approved");
+  const stores = (merchants.data ?? []).filter((m) => m.status === "approved");
   const now = Date.now();
 
   return (
