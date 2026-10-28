@@ -113,14 +113,14 @@ export function ReceiptSheet({ visible, onClose, receipt, order }: { visible: bo
         </View>
       </View>
 
-      {/* Its record on Monad */}
+      {/* Its onchain record */}
       <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.xl, padding: space.lg, gap: space.md }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
           <Ionicons name={link ? "shield-checkmark" : "time-outline"} size={20} color={link ? colors.success : colors.muted} />
-          <Txt variant="label">{link ? "Recorded on Monad" : "Being recorded on Monad…"}</Txt>
+          <Txt variant="label">{link ? "Recorded onchain" : "Being recorded onchain…"}</Txt>
         </View>
         <Txt variant="small" color={colors.ink2}>
-          A fingerprint of this receipt is saved on the Monad blockchain, so anyone can check it hasn&apos;t been changed. Only the fingerprint is public, never your details or what you paid.
+          A fingerprint of this receipt is saved onchain, so anyone can check it hasn&apos;t been changed. Only the fingerprint is public, never your details or what you paid.
         </Txt>
         {fp ? (
           <Pressable onPress={copyFingerprint} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.sm, padding: space.md, borderRadius: radius.lg, backgroundColor: pressed ? colors.line : colors.surface })}>
