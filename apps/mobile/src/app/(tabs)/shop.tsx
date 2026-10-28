@@ -47,7 +47,6 @@ export default function ShopScreen() {
   const [filters, setFilters] = useState<ShopFilters>(params.featured === "1" ? { ...NO_FILTERS, deals: true } : NO_FILTERS);
   const [sheet, setSheet] = useState<"filters" | "sort" | null>(null);
   // Whose products: Sotechy's own catalogue, the marketplace stores', or both
-  const [seller, setSeller] = useState<"all" | "sotechy" | "stores">(params.seller === "stores" ? "stores" : "all");
   const features = useFeatures();
 
   // The tab stays mounted, so follow new filters passed from other screens (home, menu).
@@ -90,30 +89,13 @@ export default function ShopScreen() {
   const selected = all.find((c) => c.slug === category);
   const group = selected?.parentId ? all.find((c) => c.id === selected.parentId) : selected;
   const subs = group ? all.filter((c) => c.parentId === group.id).sort((a, b) => a.sortOrder - b.sortOrder) : [];
-  // The catalogue has Sotechy's products and the stores'; the seller switch narrows it
-  const rows = (products.data ?? []).filter((p) => seller === "all" || (seller === "stores") === !!p.storeSlug);
+  // Sotechy's products and every store's, together
+  const rows = products.data ?? [];
   const count = products.data ? rows.length : undefined;
 
   return (
     <View style={ui.screen}>
       <ScreenHeader title={group?.name ?? (category && category === params.category && params.label ? params.label : filters.deals ? "Deals" : "Shop")} right={<View style={{ flexDirection: "row", gap: space.sm }}><CartButton /><MenuButton /></View>} />
-      {/* Whose products */}
-      <View style={{ paddingHorizontal: gutter, paddingBottom: space.sm }}>
-        <View style={{ flexDirection: "row", backgroundColor: colors.surfaceAlt, borderRadius: radius.pill, padding: 3 }}>
-          {([["all", "All sellers"], ["sotechy", "Sotechy"], ["stores", "Other stores"]] as const).map(([k, label]) => (
-            <Pressable
-              key={k}
-              onPress={() => {
-                tap();
-                setSeller(k);
-              }}
-              style={{ flex: 1, height: 34, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", backgroundColor: seller === k ? colors.surface : "transparent" }}
-            >
-              <Txt variant="label" color={seller === k ? colors.ink : colors.muted} style={{ fontSize: 13 }}>{label}</Txt>
-            </Pressable>
-          ))}
-        </View>
-      </View>
       <View style={{ paddingHorizontal: gutter, paddingBottom: space.md }}>
         <Input
           icon="search"

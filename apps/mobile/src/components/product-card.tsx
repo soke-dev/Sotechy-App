@@ -68,38 +68,38 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
               </View>
             )}
           </View>
-          <View style={{ padding: 10, gap: 3 }}>
-            {product.brand || rated ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Txt variant="overline" numberOfLines={1} style={{ flex: 1 }}>{product.brand ?? ""}</Txt>
-                {rated ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-                    <Ionicons name="star" size={11} color={colors.brandYellow} />
-                    <Txt variant="caption" style={{ fontSize: 11 }} color={colors.ink2}>
-                      {(product.ratingAverage ?? 0).toFixed(1)} ({product.ratingCount})
-                    </Txt>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
+          {/* Three short rows: name; price with any discount; who sells it with the rating */}
+          <View style={{ padding: 10, gap: 4 }}>
             <Txt variant="medium" numberOfLines={2} style={{ fontSize: 13.5, lineHeight: 18, minHeight: 36 }}>
               {product.name}
             </Txt>
-            <Txt variant="price" style={{ marginTop: 2 }}>{formatNaira(product.minPrice)}</Txt>
-            {product.storeName ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Ionicons name="storefront-outline" size={11} color={colors.muted} />
-                <Txt variant="caption" numberOfLines={1} style={{ flexShrink: 1, fontSize: 11.5 }}>{product.storeName}</Txt>
-              </View>
-            ) : null}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 20 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "nowrap" }}>
+              <Txt variant="price" numberOfLines={1} style={{ flexShrink: 0 }}>{formatNaira(product.minPrice)}</Txt>
               {off > 0 ? (
                 <>
-                  <Txt variant="caption" style={{ textDecorationLine: "line-through", color: colors.faint }}>{formatNaira(product.compareAtPrice)}</Txt>
+                  <Txt variant="caption" numberOfLines={1} style={{ flexShrink: 1, textDecorationLine: "line-through", color: colors.faint, fontSize: 11 }}>{formatNaira(product.compareAtPrice)}</Txt>
                   <Pill label={`-${off}%`} tone="success" />
                 </>
               ) : features.lowStockBadges && !soldOut && product.totalAvailable <= 3 ? (
-                <Txt variant="caption" color={colors.warning}>Only {product.totalAvailable} left</Txt>
+                <Txt variant="caption" numberOfLines={1} color={colors.warning} style={{ flexShrink: 1, fontSize: 11 }}>Only {product.totalAvailable} left</Txt>
+              ) : null}
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, minHeight: 16 }}>
+              {product.storeName || product.brand ? (
+                <>
+                  <Ionicons name={product.storeName ? "storefront-outline" : "pricetag-outline"} size={11} color={colors.muted} />
+                  <Txt variant="caption" numberOfLines={1} style={{ flex: 1, fontSize: 11.5 }}>{product.storeName ?? product.brand}</Txt>
+                </>
+              ) : (
+                <View style={{ flex: 1 }} />
+              )}
+              {rated ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+                  <Ionicons name="star" size={11} color={colors.brandYellow} />
+                  <Txt variant="caption" style={{ fontSize: 11 }} color={colors.ink2}>
+                    {(product.ratingAverage ?? 0).toFixed(1)}
+                  </Txt>
+                </View>
               ) : null}
             </View>
           </View>
