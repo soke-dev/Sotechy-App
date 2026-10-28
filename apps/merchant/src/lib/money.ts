@@ -14,6 +14,9 @@ export function splitOrder(total: number) {
   return { fee, reserve: fee / 2, revenue: fee / 2, share, first, second: share - first };
 }
 
+/** Sotechy's fee for showing, e.g. "3%" */
+export const feeLabel = (rate: number) => `${Math.round(rate * 1000) / 10}%`;
+
 const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
 export const formatNaira = (n: number) => naira.format(n);
 

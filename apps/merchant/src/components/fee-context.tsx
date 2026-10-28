@@ -13,5 +13,5 @@ export function FeeProvider({ fee, children }: { fee: number; children: ReactNod
 /** The fee as a fraction, e.g. 0.03 */
 export const useFeeRate = () => useContext(FeeContext);
 
-/** The fee for showing, e.g. "3%" */
-export const feeLabel = (rate: number) => `${Math.round(rate * 1000) / 10}%`;
+// For showing it: feeLabel in @/lib/money (usable on the server too)
+export { feeLabel } from "@/lib/money";

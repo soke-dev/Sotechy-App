@@ -3,9 +3,8 @@ import Link from "next/link";
 import { Illo } from "@/components/illustrations";
 import { btn, Card, Pill, ProductThumb, StatCard } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
-import { formatNaira, formatTokens } from "@/lib/money";
+import { feeLabel, formatNaira, formatTokens } from "@/lib/money";
 import { api, getFeeRate, getStoreSession } from "@/lib/api";
-import { feeLabel } from "@/components/fee-context";
 import { ORDER_STATUS, orderMoney, orderTotal } from "@/lib/mock";
 import { tokenTicker } from "@/lib/token";
 
