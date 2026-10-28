@@ -282,8 +282,8 @@ export default function HomeScreen() {
         {/* The extras, small, side by side on one row */}
         <View style={{ flexDirection: "row", gap: 6 }}>
           {[
-            { icon: "star" as IconName, text: "Up to 10% for a review" },
-            { icon: "add-circle" as IconName, text: "10% $SOTECHY every order" },
+            { icon: "star" as IconName, text: "+10% for a review" },
+            { icon: "add-circle" as IconName, text: "Earn 10% $SOTECHY" },
           ].map((x) => (
             <View key={x.text} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface }}>
               <Ionicons name={x.icon} size={12} color={colors.brandPressed} />
