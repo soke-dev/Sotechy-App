@@ -72,28 +72,28 @@ export function FeaturedStoreCard({ store, width }: { store: MarketStore; width:
   const held = useHeldTokens(store.ticker);
   return (
     <Pressable onPress={() => openStore(store.slug)} style={({ pressed }) => ({ width, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, overflow: "hidden", opacity: pressed ? 0.9 : 1 })}>
-      <View style={{ height: 112 }}>
+      <View style={{ height: 72 }}>
         <StoreCover store={store} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
-        <LinearGradient colors={["transparent", "rgba(0,0,0,0.55)"]} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 70 }} />
-        <View style={{ position: "absolute", top: 10, right: 10 }}>
+        <LinearGradient colors={["transparent", "rgba(0,0,0,0.45)"]} style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 44 }} />
+        <View style={{ position: "absolute", top: 8, right: 8 }}>
           <TokenChip store={store} />
         </View>
         {isFeatured(store) && (
-          <View style={{ position: "absolute", top: 10, left: 10 }}>
+          <View style={{ position: "absolute", top: 8, left: 8 }}>
             <FeaturedTag />
           </View>
         )}
       </View>
-      <View style={{ position: "absolute", top: 84, left: space.md }}>
-        <StoreLogo store={store} size={54} />
+      <View style={{ position: "absolute", top: 50, left: space.md }}>
+        <StoreLogo store={store} size={44} />
       </View>
-      <View style={{ paddingHorizontal: space.md, paddingTop: 32, paddingBottom: space.md, gap: 3 }}>
+      <View style={{ paddingHorizontal: space.md, paddingTop: 26, paddingBottom: space.sm + 2, gap: 2 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
           <Txt variant="label" numberOfLines={1} style={{ fontSize: 15.5, flexShrink: 1 }}>{store.name}</Txt>
           <Ionicons name="checkmark-circle" size={15} color={store.isSotechy ? colors.brand : "#2F6FB3"} />
         </View>
         <Txt variant="small" numberOfLines={1}>{store.tagline}</Txt>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
           <Rating store={store} />
           {held > 0 && (
             <Txt variant="caption" color={colors.brandPressed} style={{ fontFamily: fonts.bold }}>

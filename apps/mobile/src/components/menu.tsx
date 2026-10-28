@@ -1,4 +1,4 @@
-// Slide-out menu: account, search, quick links, expandable categories and store contacts.
+// Slide-out menu: account, quick links, expandable categories and store contacts.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { router, type Href } from "expo-router";
@@ -138,15 +138,6 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
             <IconButton icon="close" onPress={onClose} />
           </View>
 
-          {/* Search */}
-          <Pressable
-            onPress={() => go({ pathname: "/shop", params: { focus: "1" } })}
-            style={{ height: 46, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16 }}
-          >
-            <Ionicons name="search" size={17} color={colors.ink2} />
-            <Txt variant="body" color={colors.faint}>Search products</Txt>
-          </Pressable>
-
           {/* Quick links */}
           <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: space.sm }}>
             <QuickLink illo="tag" label="Deals" onPress={() => go({ pathname: "/shop", params: { featured: "1" } })} />
@@ -156,7 +147,6 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
             <QuickLink illo="store" label="Stores" onPress={() => go("/stores")} />
             <QuickLink illo="coin" label="Wallet" onPress={() => go("/wallet")} />
             <QuickLink illo="chat" label="Store news" onPress={() => go("/notifications")} />
-            <QuickLink illo="cart" label="Cart" onPress={() => go("/cart")} />
             <QuickLink illo="tag" label="My offers" onPress={() => go("/offers")} />
           </View>
 

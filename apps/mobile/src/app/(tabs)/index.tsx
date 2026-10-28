@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira, type Category } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
 import { HeroCarousel } from "@/components/hero-carousel";
+import { HomeSearch } from "@/components/home-search";
 import { MenuButton } from "@/components/menu";
 import { ProductRail } from "@/components/product-rail";
 import { SupportChat } from "@/components/support-chat";
@@ -24,18 +25,50 @@ import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
-import { Illo, type IlloName } from "@/components/illustrations";
+import { Illo } from "@/components/illustrations";
 
-function CircleLink({ label, onPress, image, icon, illo, dark }: { label: string; onPress: () => void; image?: string | null; icon?: IconName; illo?: IlloName; dark?: boolean }) {
+/** A compact category chip: a small round picture or icon, then the name */
+function CategoryTile({ label, onPress, image, icon }: { label: string; onPress: () => void; image?: string | null; icon: IconName }) {
   return (
-    <Pressable onPress={onPress} style={{ width: "25%", alignItems: "center", gap: 6, paddingHorizontal: 2 }}>
-      <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: dark ? colors.panel : colors.brandSoft, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.surface }}>
-        {illo ? <Illo name={illo} size={40} /> : image ? <Image source={{ uri: image }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : <Ionicons name={icon ?? "grid-outline"} size={26} color={dark ? colors.brandYellow : colors.brandPressed} />}
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 5, paddingRight: 14, height: 44, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line })}
+    >
+      <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.brandSoft, overflow: "hidden", alignItems: "center", justifyContent: "center" }}>
+        {image ? <Image source={{ uri: image }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : <Ionicons name={icon} size={17} color={colors.brandPressed} />}
       </View>
-      <Txt variant="caption" color={colors.ink2} numberOfLines={2} style={{ textAlign: "center", fontFamily: fonts.medium }}>{label}</Txt>
+      <Txt variant="label" numberOfLines={1} style={{ fontSize: 13.5 }}>{label}</Txt>
     </Pressable>
   );
 }
+
+/** The kinds of stores on the marketplace, beyond Sotechy's gadgets (they open Stores, filtered) */
+const STORE_KINDS: { kind: string; label: string; icon: IconName }[] = [
+  { kind: "Fashion & clothing", label: "Fashion", icon: "shirt-outline" },
+  { kind: "Beauty & makeup", label: "Beauty & makeup", icon: "color-palette-outline" },
+  { kind: "Groceries", label: "Groceries", icon: "nutrition-outline" },
+  { kind: "Furniture & home decor", label: "Home & decor", icon: "bed-outline" },
+  { kind: "Shoes & bags", label: "Shoes & bags", icon: "footsteps-outline" },
+  { kind: "Hair, wigs & extensions", label: "Hair & wigs", icon: "cut-outline" },
+  { kind: "Skincare & personal care", label: "Skincare", icon: "water-outline" },
+  { kind: "Perfume & fragrance", label: "Perfume", icon: "flower-outline" },
+  { kind: "Jewellery & watches", label: "Jewellery & watches", icon: "diamond-outline" },
+  { kind: "Food & restaurants", label: "Food", icon: "fast-food-outline" },
+  { kind: "Drinks", label: "Drinks", icon: "wine-outline" },
+  { kind: "Kitchen & cookware", label: "Kitchen", icon: "restaurant-outline" },
+  { kind: "Home appliances", label: "Appliances", icon: "snow-outline" },
+  { kind: "Power & solar", label: "Power & solar", icon: "sunny-outline" },
+  { kind: "Baby & kids", label: "Baby & kids", icon: "happy-outline" },
+  { kind: "Toys & games", label: "Toys", icon: "game-controller-outline" },
+  { kind: "Health & pharmacy", label: "Health", icon: "medkit-outline" },
+  { kind: "Sports & fitness", label: "Sports & fitness", icon: "barbell-outline" },
+  { kind: "Books & stationery", label: "Books", icon: "book-outline" },
+  { kind: "Auto parts & accessories", label: "Auto parts", icon: "car-outline" },
+  { kind: "Building & hardware", label: "Hardware", icon: "hammer-outline" },
+  { kind: "Agriculture & farm produce", label: "Farm produce", icon: "leaf-outline" },
+  { kind: "Pets", label: "Pets", icon: "paw-outline" },
+  { kind: "Gifts & crafts", label: "Gifts & crafts", icon: "gift-outline" },
+];
 
 /** One deal in "Deals of the day": from Sotechy's catalogue or a marketplace store */
 interface Deal {
@@ -162,13 +195,7 @@ export default function HomeScreen() {
             <Txt variant="label" color={colors.ink} style={{ flex: 1, fontSize: 13 }}>{features.announcement}</Txt>
           </View>
         ) : null}
-        <Pressable
-          onPress={() => shop({ focus: "1" })}
-          style={{ height: 50, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 18 }}
-        >
-          <Ionicons name="search" size={18} color={colors.ink2} />
-          <Txt variant="body" color={colors.faint}>Search products, stores and brands</Txt>
-        </Pressable>
+        <HomeSearch />
         <View style={[ui.row, { gap: space.sm }]}>
           <Pressable
               onPress={() => router.push("/stores")}
@@ -211,9 +238,9 @@ export default function HomeScreen() {
         <View style={{ paddingHorizontal: gutter }}>
           <SectionHeader title="Stores on Sotechy" action="All stores" onAction={() => router.push("/stores")} />
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={Math.min(contentWidth * 0.78, 290) + space.md} decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={Math.min(contentWidth * 0.7, 260) + space.md} decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
           {byFeatured([SOTECHY_STORE, ...marketStores]).map((s) => (
-            <FeaturedStoreCard key={s.slug} store={s} width={Math.min(contentWidth * 0.78, 290)} />
+            <FeaturedStoreCard key={s.slug} store={s} width={Math.min(contentWidth * 0.7, 260)} />
           ))}
         </ScrollView>
       </View>
@@ -262,18 +289,28 @@ export default function HomeScreen() {
       </View>
 
       {/* Categories */}
-      <View style={{ paddingHorizontal: gutter }}>
-        <SectionHeader title="Shop by category" action="All stores" onAction={() => router.push("/stores")} />
-        {/* Eight shortcuts: Sotechy's top gadget categories, then the marketplace's other store types */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: space.lg, marginHorizontal: -2 }}>
-          {tops.slice(0, 4).map((c) => (
-            <CircleLink key={c.id} label={c.name} image={c.imageUrl} icon={productIcon(c.name)} onPress={() => shop({ category: c.slug })} />
-          ))}
-          <CircleLink label="Fashion" icon="shirt-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Fashion & clothing" } })} />
-          <CircleLink label="Beauty" icon="color-palette-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Beauty & makeup" } })} />
-          <CircleLink label="Groceries" icon="nutrition-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Groceries" } })} />
-          <CircleLink label="Home & decor" icon="bed-outline" onPress={() => router.push({ pathname: "/stores", params: { kind: "Furniture & home decor" } })} />
+      <View>
+        <View style={{ paddingHorizontal: gutter }}>
+          <SectionHeader title="Shop by category" action="All stores" onAction={() => router.push("/stores")} />
         </View>
+        {/* Sotechy's own categories, then every kind of store on the marketplace, in two rows that scroll */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter }}>
+          <View style={{ gap: space.md }}>
+            {[0, 1].map((row) => {
+              const all = [
+                ...tops.map((c) => ({ key: c.id, label: c.name, image: c.imageUrl, icon: productIcon(c.name), onPress: () => shop({ category: c.slug }) })),
+                ...STORE_KINDS.map((k) => ({ key: k.kind, label: k.label, image: null, icon: k.icon, onPress: () => router.push({ pathname: "/stores", params: { kind: k.kind } }) })),
+              ];
+              return (
+                <View key={row} style={{ flexDirection: "row", gap: space.sm }}>
+                  {all.filter((_, i) => i % 2 === row).map((c) => (
+                    <CategoryTile key={c.key} label={c.label} image={c.image} icon={c.icon} onPress={c.onPress} />
+                  ))}
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
       </View>
 
       <MarketRail title="Fresh from stores on Sotechy" subtitle="Verified shops, each with its own token" items={storeItems} onSeeAll={() => router.push("/stores")} />
