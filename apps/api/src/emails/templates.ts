@@ -212,8 +212,10 @@ export function offerReceivedEmail(to: string, d: { store: string; customer: str
 }
 
 export function payoutSentEmail(to: string, d: { store: string; amount: number; bank: string; account: string; reference: string; orders: { number: string; amount: number; stage: string }[] }) {
-  return build(to, `${formatNaira(d.amount)} is on its way to your bank`, {
-    preheader: `${d.orders.length} order${d.orders.length === 1 ? "" : "s"} paid out to ${d.bank}.`,
+  // Named for the order, like a receipt: "money on its way to your bank" titles read as scams and land in spam
+  const which = d.orders.length === 1 ? `${d.orders[0].number} (${d.orders[0].stage.toLowerCase()})` : `${d.orders.length} orders`;
+  return build(to, `${d.store} payout for ${which}`, {
+    preheader: `${formatNaira(d.amount)} paid to your ${d.bank} account ${d.account}. See it in your Sotechy dashboard.`,
     hero: "payout",
     eyebrow: `${d.store} · Payout`,
     heading: `${formatNaira(d.amount)} sent`,
