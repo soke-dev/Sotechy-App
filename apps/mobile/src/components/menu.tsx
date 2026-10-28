@@ -104,7 +104,8 @@ function categoryTree(all: Category[]): MenuNode[] {
       const kids = kidsOf(c.id);
       return { key: c.id, label: c.name, icon: productIcon(c.name), value: c.slug, children: kids.length ? kids.map((k) => leaf(k.name, k.slug)) : undefined };
     });
-  return [...departments, ...extra];
+  // Last: everything else, in Shop
+  return [...departments, ...extra, { key: "more", label: "Much more", icon: "apps-outline", value: "" }];
 }
 
 function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => void }) {
