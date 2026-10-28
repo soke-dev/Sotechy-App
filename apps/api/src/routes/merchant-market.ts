@@ -271,7 +271,7 @@ async function ordersForDashboard(storeId: string, ids?: string[]) {
         address: a ? [a.line1, a.line2, a.city, a.state].filter(Boolean).join(", ") : "",
       },
       fulfilment: o.fulfilmentType,
-      pickupPoint: o.fulfilmentType === "pickup" ? ((o.pickupChangeStatus === "approved" ? o.pickupChangePoint : [point, pointAddress].filter(Boolean).join(", ")) || undefined) : undefined,
+      pickupPoint: o.fulfilmentType === "pickup" ? ((o.pickupChangeStatus === "approved" ? o.pickupChangePoint : (o.pickupSpot ?? [point, pointAddress].filter(Boolean).join(", "))) || undefined) : undefined,
       pickupChange: o.pickupChangePoint && o.pickupChangeStatus ? { point: o.pickupChangePoint, status: o.pickupChangeStatus } : undefined,
       items: items
         .filter((i) => i.item.orderId === o.id)
@@ -296,11 +296,27 @@ async function ownOrder(storeId: string, orderId: string) {
 // ---------------------------------------------------------------------------
 // Delivery areas
 // ---------------------------------------------------------------------------
+/** A pickup area's points as stored: every place, with the first also as the main point */
+function pickupColumns(pickup: { fee: number; point: string; address?: string | null; places?: { name: string; address: string }[] } | null | undefined) {
+  if (!pickup) return { pickupFee: null, pickupPoint: null, pickupAddress: null, pickupPlaces: [] };
+  const places = pickup.places?.length ? pickup.places : [{ name: pickup.point, address: pickup.address ?? "" }];
+  return { pickupFee: pickup.fee, pickupPoint: places[0].name, pickupAddress: places[0].address || null, pickupPlaces: places };
+}
+
 const zoneInput = z.object({
   state: z.string().trim().min(2).max(40),
   areas: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
   homeFee: z.number().min(0).max(1_000_000),
-  pickup: z.object({ fee: z.number().min(0).max(1_000_000), point: z.string().trim().min(3).max(140), address: z.string().trim().max(200).optional().nullable() }).optional().nullable(),
+  pickup: z
+    .object({
+      fee: z.number().min(0).max(1_000_000),
+      point: z.string().trim().min(3).max(140),
+      address: z.string().trim().max(200).optional().nullable(),
+      // Up to 5 pickup points in the area; when sent, the first one is `point`/`address`
+      places: z.array(z.object({ name: z.string().trim().min(3).max(140), address: z.string().trim().min(3).max(200) })).min(1).max(5).optional(),
+    })
+    .optional()
+    .nullable(),
   days: z.string().trim().min(1).max(40),
   freeOver: z.number().positive().max(100_000_000).optional().nullable(),
   active: z.boolean().default(true),
@@ -311,7 +327,10 @@ const zoneForDashboard = (z: typeof deliveryZones.$inferSelect) => ({
   state: z.state,
   areas: z.areas,
   homeFee: z.homeFee,
-  pickup: z.pickupFee != null && z.pickupPoint ? { fee: z.pickupFee, point: z.pickupPoint, address: z.pickupAddress } : undefined,
+  pickup:
+    z.pickupFee != null && z.pickupPoint
+      ? { fee: z.pickupFee, point: z.pickupPoint, address: z.pickupAddress, places: z.pickupPlaces.length ? z.pickupPlaces : [{ name: z.pickupPoint, address: z.pickupAddress ?? "" }] }
+      : undefined,
   days: z.days,
   freeOver: z.freeOver ?? undefined,
   active: z.isActive,
@@ -654,7 +673,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     const z = c.req.valid("json");
     const [row] = await db
       .insert(deliveryZones)
-      .values({ merchantId: c.get("store").id, state: z.state, areas: z.areas, homeFee: z.homeFee, pickupFee: z.pickup?.fee ?? null, pickupPoint: z.pickup?.point ?? null, pickupAddress: z.pickup?.address || null, days: z.days, freeOver: z.freeOver ?? null, isActive: z.active })
+      .values({ merchantId: c.get("store").id, state: z.state, areas: z.areas, homeFee: z.homeFee, ...pickupColumns(z.pickup), days: z.days, freeOver: z.freeOver ?? null, isActive: z.active })
       .returning();
     return c.json(zoneForDashboard(row), 201);
   })
@@ -666,11 +685,10 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     const coverageChanged =
       before.state !== z.state ||
       before.areas.join("|") !== z.areas.join("|") ||
-      (before.pickupPoint ?? "").trim() !== (z.pickup?.point ?? "").trim() ||
-      (before.pickupAddress ?? "").trim() !== (z.pickup?.address ?? "").trim();
+      JSON.stringify(before.pickupPlaces ?? []) !== JSON.stringify(pickupColumns(z.pickup).pickupPlaces);
     const [row] = await db
       .update(deliveryZones)
-      .set({ state: z.state, areas: z.areas, homeFee: z.homeFee, pickupFee: z.pickup?.fee ?? null, pickupPoint: z.pickup?.point ?? null, pickupAddress: z.pickup?.address || null, days: z.days, freeOver: z.freeOver ?? null, isActive: z.active, ...(coverageChanged && { review: "pending" as const, reviewNote: null }) })
+      .set({ state: z.state, areas: z.areas, homeFee: z.homeFee, ...pickupColumns(z.pickup), days: z.days, freeOver: z.freeOver ?? null, isActive: z.active, ...(coverageChanged && { review: "pending" as const, reviewNote: null }) })
       .where(eq(deliveryZones.id, before.id))
       .returning();
     return c.json(zoneForDashboard(row));

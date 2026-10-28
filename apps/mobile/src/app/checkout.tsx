@@ -69,6 +69,9 @@ export default function CheckoutScreen() {
   const [chosenFulfilment, setFulfilment] = useState<FulfilmentType>("delivery");
   const [branchId, setBranchId] = useState<string | null>(null);
   const [pickupZoneId, setPickupZoneId] = useState<string | null>(null);
+  // Which pickup point in that area (by name), and the list of every point
+  const [pickupPlace, setPickupPlace] = useState<string | null>(null);
+  const [placesOpen, setPlacesOpen] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promo, setPromo] = useState<PromoCheck | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
@@ -144,6 +147,15 @@ export default function CheckoutScreen() {
   const where = chosen ?? address;
   const sellerArea = seller && fulfilment === "delivery" ? deliveryAreaFor(areas, where.state, where.city) : null;
   const pickupPoint = pickupPoints.find((a) => a.id === pickupZoneId) ?? pickupPoints[0] ?? null;
+  // Every pickup point across the store's areas (an area can have up to 5, all at its price)
+  const spots = pickupPoints.flatMap((a) =>
+    (a.pickupPlaces?.length ? a.pickupPlaces : [{ name: a.pickupPoint ?? "", address: a.pickupAddress ?? "" }]).map((pl) => ({ key: `${a.id}:${pl.name}`, zoneId: a.id, name: pl.name, address: pl.address, fee: a.pickupFee, days: a.days, state: a.state })),
+  );
+  const spot = spots.find((s) => s.zoneId === pickupPoint?.id && (!pickupPlace || s.name === pickupPlace)) ?? spots[0] ?? null;
+  const chooseSpot = (s: (typeof spots)[number]) => {
+    setPickupZoneId(s.zoneId);
+    setPickupPlace(s.name);
+  };
   // The store doesn't deliver to the address (known once its areas have loaded)
   const outOfArea = !!seller && fulfilment === "delivery" && !!sellerInfo.data && !!where.city && !sellerArea;
   const freeDelivery = !seller && cfg.delivery.freeOver != null && cart.subtotal >= cfg.delivery.freeOver;
@@ -228,6 +240,7 @@ export default function CheckoutScreen() {
         promoCode: applied?.code,
         idempotencyKey,
         pickupZoneId: seller && fulfilment === "pickup" ? (pickupPoint?.id ?? undefined) : undefined,
+        pickupPlace: seller && fulfilment === "pickup" ? (spot?.name ?? undefined) : undefined,
         tokens: tokenPlan.filter((t) => t.amount > 0).map((t) => ({ ticker: t.ticker, amount: t.amount })),
       });
       cart.clear();
@@ -319,18 +332,26 @@ export default function CheckoutScreen() {
         </Section>
 
         <Section step={2} title={fulfilment === "pickup" ? "Pickup location" : "Home delivery details"}>
-          {fulfilment === "pickup" &&
-            seller &&
-            pickupPoints.map((p) => (
+          {/* The chosen pickup point; the others are one tap away */}
+          {fulfilment === "pickup" && seller && spot && (
+            <View style={{ gap: space.sm }}>
               <OptionRow
-                key={p.id}
                 illo="pin"
-                title={p.pickupPoint ?? seller.name}
-                subtitle={`${p.pickupAddress ? `${p.pickupAddress} · ` : `${p.state} · `}${p.pickupFee ? formatNaira(p.pickupFee) : "Free"} · ${p.days}`}
-                selected={pickupPoint?.id === p.id}
-                onPress={() => setPickupZoneId(p.id)}
+                title={spot.name || seller.name}
+                subtitle={`${spot.address ? `${spot.address} · ` : `${spot.state} · `}${spot.fee ? formatNaira(spot.fee) : "Free"} · ${spot.days}`}
+                selected
+                onPress={() => spots.length > 1 && setPlacesOpen(true)}
               />
-            ))}
+              {spots.length > 1 && (
+                <Pressable onPress={() => setPlacesOpen(true)} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start" }}>
+                  <Txt variant="label" color={colors.brandPressed}>
+                    +{spots.length - 1} more location{spots.length - 1 === 1 ? "" : "s"}
+                  </Txt>
+                  <Ionicons name="chevron-down" size={16} color={colors.brandPressed} />
+                </Pressable>
+              )}
+            </View>
+          )}
           {fulfilment === "pickup" &&
             !seller &&
             cfg.branches.map((b) => (
@@ -541,6 +562,23 @@ export default function CheckoutScreen() {
           >
             <Txt variant="label" color={colors.brandPressed}>Manage saved addresses</Txt>
           </Pressable>
+        </View>
+      </Sheet>
+      <Sheet visible={placesOpen} title="Choose a pickup location" onClose={() => setPlacesOpen(false)}>
+        <View style={{ gap: space.sm }}>
+          {spots.map((s) => (
+            <OptionRow
+              key={s.key}
+              illo="pin"
+              title={s.name}
+              subtitle={`${s.address ? `${s.address} · ` : `${s.state} · `}${s.fee ? formatNaira(s.fee) : "Free"} · ${s.days}`}
+              selected={spot?.key === s.key}
+              onPress={() => {
+                chooseSpot(s);
+                setPlacesOpen(false);
+              }}
+            />
+          ))}
         </View>
       </Sheet>
       <PayChoiceSheet visible={payOpen} amount={due} onClose={() => setPayOpen(false)} onPay={() => void proceedToPayment()} />

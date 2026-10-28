@@ -183,6 +183,13 @@
       "when": 1793169684537,
       "tag": "0025_pickup_address",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793170446825,
+      "tag": "0026_pickup_places",
+      "breakpoints": true
     }
   ]
 }

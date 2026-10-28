@@ -39,6 +39,7 @@ const placeOrderSchema = z.object({
   promoCode: z.string().max(40).optional(),
   idempotencyKey: z.string().min(8).max(100),
   pickupZoneId: z.uuid().optional(),
+  pickupPlace: z.string().trim().max(140).optional(),
   tokens: z.array(z.object({ ticker: z.string().min(1).max(12), amount: z.number().int().min(0).max(1_000_000_000) })).max(2).optional(),
 });
 
@@ -78,7 +79,7 @@ export async function loadOrderDetail(orderId: string) {
     const [zone] = order.deliveryZoneId
       ? await db.select({ point: schema.deliveryZones.pickupPoint, address: schema.deliveryZones.pickupAddress }).from(schema.deliveryZones).where(eq(schema.deliveryZones.id, order.deliveryZoneId))
       : [];
-    pickupLocation = order.pickupChangeStatus === "approved" ? order.pickupChangePoint : [zone?.point, zone?.address].filter(Boolean).join(", ") || null;
+    pickupLocation = order.pickupChangeStatus === "approved" ? order.pickupChangePoint : (order.pickupSpot ?? ([zone?.point, zone?.address].filter(Boolean).join(", ") || null));
   }
   // The store's token can pay towards its orders (with $SOTECHY)
   const [seller] = order.merchantId ? await db.select({ ticker: schema.merchants.ticker }).from(schema.merchants).where(eq(schema.merchants.id, order.merchantId)) : [];

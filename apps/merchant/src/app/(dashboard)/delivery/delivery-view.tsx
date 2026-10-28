@@ -1,11 +1,12 @@
 "use client";
 
 import { MapPin, Pencil, Plus } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { Illo } from "@/components/illustrations";
 import { btn, Card, EmptyState, PageHeader, Pill } from "@/components/ui";
 import { saveZone } from "@/lib/market-actions";
-import { Sheet, ZoneForm, ZonePrices } from "@/components/zone-form";
+import { ZonePrices } from "@/components/zone-form";
 import { formatNaira } from "@/lib/money";
 import { zoneLabel, zoneLive, type DeliveryZone } from "@/lib/mock";
 
@@ -24,15 +25,10 @@ function Switch({ on, label, onChange }: { on: boolean; label: string; onChange:
 
 export function DeliveryView({ zones: initial }: { zones: DeliveryZone[] }) {
   const [zones, setZones] = useState(initial);
-  const [editing, setEditing] = useState<DeliveryZone | "new" | null>(null);
   const live = zones.filter(zoneLive);
   const states = [...new Set(live.map((z) => z.state))];
   const waiting = zones.filter((z) => z.review === "pending").length;
 
-  const save = (z: DeliveryZone) => {
-    setZones(zones.some((x) => x.id === z.id) ? zones.map((x) => (x.id === z.id ? z : x)) : [...zones, z]);
-    setEditing(null);
-  };
 
   return (
     <>
@@ -41,9 +37,9 @@ export function DeliveryView({ zones: initial }: { zones: DeliveryZone[] }) {
         title="Delivery"
         description="Where you deliver, what home delivery and pickup cost, and how long it takes. Set an area up once, then tick it on any product."
         actions={
-          <button onClick={() => setEditing("new")} className={btn.primary}>
+          <Link href="/delivery/new" className={btn.primary}>
             <Plus size={17} /> Add delivery area
-          </button>
+          </Link>
         }
       />
 
@@ -65,13 +61,13 @@ export function DeliveryView({ zones: initial }: { zones: DeliveryZone[] }) {
       <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
         <div className="flex min-w-0 flex-col gap-3">
           {zones.length === 0 ? (
-            <EmptyState illo="bike" title="Add your first delivery area" message="Pick a state, the cities you cover, and your home delivery and pickup prices." action={<button onClick={() => setEditing("new")} className={`${btn.primary} mt-2`}>Add delivery area</button>} />
+            <EmptyState illo="bike" title="Add your first delivery area" message="Pick a state, the cities you cover, and your home delivery and pickup prices." action={<Link href="/delivery/new" className={`${btn.primary} mt-2`}>Add delivery area</Link>} />
           ) : (
             zones.map((z) => {
               const approved = z.review === "approved";
               return (
                 <div key={z.id} className={`relative rounded-2xl border bg-surface transition hover:border-faint ${zoneLive(z) ? "border-line" : "border-dashed border-line"}`}>
-                  <button onClick={() => setEditing(z)} className={`flex w-full items-start gap-3 p-4 text-left sm:gap-4 ${approved ? "pr-20" : ""}`}>
+                  <Link href={`/delivery/${z.id}`} className={`flex w-full items-start gap-3 p-4 text-left sm:gap-4 ${approved ? "pr-20" : ""}`}>
                     <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${zoneLive(z) ? "bg-brand-soft" : "bg-surface-alt"}`}>
                       <MapPin size={19} className={zoneLive(z) ? "text-brand-strong" : "text-muted"} />
                     </span>
@@ -81,7 +77,7 @@ export function DeliveryView({ zones: initial }: { zones: DeliveryZone[] }) {
                       <span className="mt-1 block text-xs text-muted">
                         {z.days}
                         {z.freeOver ? ` · free home delivery over ${formatNaira(z.freeOver)}` : ""}
-                        {z.pickup ? ` · pickup at ${z.pickup.point}` : ""}
+                        {z.pickup ? ` · pickup at ${z.pickup.point}${(z.pickup.places?.length ?? 1) > 1 ? ` +${(z.pickup.places?.length ?? 1) - 1} more` : ""}` : ""}
                       </span>
                       {z.review !== "approved" && (
                         <span className="mt-2 block">
@@ -93,7 +89,7 @@ export function DeliveryView({ zones: initial }: { zones: DeliveryZone[] }) {
                         <Pencil size={12} /> Edit area and prices
                       </span>
                     </span>
-                  </button>
+                  </Link>
                   {approved && (
                     <span className="absolute right-4 top-4">
                       <Switch
@@ -125,16 +121,6 @@ export function DeliveryView({ zones: initial }: { zones: DeliveryZone[] }) {
         </div>
       </div>
 
-      <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing === "new" ? "Add delivery area" : "Edit delivery area"}>
-        {editing !== null && (
-          <ZoneForm
-            key={editing === "new" ? "new" : editing.id}
-            zone={editing === "new" ? undefined : editing}
-            onSave={save}
-            onDelete={editing === "new" ? undefined : () => { setZones(zones.filter((x) => x.id !== editing.id)); setEditing(null); }}
-          />
-        )}
-      </Sheet>
     </>
   );
 }

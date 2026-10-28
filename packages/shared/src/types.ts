@@ -526,6 +526,8 @@ export interface PlaceOrderInput {
   idempotencyKey: string;
   /** A marketplace store's pickup point (one of its delivery areas), for pickup orders */
   pickupZoneId?: string;
+  /** Which of that area's pickup points, by name */
+  pickupPlace?: string;
   /** Tokens to pay with: the store's own and/or $SOTECHY */
   tokens?: { ticker: string; amount: number }[];
 }
@@ -612,6 +614,8 @@ export interface StoreDeliveryArea {
   /** The pickup point's name, and where it is */
   pickupPoint: string | null;
   pickupAddress?: string | null;
+  /** All the area's pickup points (the first is pickupPoint) */
+  pickupPlaces?: { name: string; address: string }[];
   days: string;
   freeOver: number | null;
 }
@@ -714,7 +718,7 @@ export interface DeliveryZone {
   areas: string[];
   homeFee: number;
   /** `point` is the place's name; `address` is where it is */
-  pickup?: { fee: number; point: string; address?: string | null };
+  pickup?: { fee: number; point: string; address?: string | null; places?: { name: string; address: string }[] };
   days: string;
   freeOver?: number;
   active: boolean;

@@ -80,7 +80,7 @@ export function ZonesView({ zones }: { zones: ZoneRow[] }) {
 
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 <span className="inline-flex items-center gap-1.5"><Home size={14} className="text-muted" /> Home {price(z.homeFee)}</span>
-                {z.pickupPoint && <span className="inline-flex items-center gap-1.5"><Store size={14} className="text-muted" /> Pickup {price(z.pickupFee)} at {z.pickupPoint}{z.pickupAddress ? `, ${z.pickupAddress}` : ""}</span>}
+                {z.pickupPoint && <span className="inline-flex items-center gap-1.5"><Store size={14} className="text-muted" /> Pickup {price(z.pickupFee)} at {(z.pickupPlaces?.length ? z.pickupPlaces : [{ name: z.pickupPoint, address: z.pickupAddress ?? "" }]).map((p) => [p.name, p.address].filter(Boolean).join(", ")).join(" · ")}</span>}
                 <span className="text-muted">{z.days}</span>
                 {z.freeOver && <span className="text-muted">Free over {formatNaira(z.freeOver)}</span>}
               </div>

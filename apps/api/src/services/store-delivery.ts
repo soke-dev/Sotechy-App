@@ -20,6 +20,7 @@ export async function liveAreas(tx: Pick<Tx, "select">, merchantId: string): Pro
     pickupFee: r.pickupFee,
     pickupPoint: r.pickupPoint,
     pickupAddress: r.pickupAddress,
+    pickupPlaces: r.pickupPlaces?.length ? r.pickupPlaces : r.pickupPoint ? [{ name: r.pickupPoint, address: r.pickupAddress ?? "" }] : [],
     days: r.days,
     freeOver: r.freeOver,
   }));
@@ -28,8 +29,8 @@ export async function liveAreas(tx: Pick<Tx, "select">, merchantId: string): Pro
 export async function storeDeliveryCharge(
   tx: Tx,
   merchantId: string,
-  input: { fulfilment: "delivery" | "pickup"; state?: string; city?: string; pickupZoneId?: string; variantIds: string[]; subtotal: number },
-): Promise<{ fee: number; zoneId: string | null }> {
+  input: { fulfilment: "delivery" | "pickup"; state?: string; city?: string; pickupZoneId?: string; pickupPlace?: string; variantIds: string[]; subtotal: number },
+): Promise<{ fee: number; zoneId: string | null; spot?: string | null }> {
   const areas = await liveAreas(tx, merchantId);
   const [store] = await tx.select({ name: schema.merchants.name }).from(schema.merchants).where(eq(schema.merchants.id, merchantId));
 
@@ -39,7 +40,11 @@ export async function storeDeliveryCharge(
     if (!points.length) throw badRequest(`${store?.name ?? "This store"} doesn't have a pickup location yet`);
     const point = points.find((a) => a.id === input.pickupZoneId);
     if (!point) throw badRequest("Choose where you'll collect your order");
-    return { fee: point.pickupFee ?? 0, zoneId: point.id };
+    // Which of the area's pickup points (the first when none is named)
+    const places = point.pickupPlaces ?? [];
+    const place = input.pickupPlace ? places.find((p) => p.name === input.pickupPlace) : places[0];
+    if (input.pickupPlace && !place) throw badRequest("That pickup point isn't available. Choose another.");
+    return { fee: point.pickupFee ?? 0, zoneId: point.id, spot: place ? [place.name, place.address].filter(Boolean).join(", ") : null };
   }
 
   const where = `${input.city ?? ""}, ${input.state ?? ""}`.replace(/^, |, $/g, "");

@@ -295,6 +295,8 @@ export const deliveryZones = pgTable("delivery_zones", {
   pickupPoint: text(),
   /** Where it is, e.g. "2 Ring Road, Benin City" */
   pickupAddress: text(),
+  /** Every pickup point in the area (up to 5), all at the area's pickup price; the first is pickupPoint/pickupAddress */
+  pickupPlaces: jsonb().$type<{ name: string; address: string }[]>().notNull().default([]),
   days: text().notNull(),
   freeOver: money(),
   isActive: boolean().notNull().default(true),
@@ -582,6 +584,8 @@ export const orders = pgTable(
     /** The customer said they got it; the store's final payment falls due then */
     customerConfirmedAt: timestamp({ withTimezone: true }),
     /** The customer said they didn't get it, after the store marked it delivered: Sotechy follows up */
+    /** The pickup point the customer chose in the order's pickup area, "Name, address" */
+    pickupSpot: text(),
     customerIssueAt: timestamp({ withTimezone: true }),
     customerIssueNote: text(),
     /** A store asking to hand this pickup order over somewhere other than its approved pickup location.

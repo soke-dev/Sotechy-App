@@ -190,12 +190,13 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
       });
 
       // A store charges from its own delivery areas; Sotechy uses its delivery settings
-      const { fee: deliveryFee, zoneId } = branch.merchantId
+      const { fee: deliveryFee, zoneId, spot } = branch.merchantId
         ? await storeDeliveryCharge(tx, branch.merchantId, {
             fulfilment: input.fulfilmentType,
             state: input.deliveryAddress?.state,
             city: input.deliveryAddress?.city,
             pickupZoneId: input.pickupZoneId,
+            pickupPlace: input.pickupPlace,
             variantIds: lines.map((l) => l.variantId),
             subtotal,
           })
@@ -216,6 +217,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
           branchId: input.branchId,
           merchantId: branch.merchantId,
           deliveryZoneId: zoneId,
+          pickupSpot: input.fulfilmentType === "pickup" ? (spot ?? null) : null,
           fulfilmentType: input.fulfilmentType,
           deliveryAddress: input.fulfilmentType === "delivery" ? ({ ...input.deliveryAddress } as Record<string, string>) : null,
           paymentMethod: input.paymentMethod,
