@@ -81,17 +81,21 @@ export async function loadOrderDetail(orderId: string) {
 
   // A pickup order is collected at the store's pickup location, or at a change Sotechy approved
   let pickupLocation: string | null = null;
+  let pickupMapUrl: string | null = null;
   if (order.fulfilmentType === "pickup") {
     const [zone] = order.deliveryZoneId
-      ? await db.select({ point: schema.deliveryZones.pickupPoint, address: schema.deliveryZones.pickupAddress }).from(schema.deliveryZones).where(eq(schema.deliveryZones.id, order.deliveryZoneId))
+      ? await db.select({ point: schema.deliveryZones.pickupPoint, address: schema.deliveryZones.pickupAddress, places: schema.deliveryZones.pickupPlaces }).from(schema.deliveryZones).where(eq(schema.deliveryZones.id, order.deliveryZoneId))
       : [];
     pickupLocation = order.pickupChangeStatus === "approved" ? order.pickupChangePoint : (order.pickupSpot ?? ([zone?.point, zone?.address].filter(Boolean).join(", ") || null));
+    // The chosen point's map link, when the store added one
+    const place = (zone?.places ?? []).find((p) => [p.name, p.address].filter(Boolean).join(", ") === pickupLocation) ?? (order.pickupSpot ? undefined : zone?.places?.[0]);
+    pickupMapUrl = order.pickupChangeStatus === "approved" ? null : (place?.mapUrl ?? null);
   }
   // The store's token can pay towards its orders (with $SOTECHY)
   const [seller] = order.merchantId ? await db.select({ ticker: schema.merchants.ticker }).from(schema.merchants).where(eq(schema.merchants.id, order.merchantId)) : [];
   const reviewed = order.customerId ? await reviewedBy(order.customerId) : new Set<string>();
   const { idempotencyKey: _k, pickupChangePoint: _p, pickupChangeStatus: _ps, pickupChangeAt: _pa, ...publicOrder } = order;
-  return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation, storeTicker: seller?.ticker ?? null,
+  return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation, pickupMapUrl, storeTicker: seller?.ticker ?? null,
     // Products in it the customer has already reviewed (one review each)
     reviewedProductIds: items.map((i) => i.productId).filter((id): id is string => !!id && reviewed.has(id)) };
 }

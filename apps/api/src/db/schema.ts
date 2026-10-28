@@ -77,6 +77,8 @@ export interface MerchantApplication {
   registeredOn?: string | null;
   tin?: string | null;
   businessAddress?: string | null;
+  /** Google Maps link to the business (optional) */
+  businessMapUrl?: string | null;
   /** Uploaded documents by name, e.g. { "CAC certificate": "/media/…" } */
   documents?: Record<string, string>;
   people?: { name: string; role: string; share: number }[];
@@ -121,6 +123,8 @@ export const branches = pgTable("branches", {
   state: text().notNull(),
   phone: text(),
   openingHours: text(),
+  /** Google Maps link to the exact spot (optional) */
+  mapUrl: text(),
   isActive: boolean().notNull().default(true),
   createdAt: createdAt(),
 });
@@ -296,7 +300,7 @@ export const deliveryZones = pgTable("delivery_zones", {
   /** Where it is, e.g. "2 Ring Road, Benin City" */
   pickupAddress: text(),
   /** Every pickup point in the area (up to 5), all at the area's pickup price; the first is pickupPoint/pickupAddress */
-  pickupPlaces: jsonb().$type<{ name: string; address: string }[]>().notNull().default([]),
+  pickupPlaces: jsonb().$type<{ name: string; address: string; mapUrl?: string | null }[]>().notNull().default([]),
   days: text().notNull(),
   freeOver: money(),
   isActive: boolean().notNull().default(true),

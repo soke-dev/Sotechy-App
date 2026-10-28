@@ -55,7 +55,7 @@ export interface AdminZone {
   pickupFee: number | null;
   pickupPoint: string | null;
   pickupAddress?: string | null;
-  pickupPlaces?: { name: string; address: string }[];
+  pickupPlaces?: { name: string; address: string; mapUrl?: string | null }[];
   days: string;
   freeOver: number | null;
   isActive: boolean;

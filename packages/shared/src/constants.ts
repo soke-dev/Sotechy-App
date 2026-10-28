@@ -111,6 +111,12 @@ export const TOKEN_RULES = {
   walkInFeeRate: 0.01,
 } as const;
 
+/** A Google Maps link (place, share or short link) */
+export const isMapLink = (url: string) => /^https:\/\/((www\.)?google\.(com|co\.[a-z]{2}|com\.[a-z]{2}|[a-z]{2})\/maps|maps\.google\.(com|co\.[a-z]{2}|com\.[a-z]{2}|[a-z]{2})[/?]|maps\.app\.goo\.gl\/|goo\.gl\/maps)/i.test(url.trim());
+
+/** Where "Directions" goes: the place's own Google Maps link, or a search for its address */
+export const directionsUrl = (address: string, mapUrl?: string | null) => mapUrl?.trim() || `https://maps.google.com/?q=${encodeURIComponent(address)}`;
+
 /** Naira value of one token at the store that issued it (₦0.00909) */
 export const TOKEN_VALUE = (TOKEN_RULES.feeRate * TOKEN_RULES.reserveShare) / (1 + TOKEN_RULES.photoReviewBonus);
 

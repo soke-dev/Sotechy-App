@@ -3,7 +3,7 @@ import * as Clipboard from "expo-clipboard";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
-import { formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderDetail } from "@sotechy/shared";
+import { directionsUrl, formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderDetail } from "@sotechy/shared";
 import { useDialog } from "@/components/dialog";
 import { PayChoiceSheet, useMoneyMoves } from "@/components/money-moves";
 import { useToast } from "@/components/toast";
@@ -187,7 +187,7 @@ export default function OrderScreen() {
   const support = config.data?.support;
   const finished = order.status === "delivered" || order.status === "cancelled" || order.status === "refunded";
   const store = order.branch;
-  const mapsUrl = store ? `https://maps.google.com/?q=${encodeURIComponent(`${store.address}, ${store.city}, Nigeria`)}` : null;
+  const mapsUrl = store ? directionsUrl(`${store.address}, ${store.city}, Nigeria`, store.mapUrl) : null;
   const history = [...order.history].reverse();
 
   /** The customer says they got it, so the store's last payment can go */
@@ -497,7 +497,7 @@ export default function OrderScreen() {
               icon="navigate-outline"
               variant="outline"
               size="sm"
-              onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(order.pickupLocation ?? "")}`)}
+              onPress={() => Linking.openURL(directionsUrl(order.pickupLocation ?? "", order.pickupMapUrl))}
             />
             <Txt variant="caption">Bring your order number ({order.orderNumber}) when you collect.</Txt>
           </>

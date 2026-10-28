@@ -291,6 +291,7 @@ export async function createBranch(_: Prev, f: FormData) {
         state: str(f, "state"),
         phone: str(f, "phone") ?? null,
         openingHours: str(f, "openingHours") ?? null,
+        mapUrl: str(f, "mapUrl") ?? null,
       }),
     ["/branches"],
     "Branch added",

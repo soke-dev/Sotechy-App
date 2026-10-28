@@ -17,7 +17,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { anyCategory, MARKET_DEPARTMENTS, type Category } from "@sotechy/shared";
+import { anyCategory, directionsUrl, MARKET_DEPARTMENTS, type Category } from "@sotechy/shared";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { colors, radius, space } from "@/lib/theme";
@@ -237,7 +237,7 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
         <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: insets.bottom + space.md, gap: space.sm }}>
           {headOffice && (
             <Pressable
-              onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${headOffice.address}, ${headOffice.city}, Nigeria`)}`)}
+              onPress={() => Linking.openURL(directionsUrl(`${headOffice.address}, ${headOffice.city}, Nigeria`, headOffice.mapUrl))}
               style={[ui.row, { gap: space.md }]}
             >
               <Illo name="pin" size={26} />

@@ -4,7 +4,7 @@ import { Check, Clock, Home, Plus, Store, X } from "lucide-react";
 import { useState, useTransition, type ReactNode } from "react";
 import { btn, Field, inputClass } from "./ui";
 import { formatNaira } from "@/lib/money";
-import { STATE_CITIES } from "@sotechy/shared";
+import { STATE_CITIES, isMapLink } from "@sotechy/shared";
 import type { DeliveryZone } from "@/lib/mock";
 import { removeZone, saveZone } from "@/lib/market-actions";
 import { AddressInput } from "./address-input";
@@ -43,11 +43,13 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
   const [hasPickup, setHasPickup] = useState(zone ? Boolean(zone.pickup) : true);
   const [pickupFee, setPickupFee] = useState(zone?.pickup?.fee ?? 0);
   // Up to 5 pickup points in the area, all at the area's pickup price
-  const [places, setPlaces] = useState<{ name: string; address: string }[]>(
+  const [places, setPlaces] = useState<{ name: string; address: string; mapUrl?: string | null }[]>(
     zone?.pickup?.places?.length ? zone.pickup.places : zone?.pickup ? [{ name: zone.pickup.point, address: zone.pickup.address ?? "" }] : [{ name: "", address: "" }],
   );
-  const setPlace = (i: number, patch: Partial<{ name: string; address: string }>) => setPlaces((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
-  const cleanPlaces = places.map((p) => ({ name: p.name.trim(), address: p.address.trim() }));
+  const setPlace = (i: number, patch: Partial<{ name: string; address: string; mapUrl: string }>) => setPlaces((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  // A map link is optional; without one, Directions searches the address
+  const cleanPlaces = places.map((p) => ({ name: p.name.trim(), address: p.address.trim(), ...(p.mapUrl?.trim() ? { mapUrl: p.mapUrl.trim() } : {}) }));
+  const badLink = cleanPlaces.some((p) => p.mapUrl && !isMapLink(p.mapUrl));
   const [days, setDays] = useState(zone?.days ?? "1–2 days");
   const [freeOver, setFreeOver] = useState(zone?.freeOver ?? 0);
 
@@ -70,7 +72,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
     zone.state !== state ||
     (whole ? zone.areas.length > 0 : zone.areas.join("|") !== areas.join("|")) ||
     JSON.stringify(zone.pickup?.places ?? (zone.pickup ? [{ name: zone.pickup.point, address: zone.pickup.address ?? "" }] : [])) !== JSON.stringify(hasPickup ? cleanPlaces : []);
-  const valid = (whole || areas.length > 0) && (!hasPickup || cleanPlaces.every((p) => p.name.length >= 3 && p.address.length >= 3));
+  const valid = (whole || areas.length > 0) && (!hasPickup || (cleanPlaces.every((p) => p.name.length >= 3 && p.address.length >= 3) && !badLink));
   const cheaper = hasPickup && homeFee > 0 && pickupFee >= homeFee;
 
   return (
@@ -200,6 +202,9 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
                 </Field>
                 <Field required label="Address">
                   <AddressInput value={p.address} onChange={(v) => setPlace(i, { address: v })} placeholder="e.g. 2 Ring Road, Benin City" />
+                </Field>
+                <Field label="Google Maps link" hint={p.mapUrl?.trim() && !isMapLink(p.mapUrl) ? "That isn't a Google Maps link. In Google Maps, tap Share and copy the link." : "Optional. Takes customers to the exact spot; without it we search the address."}>
+                  <input value={p.mapUrl ?? ""} onChange={(e) => setPlace(i, { mapUrl: e.target.value })} inputMode="url" maxLength={500} className={inputClass} placeholder="https://maps.app.goo.gl/…" />
                 </Field>
               </div>
             ))}

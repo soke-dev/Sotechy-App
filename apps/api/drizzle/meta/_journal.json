@@ -197,6 +197,13 @@
       "when": 1793170795596,
       "tag": "0027_support_images_store_promos",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793190890316,
+      "tag": "0028_branch_map_url",
+      "breakpoints": true
     }
   ]
 }

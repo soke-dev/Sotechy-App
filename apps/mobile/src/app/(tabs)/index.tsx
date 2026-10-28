@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, type Href } from "expo-router";
 import { Linking, Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatNaira, type Category } from "@sotechy/shared";
+import { directionsUrl, formatNaira, type Category } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { HomeSearch } from "@/components/home-search";
@@ -383,7 +383,7 @@ export default function HomeScreen() {
               size="sm"
               variant="outline"
               style={{ alignSelf: "flex-start", marginTop: space.sm }}
-              onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${headOffice.address}, ${headOffice.city}, Nigeria`)}`)}
+              onPress={() => Linking.openURL(directionsUrl(`${headOffice.address}, ${headOffice.city}, Nigeria`, headOffice.mapUrl))}
             />
           </View>
         </View>

@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { and, asc, desc, eq, ilike, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import { isMapLink } from "@sotechy/shared";
 import { db, schema } from "../../db/client";
 import { ensureStoreTokens, walletFor } from "../../services/tokens";
 import { CHAINS } from "../../services/chain";
@@ -32,6 +33,7 @@ const branchFields = z.object({
   state: z.string().min(1),
   phone: z.string().nullable().optional(),
   openingHours: z.string().nullable().optional(),
+  mapUrl: z.string().trim().max(500).refine(isMapLink, "Paste a Google Maps link").nullable().optional(),
   isActive: z.boolean().optional(),
 });
 

@@ -175,7 +175,7 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
               <Row label="Registration number">{app?.registrationNumber}</Row>
               <Row label="Registered on">{app?.registeredOn}</Row>
               <Row label="TIN">{app?.tin}</Row>
-              <Row label="Address">{app?.businessAddress}</Row>
+              <Row label="Address">{app?.businessAddress}{app?.businessMapUrl ? <> · <a href={app.businessMapUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-strong hover:underline">Map</a></> : null}</Row>
               <div className="mt-4 flex flex-col gap-2">
                 <p className="text-sm font-semibold">Documents</p>
                 {docs.length ? (
@@ -254,7 +254,12 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
           <Card title="Store">
             <Row label="Token ticker">{`$${store.ticker}`}{!store.tokenApprovedAt && <span className="block text-xs font-normal text-muted">{store.application?.tickerChosen ? "Chosen by the store · fixed when you approve" : "Not chosen yet"}</span>}</Row>
             <Row label="Sells">{store.sells.length ? store.sells.join(", ") : null}</Row>
-            {store.sellerKind === "individual" && <Row label="Business address">{store.application?.businessAddress}</Row>}
+            {store.sellerKind === "individual" && (
+              <Row label="Business address">
+                {store.application?.businessAddress}
+                {store.application?.businessMapUrl ? <> · <a href={store.application.businessMapUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-strong hover:underline">Map</a></> : null}
+              </Row>
+            )}
             <Row label="Website">{store.application?.website ? <a href={/^https?:/.test(store.application.website) ? store.application.website : `https://${store.application.website}`} target="_blank" rel="noopener noreferrer" className="text-brand-strong hover:underline">{store.application.website}</a> : null}</Row>
             <Row label="Socials">
               {store.application?.socials && Object.values(store.application.socials).some(Boolean)

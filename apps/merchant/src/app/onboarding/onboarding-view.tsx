@@ -4,7 +4,7 @@ import { ArrowLeft, Building2, Check, ChevronRight, CircleHelp, FileText, Globe,
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
-import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, TOKEN_RULES, TOKEN_VALUE, tickerIdeas, tickerProblem, tokensToNaira, type BusinessStructure, type KycStatus, type MerchantApplicationInput } from "@sotechy/shared";
+import { BUSINESS_DOCUMENTS, isMapLink, MIN_BUSINESS_DESCRIPTION, TOKEN_RULES, TOKEN_VALUE, tickerIdeas, tickerProblem, tokensToNaira, type BusinessStructure, type KycStatus, type MerchantApplicationInput } from "@sotechy/shared";
 import { checkTicker, saveApplication, uploadFiles } from "@/lib/market-actions";
 import { IdCheck } from "@/components/id-check";
 import { SellsPicker } from "@/components/sells-picker";
@@ -68,6 +68,14 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
   const [description, setDescription] = useState(app?.description ?? "");
   // Freelancers can give a business address too; registered businesses give theirs under Business details
   const [ownAddress, setOwnAddress] = useState(app?.businessAddress ?? "");
+  // Optional: a Google Maps link to the business, for the exact spot
+  const [mapUrl, setMapUrl] = useState(app?.businessMapUrl ?? "");
+  const badMapUrl = !!mapUrl.trim() && !isMapLink(mapUrl);
+  const mapField = (
+    <Field label="Google Maps link" hint={badMapUrl ? "That isn't a Google Maps link. In Google Maps, tap Share and copy the link." : "Optional. Shows the exact spot; without it we use the address."}>
+      <input value={mapUrl} onChange={(e) => setMapUrl(e.target.value)} inputMode="url" maxLength={500} className={inputClass} placeholder="https://maps.app.goo.gl/…" />
+    </Field>
+  );
   const [website, setWebsite] = useState(app?.website ?? "");
   const [socials, setSocials] = useState({ instagram: app?.socials?.instagram ?? "", x: app?.socials?.x ?? "", facebook: app?.socials?.facebook ?? "", tiktok: app?.socials?.tiktok ?? "" });
   const [sells, setSells] = useState<string[]>(start.sells);
@@ -161,6 +169,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
     sells,
     structure: kind === "registered" ? structure : null,
     ...(kind === "registered" ? business : { registeredName: null, registrationNumber: null, registeredOn: null, tin: null, businessAddress: ownAddress.trim() || null }),
+    businessMapUrl: mapUrl.trim() && !badMapUrl ? mapUrl.trim() : null,
     website: website.trim() || null,
     socials: Object.values(socials).some((v) => v.trim()) ? { instagram: socials.instagram.trim() || null, x: socials.x.trim() || null, facebook: socials.facebook.trim() || null, tiktok: socials.tiktok.trim() || null } : null,
     documents: uploaded,
@@ -301,6 +310,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                     <AddressInput value={business.businessAddress} onChange={(businessAddress) => setBusiness({ ...business, businessAddress })} placeholder="Start typing your street" />
                   </Field>
                 </div>
+                <div className="sm:col-span-2">{mapField}</div>
                 <div className="sm:col-span-2">
                   <Field label="Tax ID (TIN)" hint="Optional.">
                     <input value={business.tin} onChange={(e) => setBusiness({ ...business, tin: e.target.value })} inputMode="numeric" className={inputClass} />
@@ -409,6 +419,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                 {kind === "individual" && (
                   <Section label="Business address">
                     <AddressInput value={ownAddress} onChange={setOwnAddress} placeholder="Where you work from, if you have a shop or office" />
+                    <div className="mt-3">{mapField}</div>
                   </Section>
                 )}
                 <Section label="Token ticker" required help={<TokenHelp />}>

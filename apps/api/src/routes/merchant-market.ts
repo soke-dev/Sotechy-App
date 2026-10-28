@@ -10,7 +10,7 @@ import { publicApiUrl } from "../env";
 import { audit } from "../lib/audit";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
-import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem } from "@sotechy/shared";
+import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem, isMapLink } from "@sotechy/shared";
 import { slugify } from "../lib/identity";
 import { railBanks } from "../services/payout-rail";
 import { buyFeaturing, featuredCount, featuringSettings, purchasesOf, storeFeatureCount } from "../services/featuring";
@@ -297,7 +297,7 @@ async function ownOrder(storeId: string, orderId: string) {
 // Delivery areas
 // ---------------------------------------------------------------------------
 /** A pickup area's points as stored: every place, with the first also as the main point */
-function pickupColumns(pickup: { fee: number; point: string; address?: string | null; places?: { name: string; address: string }[] } | null | undefined) {
+function pickupColumns(pickup: { fee: number; point: string; address?: string | null; places?: { name: string; address: string; mapUrl?: string | null }[] } | null | undefined) {
   if (!pickup) return { pickupFee: null, pickupPoint: null, pickupAddress: null, pickupPlaces: [] };
   const places = pickup.places?.length ? pickup.places : [{ name: pickup.point, address: pickup.address ?? "" }];
   return { pickupFee: pickup.fee, pickupPoint: places[0].name, pickupAddress: places[0].address || null, pickupPlaces: places };
@@ -328,7 +328,7 @@ const zoneInput = z.object({
       point: z.string().trim().min(3).max(140),
       address: z.string().trim().max(200).optional().nullable(),
       // Up to 5 pickup points in the area; when sent, the first one is `point`/`address`
-      places: z.array(z.object({ name: z.string().trim().min(3).max(140), address: z.string().trim().min(3).max(200) })).min(1).max(5).optional(),
+      places: z.array(z.object({ name: z.string().trim().min(3).max(140), address: z.string().trim().min(3).max(200), mapUrl: z.string().trim().max(500).refine(isMapLink, "Paste a Google Maps link").nullable().optional() })).min(1).max(5).optional(),
     })
     .optional()
     .nullable(),
@@ -573,6 +573,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
         registeredOn: z.string().max(20).nullable().optional(),
         tin: z.string().trim().max(30).nullable().optional(),
         businessAddress: z.string().trim().max(200).nullable().optional(),
+        businessMapUrl: z.string().trim().max(500).refine(isMapLink, "Paste a Google Maps link").nullable().optional(),
         documents: z.record(z.string().max(60), z.string().max(200)).default({}),
         people: z.array(z.object({ name: z.string().trim().min(1).max(120), role: z.string().max(60), share: z.number().min(0).max(100) })).max(20).default([]),
         bank: z.object({ bankName: z.string().min(2).max(60), accountNumber: z.string().regex(/^\d{10}$/, "Account numbers have 10 digits") }).nullable().optional(),

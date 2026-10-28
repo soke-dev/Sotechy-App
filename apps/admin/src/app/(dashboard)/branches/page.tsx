@@ -19,6 +19,7 @@ export default async function BranchesPage() {
           <Field label="State"><input name="state" required className={inputClass} /></Field>
           <Field label="Phone"><input name="phone" className={inputClass} /></Field>
           <Field label="Opening hours"><input name="openingHours" placeholder="Mon–Sat 9am–6pm" className={inputClass} /></Field>
+          <Field label="Google Maps link"><input name="mapUrl" placeholder="https://maps.app.goo.gl/… (optional)" className={inputClass} /></Field>
         </ActionForm>
       </Card>
       <Card>
@@ -28,7 +29,7 @@ export default async function BranchesPage() {
           columns={[
             { header: "Name", cell: (b) => b.name },
             { header: "Code", cell: (b) => b.code },
-            { header: "Address", cell: (b) => `${b.address}, ${b.city}, ${b.state}` },
+            { header: "Address", cell: (b) => (b.mapUrl ? <a href={b.mapUrl} target="_blank" rel="noreferrer" className="hover:underline">{`${b.address}, ${b.city}, ${b.state}`}</a> : `${b.address}, ${b.city}, ${b.state}`) },
             { header: "Phone", cell: (b) => b.phone ?? "—" },
             { header: "Hours", cell: (b) => b.openingHours ?? "—" },
             { header: "Active", cell: (b) => (b.isActive ? "Yes" : "No") },

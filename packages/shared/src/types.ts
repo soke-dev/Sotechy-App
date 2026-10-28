@@ -36,6 +36,8 @@ export interface Branch {
   state: string;
   phone: string | null;
   openingHours: string | null;
+  /** Google Maps link to the exact spot (optional) */
+  mapUrl?: string | null;
   isActive: boolean;
 }
 
@@ -247,6 +249,8 @@ export interface Order {
   customerIssueAt?: string | null;
   /** Where a pickup order is collected (a store's approved pickup location, or an approved change) */
   pickupLocation?: string | null;
+  /** The pickup point's Google Maps link, when the store added one */
+  pickupMapUrl?: string | null;
   /** Products in it the customer has already reviewed (one review each) */
   reviewedProductIds?: string[];
   /** Tokens put towards it (held until it's paid), and the selling store's ticker */
@@ -620,7 +624,7 @@ export interface StoreDeliveryArea {
   pickupPoint: string | null;
   pickupAddress?: string | null;
   /** All the area's pickup points (the first is pickupPoint) */
-  pickupPlaces?: { name: string; address: string }[];
+  pickupPlaces?: { name: string; address: string; mapUrl?: string | null }[];
   days: string;
   freeOver: number | null;
 }
@@ -723,7 +727,7 @@ export interface DeliveryZone {
   areas: string[];
   homeFee: number;
   /** `point` is the place's name; `address` is where it is */
-  pickup?: { fee: number; point: string; address?: string | null; places?: { name: string; address: string }[] };
+  pickup?: { fee: number; point: string; address?: string | null; places?: { name: string; address: string; mapUrl?: string | null }[] };
   days: string;
   freeOver?: number;
   active: boolean;
@@ -764,6 +768,8 @@ export interface MerchantApplicationInput {
   registeredOn?: string | null;
   tin?: string | null;
   businessAddress?: string | null;
+  /** Google Maps link to the business (optional) */
+  businessMapUrl?: string | null;
   documents?: Record<string, string>;
   people?: { name: string; role: string; share: number }[];
   bank?: { bankName: string; accountNumber: string } | null;
