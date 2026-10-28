@@ -22,14 +22,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, uploadPhoto } from "@/lib/api";
+import type { SupportChatSummary } from "@sotechy/shared";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, radius, space } from "@/lib/theme";
-import { useAsync } from "@/lib/use-async";
-import { openWhatsApp } from "@/lib/whatsapp";
 import { SupportAgentArt } from "./tab-icons";
 import { Chip, tap, Txt } from "./ui";
 
-type Action = { label: string; kind: "whatsapp"; message: string } | { label: string; kind: "route"; href: Href };
+/** "human" sends the conversation to Sotechy's team, who answer right here */
+type Action = { label: string; kind: "human" } | { label: string; kind: "route"; href: Href };
 interface Message {
   id: string;
   from: "agent" | "user";
@@ -43,29 +43,40 @@ interface Message {
   imageUrl?: string | null;
 }
 
+const HUMAN: Action = { label: "Talk to a person", kind: "human" };
+
+// Quick answers; anything else goes to the team with "Talk to a person"
 const TOPICS: { label: string; reply: Omit<Message, "id" | "from" | "at"> }[] = [
   {
     label: "Track my order",
-    reply: { text: "You can follow every order step by step under Orders, including payment status and pickup details.", actions: [{ label: "Open my orders", kind: "route", href: "/orders" }] },
+    reply: { text: "Every order shows each step under Orders: payment, the store accepting it, then on its way or ready at the pickup location.", actions: [{ label: "Open my orders", kind: "route", href: "/orders" }, HUMAN] },
   },
   {
-    label: "Is an item in stock?",
+    label: "Paying",
     reply: {
-      text: "Every product page shows live stock at each of our stores. Tell us the product and we'll double-check for you.",
-      actions: [{ label: "Ask on WhatsApp", kind: "whatsapp", message: "Hello Sotechy, is this item in stock: " }],
+      text: "You pay with stablecoin (USDT or USDC) through Money Moves at checkout. Bank transfer is coming soon. You can also use your store tokens to pay part of an order.",
+      actions: [HUMAN],
     },
   },
   {
-    label: "Payment help",
-    reply: { text: "We accept bank transfer, online payment and $MOVE crypto. Your order is confirmed as soon as we verify the payment." },
-  },
-  {
-    label: "Talk to a person",
+    label: "Delivery & pickup",
     reply: {
-      text: "Type your message below and someone from our team will answer right here. Prefer WhatsApp? That works too.",
-      actions: [{ label: "Chat on WhatsApp", kind: "whatsapp", message: "Hello Sotechy, I need some help." }],
+      text: "Stores deliver to your home, or you collect from one of their pickup locations. You'll see the options, prices and times at checkout.",
+      actions: [HUMAN],
     },
   },
+  {
+    label: "Tokens",
+    reply: {
+      text: "You earn 1 token per ₦1 from each store when your order arrives, plus 10% in $SOTECHY when you buy from other stores. Use them at checkout to pay part of an order.",
+      actions: [{ label: "Open my wallet", kind: "route", href: "/wallet" }, HUMAN],
+    },
+  },
+  {
+    label: "A problem with an order",
+    reply: { text: "Sorry about that. Tell us what happened, and add a photo if it helps. Someone from our team will reply right here.", actions: [HUMAN] },
+  },
+  { label: "Talk to a person", reply: { text: "", actions: [] } },
 ];
 
 const useNative = Platform.OS !== "web";
@@ -206,7 +217,6 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const { user } = useAuth();
-  const config = useAsync(() => api.storeConfig());
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -259,7 +269,35 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
     };
   }, [user]);
   const shown = [...messages, ...thread].sort((a, b) => a.at - b.at);
-  const whatsapp = config.data?.support.whatsapp;
+  // Past conversations: the list, and one opened to read
+  const [view, setView] = useState<"chat" | "history">("chat");
+  const [past, setPast] = useState<SupportChatSummary[] | null>(null);
+  const [reading, setReading] = useState<{ messages: Message[] } | null>(null);
+  const greeting = (): Message[] => [
+    { id: "hello", from: "agent", text: `Hi${user?.fullName ? ` ${user.fullName.split(" ")[0]}` : ""} 👋 Welcome to Sotechy.`, at: 0 },
+    { id: "ask", from: "agent", text: "How can we help you today? Pick a topic or type your question.", at: 1 },
+  ];
+  const openHistory = () => {
+    tap();
+    setReading(null);
+    setView("history");
+    api.supportChats().then(setPast, () => setPast([]));
+  };
+  const openPast = (c: SupportChatSummary) => {
+    tap();
+    if (c.open) return setView("chat");
+    api.supportChatById(c.id).then((chat) => setReading({ messages: fromServer(chat) }), () => {});
+  };
+  const newChat = async () => {
+    tap();
+    if (user) {
+      await api.newSupportChat().catch(() => null);
+      setThread([]);
+    }
+    setMessages(greeting());
+    setReading(null);
+    setView("chat");
+  };
   const sheetHeight = Math.min(height * 0.78, 640);
   const close = () => {
     Keyboard.dismiss();
@@ -274,6 +312,7 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
 
   const pickTopic = (t: (typeof TOPICS)[number]) => {
     tap();
+    if (t.label === "Talk to a person") return void talkToPerson();
     push({ from: "user", text: t.label });
     setTimeout(() => push({ from: "agent", ...t.reply }), 450);
   };
@@ -282,10 +321,23 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
     if (a.kind === "route") {
       close();
       router.push(a.href);
-    } else if (!(await openWhatsApp(whatsapp, a.message))) {
-      push({ from: "agent", text: "Our WhatsApp number isn't set up yet. Please try again later." });
-    }
+    } else await talkToPerson();
   };
+
+  /** Hands the chat to Sotechy's team: the request is saved like a message, and they reply here */
+  async function talkToPerson() {
+    if (!user) return push({ from: "agent", text: "Sign in so our team can reply to you here.", actions: [{ label: "Sign in", kind: "route", href: "/sign-in" }] });
+    setSending(true);
+    try {
+      const chat = await api.sendSupportChat("I'd like to talk to a person.", orderId);
+      setThread(fromServer(chat));
+      push({ from: "agent", text: "Done. Someone from our team will reply right here, usually within minutes. Tell us more below while you wait." });
+    } catch {
+      push({ from: "agent", text: "That didn't go through. Check your connection and try again.", actions: [HUMAN] });
+    } finally {
+      setSending(false);
+    }
+  }
 
   async function send() {
     const message = text.trim();
@@ -304,18 +356,11 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
         if (first) push({ from: "agent", text: "Thanks! Someone from our team will reply right here. You'll get a notification when they do, so you can close this for now." });
       } else {
         push({ from: "user", text: message });
-        push({
-          from: "agent",
-          text: "Thanks! For the fastest reply, send this to us on WhatsApp, or sign in so our team can follow up with you.",
-          actions: [
-            { label: "Send on WhatsApp", kind: "whatsapp", message },
-            { label: "Sign in", kind: "route", href: "/sign-in" },
-          ],
-        });
+        push({ from: "agent", text: "Sign in so our team can reply to you here.", actions: [{ label: "Sign in", kind: "route", href: "/sign-in" }] });
       }
     } catch {
       setThread((prev) => prev.filter((m) => !m.sending));
-      push({ from: "agent", text: "Sorry, that didn't send. Check your connection and try again, or use WhatsApp.", actions: [{ label: "Open WhatsApp", kind: "whatsapp", message }] });
+      push({ from: "agent", text: "Sorry, that didn't send. Check your connection and try again." });
     } finally {
       setSending(false);
     }
@@ -348,14 +393,51 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
                 <Txt variant="caption" color="#C9C0B6">Online · usually replies in minutes</Txt>
               </View>
             </View>
+            {user ? (
+              <>
+                <Pressable onPress={view === "history" ? () => (reading ? setReading(null) : setView("chat")) : openHistory} hitSlop={8} accessibilityLabel={view === "history" ? "Back" : "Past conversations"} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name={view === "history" ? "arrow-back" : "time-outline"} size={18} color={colors.white} />
+                </Pressable>
+                <Pressable onPress={newChat} hitSlop={8} accessibilityLabel="New conversation" style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="create-outline" size={18} color={colors.white} />
+                </Pressable>
+              </>
+            ) : null}
             <Pressable onPress={close} hitSlop={12} accessibilityLabel="Close chat" style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}>
               <Ionicons name="close" size={18} color={colors.white} />
             </Pressable>
           </View>
 
-          {/* Conversation */}
+          {/* Past conversations */}
+          {view === "history" && !reading && (
+            <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.sm }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Txt variant="label">Your conversations</Txt>
+                <Pressable onPress={newChat} hitSlop={6}>
+                  <Txt variant="label" color={colors.brandPressed}>+ New chat</Txt>
+                </Pressable>
+              </View>
+              {past === null && <Txt variant="small">Loading…</Txt>}
+              {past?.length === 0 && <Txt variant="small">No conversations yet.</Txt>}
+              {past?.map((c) => (
+                <Pressable key={c.id} onPress={() => openPast(c)} style={({ pressed }) => ({ padding: space.md, borderRadius: radius.lg, borderWidth: 1, borderColor: c.open ? colors.brand : colors.line, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, gap: 3 })}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.sm }}>
+                    <Txt variant="caption">{new Date(c.lastMessageAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</Txt>
+                    <Txt variant="caption" color={c.open ? colors.success : colors.muted}>{c.open ? "Open" : "Closed"}</Txt>
+                  </View>
+                  <Txt variant="body" numberOfLines={2} style={{ fontSize: 14 }}>
+                    {c.lastFromStaff ? "Sotechy: " : "You: "}
+                    {c.lastMessage}
+                  </Txt>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+
+          {/* Conversation (the current one, or a past one being read) */}
+          {(view === "chat" || reading) && (
           <ScrollView ref={scroll} contentContainerStyle={{ padding: space.lg, gap: space.sm }} keyboardShouldPersistTaps="handled">
-            {shown.map((m) => (
+            {(reading ? reading.messages : shown).map((m) => (
               <View key={m.id} style={{ alignItems: m.from === "user" ? "flex-end" : "flex-start", gap: 6, opacity: m.sending ? 0.6 : 1 }}>
                 {m.imageUrl ? (
                   <Image source={{ uri: m.imageUrl }} style={{ width: 200, height: 200, borderRadius: 16, backgroundColor: colors.surfaceAlt }} contentFit="cover" />
@@ -383,13 +465,13 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
                     onPress={() => runAction(a)}
                     style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.inverse }}
                   >
-                    <Ionicons name={a.kind === "whatsapp" ? "logo-whatsapp" : "arrow-forward"} size={15} color={a.kind === "whatsapp" ? colors.brand : colors.onInverse} />
+                    <Ionicons name={a.kind === "human" ? "person-outline" : "arrow-forward"} size={15} color={a.kind === "human" ? colors.brand : colors.onInverse} />
                     <Txt variant="label" color={colors.onInverse} style={{ fontSize: 13 }}>{a.label}</Txt>
                   </Pressable>
                 ))}
               </View>
             ))}
-            {messages.length <= 2 && thread.length === 0 && (
+            {!reading && messages.length <= 2 && thread.length === 0 && (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.sm }}>
                 {TOPICS.map((t) => (
                   <Chip key={t.label} label={t.label} onPress={() => pickTopic(t)} />
@@ -397,8 +479,10 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
               </View>
             )}
           </ScrollView>
+          )}
 
-          {/* Composer */}
+          {/* Composer (not while reading a closed conversation) */}
+          {view === "chat" && (
           <View style={{ flexDirection: "row", alignItems: "flex-end", gap: space.sm, paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: Math.max(insets.bottom, space.md), borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.surface }}>
             {user ? (
               <Pressable onPress={sendPhoto} disabled={uploading} accessibilityLabel="Send a photo" style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.line }}>
@@ -422,6 +506,7 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
               <Ionicons name="send" size={18} color={colors.white} />
             </Pressable>
           </View>
+          )}
       </View>
     </KeyboardAvoidingView>
   );

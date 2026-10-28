@@ -52,6 +52,43 @@ export async function postChatMessage(userId: string, body: string, orderId?: st
   return t.id;
 }
 
+/** The customer's conversations, newest first, with the last message of each */
+export async function chatsFor(userId: string) {
+  const rows = await db.select().from(tickets).where(eq(tickets.customerId, userId)).orderBy(desc(tickets.lastMessageAt)).limit(50);
+  if (!rows.length) return [];
+  const last = await db
+    .selectDistinctOn([messages.ticketId], { ticketId: messages.ticketId, body: messages.body, imageUrl: messages.imageUrl, fromStaff: messages.fromStaff })
+    .from(messages)
+    .where(inArray(messages.ticketId, rows.map((r) => r.id)))
+    .orderBy(messages.ticketId, desc(messages.createdAt));
+  return rows.map((t) => {
+    const m = last.find((x) => x.ticketId === t.id);
+    return {
+      id: t.id,
+      open: t.status === "open" || t.status === "pending",
+      lastMessage: (m?.body || (m?.imageUrl ? "Photo" : "")) || t.message,
+      lastFromStaff: m?.fromStaff ?? false,
+      lastMessageAt: t.lastMessageAt.toISOString(),
+      createdAt: t.createdAt.toISOString(),
+    };
+  });
+}
+
+/** One of the customer's conversations, to read again */
+export async function chatById(userId: string, ticketId: string) {
+  const [t] = await db.select().from(tickets).where(and(eq(tickets.id, ticketId), eq(tickets.customerId, userId)));
+  if (!t) throw notFound("Conversation not found");
+  const rows = await threadOf(t.id);
+  const thread = rows.length ? rows : [{ id: `${t.id}-first`, fromStaff: false, body: t.message, imageUrl: null, createdAt: t.createdAt }];
+  return { ticketId: t.id, open: t.status === "open" || t.status === "pending", messages: thread.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })) };
+}
+
+/** The customer starts afresh: their open conversation is closed, and the next message opens a new one */
+export async function startNewChat(userId: string) {
+  await db.update(tickets).set({ status: "closed" }).where(and(eq(tickets.customerId, userId), inArray(tickets.status, ["open", "pending"])));
+  return { ticketId: null, messages: [] };
+}
+
 /** A conversation for the admin: the ticket, who wrote it, and every message */
 export async function ticketThread(ticketId: string) {
   const [row] = await db

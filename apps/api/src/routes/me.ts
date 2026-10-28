@@ -8,7 +8,7 @@ import { badRequest, notFound } from "../lib/errors";
 import { publicApiUrl } from "../env";
 import { requireFeature } from "../services/features";
 import { noRecipient, receiptFor, recipientFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
-import { chatFor, postChatMessage } from "../services/support-chat";
+import { chatById, chatFor, chatsFor, postChatMessage, startNewChat } from "../services/support-chat";
 import { customerPulse } from "../services/pulse";
 import { CHAINS, currentContract } from "../services/chain";
 import { catalogQuery } from "./store";
@@ -282,6 +282,10 @@ export const meRoutes = new Hono<AppEnv>()
   .get("/pulse", async (c) => c.json({ v: await customerPulse(c.get("user").id) }))
   /** The customer's live chat with Sotechy: their open conversation and its messages */
   .get("/support/chat", async (c) => c.json(await chatFor(c.get("user").id)))
+  /** Past conversations, to read again; and starting a fresh one */
+  .get("/support/chats", async (c) => c.json(await chatsFor(c.get("user").id)))
+  .get("/support/chats/:id", async (c) => c.json(await chatById(c.get("user").id, c.req.param("id"))))
+  .post("/support/chat/new", async (c) => c.json(await startNewChat(c.get("user").id)))
   .post(
     "/support/chat",
     zValidator(

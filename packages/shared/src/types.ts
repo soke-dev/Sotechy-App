@@ -901,6 +901,16 @@ export interface AppNotification {
   createdAt: string;
 }
 
+/** One of a customer's support conversations, for the list */
+export interface SupportChatSummary {
+  id: string;
+  open: boolean;
+  lastMessage: string;
+  lastFromStaff: boolean;
+  lastMessageAt: string;
+  createdAt: string;
+}
+
 /** A customer's live chat with Sotechy */
 export interface SupportChat {
   ticketId: string | null;

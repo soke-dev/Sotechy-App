@@ -28,6 +28,7 @@ import type {
   Order,
   OrderDetail,
   SupportChat,
+  SupportChatSummary,
   AppNotification,
   OrderSummary,
   PlaceOrderInput,
@@ -229,6 +230,9 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     /** Live chat with Sotechy: the open conversation, and sending to it */
     supportChat: () => get<SupportChat>("/me/support/chat"),
     sendSupportChat: (message: string, orderId?: string, imageUrl?: string) => send<SupportChat>("POST", "/me/support/chat", { message, orderId, imageUrl }),
+    supportChats: () => get<SupportChatSummary[]>("/me/support/chats"),
+    supportChatById: (id: string) => get<SupportChat & { open: boolean }>(`/me/support/chats/${id}`),
+    newSupportChat: () => send<SupportChat>("POST", "/me/support/chat/new"),
     createSupportTicket: (input: { subject: string; message: string; orderId?: string }) =>
       send<{ id: string }>("POST", "/me/support", input),
   };
