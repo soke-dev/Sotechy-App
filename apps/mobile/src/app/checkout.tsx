@@ -17,6 +17,7 @@ import { colors, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { loadStore } from "@/lib/marketplace";
 import { refreshHeldTokens } from "@/lib/held-tokens";
+import { TokenChoice } from "@/components/token-choice";
 import { AddressSearch } from "@/components/address-search";
 
 const newKey = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
@@ -246,34 +247,8 @@ export default function CheckoutScreen() {
     }
   }
 
-  /** Paying with tokens, in the payment sheet: the tokens side by side, each with its amount */
-  const tokenRows =
-    tokenPlan.length > 0 ? (
-      <View style={{ flexDirection: "row", gap: space.sm, marginBottom: space.lg }}>
-        {tokenPlan.map((t) => {
-          const on = !!useTokens[t.ticker];
-          return (
-            <Pressable
-              key={t.ticker}
-              onPress={() => {
-                tap();
-                setUseTokens({ ...useTokens, [t.ticker]: !on });
-              }}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: on }}
-              accessibilityLabel={`Use $${t.ticker}`}
-              style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10, paddingHorizontal: space.sm, borderRadius: radius.lg, borderWidth: on ? 1.5 : 1, borderColor: on ? colors.brand : colors.line, backgroundColor: on ? colors.brandSoft : colors.surface }}
-            >
-              <Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={20} color={on ? colors.brand : colors.faint} />
-              <Txt variant="label" numberOfLines={1} style={{ flex: 1, fontSize: 14 }}>${t.ticker}</Txt>
-              <Txt variant="label" numberOfLines={1} color={on ? colors.success : colors.muted} style={{ fontSize: 13 }}>
-                {on ? `−${formatNaira(t.value)}` : formatNaira(tokensToNaira(t.most))}
-              </Txt>
-            </Pressable>
-          );
-        })}
-      </View>
-    ) : null;
+  /** Paying with tokens, in the payment sheet */
+  const tokenRows = <TokenChoice plan={tokenPlan} on={useTokens} onToggle={(t) => setUseTokens({ ...useTokens, [t]: !useTokens[t] })} />;
 
   return (
     <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90}>

@@ -169,6 +169,8 @@ async function giveBackForOrder(orderId: string) {
  * and $SOTECHY count, and some money is always paid. Returns their naira value and what was used.
  */
 export async function spendForOrder(tx: Tx, input: { userId: string; orderId: string; merchantId: string | null; total: number; tokens: { ticker: string; amount: number }[] }) {
+  // Placing the order only holds the tokens: they're spent when the payment is confirmed (commitSpent), so
+  // a customer who leaves the payment keeps them. Held tokens can't be used for anything else meanwhile.
   const wanted = input.tokens.filter((t) => t.amount > 0);
   if (!wanted.length) return { value: 0, used: [] as { tokenId: number; ticker: string; amount: number }[] };
   const storeToken = input.merchantId ? (await tx.select({ id: merchants.tokenId, ticker: merchants.ticker }).from(merchants).where(eq(merchants.id, input.merchantId)))[0] : null;
@@ -185,12 +187,43 @@ export async function spendForOrder(tx: Tx, input: { userId: string; orderId: st
   if (value > most) throw badRequest(`Tokens can pay up to ₦${most.toLocaleString("en-NG")} of this order; at least ₦${TOKEN_RULES.minCashPerOrder} is paid in money`);
   await lockWallet(tx, input.userId);
   for (const u of used) {
-    const has = await balanceOf(tx, input.userId, u.tokenId);
-    if (u.amount > has) throw badRequest(`You have ${has.toLocaleString("en-NG")} $${u.ticker}`);
-    await record(tx, { tokenId: u.tokenId, kind: "move", fromUserId: input.userId, toUserId: RESERVE_WALLET, amount: u.amount, reason: "spent", orderId: input.orderId, createdBy: input.userId, sourceKey: `spend:${input.orderId}:${u.tokenId}` });
+    const has = await availableOf(tx, input.userId, u.tokenId);
+    if (u.amount > has) throw badRequest(`You have ${has.toLocaleString("en-NG")} $${u.ticker} free to use`);
   }
-  await toReserve(tx, { kind: "spent", amount: -value, orderId: input.orderId, sourceKey: `spend:${input.orderId}` });
   return { value, used };
+}
+
+/** The payment arrived: the tokens held for the order are spent now (moved to the reserve wallet) */
+export async function commitSpent(tx: Tx, order: { id: string; customerId: string | null; tokensUsed: { tokenId: number; ticker: string; amount: number }[] | null; tokensValue: number }) {
+  if (!order.customerId || !order.tokensUsed?.length) return;
+  const [already] = await tx.select({ id: entries.id }).from(entries).where(and(eq(entries.orderId, order.id), eq(entries.reason, "spent"))).limit(1);
+  if (already) return; // spent when placed, before this change
+  await lockWallet(tx, order.customerId);
+  for (const u of order.tokensUsed) {
+    // Held since the order was placed, so it's there; never take more than the balance
+    const amount = Math.min(u.amount, await balanceOf(tx, order.customerId, u.tokenId));
+    if (amount > 0) await record(tx, { tokenId: u.tokenId, kind: "move", fromUserId: order.customerId, toUserId: RESERVE_WALLET, amount, reason: "spent", orderId: order.id, createdBy: order.customerId, sourceKey: `spend:${order.id}:${u.tokenId}` });
+  }
+  if (order.tokensValue > 0) await toReserve(tx, { kind: "spent", amount: -order.tokensValue, orderId: order.id, sourceKey: `spend:${order.id}` });
+}
+
+/** Tokens a customer has put towards orders not paid yet: kept for those orders, not spendable elsewhere */
+async function heldFor(tx: Pick<Tx, "execute">, userId: string, tokenId?: number) {
+  const result = await tx.execute(sql`
+    select (u->>'tokenId')::int as "tokenId", coalesce(sum((u->>'amount')::int), 0)::int as amount
+    from orders o, jsonb_array_elements(coalesce(o.tokens_used, '[]'::jsonb)) u
+    where o.customer_id = ${userId}
+      and o.status in ('pending_payment', 'payment_failed')
+      and not exists (select 1 from token_entries e where e.order_id = o.id and e.reason = 'spent')
+      ${tokenId === undefined ? sql`` : sql`and (u->>'tokenId')::int = ${tokenId}`}
+    group by 1`);
+  return result.rows as { tokenId: number; amount: number }[];
+}
+
+/** What a customer can use right now: their balance less what's held for unpaid orders */
+async function availableOf(tx: Pick<Tx, "select" | "execute">, userId: string, tokenId: number) {
+  const [held] = await heldFor(tx, userId, tokenId);
+  return (await balanceOf(tx, userId, tokenId)) - Number(held?.amount ?? 0);
 }
 
 /** A cancelled (or expired) order gives back the tokens it was paying with */
@@ -357,11 +390,16 @@ export async function walletFor(userId: string) {
     if (tokenId !== SOTECHY_TOKEN.id) add(SOTECHY_TOKEN.id, Math.floor(earning(o) * CROSS_BONUS));
   }
 
+  // Held for orders not paid yet: shown apart, back in the balance if the order is cancelled or expires
+  const reserved = await heldFor(db, userId);
   const ids = [...new Set([...held.map((h) => h.tokenId), ...pending.keys()])];
   const stores = await tokenStores(ids);
   const balances = ids
-    .map((id) => ({ ...stores.get(id)!, amount: Number(held.find((h) => h.tokenId === id)?.amount ?? 0), pending: pending.get(id) ?? 0 }))
-    .filter((b) => b.ticker && (b.amount > 0 || b.pending > 0))
+    .map((id) => {
+      const onHold = Number(reserved.find((r) => r.tokenId === id)?.amount ?? 0);
+      return { ...stores.get(id)!, amount: Number(held.find((h) => h.tokenId === id)?.amount ?? 0) - onHold, held: onHold, pending: pending.get(id) ?? 0 };
+    })
+    .filter((b) => b.ticker && (b.amount > 0 || b.pending > 0 || b.held > 0))
     .sort((a, b) => (a.tokenId === SOTECHY_TOKEN.id ? -1 : b.tokenId === SOTECHY_TOKEN.id ? 1 : b.amount - a.amount));
   return { address: walletAddress(userId), balances, activity: await activityFor(userId) };
 }
@@ -447,8 +485,8 @@ export async function sendTokens(fromUserId: string, input: { to: string; ticker
   if (!tokenId) throw notFound(`There's no $${ticker} token`);
   return db.transaction(async (tx) => {
     await lockWallet(tx, fromUserId);
-    const has = await balanceOf(tx, fromUserId, tokenId);
-    if (input.amount > has) throw badRequest(`You have ${has.toLocaleString("en-NG")} $${ticker}`);
+    const has = await availableOf(tx, fromUserId, tokenId);
+    if (input.amount > has) throw badRequest(`You have ${has.toLocaleString("en-NG")} $${ticker} free to send`);
     const row = await record(tx, { tokenId, kind: "move", fromUserId, toUserId: to.id, amount: input.amount, reason: "sent", createdBy: fromUserId });
     const [sender] = await tx.select({ username: users.username }).from(users).where(eq(users.id, fromUserId));
     sendPushLater([to.id], { kind: "tokens", title: `You received ${input.amount.toLocaleString("en-NG")} $${ticker}`, body: `From ${sender?.username ? `@${sender.username}` : "a Sotechy user"}`, data: { url: "/wallet" } });

@@ -247,6 +247,9 @@ export interface Order {
   customerIssueAt?: string | null;
   /** Where a pickup order is collected (a store's approved pickup location, or an approved change) */
   pickupLocation?: string | null;
+  /** Tokens put towards it (held until it's paid), and the selling store's ticker */
+  tokensUsed?: { tokenId: number; ticker: string; amount: number }[] | null;
+  storeTicker?: string | null;
   createdAt: string;
 }
 
@@ -797,7 +800,10 @@ export interface WalletBalance {
   store: string;
   slug: string | null;
   logoUrl: string | null;
+  /** Free to use */
   amount: number;
+  /** Put towards an order that isn't paid yet; back in `amount` if that order is cancelled or expires */
+  held?: number;
   pending: number;
 }
 

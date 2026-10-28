@@ -212,6 +212,8 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     myOrders: () => get<OrderSummary[]>("/orders"),
     order: (id: string) => get<OrderDetail>(`/orders/${id}`),
     cancelOrder: (id: string) => send<Order>("POST", `/orders/${id}/cancel`),
+    /** Changes the tokens put towards an unpaid order */
+    setOrderTokens: (id: string, tokens: { ticker: string; amount: number }[]) => send<OrderDetail>("POST", `/orders/${id}/tokens`, { tokens }),
     /** The customer collected a pickup order that was waiting for them */
     confirmPickedUp: (id: string) => send<OrderDetail>("POST", `/orders/${id}/picked-up`),
     /** The customer got their order */

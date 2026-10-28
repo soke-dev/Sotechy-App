@@ -84,7 +84,8 @@ export const paymentRoutes = new Hono<AppEnv>()
     }
 
     const [customer] = await db.select({ email: schema.users.email, fullName: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, user.id));
-    const attempt = (saved?.attempt ?? 0) + 1;
+    // Counted even after the page was dropped (e.g. the tokens changed), so a new page never reuses an old key
+    const attempt = ((payment.raw as { checkout?: { attempt?: number } } | null)?.checkout?.attempt ?? saved?.attempt ?? 0) + 1;
     // Keep the payment page open about as long as the items are held (at least six minutes).
     const expiresAt = new Date(Math.max(order.reservationExpiresAt?.getTime() ?? 0, Date.now() + 6 * 60_000));
     let checkout;

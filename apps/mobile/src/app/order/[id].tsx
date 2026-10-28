@@ -21,6 +21,7 @@ import { ProductImage } from "@/components/product-image";
 import { ReviewSheet } from "@/components/review-sheet";
 import { Sheet } from "@/components/shop-filters";
 import { refreshHeldTokens } from "@/lib/held-tokens";
+import { planTokens, TokenChoice } from "@/components/token-choice";
 
 function Section({ title, illo, right, children }: { title: string; illo: IlloName; right?: ReactNode; children: ReactNode }) {
   return (
@@ -155,6 +156,9 @@ export default function OrderScreen() {
   const [confirming, setConfirming] = useState<"yes" | "no" | "picked" | null>(null);
   const moneyMoves = useMoneyMoves();
   const [payOpen, setPayOpen] = useState(false);
+  // Tokens towards an unpaid order: only held, so they can be changed before paying
+  const wallet = useAsync(async () => api.wallet().catch(() => null), [id]);
+  const [tokenOn, setTokenOn] = useState<Record<string, boolean> | null>(null);
   // After Money Moves closes, look for the payment for a minute (the webhook can take a few seconds).
   const [watchUntil, setWatchUntil] = useState(checking ? Date.now() + 60_000 : 0);
   const watching = !!order && order.status === "pending_payment" && watchUntil > Date.now();
@@ -242,10 +246,31 @@ export default function OrderScreen() {
     }
   }
 
+  // Paying with tokens: what this order already holds counts as free for it
+  const grossTotal = order.total + order.tokensValue;
+  const heldHere = (ticker: string) => order.tokensUsed?.find((t) => t.ticker === ticker)?.amount ?? 0;
+  const usable = (wallet.data?.balances ?? [])
+    .filter((b) => b.ticker === "SOTECHY" || b.ticker === order.storeTicker)
+    .map((b) => ({ ticker: b.ticker, amount: b.amount + heldHere(b.ticker) }))
+    .filter((b) => b.amount > 0)
+    .sort((a) => (a.ticker === "SOTECHY" ? 1 : -1));
+  const tokensOn = tokenOn ?? Object.fromEntries((order.tokensUsed ?? []).map((t) => [t.ticker, true]));
+  const tokenPlan = order.status === "pending_payment" ? planTokens(usable, grossTotal, tokensOn) : [];
+  const tokensValue = Math.round(tokenPlan.reduce((n, t) => n + t.value, 0) * 100) / 100;
+
   async function payNow() {
     setPaying(true);
     try {
-      const paid = await moneyMoves.pay({ id: order!.id, orderNumber: order!.orderNumber, total: order!.total });
+      // Tokens changed in the sheet are saved first, so the payment asks for the right amount
+      let total = order!.total;
+      const chosen = tokenPlan.filter((t) => t.amount > 0).map((t) => ({ ticker: t.ticker, amount: t.amount }));
+      const before = (order!.tokensUsed ?? []).map((t) => `${t.ticker}:${t.amount}`).sort().join(",");
+      if (chosen.map((t) => `${t.ticker}:${t.amount}`).sort().join(",") !== before) {
+        const updated = await api.setOrderTokens(order!.id, chosen);
+        total = updated.total;
+        void refreshHeldTokens();
+      }
+      const paid = await moneyMoves.pay({ id: order!.id, orderNumber: order!.orderNumber, total });
       if (!paid) setWatchUntil(Date.now() + 60_000);
       await reload();
     } catch (err) {
@@ -373,7 +398,13 @@ export default function OrderScreen() {
                   setPayOpen(true);
                 }}
               />
-              <PayChoiceSheet visible={payOpen} amount={order.total} onClose={() => setPayOpen(false)} onPay={() => void payNow()} />
+              <PayChoiceSheet
+                visible={payOpen}
+                amount={grossTotal - tokensValue}
+                onClose={() => setPayOpen(false)}
+                onPay={() => void payNow()}
+                extra={<TokenChoice plan={tokenPlan} on={tokensOn} onToggle={(t) => setTokenOn({ ...tokensOn, [t]: !tokensOn[t] })} />}
+              />
             </>
           ) : (
             <>

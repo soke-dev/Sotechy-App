@@ -8,7 +8,7 @@ import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, HttpError, notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
 import { moneyMovesConfigured } from "../services/moneymoves";
-import { cancelOrder, placeOrder, updateOrderStatus } from "../services/orders";
+import { cancelOrder, placeOrder, setOrderTokens, updateOrderStatus } from "../services/orders";
 import { finalDueNow, holdFinal } from "../services/payouts";
 import { sendEmailLater } from "../lib/email";
 import { orderNotReceivedEmail } from "../emails/templates";
@@ -80,8 +80,10 @@ export async function loadOrderDetail(orderId: string) {
       : [];
     pickupLocation = order.pickupChangeStatus === "approved" ? order.pickupChangePoint : [zone?.point, zone?.address].filter(Boolean).join(", ") || null;
   }
+  // The store's token can pay towards its orders (with $SOTECHY)
+  const [seller] = order.merchantId ? await db.select({ ticker: schema.merchants.ticker }).from(schema.merchants).where(eq(schema.merchants.id, order.merchantId)) : [];
   const { idempotencyKey: _k, pickupChangePoint: _p, pickupChangeStatus: _ps, pickupChangeAt: _pa, ...publicOrder } = order;
-  return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation };
+  return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation, storeTicker: seller?.ticker ?? null };
 }
 
 /** Order items with the product's first photo, for thumbnails. */
@@ -124,6 +126,11 @@ export const orderRoutes = new Hono<AppEnv>()
   })
   .post("/:id/cancel", async (c) => {
     return c.json(await cancelOrder(c.get("user"), c.req.param("id")));
+  })
+  /** Changes the tokens put towards an unpaid order before paying */
+  .post("/:id/tokens", zValidator("json", z.object({ tokens: z.array(z.object({ ticker: z.string().min(1).max(12), amount: z.number().int().min(0).max(1_000_000_000) })).max(4) })), async (c) => {
+    await setOrderTokens(c.get("user").id, c.req.param("id"), c.req.valid("json").tokens);
+    return c.json(await loadOrderDetail(c.req.param("id")));
   })
   /** The customer collected a pickup order that was ready: it's delivered and confirmed, and the store's final payment is due */
   .post("/:id/picked-up", async (c) => {

@@ -187,6 +187,7 @@ export default function WalletScreen() {
                         <Text style={{ fontFamily: fonts.medium, color: colors.ink2 }}> · {b.ticker === "SOTECHY" ? "Sotechy" : b.store}</Text>
                       </Txt>
                       {b.pending > 0 && <Txt variant="caption" color={colors.warning}>+{formatTokens(b.pending)} pending</Txt>}
+                      {(b.held ?? 0) > 0 && <Txt variant="caption" color={colors.ink2}>{formatTokens(b.held!)} held for an order you haven&apos;t paid yet</Txt>}
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
                       <Txt variant="price">{formatTokens(b.amount)}</Txt>

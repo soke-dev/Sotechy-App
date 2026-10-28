@@ -11,7 +11,7 @@ import { findPromotion } from "./promotions";
 import { deliveryFeeFor, getSetting, type DeliverySettings } from "./settings";
 import { agreedPriceFor, releaseOffers } from "./offers";
 import { payoutsForStatus } from "./payouts";
-import { spendForOrder, tokensForStatus } from "./tokens";
+import { commitSpent, spendForOrder, tokensForStatus } from "./tokens";
 import { storeDeliveryCharge } from "./store-delivery";
 
 const { orders, orderItems, payments, inventory, productVariants, products, orderStatusHistory } = schema;
@@ -231,7 +231,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
         })
         .returning();
 
-      // Tokens pay for part of it; the store is still paid in full (the reserve covers the tokens)
+      // Tokens pay for part of it (held now, spent once it's paid); the store is still paid in full
       const spent = await spendForOrder(tx, { userId, orderId: order.id, merchantId: branch.merchantId, total, tokens: input.tokens ?? [] });
       const due = round2(total - spent.value);
       if (spent.value > 0) {
@@ -371,6 +371,8 @@ export async function confirmPayment(
     if (order.status === "pending_payment" || order.status === "payment_failed") {
       await commitReservedStock(tx, order, opts.verifiedBy);
       await tx.update(orders).set({ status: "paid", reservationExpiresAt: null }).where(eq(orders.id, order.id));
+      // The tokens held for it are spent now that it's paid
+      await commitSpent(tx, order);
       await recordStatus(tx, order.id, order.status, "paid", opts.verifiedBy, "Payment confirmed");
       await bumpPromotionUsage(tx, order.promotionId);
       paidOrderId = order.id;
@@ -496,6 +498,33 @@ export async function cancelOrder(actor: AuthUser, orderId: string, note?: strin
   if (updated.merchantId) await payoutsForStatus(orderId, "cancelled");
   await tokensForStatus(orderId, "cancelled");
   return updated;
+}
+
+/** Changes the tokens put towards one of the customer's unpaid orders (they're only held until it's paid).
+ *  The amount to pay changes with them, and any open payment page is replaced by a fresh one. */
+export async function setOrderTokens(userId: string, orderId: string, tokens: { ticker: string; amount: number }[]) {
+  return db.transaction(async (tx) => {
+    const [order] = await tx.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.customerId, userId))).for("update");
+    if (!order) throw notFound("Order not found");
+    if (order.status !== "pending_payment") throw badRequest("This order isn't waiting for payment");
+    const gross = round2(order.total + order.tokensValue);
+    // Free this order's own hold first, so its tokens count as available again
+    await tx.update(orders).set({ tokensUsed: null, tokensValue: 0 }).where(eq(orders.id, order.id));
+    const held = await spendForOrder(tx, { userId, orderId: order.id, merchantId: order.merchantId, total: gross, tokens });
+    const due = round2(gross - held.value);
+    const [updated] = await tx
+      .update(orders)
+      .set({ tokensUsed: held.used.length ? held.used : null, tokensValue: held.value, total: due })
+      .where(eq(orders.id, order.id))
+      .returning();
+    // The pending payment asks for the new amount; the next payment page is made fresh (keeping the attempt count)
+    const [payment] = await tx.select().from(payments).where(and(eq(payments.orderId, order.id), eq(payments.status, "pending")));
+    if (payment) {
+      const attempt = (payment.raw as { checkout?: { attempt?: number } } | null)?.checkout?.attempt ?? 0;
+      await tx.update(payments).set({ amount: due, raw: { checkout: { attempt } } }).where(eq(payments.id, payment.id));
+    }
+    return updated;
+  });
 }
 
 /** Cancels unpaid orders whose stock hold has expired. Runs on an interval from index.ts. */
