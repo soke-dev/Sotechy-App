@@ -1,7 +1,7 @@
 // Money Moves checkout: opens the provider's payment window, where the customer sends stablecoin.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as WebBrowser from "expo-web-browser";
-import { useCallback } from "react";
+import { useCallback, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { formatNaira } from "@sotechy/shared";
 import { api } from "@/lib/api";
@@ -16,10 +16,11 @@ const PAY_CHOICES: { id: string; illo: IlloName; title: string; subtitle: string
   { id: "bank", illo: "bank", title: "Bank transfer", subtitle: "Pay from any Nigerian bank", live: false },
 ];
 
-/** Bottom sheet of ways to pay; picking a live one calls `onPay`. */
-export function PayChoiceSheet({ visible, amount, onClose, onPay }: { visible: boolean; amount: number; onClose: () => void; onPay: () => void }) {
+/** Bottom sheet of ways to pay; picking a live one calls `onPay`. `extra` sits above the choices (e.g. paying with tokens). */
+export function PayChoiceSheet({ visible, amount, onClose, onPay, extra }: { visible: boolean; amount: number; onClose: () => void; onPay: () => void; extra?: ReactNode }) {
   return (
     <Sheet visible={visible} title={`Pay ${formatNaira(amount)}`} onClose={onClose}>
+      {extra}
       <View style={{ gap: space.md }}>
         {PAY_CHOICES.map((c) => (
           <Pressable

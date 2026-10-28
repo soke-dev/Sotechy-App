@@ -246,6 +246,47 @@ export default function CheckoutScreen() {
     }
   }
 
+  /** Paying with tokens, shown in the payment sheet: one row per token, its amount on the same row */
+  const tokenRows =
+    tokenPlan.length > 0 ? (
+      <View style={{ gap: space.sm, marginBottom: space.lg }}>
+        <View style={ui.between}>
+          <Txt variant="label">Use your tokens</Txt>
+          <Txt variant="caption">At least ₦{TOKEN_RULES.minCashPerOrder} in money</Txt>
+        </View>
+        {tokenPlan.map((t) => {
+          const on = !!useTokens[t.ticker];
+          return (
+            <Pressable
+              key={t.ticker}
+              onPress={() => {
+                tap();
+                setUseTokens({ ...useTokens, [t.ticker]: !on });
+              }}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}
+              style={{ flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 10, paddingHorizontal: space.md, borderRadius: radius.lg, borderWidth: on ? 1.5 : 1, borderColor: on ? colors.brand : colors.line, backgroundColor: on ? colors.brandSoft : colors.surface }}
+            >
+              <Illo name="coin" size={26} />
+              <Txt variant="label" numberOfLines={1} style={{ flex: 1 }}>
+                ${t.ticker} <Txt variant="caption">· {t.balance.toLocaleString("en-NG")}</Txt>
+              </Txt>
+              <Txt variant="label" color={on ? colors.success : colors.muted}>
+                {on ? `−${formatNaira(t.value)}` : `up to ${formatNaira(tokensToNaira(t.most))}`}
+              </Txt>
+              <Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={22} color={on ? colors.brand : colors.faint} />
+            </Pressable>
+          );
+        })}
+        {tokensValue > 0 && (
+          <View style={ui.between}>
+            <Txt variant="small" color={colors.ink2}>Order {formatNaira(total)} − tokens {formatNaira(tokensValue)}</Txt>
+            <Txt variant="label">{formatNaira(due)} to pay</Txt>
+          </View>
+        )}
+      </View>
+    ) : null;
+
   return (
     <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90}>
       <ScrollView contentContainerStyle={{ padding: gutter, gap: space.xxl, paddingBottom: space.xxl }} keyboardShouldPersistTaps="handled">
@@ -439,47 +480,6 @@ export default function CheckoutScreen() {
           )}
         </Section>}
 
-        {tokenPlan.length > 0 && (
-          <View style={[ui.card, { gap: space.sm, padding: space.md }]}>
-            <View style={[ui.between, { gap: space.sm }]}>
-              <Txt variant="label">Pay with tokens</Txt>
-              <Txt variant="caption">At least ₦{TOKEN_RULES.minCashPerOrder} in money</Txt>
-            </View>
-            {/* The store's token and $SOTECHY side by side; tap one to use it */}
-            <View style={{ flexDirection: "row", gap: space.sm }}>
-              {tokenPlan.map((t) => {
-                const on = !!useTokens[t.ticker];
-                return (
-                  <Pressable
-                    key={t.ticker}
-                    onPress={() => {
-                      tap();
-                      setUseTokens({ ...useTokens, [t.ticker]: !on });
-                    }}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: on }}
-                    style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 10, paddingHorizontal: space.md, borderRadius: radius.lg, borderWidth: on ? 1.5 : 1, borderColor: on ? colors.brand : colors.line, backgroundColor: on ? colors.brandSoft : colors.surface }}
-                  >
-                    {on ? (
-                      <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.brand, alignItems: "center", justifyContent: "center" }}>
-                        <Ionicons name="checkmark" size={17} color={colors.white} />
-                      </View>
-                    ) : (
-                      <Illo name="coin" size={28} />
-                    )}
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Txt variant="label" numberOfLines={1}>${t.ticker}</Txt>
-                      <Txt variant="caption" numberOfLines={1} color={on ? colors.success : colors.muted}>
-                        {on ? `−${formatNaira(t.value)} off` : `${t.balance.toLocaleString("en-NG")} · up to ${formatNaira(tokensToNaira(t.most))}`}
-                      </Txt>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
         <View style={ui.card}>
           <Txt variant="heading" style={{ marginBottom: space.sm }}>Order summary</Txt>
           {cart.lines.map((l) => (
@@ -557,7 +557,7 @@ export default function CheckoutScreen() {
           </Pressable>
         </View>
       </Sheet>
-      <PayChoiceSheet visible={payOpen} amount={due} onClose={() => setPayOpen(false)} onPay={() => void proceedToPayment()} />
+      <PayChoiceSheet visible={payOpen} amount={due} onClose={() => setPayOpen(false)} onPay={() => void proceedToPayment()} extra={tokenRows} />
       {moneyMoves.sheet}
     </KeyboardAvoidingView>
   );
