@@ -8,17 +8,24 @@ import { db, schema } from "../db/client";
 import { env, publicApiUrl } from "../env";
 import { audit } from "../lib/audit";
 import { requireAuth, type AppEnv } from "../lib/auth";
-import { badRequest, conflict, notFound } from "../lib/errors";
+import { badRequest, conflict, HttpError, notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
-import { createCheckout, MoneyMovesError, retrieveCheckout, retrievePayment, verifyWebhookSignature, type MMEvent, type MMPayment } from "../services/moneymoves";
+import { createCheckout, createDirectCheckout, MoneyMovesError, retrieveCheckout, retrievePayment, verifyWebhookSignature, type MMEvent, type MMPayment } from "../services/moneymoves";
 import { confirmPayment } from "../services/orders";
 import { FEATURE_REF, settleFeaturing } from "../services/featuring";
 import { settleWalkIn, WALK_IN_REF } from "../services/walk-in";
 
 const isUuid = (v: string | null | undefined): v is string => !!v && /^[0-9a-f-]{36}$/i.test(v);
 
-/** Checkout we opened for a payment, kept on payments.raw until the payment completes. */
-type SavedCheckout = { id: string; url: string; attempt: number };
+/** Checkout we opened for a payment, kept on payments.raw until the payment completes. `bank` = a direct (bank transfer) checkout. */
+type SavedCheckout = { id: string; url: string; attempt: number; bank?: boolean };
+
+/** What a refused direct checkout means for the customer (Money Moves → Direct payments → If a call is refused) */
+const DIRECT_REFUSED: Record<string, string> = {
+  direct_off: "Bank transfer isn't available right now. Please pay with stablecoin.",
+  direct_daily_limit: "Bank transfer has reached today's limit. Please pay with stablecoin, or try again tomorrow.",
+  direct_busy: "Too many payments for this amount are open right now. Please try again in a few minutes, or pay with stablecoin.",
+};
 const savedCheckout = (raw: unknown): SavedCheckout | null => {
   const c = (raw as { checkout?: SavedCheckout } | null)?.checkout;
   return c?.id ? c : null;
@@ -32,9 +39,9 @@ export async function settleFromMoneyMoves(paymentId: string) {
   if (ourId?.startsWith(WALK_IN_REF)) return settleWalkIn(ourId.slice(WALK_IN_REF.length), p);
   if (!isUuid(ourId)) return; // not one of our checkouts (e.g. a payment link)
   if (p.status === "successful") {
-    // "successful" means the full amount arrived.
+    // "successful" means the full amount arrived. A bank transfer can be a few kobo over (received_ngn).
     await confirmPayment(ourId, {
-      amountPaid: p.amount_ngn,
+      amountPaid: Math.max(p.amount_ngn, p.received_ngn ?? 0),
       providerReference: p.id,
       provider: "moneymoves",
       raw: p,
@@ -53,11 +60,15 @@ export async function settleFromMoneyMoves(paymentId: string) {
 }
 
 export const paymentRoutes = new Hono<AppEnv>()
-  /** Opens (or reuses) a Money Moves checkout for one of the customer's unpaid orders. */
-  .post("/online/initialize", requireAuth, zValidator("json", z.object({ orderId: z.uuid() })), async (c) => {
+  /**
+   * Opens (or reuses) a Money Moves checkout for one of the customer's unpaid orders: stablecoin on the hosted
+   * checkout, or `method: "bank"` for a direct checkout (bank transfer to our account).
+   */
+  .post("/online/initialize", requireAuth, zValidator("json", z.object({ orderId: z.uuid(), method: z.enum(["stablecoin", "bank"]).default("stablecoin") })), async (c) => {
     await requireFeature("ordering", "Online ordering is paused right now");
     const user = c.get("user");
-    const { orderId } = c.req.valid("json");
+    const { orderId, method } = c.req.valid("json");
+    const bank = method === "bank";
     const [order] = await db
       .select()
       .from(schema.orders)
@@ -71,12 +82,12 @@ export const paymentRoutes = new Hono<AppEnv>()
       .where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.status, "pending")));
     if (!payment) throw badRequest("No pending payment for this order");
 
-    // Reuse an open checkout so one order never has two live payment pages.
+    // Reuse an open checkout so one order never has two live payment pages (unless the customer switches how they pay).
     const saved = savedCheckout(payment.raw);
     if (saved) {
-      const existing = await retrieveCheckout(saved.id).catch(() => null);
+      const existing = await retrieveCheckout(saved.id, !!saved.bank).catch(() => null);
       const minuteLeft = !existing?.expires_at || new Date(existing.expires_at).getTime() > Date.now() + 60_000;
-      if (existing?.status === "open" && minuteLeft) return c.json({ checkoutUrl: existing.url });
+      if (existing?.status === "open" && minuteLeft && !!saved.bank === bank) return c.json({ checkoutUrl: existing.url });
       if (existing?.status === "paid") {
         if (existing.payment) await settleFromMoneyMoves(existing.payment.id);
         throw conflict("This order is already paid. It will update in a moment.");
@@ -91,7 +102,7 @@ export const paymentRoutes = new Hono<AppEnv>()
     let checkout;
     try {
       // Amount comes from the database, never from the client.
-      checkout = await createCheckout({
+      checkout = await (bank ? createDirectCheckout : createCheckout)({
         reference: payment.id,
         idempotencyKey: `${payment.id}-${attempt}`,
         amount: payment.amount,
@@ -102,6 +113,7 @@ export const paymentRoutes = new Hono<AppEnv>()
         metadata: { order_id: order.id, order_number: order.orderNumber },
       });
     } catch (err) {
+      if (bank && err instanceof MoneyMovesError && DIRECT_REFUSED[err.code]) throw new HttpError(503, DIRECT_REFUSED[err.code]);
       if (err instanceof MoneyMovesError && err.code === "bad_amount") {
         throw badRequest("Online payment works for orders from ₦100 to ₦1,000,000. Please split the order, or contact us to pay another way.");
       }
@@ -109,7 +121,7 @@ export const paymentRoutes = new Hono<AppEnv>()
     }
     await db
       .update(schema.payments)
-      .set({ provider: "moneymoves", raw: { checkout: { id: checkout.id, url: checkout.url, attempt } satisfies SavedCheckout } })
+      .set({ provider: "moneymoves", raw: { checkout: { id: checkout.id, url: checkout.url, attempt, ...(bank && { bank }) } satisfies SavedCheckout } })
       .where(eq(schema.payments.id, payment.id));
     return c.json({ checkoutUrl: checkout.url });
   })

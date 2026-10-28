@@ -1,5 +1,5 @@
-// Money Moves checkout: opens the provider's payment window, where the customer sends stablecoin,
-// and closes it by itself once the order is paid.
+// Money Moves checkout: opens the provider's payment window, where the customer sends stablecoin or a
+// bank transfer, and closes it by itself once the order is paid.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useState, type ReactNode } from "react";
@@ -8,42 +8,50 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { formatNaira } from "@sotechy/shared";
 import { api } from "@/lib/api";
+import { useStoreConfig } from "@/lib/store-config";
 import { colors, space } from "@/lib/theme";
 import { Illo, type IlloName } from "./illustrations";
 import { Sheet } from "./shop-filters";
 import { Pill, tap, Txt, ui } from "./ui";
 
-// Stablecoin goes through Money Moves; bank transfer comes later
-const PAY_CHOICES: { id: string; illo: IlloName; title: string; subtitle: string; live: boolean }[] = [
-  { id: "stablecoin", illo: "coin", title: "Pay with stablecoin", subtitle: "Pay with USDT or USDC through Money Moves", live: true },
-  { id: "bank", illo: "bank", title: "Bank transfer", subtitle: "Pay from any Nigerian bank", live: false },
+export type PayMethod = "stablecoin" | "bank";
+
+// Both go through Money Moves: stablecoin on its checkout, bank transfer straight to our account (direct checkout)
+const PAY_CHOICES: { id: PayMethod; illo: IlloName; title: string; subtitle: string }[] = [
+  { id: "stablecoin", illo: "coin", title: "Pay with stablecoin", subtitle: "Pay with USDT or USDC through Money Moves" },
+  { id: "bank", illo: "bank", title: "Pay with bank transfer", subtitle: "Send the exact amount from any Nigerian bank app" },
 ];
 
-/** Bottom sheet of ways to pay; picking a live one calls `onPay`. `extra` sits above the choices (e.g. paying with tokens). */
-export function PayChoiceSheet({ visible, amount, onClose, onPay, extra }: { visible: boolean; amount: number; onClose: () => void; onPay: () => void; extra?: ReactNode }) {
+/** Bottom sheet of ways to pay; picking a live one calls `onPay` with it. `extra` sits above the choices (e.g. paying with tokens). */
+export function PayChoiceSheet({ visible, amount, onClose, onPay, extra }: { visible: boolean; amount: number; onClose: () => void; onPay: (method: PayMethod) => void; extra?: ReactNode }) {
+  // Bank transfer shows as coming soon until the API has its Money Moves direct key
+  const bankOn = !!useStoreConfig().config?.bankTransfer;
   return (
     <Sheet visible={visible} title={`Pay ${formatNaira(amount)}`} onClose={onClose}>
       {extra}
       <View style={{ gap: space.md }}>
-        {PAY_CHOICES.map((c) => (
-          <Pressable
-            key={c.id}
-            disabled={!c.live}
-            onPress={() => {
-              tap();
-              onClose();
-              onPay();
-            }}
-            style={[ui.card, { flexDirection: "row", alignItems: "center", gap: space.md, opacity: c.live ? 1 : 0.55 }]}
-          >
-            <Illo name={c.illo} size={38} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="label">{c.title}</Txt>
-              <Txt variant="small">{c.subtitle}</Txt>
-            </View>
-            {c.live ? <Ionicons name="chevron-forward" size={18} color={colors.ink2} /> : <Pill label="Coming soon" />}
-          </Pressable>
-        ))}
+        {PAY_CHOICES.map((c) => {
+          const live = c.id !== "bank" || bankOn;
+          return (
+            <Pressable
+              key={c.id}
+              disabled={!live}
+              onPress={() => {
+                tap();
+                onClose();
+                onPay(c.id);
+              }}
+              style={[ui.card, { flexDirection: "row", alignItems: "center", gap: space.md, opacity: live ? 1 : 0.55 }]}
+            >
+              <Illo name={c.illo} size={38} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Txt variant="label">{c.title}</Txt>
+                <Txt variant="small">{c.subtitle}</Txt>
+              </View>
+              {live ? <Ionicons name="chevron-forward" size={18} color={colors.ink2} /> : <Pill label="Coming soon" />}
+            </Pressable>
+          );
+        })}
       </View>
     </Sheet>
   );
@@ -111,14 +119,14 @@ function PayWindow({ url, onDone }: { url: string; onDone: (returned: boolean) =
 }
 
 /**
- * `pay(order)` opens Money Moves for an unpaid order. While it's open the app keeps checking the order, and
+ * `pay(order, method)` opens Money Moves for an unpaid order. While it's open the app keeps checking the order, and
  * closes the payment window by itself once it's paid (no "Return to Sotechy" tap needed). Resolves true when paid.
  */
 export function useMoneyMoves() {
   const [win, setWin] = useState<{ url: string; finish: (returned: boolean) => void } | null>(null);
 
-  const pay = useCallback(async (order: Pending["order"]) => {
-    const { checkoutUrl } = await api.startOnlinePayment(order.id);
+  const pay = useCallback(async (order: Pending["order"], method: PayMethod = "stablecoin") => {
+    const { checkoutUrl } = await api.startOnlinePayment(order.id, method);
     let paid = false;
     let open = true;
 

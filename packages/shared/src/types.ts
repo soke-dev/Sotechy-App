@@ -451,6 +451,8 @@ export interface CryptoAsset {
 export interface StoreConfig {
   /** Sotechy's fee on each store sale, as a fraction (e.g. 0.03), as admin sets it */
   marketplaceFee?: number;
+  /** Bank transfer through Money Moves is set up (its direct key) */
+  bankTransfer?: boolean;
   branches: Branch[];
   paymentMethods: PaymentMethodConfig[];
   cryptoAssets: CryptoAsset[];

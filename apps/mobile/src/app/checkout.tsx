@@ -5,7 +5,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "rea
 import { areaDeliveryFee, deliveryAreaFor, formatNaira, formatUsd, nairaToTokens, TOKEN_RULES, tokensToNaira, type FulfilmentType, type PromoCheck } from "@sotechy/shared";
 import { AddressCard } from "@/components/address-card";
 import { Illo, type IlloName } from "@/components/illustrations";
-import { PayChoiceSheet, useMoneyMoves } from "@/components/money-moves";
+import { PayChoiceSheet, useMoneyMoves, type PayMethod } from "@/components/money-moves";
 import { Sheet } from "@/components/shop-filters";
 import { useToast } from "@/components/toast";
 import { BottomBar, Button, Divider, ErrorView, Input, Loading, OptionRow, SummaryRow, tap, Txt, PhoneInput, ui } from "@/components/ui";
@@ -255,7 +255,7 @@ export default function CheckoutScreen() {
     }
   }
 
-  async function proceedToPayment() {
+  async function proceedToPayment(method: PayMethod) {
     if (!selectedBranch) return;
     setError(null);
     if (fulfilment === "pickup" && user && !user.phone) {
@@ -287,7 +287,7 @@ export default function CheckoutScreen() {
             : chosen
               ? { recipientName: chosen.recipientName, phone: chosen.phone, line1: chosen.line1, line2: chosen.line2 ?? undefined, city: chosen.city, state: chosen.state }
               : address,
-        // Stablecoin through Money Moves, in its own window
+        // Stablecoin or bank transfer through Money Moves, in its own window
         paymentMethod: "online",
         promoCode: applied?.code,
         idempotencyKey,
@@ -299,7 +299,7 @@ export default function CheckoutScreen() {
       if (order.tokensValue > 0) void refreshHeldTokens();
       let paid = false;
       try {
-        paid = await moneyMoves.pay({ id: order.id, orderNumber: order.orderNumber, total: order.total });
+        paid = await moneyMoves.pay({ id: order.id, orderNumber: order.orderNumber, total: order.total }, method);
       } catch {
         toast("Payment didn't open. You can pay from your order.", { icon: "alert-circle" });
       }
@@ -613,7 +613,7 @@ export default function CheckoutScreen() {
           ))}
         </View>
       </Sheet>
-      <PayChoiceSheet visible={payOpen} amount={due} onClose={() => setPayOpen(false)} onPay={() => void proceedToPayment()} />
+      <PayChoiceSheet visible={payOpen} amount={due} onClose={() => setPayOpen(false)} onPay={(m) => void proceedToPayment(m)} />
       <Sheet visible={tokensOpen} title="Pay with tokens" onClose={() => setTokensOpen(false)} footer={<Button title={usingTokens.length ? `Use tokens · pay ${formatNaira(due)}` : "Done"} variant="dark" onPress={() => setTokensOpen(false)} />}>
         <Txt variant="small" color={colors.ink2}>
           Tokens you earned at {seller?.name ?? "this store"}, and $SOTECHY, can pay part of this order. They&apos;re only taken once your payment goes through, and at least ₦{TOKEN_RULES.minCashPerOrder} is paid in money.

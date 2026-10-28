@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { directionsUrl, formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderDetail } from "@sotechy/shared";
 import { useDialog } from "@/components/dialog";
-import { PayChoiceSheet, useMoneyMoves } from "@/components/money-moves";
+import { PayChoiceSheet, useMoneyMoves, type PayMethod } from "@/components/money-moves";
 import { useToast } from "@/components/toast";
 import { Button, Divider, ErrorView, Loading, SummaryRow, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -260,7 +260,7 @@ export default function OrderScreen() {
   const tokenPlan = order.status === "pending_payment" ? planTokens(usable, grossTotal, tokensOn) : [];
   const tokensValue = Math.round(tokenPlan.reduce((n, t) => n + t.value, 0) * 100) / 100;
 
-  async function payNow() {
+  async function payNow(method: PayMethod) {
     setPaying(true);
     try {
       // Tokens changed in the sheet are saved first, so the payment asks for the right amount
@@ -272,7 +272,7 @@ export default function OrderScreen() {
         total = updated.total;
         void refreshHeldTokens();
       }
-      const paid = await moneyMoves.pay({ id: order!.id, orderNumber: order!.orderNumber, total });
+      const paid = await moneyMoves.pay({ id: order!.id, orderNumber: order!.orderNumber, total }, method);
       if (!paid) setWatchUntil(Date.now() + 60_000);
       await reload();
     } catch (err) {
@@ -405,7 +405,7 @@ export default function OrderScreen() {
                 visible={payOpen}
                 amount={grossTotal - tokensValue}
                 onClose={() => setPayOpen(false)}
-                onPay={() => void payNow()}
+                onPay={(m) => void payNow(m)}
                 extra={<TokenChoice plan={tokenPlan} on={tokensOn} onToggle={(t) => setTokenOn({ ...tokensOn, [t]: !tokensOn[t] })} />}
               />
             </>

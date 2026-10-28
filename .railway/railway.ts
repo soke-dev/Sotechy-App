@@ -49,6 +49,8 @@ export default defineRailway(() => {
       SEED_DEMO_PRODUCTS: "true",
       MONEYMOVES_SECRET_KEY: preserve(),
       MONEYMOVES_WEBHOOK_SECRET: preserve(),
+      // Direct key (Money Moves → Direct payments): turns on "Pay with bank transfer"
+      MONEYMOVES_DIRECT_KEY: preserve(),
       GOOGLE_CLIENT_IDS: preserve(),
       // Email through Resend; the sotechy.shop domain must be verified there
       RESEND_API_KEY: preserve(),

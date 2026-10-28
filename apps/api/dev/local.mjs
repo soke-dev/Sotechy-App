@@ -58,6 +58,7 @@ const env = {
   MONEYMOVES_API_URL: `http://127.0.0.1:${MM_PORT}/api/v1`,
   MONEYMOVES_SECRET_KEY: fake.key,
   MONEYMOVES_WEBHOOK_SECRET: fake.webhookSecret,
+  MONEYMOVES_DIRECT_KEY: fake.key,
 };
 
 const tsxCli = fileURLToPath(import.meta.resolve("tsx/cli"));

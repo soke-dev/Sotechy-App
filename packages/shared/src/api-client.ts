@@ -225,8 +225,8 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     confirmReceived: (id: string) => send<OrderDetail>("POST", `/orders/${id}/received`),
     /** The store marked it delivered, but it didn't reach the customer */
     reportNotReceived: (id: string, note?: string) => send<OrderDetail>("POST", `/orders/${id}/not-received`, { note }),
-    startOnlinePayment: (orderId: string) =>
-      send<{ checkoutUrl: string }>("POST", `/payments/online/initialize`, { orderId }),
+    startOnlinePayment: (orderId: string, method: "stablecoin" | "bank" = "stablecoin") =>
+      send<{ checkoutUrl: string }>("POST", `/payments/online/initialize`, { orderId, method }),
     wishlist: () => get<CatalogProduct[]>("/me/wishlist"),
     toggleWishlist: (productId: string) => send<{ saved: boolean }>("POST", `/me/wishlist/${productId}`),
     /** When anything of the customer's last changed; live screens reload when it moves */

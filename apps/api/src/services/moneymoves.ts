@@ -10,6 +10,8 @@ import { getSetting } from "./settings";
 const API = (env.MONEYMOVES_API_URL || "https://business.usemoneymoves.xyz/api/v1").replace(/\/+$/, "");
 
 export const moneyMovesConfigured = () => Boolean(env.MONEYMOVES_SECRET_KEY);
+/** Bank transfer to our own account (Money Moves direct checkouts) needs the separate direct key */
+export const bankTransferConfigured = () => Boolean(env.MONEYMOVES_DIRECT_KEY);
 export const moneyMovesMode = (): "test" | "live" | null =>
   !env.MONEYMOVES_SECRET_KEY ? null : env.MONEYMOVES_SECRET_KEY.startsWith("sk_live_") ? "live" : "test";
 
@@ -26,14 +28,14 @@ export class MoneyMovesError extends HttpError {
   }
 }
 
-async function call<T>(method: "GET" | "POST", path: string, body?: unknown, idempotencyKey?: string): Promise<T> {
-  if (!env.MONEYMOVES_SECRET_KEY) throw new HttpError(503, "Online payments are not configured yet");
+async function call<T>(method: "GET" | "POST", path: string, body?: unknown, idempotencyKey?: string, key = env.MONEYMOVES_SECRET_KEY): Promise<T> {
+  if (!key) throw new HttpError(503, "Online payments are not configured yet");
   let res: Response;
   try {
     res = await fetch(`${API}${path}`, {
       method,
       headers: {
-        Authorization: `Bearer ${env.MONEYMOVES_SECRET_KEY}`,
+        Authorization: `Bearer ${key}`,
         Accept: "application/json",
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
@@ -121,8 +123,55 @@ export function createCheckout(input: {
   );
 }
 
-export const retrieveCheckout = (id: string) => call<MMCheckout>("GET", `/checkouts/${encodeURIComponent(id)}`);
-export const retrievePayment = (id: string) => call<MMPayment>("GET", `/payments/${encodeURIComponent(id)}`);
+/**
+ * Direct checkout: the customer sends a bank transfer straight to our account, with no fee. Same page and
+ * webhooks as a hosted checkout, but naira only and no methods, accept, settle_to or fee_payer.
+ * The amount sent can be up to 99 kobo over the price when another customer has the same amount open.
+ */
+export function createDirectCheckout(input: {
+  reference: string;
+  idempotencyKey: string;
+  amount: number;
+  description: string;
+  customer: { email: string; name?: string | null };
+  redirectUrl?: string;
+  expiresAt?: Date;
+  metadata: Record<string, string>;
+}) {
+  if (!env.MONEYMOVES_DIRECT_KEY) throw new HttpError(503, "Bank transfer isn't set up yet. Please pay with stablecoin.");
+  return call<MMCheckout>(
+    "POST",
+    "/checkouts",
+    {
+      amount: input.amount,
+      currency: "NGN",
+      reference: input.reference,
+      description: input.description.slice(0, 200),
+      customer: { email: input.customer.email, ...(input.customer.name ? { name: input.customer.name } : {}) },
+      ...(input.redirectUrl ? { redirect_url: input.redirectUrl } : {}),
+      ...(input.expiresAt ? { expires_at: input.expiresAt.toISOString() } : {}),
+      metadata: input.metadata,
+    },
+    input.idempotencyKey,
+    env.MONEYMOVES_DIRECT_KEY,
+  );
+}
+
+/** Direct checkouts and their payments are read with the direct key; everything else with the API key. */
+export const retrieveCheckout = (id: string, direct = false) =>
+  call<MMCheckout>("GET", `/checkouts/${encodeURIComponent(id)}`, undefined, undefined, direct ? env.MONEYMOVES_DIRECT_KEY : env.MONEYMOVES_SECRET_KEY);
+
+/** Reads a payment with the API key, then the direct key when the API key can't see it (a bank-transfer payment). */
+export async function retrievePayment(id: string): Promise<MMPayment> {
+  const path = `/payments/${encodeURIComponent(id)}`;
+  if (!env.MONEYMOVES_SECRET_KEY && env.MONEYMOVES_DIRECT_KEY) return call<MMPayment>("GET", path, undefined, undefined, env.MONEYMOVES_DIRECT_KEY);
+  try {
+    return await call<MMPayment>("GET", path);
+  } catch (err) {
+    if (!env.MONEYMOVES_DIRECT_KEY || !(err instanceof MoneyMovesError) || err.providerStatus >= 500) throw err;
+    return call<MMPayment>("GET", path, undefined, undefined, env.MONEYMOVES_DIRECT_KEY);
+  }
+}
 export const getAccount = () =>
   call<{ object: "account"; merchant_id: string; name: string; mode: "test" | "live"; verified: boolean; key?: { name: string; prefix: string } }>("GET", "/account");
 

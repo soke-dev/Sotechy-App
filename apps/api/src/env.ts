@@ -16,6 +16,8 @@ const schema = z.object({
   MONEYMOVES_SECRET_KEY: z.string().optional(),
   /** whsec_… from Money Moves → Developers → Webhooks (test and live have different secrets) */
   MONEYMOVES_WEBHOOK_SECRET: z.string().optional(),
+  /** Direct key from Money Moves → Direct payments: bank-transfer checkouts with no fee */
+  MONEYMOVES_DIRECT_KEY: z.string().optional(),
   /** This API's public URL, e.g. https://api.sotechy.shop (Railway sets RAILWAY_PUBLIC_DOMAIN automatically) */
   PUBLIC_API_URL: z.string().optional(),
   RAILWAY_PUBLIC_DOMAIN: z.string().optional(),
