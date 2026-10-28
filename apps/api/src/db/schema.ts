@@ -57,7 +57,7 @@ export const stockMovementTypeEnum = pgEnum("stock_movement_type", [
 ]);
 export const discountTypeEnum = pgEnum("discount_type", ["percentage", "fixed"]);
 export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", ["draft", "ordered", "received", "cancelled"]);
-export const merchantStatusEnum = pgEnum("merchant_status", ["pending", "approved", "suspended"]);
+export const merchantStatusEnum = pgEnum("merchant_status", ["pending", "approved", "suspended", "declined"]);
 export const sellerKindEnum = pgEnum("seller_kind", ["registered", "individual"]);
 /** The owner's identity check (ID document + liveness, through Didit) */
 export const kycStatusEnum = pgEnum("kyc_status", ["not_started", "in_progress", "in_review", "approved", "declined", "resubmit", "expired"]);
@@ -248,6 +248,9 @@ export const merchants = pgTable("merchants", {
   application: jsonb().$type<MerchantApplication>(),
   /** When the merchant submitted setup for review */
   submittedAt: timestamp({ withTimezone: true }),
+  /** Sotechy's note on its review: what to change (sent back to the store) or why it was declined */
+  reviewNote: text(),
+  reviewNoteAt: timestamp({ withTimezone: true }),
   /** Shown first on the app's home and in search until then */
   featuredUntil: timestamp({ withTimezone: true }),
   /** Owner's ID + liveness check through Didit; admin still approves the store itself */

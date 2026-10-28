@@ -9,10 +9,11 @@ import { ensureStoreTokens, walletFor } from "../../services/tokens";
 import { CHAINS } from "../../services/chain";
 import { audit } from "../../lib/audit";
 import { hashPassword, MANAGERS, requireRole, type AppEnv, requirePassword } from "../../lib/auth";
-import { notFound } from "../../lib/errors";
+import { badRequest, notFound } from "../../lib/errors";
 import { sendEmailLater } from "../../lib/email";
 import { publicUser } from "../../lib/serialize";
-import { storeVerifiedEmail } from "../../emails/templates";
+import { storeChangesEmail, storeDeclinedEmail, storeVerifiedEmail } from "../../emails/templates";
+import { sendPushLater } from "../../services/push";
 import { adjustStock } from "../../services/inventory";
 import { salesSummary } from "../../services/reports";
 import { paymentMethodSchema } from "../orders";
@@ -439,6 +440,39 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     if (!row) throw notFound("File not found");
     return c.body(new Uint8Array(row.data), 200, { "Content-Type": row.contentType, "Cache-Control": "private, no-store", "Content-Disposition": `inline; filename="${row.filename.replace(/"/g, "")}"` });
   })
+  /** Reviewing a store that's waiting: send it back for changes (it can submit again) or decline it, with a note the owner sees */
+  .post(
+    "/merchants/:id/review",
+    ADMIN,
+    zValidator("json", z.object({ outcome: z.enum(["changes", "declined"]), note: z.string().trim().min(5, "Say what needs to change, or why").max(1000) })),
+    async (c) => {
+      const { outcome, note } = c.req.valid("json");
+      const [before] = await db.select().from(schema.merchants).where(eq(schema.merchants.id, c.req.param("id")));
+      if (!before) throw notFound("Store not found");
+      if (before.status !== "pending") throw badRequest("Only a store waiting for review can be sent back or declined");
+      const [store] = await db
+        .update(schema.merchants)
+        .set({ reviewNote: note, reviewNoteAt: new Date(), ...(outcome === "changes" ? { submittedAt: null } : { status: "declined" as const }) })
+        .where(eq(schema.merchants.id, before.id))
+        .returning();
+      await audit(db, { actorId: c.get("user").id, action: outcome === "changes" ? "merchant.changes_requested" : "merchant.declined", entityType: "merchant", entityId: before.id, details: { note } });
+      if (store.ownerId) {
+        const [owner] = await db.select({ email: users.email, name: users.fullName }).from(users).where(eq(users.id, store.ownerId));
+        if (owner) {
+          const to = store.contactEmail ?? owner.email;
+          sendEmailLater(outcome === "changes" ? storeChangesEmail(to, { name: owner.name, store: store.name, note }) : storeDeclinedEmail(to, { name: owner.name, store: store.name, note }));
+        }
+        sendPushLater([store.ownerId], {
+          audience: "store",
+          kind: "store",
+          title: outcome === "changes" ? "A few changes before you go live" : "Your store wasn't approved",
+          body: note.slice(0, 140),
+          data: { url: "/onboarding" },
+        });
+      }
+      return c.json(store);
+    },
+  )
   /** Approve (go live), suspend or send a store back to review. Approving emails the owner. */
   .patch(
     "/merchants/:id/status",
@@ -454,7 +488,8 @@ export const adminManagementRoutes = new Hono<AppEnv>()
         // Approving a store approves its token too: the ticker is fixed and the token is created on Monad
         const [row] = await tx
           .update(schema.merchants)
-          .set({ status, ...(status === "approved" && !before.tokenApprovedAt && { tokenApprovedAt: new Date() }) })
+          // Approving or reopening clears an earlier "changes" or "declined" note
+          .set({ status, ...(status === "approved" && !before.tokenApprovedAt && { tokenApprovedAt: new Date() }), ...(status !== "suspended" && { reviewNote: null, reviewNoteAt: null }) })
           .where(eq(schema.merchants.id, before.id))
           .returning();
         await audit(tx, { actorId: actor.id, action: "merchant.status", entityType: "merchant", entityId: before.id, details: { from: before.status, to: status, note: note ?? null } });

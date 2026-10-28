@@ -591,6 +591,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     async (c) => {
       const { sellerKind, sells, submit, ticker: asked, ...application } = c.req.valid("json");
       const store = c.get("store");
+      if (submit && store.status === "declined") throw forbidden("Your store wasn't approved. Email support@sotechy.shop if things have changed.");
 
       // The store names its own token, until Sotechy approves it
       let ticker = store.ticker;
@@ -634,7 +635,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       }
       const [row] = await db
         .update(schema.merchants)
-        .set({ sellerKind, sells, ticker, application: { ...application, tickerChosen }, updatedAt: new Date(), ...(submit && { submittedAt: new Date() }) })
+        .set({ sellerKind, sells, ticker, application: { ...application, tickerChosen }, updatedAt: new Date(), ...(submit && { submittedAt: new Date(), reviewNote: null, reviewNoteAt: null }) })
         .where(eq(schema.merchants.id, store.id))
         .returning();
       if (submit) await audit(db, { actorId: c.get("user").id, action: "merchant.submitted", entityType: "merchant", entityId: store.id });

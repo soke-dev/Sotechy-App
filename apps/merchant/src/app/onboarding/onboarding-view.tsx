@@ -49,6 +49,8 @@ export interface OnboardingStart {
   kycStatus: KycStatus;
   /** Sotechy approved the token, so the ticker can't change */
   tokenApproved: boolean;
+  /** Sotechy sent the store back for changes (with what to change), or declined it */
+  review?: { note: string; declined: boolean } | null;
 }
 
 type TickerCheck = { ticker: string; available: boolean; reason: string | null } | null;
@@ -211,6 +213,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
     else setUploaded((u) => ({ ...u, [name]: r.ok[0].url }));
   };
 
+  if (start.review?.declined) return <Declined store={start.storeName} note={start.review.note} />;
   if (submitted) return <Submitted ticker={start.tokenApproved || tickerOk ? cleanTicker || start.ticker : null} />;
 
   const blocked = step !== "review" ? missing[step] : outstanding.length ? `Still to do: ${outstanding.map((s) => STEPS[s].title).join(", ")}` : null;
@@ -234,6 +237,17 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
           <div className="h-full bg-brand transition-all" style={{ width: `${((steps.length - outstanding.length) / steps.length) * 100}%` }} />
         </div>
       </header>
+
+      {/* Sent back by Sotechy: what to change before submitting again */}
+      {start.review && (
+        <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
+          <div className="rounded-2xl border border-warn/40 bg-warn-soft px-5 py-4">
+            <p className="font-semibold">Sotechy asked for a few changes</p>
+            <p className="mt-1 whitespace-pre-line text-sm text-ink-2">{start.review.note}</p>
+            <p className="mt-2 text-xs text-muted">Make the changes below, then submit again from the last step.</p>
+          </div>
+        </div>
+      )}
 
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-8 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:py-12">
         {/* Steps, with what each still needs */}
@@ -720,6 +734,23 @@ function TokenHelp() {
         </div>
       )}
     </>
+  );
+}
+
+/** Sotechy declined the store: the reason, and who to talk to */
+function Declined({ store, note }: { store: string; note: string }) {
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12 text-center">
+      <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-bad-soft">
+        <Illo name="shield" size={48} />
+      </span>
+      <h1 className="mt-5 font-display text-3xl font-bold">{store} wasn&apos;t approved</h1>
+      <p className="mt-3 whitespace-pre-line rounded-2xl border border-line bg-surface px-5 py-4 text-left text-sm text-ink-2">{note}</p>
+      <p className="mt-4 text-sm text-muted">If you think this is a mistake, or things have changed, email support@sotechy.shop and we&apos;ll look again.</p>
+      <Link href="/" className={`${btn.outline} mx-auto mt-6`}>
+        Back to your dashboard
+      </Link>
+    </main>
   );
 }
 

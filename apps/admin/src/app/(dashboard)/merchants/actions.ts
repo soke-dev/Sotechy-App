@@ -22,6 +22,11 @@ export async function setStoreStatus(id: string, status: "pending" | "approved" 
   return attempt(() => withPassword("PATCH", `/admin/merchants/${id}/status`, { status, note }, password), id);
 }
 
+/** Send a waiting store back for changes, or decline it, with a note the owner sees */
+export async function reviewStore(id: string, outcome: "changes" | "declined", note: string): Promise<Result> {
+  return attempt(() => api.post(`/admin/merchants/${id}/review`, { outcome, note }), id);
+}
+
 export async function reviewZone(storeId: string, zoneId: string, review: "approved" | "declined", note?: string): Promise<Result> {
   return attempt(() => api.patch(`/admin/delivery-zones/${zoneId}`, { review, note: note ?? null }), storeId);
 }

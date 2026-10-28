@@ -8,7 +8,7 @@ import { formatNaira } from "@sotechy/shared";
 import { CheckIcon } from "@/components/merchant-bits";
 import { RelTime } from "@/components/rel-time";
 import { Card, dangerButtonClass, inputClass, Pill, primaryButtonClass, secondaryButtonClass, Sheet } from "@/components/ui";
-import { reviewZone, setStoreStatus } from "../actions";
+import { reviewStore, reviewZone, setStoreStatus } from "../actions";
 import { StoreAvatar } from "../merchants-list";
 import { KYC, STAGE, stageOf, type AdminStoreDetail, type AdminZone } from "../store-types";
 import { usePasswordPrompt } from "@/components/password-prompt";
@@ -63,6 +63,9 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
         router.refresh();
       }
     });
+  // Sending it back for changes, or declining it, with a note for the owner
+  const [reviewing, setReviewing] = useState<"changes" | "declined" | null>(null);
+  const [noteText, setNoteText] = useState("");
   // Opening, suspending or reinstating a store needs the admin's password
   const { ask, prompt } = usePasswordPrompt();
   const confirmStatus = async (status: "approved" | "suspended", note?: string): Promise<{ ok: true } | { error: string }> => {
@@ -107,12 +110,26 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {store.status === "pending" && (
-              <button
-                disabled={busy}
-                onClick={() => run(() => confirmStatus("approved"))}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-40"
-              >
-                <Check size={16} /> {busy ? "Saving…" : "Approve and go live"}
+              <>
+                {/* Not ready yet, or not right for Sotechy: the owner gets the note by email and in their dashboard */}
+                <button disabled={busy} onClick={() => { setNoteText(""); setReviewing("changes"); }} className="inline-flex min-h-11 items-center rounded-full bg-white/10 px-5 text-sm font-semibold text-white hover:bg-white/15 disabled:opacity-40">
+                  Request changes
+                </button>
+                <button disabled={busy} onClick={() => { setNoteText(""); setReviewing("declined"); }} className="inline-flex min-h-11 items-center rounded-full bg-white/10 px-5 text-sm font-semibold text-[#ffb4aa] hover:bg-white/15 disabled:opacity-40">
+                  Decline
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => run(() => confirmStatus("approved"))}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-40"
+                >
+                  <Check size={16} /> {busy ? "Saving…" : "Approve and go live"}
+                </button>
+              </>
+            )}
+            {store.status === "declined" && (
+              <button disabled={busy} onClick={() => run(() => setStoreStatus(store.id, "pending", "-"))} className="inline-flex min-h-11 items-center rounded-full bg-white/10 px-5 text-sm font-semibold text-white hover:bg-white/15 disabled:opacity-40">
+                Reopen review
               </button>
             )}
             {store.status === "approved" && (
@@ -127,8 +144,14 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
             )}
           </div>
         </div>
-        {store.status === "pending" && !store.submittedAt && (
+        {store.status === "pending" && !store.submittedAt && !store.reviewNote && (
           <p className="relative mt-4 text-xs text-white/55">They haven&apos;t submitted their setup yet, so some details may be missing.</p>
+        )}
+        {store.reviewNote && (
+          <p className="relative mt-4 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/85">
+            <b>{store.status === "declined" ? "Declined" : "Changes requested"}</b>
+            {store.reviewNoteAt && <span className="text-white/55"> · <RelTime iso={store.reviewNoteAt} /></span>}: {store.reviewNote}
+          </p>
         )}
       </section>
 
@@ -273,7 +296,12 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
                     .join(" · ")
                 : null}
             </Row>
-            {store.application?.description && <p className="mt-2 whitespace-pre-line border-t border-line pt-3 text-sm text-ink-2">{store.application.description}</p>}
+            {store.application?.description && (
+              <div className="mt-2 border-t border-line pt-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">About the business (from the store)</p>
+                <p className="mt-1 whitespace-pre-line text-sm text-ink-2">{store.application.description}</p>
+              </div>
+            )}
             <Row label="Products">{store.products}</Row>
             <Row label="Orders">{store.orders}</Row>
             <Row label="Sales">{formatNaira(store.sales)}</Row>
@@ -309,6 +337,30 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
           className={`${dangerButtonClass} mt-4 w-full`}
         >
           Suspend store
+        </button>
+      </Sheet>
+
+      <Sheet open={reviewing !== null} onClose={() => setReviewing(null)} title={reviewing === "declined" ? `Decline ${store.name}?` : `Ask ${store.name} for changes`}>
+        <p className="text-sm text-ink-2">
+          {reviewing === "declined"
+            ? "The store won't go live. The owner gets your reason by email and in their dashboard. You can reopen it later."
+            : "The store goes back to the owner with your note, by email and in their dashboard. They make the changes and submit again."}
+        </p>
+        <textarea
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          rows={4}
+          maxLength={1000}
+          className={`${inputClass} mt-3 h-auto py-3`}
+          placeholder={reviewing === "declined" ? "e.g. We couldn't confirm the business is real from the details given." : "e.g. Please add your shop's full street address and a clear logo."}
+        />
+        {error && <p className="mt-3 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
+        <button
+          disabled={busy || noteText.trim().length < 5}
+          onClick={() => reviewing && run(() => reviewStore(store.id, reviewing, noteText.trim()), () => setReviewing(null))}
+          className={`${reviewing === "declined" ? dangerButtonClass : primaryButtonClass} mt-4 w-full`}
+        >
+          {busy ? "Sending…" : reviewing === "declined" ? "Decline store" : "Send back for changes"}
         </button>
       </Sheet>
 

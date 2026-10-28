@@ -20,6 +20,15 @@ export async function VerifiedOnly({ what, children }: { what: string; children:
     );
   }
 
+  if (store.status === "declined") {
+    return (
+      <Panel title="Your store wasn't approved" body={store.reviewNote ?? "Sotechy couldn't approve your store to sell."}>
+        <p className="text-sm text-muted">If you think this is a mistake, or things have changed, email support@sotechy.shop.</p>
+        <Link href="/" className={btn.outline}>Back to your dashboard</Link>
+      </Panel>
+    );
+  }
+
   const idDone = store.kycStatus === "approved";
   return (
     <Panel

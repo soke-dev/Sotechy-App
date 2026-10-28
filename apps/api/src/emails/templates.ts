@@ -229,6 +229,37 @@ export function payoutSentEmail(to: string, d: { store: string; amount: number; 
   });
 }
 
+export function storeChangesEmail(to: string, d: { name: string | null; store: string; note: string }) {
+  return build(to, `${d.store}: a few changes before you go live`, {
+    preheader: "Sotechy reviewed your store and needs a few things changed.",
+    hero: "store-notice",
+    eyebrow: d.store,
+    heading: "A few changes, then you're live",
+    blocks: [
+      { kind: "text", text: `Hi ${first(d.name)}, we reviewed **${d.store}** and need a few things changed before it can start selling.` },
+      { kind: "note", tone: "warn", icon: "doc", text: d.note },
+      { kind: "text", text: "Make the changes in your setup and submit it again. We'll review it as soon as it's back." },
+      { kind: "button", label: "Update your setup", url: merchantLink("/onboarding") },
+    ],
+    reason: "You're getting this because Sotechy reviewed your store.",
+  });
+}
+
+export function storeDeclinedEmail(to: string, d: { name: string | null; store: string; note: string }) {
+  return build(to, `${d.store} wasn't approved`, {
+    preheader: "Sotechy reviewed your store and couldn't approve it.",
+    hero: "store-notice",
+    eyebrow: d.store,
+    heading: "We couldn't approve your store",
+    blocks: [
+      { kind: "text", text: `Hi ${first(d.name)}, we reviewed **${d.store}** and couldn't approve it to sell on Sotechy.` },
+      { kind: "note", tone: "bad", icon: "shield", text: d.note },
+      { kind: "text", text: "If you think this is a mistake, or things have changed, reply to support@sotechy.shop and we'll look again." },
+    ],
+    reason: "You're getting this because Sotechy reviewed your store.",
+  });
+}
+
 export function storeVerifiedEmail(to: string, d: { name: string | null; store: string }) {
   return build(to, `${d.store} is verified. You're live!`, {
     preheader: "Customers can now buy from your store.",

@@ -22,7 +22,7 @@ export interface AdminStore {
   slug: string;
   ticker: string;
   sellerKind: "registered" | "individual";
-  status: "pending" | "approved" | "suspended";
+  status: "pending" | "approved" | "suspended" | "declined";
   contactEmail: string | null;
   contactPhone: string | null;
   contactWhatsapp: string | null;
@@ -31,6 +31,9 @@ export interface AdminStore {
   /** When the store's token was approved (its ticker is fixed from then on) */
   tokenApprovedAt: string | null;
   submittedAt: string | null;
+  /** Sotechy's note when it asked for changes or declined the store */
+  reviewNote?: string | null;
+  reviewNoteAt?: string | null;
   kycStatus: KycStatus;
   kycResult: KycResult | null;
   kycUpdatedAt: string | null;
@@ -73,16 +76,28 @@ export interface AdminStoreDetail extends Omit<AdminStore, "ownerName" | "ownerE
 }
 
 /** Where a store is in Sotechy's process */
-export type Stage = "review" | "setup" | "live" | "suspended";
+export type Stage = "review" | "changes" | "setup" | "live" | "suspended" | "declined";
 
-export const stageOf = (s: Pick<AdminStore, "status" | "submittedAt">): Stage =>
-  s.status === "approved" ? "live" : s.status === "suspended" ? "suspended" : s.submittedAt ? "review" : "setup";
+export const stageOf = (s: Pick<AdminStore, "status" | "submittedAt" | "reviewNote">): Stage =>
+  s.status === "approved"
+    ? "live"
+    : s.status === "suspended"
+      ? "suspended"
+      : s.status === "declined"
+        ? "declined"
+        : s.submittedAt
+          ? "review"
+          : s.reviewNote
+            ? "changes"
+            : "setup";
 
 export const STAGE: Record<Stage, { label: string; tone: "warn" | "info" | "good" | "bad" }> = {
   review: { label: "Needs review", tone: "warn" },
   setup: { label: "Still setting up", tone: "info" },
   live: { label: "Live", tone: "good" },
   suspended: { label: "Suspended", tone: "bad" },
+  changes: { label: "Changes requested", tone: "info" },
+  declined: { label: "Declined", tone: "bad" },
 };
 
 export const KYC: Record<KycStatus, { label: string; ok: boolean | null }> = {

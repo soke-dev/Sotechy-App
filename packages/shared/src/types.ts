@@ -384,7 +384,7 @@ export interface MerchantStore {
   ownerId: string | null;
   sellerKind: "registered" | "individual";
   /** pending = test mode until Sotechy verifies the store */
-  status: "pending" | "approved" | "suspended";
+  status: "pending" | "approved" | "suspended" | "declined";
   contactEmail: string | null;
   contactPhone: string | null;
   contactWhatsapp: string | null;
@@ -397,6 +397,9 @@ export interface MerchantStore {
   sells?: string[];
   application?: Omit<MerchantApplicationInput, "sellerKind" | "sells" | "submit"> | null;
   submittedAt?: string | null;
+  /** Sotechy's note: what to change (sent back for changes) or why it was declined */
+  reviewNote?: string | null;
+  reviewNoteAt?: string | null;
   featuredUntil?: string | null;
   /** Where payouts go, checked with the bank */
   payoutBankCode?: string | null;
