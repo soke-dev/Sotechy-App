@@ -44,14 +44,14 @@ function FulfilmentCard({ illo, title, subtitle, active, locked, lockedNote = "N
         tap();
         onPress();
       }}
-      style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md, paddingHorizontal: space.lg, borderRadius: radius.lg, borderWidth: active ? 1.5 : 1, borderColor: active ? colors.ink : colors.line, backgroundColor: active ? colors.surface : colors.bg, opacity: locked ? 0.5 : 1 }}
+      style={{ flex: 1, minWidth: 0, gap: 4, padding: space.md, borderRadius: radius.lg, borderWidth: active ? 1.5 : 1, borderColor: active ? colors.ink : colors.line, backgroundColor: active ? colors.surface : colors.bg, opacity: locked ? 0.5 : 1 }}
     >
-      <Illo name={illo} size={32} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Txt variant="label">{title}</Txt>
-        <Txt variant="caption">{locked ? lockedNote : subtitle}</Txt>
+      <View style={[ui.row, { gap: 6 }]}>
+        <Illo name={illo} size={26} />
+        <Txt variant="label" numberOfLines={1} style={{ flex: 1, fontSize: 14 }}>{title}</Txt>
+        {!locked && <Ionicons name={active ? "radio-button-on" : "radio-button-off"} size={18} color={active ? colors.ink : colors.faint} />}
       </View>
-      {!locked && <Ionicons name={active ? "radio-button-on" : "radio-button-off"} size={20} color={active ? colors.ink : colors.faint} />}
+      <Txt variant="caption" numberOfLines={2}>{locked ? lockedNote : subtitle}</Txt>
     </Pressable>
   );
 }
@@ -89,6 +89,7 @@ export default function CheckoutScreen() {
   const products = useAsync(() => Promise.all(productIds.map((id) => api.product(id))), [productIds.join(",")]);
   const [pickingAddress, setPickingAddress] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [tokensOpen, setTokensOpen] = useState(false);
   const [phone, setPhone] = useState(user?.phone ?? "");
   // An address added from checkout is picked as soon as the customer comes back
   const knownIds = useRef<Set<string> | null>(null);
@@ -249,6 +250,7 @@ export default function CheckoutScreen() {
 
   /** Paying with tokens, in the payment sheet */
   const tokenRows = <TokenChoice plan={tokenPlan} on={useTokens} onToggle={(t) => setUseTokens({ ...useTokens, [t]: !useTokens[t] })} />;
+  const usingTokens = tokenPlan.filter((t) => t.amount > 0);
 
   return (
     <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90}>
@@ -268,8 +270,8 @@ export default function CheckoutScreen() {
               This order comes from <Txt variant="label" style={{ fontSize: 14 }}>{seller.name}</Txt>. They send it to you, or have it ready to collect.
             </Txt>
           )}
-          {/* One option per row; one that can't be used here shows faded with why */}
-          <View style={{ gap: space.sm }}>
+          {/* Side by side; one that can't be used here shows faded with why */}
+          <View style={{ flexDirection: "row", gap: space.sm, alignItems: "stretch" }}>
             {features.pickup && <FulfilmentCard illo="pin" title="Pickup location" subtitle={seller ? (pickupPoints.length ? `From ${formatNaira(Math.min(...pickupPoints.map((p) => p.pickupFee ?? 0)))}` : "Collect it yourself") : "Free · usually same day"} active={fulfilment === "pickup" && canPickup} locked={!itemsPickup || !storePickup} lockedNote={itemsPickup ? "Not available yet" : undefined} onPress={() => setFulfilment("pickup")} />}
             {features.delivery && <FulfilmentCard
               illo="bike"
@@ -443,6 +445,27 @@ export default function CheckoutScreen() {
           )}
         </Section>}
 
+        {tokenPlan.length > 0 && (
+          <Pressable
+            onPress={() => {
+              tap();
+              setTokensOpen(true);
+            }}
+            style={({ pressed }) => [ui.card, { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderColor: usingTokens.length ? colors.brand : colors.line, opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Illo name="coin" size={34} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt variant="label">Pay with your store tokens</Txt>
+              <Txt variant="caption" color={usingTokens.length ? colors.success : colors.muted}>
+                {usingTokens.length
+                  ? `${usingTokens.map((t) => `$${t.ticker}`).join(" + ")} · −${formatNaira(tokensValue)}`
+                  : `Up to ${formatNaira(Math.min(Math.max(0, total - TOKEN_RULES.minCashPerOrder), tokenPlan.reduce((n, t) => n + tokensToNaira(t.most), 0)))} off with ${tokenPlan.map((t) => `$${t.ticker}`).join(" and ")}`}
+              </Txt>
+            </View>
+            <Txt variant="label" color={colors.brandPressed}>{usingTokens.length ? "Change" : "Use"}</Txt>
+          </Pressable>
+        )}
+
         <View style={ui.card}>
           <Txt variant="heading" style={{ marginBottom: space.sm }}>Order summary</Txt>
           {cart.lines.map((l) => (
@@ -520,7 +543,19 @@ export default function CheckoutScreen() {
           </Pressable>
         </View>
       </Sheet>
-      <PayChoiceSheet visible={payOpen} amount={due} onClose={() => setPayOpen(false)} onPay={() => void proceedToPayment()} extra={tokenRows} />
+      <PayChoiceSheet visible={payOpen} amount={due} onClose={() => setPayOpen(false)} onPay={() => void proceedToPayment()} />
+      <Sheet visible={tokensOpen} title="Pay with tokens" onClose={() => setTokensOpen(false)} footer={<Button title={usingTokens.length ? `Use tokens · pay ${formatNaira(due)}` : "Done"} variant="dark" onPress={() => setTokensOpen(false)} />}>
+        <Txt variant="small" color={colors.ink2}>
+          Tokens you earned at {seller?.name ?? "this store"}, and $SOTECHY, can pay part of this order. They&apos;re only taken once your payment goes through, and at least ₦{TOKEN_RULES.minCashPerOrder} is paid in money.
+        </Txt>
+        {tokenRows}
+        <View style={{ gap: 6 }}>
+          <SummaryRow label="Order total" value={formatNaira(total)} />
+          <SummaryRow label="Tokens" value={tokensValue > 0 ? `−${formatNaira(tokensValue)}` : formatNaira(0)} tone={tokensValue > 0 ? colors.success : undefined} />
+          <Divider style={{ marginVertical: 2 }} />
+          <SummaryRow label="You pay" value={formatNaira(due)} strong />
+        </View>
+      </Sheet>
       {moneyMoves.sheet}
     </KeyboardAvoidingView>
   );
