@@ -9,19 +9,21 @@ const PERKS: { illo: IlloName; title: string; body: string }[] = [
 ];
 
 /** A page heading with "Why sell on Sotechy?" beside it on computers (phones show it by the logo) */
-export function AuthHeading({ children }: { children: ReactNode }) {
+export function AuthHeading({ children, whySell = true }: { children: ReactNode; whySell?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-3">
       <h2 className="text-3xl font-extrabold">{children}</h2>
-      <span className="mt-1 hidden lg:block">
-        <WhySell tone="light" />
-      </span>
+      {whySell && (
+        <span className="mt-1 hidden lg:block">
+          <WhySell tone="light" />
+        </span>
+      )}
     </div>
   );
 }
 
 /** Two-panel frame for sign-in, sign-up and invitations. */
-export function AuthFrame({ children }: { children: ReactNode }) {
+export function AuthFrame({ children, whySell = true }: { children: ReactNode; whySell?: boolean }) {
   return (
     <main className="grid min-h-screen lg:grid-cols-[1fr_1.1fr]">
       <aside className="relative hidden overflow-hidden bg-panel p-12 text-white lg:flex lg:flex-col lg:justify-between">
@@ -58,7 +60,7 @@ export function AuthFrame({ children }: { children: ReactNode }) {
               <img src="/brand/light-logo-small.png" alt="SoTechy" className="h-8" />
               <span className="rounded-md bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-strong">Merchant</span>
             </div>
-            <WhySell tone="light" />
+            {whySell && <WhySell tone="light" />}
           </div>
           {children}
         </div>

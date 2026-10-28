@@ -27,6 +27,8 @@ export interface ShellStore {
   verified: boolean;
   /** Paused by Sotechy */
   paused?: boolean;
+  /** Sotechy asked for changes, or declined the store */
+  review?: { note: string; declined: boolean } | null;
   newOrders: number;
   /** Price offers waiting for an answer */
   offersWaiting: number;
@@ -93,7 +95,7 @@ function StoreCard({ store }: { store: ShellStore }) {
         <p className="font-display truncate text-[15px] font-bold">{store.name}</p>
         <p className="flex items-center gap-1.5 text-xs text-white/60">
           <span className={`h-1.5 w-1.5 rounded-full ${store.verified ? "bg-green-400" : "bg-amber-400"}`} />
-          {store.verified ? "Verified · live" : store.paused ? "Paused" : "Awaiting verification"}
+          {store.verified ? "Verified · live" : store.paused ? "Paused" : store.review?.declined ? "Not approved" : store.review ? "Changes requested" : "Awaiting verification"}
         </p>
       </div>
     </div>
@@ -241,6 +243,20 @@ export function MerchantShell({ store, user, children }: { store: ShellStore; us
               <span>
                 <b>Your store is paused.</b> Email support@sotechy.shop and we&apos;ll help you sort it out.
               </span>
+            ) : store.review?.declined ? (
+              <>
+                <span>
+                  <b>Your store wasn&apos;t approved.</b> {store.review.note}
+                </span>
+                <Link href="/onboarding" className="font-semibold underline">See details</Link>
+              </>
+            ) : store.review ? (
+              <>
+                <span className="max-w-3xl">
+                  <b>Sotechy asked for a few changes.</b> {store.review.note.length > 140 ? `${store.review.note.slice(0, 140)}…` : store.review.note}
+                </span>
+                <Link href="/onboarding" className="font-semibold underline">Make the changes</Link>
+              </>
             ) : (
               <>
                 <span>

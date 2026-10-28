@@ -29,6 +29,18 @@ const STEPS: Record<StepId, { title: string; intro: string }> = {
   review: { title: "Review and submit", intro: "Check everything, then send your store to Sotechy for review." },
 };
 
+/** The icon for each step, in the phone's step bar */
+const STEP_ICON: Record<StepId, Parameters<typeof Illo>[0]["name"]> = {
+  setup: "store",
+  business: "doc",
+  documents: "receipt",
+  you: "user",
+  people: "heart",
+  store: "bag",
+  payout: "bank",
+  review: "shield",
+};
+
 const STRUCTURES: [BusinessStructure, string, string][] = [
   ["BN", "Business name", "Registered as a business name (BN number)"],
   ["LTD", "Private limited company", "Ltd, with an RC number"],
@@ -231,14 +243,37 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
           </div>
           <div className="flex items-center gap-3">
             <WhySell tone="light" />
-            <button type="button" disabled={saving} onClick={finishLater} className="text-sm font-semibold text-muted hover:text-ink">
+            {/* Phones have "Finish later" under the form instead */}
+            <button type="button" disabled={saving} onClick={finishLater} className="hidden text-sm font-semibold text-muted hover:text-ink lg:inline">
               Save and exit
             </button>
           </div>
         </div>
-        {/* Phone: progress */}
-        <div className="h-1 bg-line lg:hidden">
-          <div className="h-full bg-brand transition-all" style={{ width: `${((steps.length - outstanding.length) / steps.length) * 100}%` }} />
+        {/* Phone: each step as an icon, done ones ticked; tap one to go there */}
+        <div className="flex items-center gap-1 overflow-x-auto px-4 pb-3 lg:hidden">
+          {steps.map((s, i) => {
+            const done = s !== "review" && !missing[s];
+            const here = s === step;
+            return (
+              <div key={s} className="flex items-center gap-1">
+                {i > 0 && <span className={`h-0.5 w-3 shrink-0 rounded-full ${done || here ? "bg-brand" : "bg-line"}`} />}
+                <button
+                  type="button"
+                  onClick={() => setStep(s)}
+                  aria-label={STEPS[s].title}
+                  aria-current={here ? "step" : undefined}
+                  className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition ${here ? "border-brand bg-brand-soft" : done ? "border-good/40 bg-good-soft" : "border-line bg-surface"}`}
+                >
+                  <Illo name={STEP_ICON[s]} size={20} />
+                  {done && !here && (
+                    <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-good text-white">
+                      <Check size={9} strokeWidth={3} />
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </header>
 
@@ -571,9 +606,17 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
               <ArrowLeft size={16} /> Back
             </button>
             <span className="flex-1" />
-            <button type="button" disabled={saving || uploadingDoc !== null} onClick={finishLater} className={btn.outline}>
-              Finish later
-            </button>
+            {/* Computers: beside the main button; phones: plain text in the middle, below */}
+            <span className="order-last w-full text-center sm:order-none sm:w-auto">
+              <button type="button" disabled={saving || uploadingDoc !== null} onClick={finishLater} className="py-2 text-sm font-semibold text-muted hover:text-ink sm:hidden">
+                Finish later
+              </button>
+              <span className="hidden sm:inline">
+                <button type="button" disabled={saving || uploadingDoc !== null} onClick={finishLater} className={btn.outline}>
+                  Finish later
+                </button>
+              </span>
+            </span>
             {step === "review" ? (
               <button type="button" disabled={saving || !confirmed || outstanding.length > 0} onClick={() => persist(true, () => setSubmitted(true))} className={btn.primary}>
                 {saving ? "Submitting…" : "Submit for review"}

@@ -49,7 +49,7 @@ export function StoreStep({ firstName, askReferral, phone, referral }: { firstNa
 
   return (
     <>
-      <AuthHeading>{firstName ? `Hi ${firstName}, about your store` : "About your store"}</AuthHeading>
+      <AuthHeading whySell={false}>{firstName ? `Hi ${firstName}, about your store` : "About your store"}</AuthHeading>
       <p className="mb-8 mt-1 text-muted">You can change these later in settings.</p>
       <form action={action} className="flex flex-col gap-5">
         <Field label="Store name" required>

@@ -24,7 +24,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
     const { user, store } = await getSession();
     if (store) redirect("/");
     return (
-      <AuthFrame>
+      <AuthFrame whySell={false}>
         <Progress step={1} />
         <StoreStep firstName={user.fullName?.split(" ")[0] ?? null} askReferral={!user.referredById} phone={user.phone} referral={ref} />
       </AuthFrame>
