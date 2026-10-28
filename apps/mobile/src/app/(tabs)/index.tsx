@@ -276,7 +276,7 @@ export default function HomeScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Txt variant="title" style={{ fontFamily: fonts.displayHeavy, fontSize: 19 }}>Earn while you shop</Txt>
-            <Txt variant="small" color={colors.ink2}>1 store token for every ₦1, spent at the store like cash.</Txt>
+            <Txt variant="small" color={colors.ink2}>1 store token for every ₦1 you spend. Use them like cash on your next order at that store.</Txt>
           </View>
         </View>
         {/* The extras, small, side by side on one row */}
