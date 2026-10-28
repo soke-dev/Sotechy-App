@@ -179,26 +179,42 @@ export const orderRoutes = new Hono<AppEnv>()
       .update(orders)
       .set({ customerIssueAt: new Date(), customerIssueNote: note })
       .where(
-        and(eq(orders.id, c.req.param("id")), eq(orders.customerId, user.id), eq(orders.status, "delivered"), sql`${orders.customerConfirmedAt} is null`, sql`${orders.customerIssueAt} is null`),
+        and(
+          eq(orders.id, c.req.param("id")),
+          eq(orders.customerId, user.id),
+          // Delivered but not here, or waiting at the pickup point but not there
+          inArray(orders.status, ["delivered", "ready_for_pickup"]),
+          sql`${orders.customerConfirmedAt} is null`,
+          sql`${orders.customerIssueAt} is null`,
+        ),
       )
       .returning();
     if (!o) {
       const [owned] = await db.select({ status: orders.status }).from(orders).where(and(eq(orders.id, c.req.param("id")), eq(orders.customerId, user.id)));
       if (!owned) throw notFound("Order not found");
-      if (owned.status !== "delivered") throw badRequest("The store hasn't marked this order delivered yet");
+      if (owned.status !== "delivered" && owned.status !== "ready_for_pickup") throw badRequest("The store hasn't marked this order delivered yet");
     } else {
-      await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: "delivered", toStatus: "delivered", note: note ? `Customer says they didn't get it: ${note}` : "Customer says they didn't get it", changedBy: user.id });
+      const atPickup = o.status === "ready_for_pickup";
+      const what = atPickup ? "Customer says it wasn't at the pickup location" : "Customer says they didn't get it";
+      await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: o.status, toStatus: o.status, note: note ? `${what}: ${note}` : what, changedBy: user.id });
       let storeName = "Sotechy";
       if (o.merchantId) {
         await holdFinal(o.id);
         const [store] = await db.select({ name: schema.merchants.name, ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId));
         storeName = store?.name ?? storeName;
-        if (store?.ownerId) sendPushLater([store.ownerId], { audience: "store", kind: "order", title: "Customer didn't get it", body: `The customer says ${o.orderNumber} hasn't reached them. Sotechy will be in touch.`, data: { url: `/orders/${o.id}` } });
+        if (store?.ownerId)
+          sendPushLater([store.ownerId], {
+            audience: "store",
+            kind: "order",
+            title: atPickup ? "Not at the pickup location" : "Customer didn't get it",
+            body: atPickup ? `The customer went for ${o.orderNumber} but it wasn't at the pickup location. Sotechy will be in touch.` : `The customer says ${o.orderNumber} hasn't reached them. Sotechy will be in touch.`,
+            data: { url: `/orders/${o.id}` },
+          });
       }
       const [me] = await db.select({ username: schema.users.username, fullName: schema.users.fullName, email: schema.users.email }).from(schema.users).where(eq(schema.users.id, user.id));
       const customer = me?.username ? `@${me.username}` : (me?.fullName ?? me?.email ?? "The customer");
       const admins = await db.select({ id: schema.users.id, email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.role, "admin"));
-      for (const a of admins) sendEmailLater(orderNotReceivedEmail(a.email, { name: a.name, store: storeName, orderNumber: o.orderNumber, customer, note, orderId: o.id }));
+      for (const a of admins) sendEmailLater(orderNotReceivedEmail(a.email, { name: a.name, store: storeName, orderNumber: o.orderNumber, customer, note: note ?? (atPickup ? "It wasn't at the pickup location" : null), orderId: o.id }));
     }
     return c.json(await loadOrderDetail(c.req.param("id")));
   });

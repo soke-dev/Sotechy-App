@@ -115,6 +115,9 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
   })
   /** Sorted out: the customer has the order now, so the store's final payment can go */
   .post("/orders/:id/received", async (c) => {
+    // Still waiting at the pickup point: it's collected now
+    const [waiting] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, c.req.param("id")));
+    if (waiting?.status === "ready_for_pickup") await updateOrderStatus(c.get("user"), c.req.param("id"), "delivered", "Collected (confirmed by Sotechy)");
     const [o] = await db
       .update(orders)
       .set({ customerConfirmedAt: new Date() })
