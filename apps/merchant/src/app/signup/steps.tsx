@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { FormError, PhoneField, ReferralField, StoreHandleField } from "@/components/account-fields";
 import { GoogleButton } from "@/components/google-button";
 import { Illo } from "@/components/illustrations";
-import { WhySell } from "@/components/why-sell";
+import { AuthHeading } from "@/components/auth-frame";
 import { btn, Field, inputClass } from "@/components/ui";
 import { openStore, signOut, signUp } from "@/lib/session-actions";
 
@@ -13,7 +13,7 @@ export function AccountStep({ referral }: { referral?: string }) {
   const [state, action, pending] = useActionState(signUp, null);
   return (
     <>
-      <h2 className="text-3xl font-extrabold">Open your store</h2>
+      <AuthHeading>Open your store</AuthHeading>
       <p className="mb-8 mt-1 text-muted">Set up in a few minutes. Explore your dashboard straight away, and start selling once Sotechy verifies your store.</p>
       <GoogleButton />
       <div className="my-6 flex items-center gap-3 text-xs text-muted">
@@ -49,11 +49,8 @@ export function StoreStep({ firstName, askReferral, phone, referral }: { firstNa
 
   return (
     <>
-      <h2 className="text-3xl font-extrabold">{firstName ? `Hi ${firstName}, about your store` : "About your store"}</h2>
-      <p className="mt-1 text-muted">You can change these later in settings.</p>
-      <div className="mb-8 mt-4">
-        <WhySell tone="light" />
-      </div>
+      <AuthHeading>{firstName ? `Hi ${firstName}, about your store` : "About your store"}</AuthHeading>
+      <p className="mb-8 mt-1 text-muted">You can change these later in settings.</p>
       <form action={action} className="flex flex-col gap-5">
         <Field label="Store name" required>
           <input name="storeName" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={60} className={inputClass} placeholder="e.g. Xena Gadgets" />

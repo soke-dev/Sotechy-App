@@ -8,6 +8,16 @@ const PERKS: { illo: IlloName; title: string; body: string }[] = [
   { illo: "shield", title: "Verified stores only", body: "Every store is checked by Sotechy, so shoppers buy with confidence." },
 ];
 
+/** A page heading with "Why sell on Sotechy?" beside it on computers (phones show it by the logo) */
+export function AuthHeading({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <h2 className="text-3xl font-extrabold">{children}</h2>
+      <WhySell tone="light" className="mt-1 hidden lg:inline-flex" />
+    </div>
+  );
+}
+
 /** Two-panel frame for sign-in, sign-up and invitations. */
 export function AuthFrame({ children }: { children: ReactNode }) {
   return (
@@ -34,22 +44,19 @@ export function AuthFrame({ children }: { children: ReactNode }) {
               </li>
             ))}
           </ul>
-          <div className="mt-8">
-            <WhySell />
-          </div>
         </div>
         <p className="relative text-xs text-white/40">Businesses and freelancers welcome. Every merchant is verified by Sotechy.</p>
       </aside>
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-md">
-          <div className="mb-10 flex items-center gap-2 lg:hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/light-logo-small.png" alt="SoTechy" className="h-9" />
-            <span className="rounded-md bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-strong">Merchant</span>
-          </div>
-          {/* Phones don't show the side panel: the button sits above the form */}
-          <div className="-mt-6 mb-6 lg:hidden">
-            <WhySell tone="light" />
+          {/* Phones: logo, with "Why sell on Sotechy?" on the same row */}
+          <div className="mb-10 flex items-center justify-between gap-3 lg:hidden">
+            <div className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/light-logo-small.png" alt="SoTechy" className="h-9" />
+              <span className="rounded-md bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-strong">Merchant</span>
+            </div>
+            <WhySell tone="light" short />
           </div>
           {children}
         </div>

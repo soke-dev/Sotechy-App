@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState } from "react";
 import { Illo, type IlloName } from "./illustrations";
 import { btn } from "./ui";
@@ -36,16 +36,17 @@ const GAINS: { illo: IlloName; title: string; body: string }[] = [
 ];
 
 /** "Why sell on Sotechy?": what a store gains, and what the fee pays for */
-export function WhySell({ tone = "dark" }: { tone?: "dark" | "light" }) {
+/** `short` labels it "Why Sotechy?" where space is tight (the phone logo row) */
+export function WhySell({ tone = "dark", className = "", short = false }: { tone?: "dark" | "light"; className?: string; short?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${tone === "dark" ? "bg-white/10 text-sun hover:bg-white/15" : "bg-brand-soft text-brand-strong hover:bg-brand-soft/70"}`}
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full py-1.5 pl-2 pr-3.5 text-sm font-semibold transition ${tone === "dark" ? "bg-white/10 text-sun hover:bg-white/15" : "bg-brand-soft text-brand-strong hover:bg-brand-soft/70"} ${className}`}
       >
-        <Sparkles size={15} /> Why sell on Sotechy?
+        <Illo name="store" size={22} /> {short ? "Why Sotechy?" : "Why sell on Sotechy?"}
       </button>
       {open && (
         <div className="backdrop-anim fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={() => setOpen(false)}>

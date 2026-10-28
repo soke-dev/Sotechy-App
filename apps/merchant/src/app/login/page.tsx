@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { FormError } from "@/components/account-fields";
-import { AuthFrame } from "@/components/auth-frame";
+import { AuthFrame, AuthHeading } from "@/components/auth-frame";
 import { GoogleButton } from "@/components/google-button";
 import { btn, Field, inputClass } from "@/components/ui";
 import { signIn } from "@/lib/session-actions";
@@ -13,7 +13,7 @@ export default function LoginPage() {
 
   return (
     <AuthFrame>
-      <h2 className="text-3xl font-extrabold">Welcome back</h2>
+      <AuthHeading>Welcome back</AuthHeading>
       <p className="mb-8 mt-1 text-muted">Sign in to your store. It&apos;s the same account you use in the Sotechy app.</p>
       <form action={action} className="flex flex-col gap-4">
         <Field label="Email or @username">
