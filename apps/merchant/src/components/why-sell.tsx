@@ -41,17 +41,20 @@ const GAINS: { illo: IlloName; title: string; body: string }[] = [
 ];
 
 /** "Why sell on Sotechy?": what a store gains, and what the fee pays for */
-/** `short` labels it "Why Sotechy?" where space is tight (the phone logo row) */
-export function WhySell({ tone = "dark", className = "", short = false }: { tone?: "dark" | "light"; className?: string; short?: boolean }) {
+/** Sotechy's official WhatsApp, for questions from would-be sellers */
+const SOTECHY_WHATSAPP = "2348071473936";
+const LEARN_MORE = `https://wa.me/${SOTECHY_WHATSAPP}?text=${encodeURIComponent("Hi Sotechy, I want to sell on Sotechy and I have a question.")}`;
+
+export function WhySell({ tone = "dark", className = "" }: { tone?: "dark" | "light"; className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full py-1.5 pl-2 pr-3.5 text-sm font-semibold transition ${tone === "dark" ? "bg-white/10 text-sun hover:bg-white/15" : "bg-brand-soft text-brand-strong hover:bg-brand-soft/70"} ${className}`}
+        className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full py-1.5 pl-2 pr-3 text-[13px] font-semibold transition sm:text-sm ${tone === "dark" ? "bg-white/10 text-sun hover:bg-white/15" : "bg-brand-soft text-brand-strong hover:bg-brand-soft/70"} ${className}`}
       >
-        <Illo name="store" size={22} /> {short ? "Why Sotechy?" : "Why sell on Sotechy?"}
+        <Illo name="store" size={20} /> Why sell on Sotechy?
       </button>
       {open && (
         <div className="backdrop-anim fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={() => setOpen(false)}>
@@ -101,9 +104,14 @@ export function WhySell({ tone = "dark", className = "", short = false }: { tone
             </div>
 
             <p className="mt-4 text-xs text-muted">Tokens are rewards, not money or an investment. Customers can&apos;t cash them out.</p>
-            <button type="button" onClick={() => setOpen(false)} className={`${btn.primary} mt-5 w-full`}>
-              Got it
-            </button>
+            <div className="mt-5 flex gap-2">
+              <a href={LEARN_MORE} target="_blank" rel="noopener noreferrer" className={`${btn.outline} flex-1`}>
+                Learn more
+              </a>
+              <button type="button" onClick={() => setOpen(false)} className={`${btn.primary} flex-1`}>
+                Got it
+              </button>
+            </div>
           </div>
         </div>
       )}

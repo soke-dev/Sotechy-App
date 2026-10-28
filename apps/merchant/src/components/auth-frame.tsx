@@ -13,7 +13,9 @@ export function AuthHeading({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3">
       <h2 className="text-3xl font-extrabold">{children}</h2>
-      <WhySell tone="light" className="mt-1 hidden lg:inline-flex" />
+      <span className="mt-1 hidden lg:block">
+        <WhySell tone="light" />
+      </span>
     </div>
   );
 }
@@ -47,16 +49,16 @@ export function AuthFrame({ children }: { children: ReactNode }) {
         </div>
         <p className="relative text-xs text-white/40">Businesses and freelancers welcome. Every merchant is verified by Sotechy.</p>
       </aside>
-      <div className="flex items-center justify-center p-6 sm:p-10">
+      <div className="flex items-start justify-center p-6 sm:p-10 lg:items-center">
         <div className="w-full max-w-md">
           {/* Phones: logo, with "Why sell on Sotechy?" on the same row */}
-          <div className="mb-10 flex items-center justify-between gap-3 lg:hidden">
+          <div className="mb-10 flex flex-wrap items-center justify-between gap-x-3 gap-y-3 lg:hidden">
             <div className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/light-logo-small.png" alt="SoTechy" className="h-9" />
+              <img src="/brand/light-logo-small.png" alt="SoTechy" className="h-8" />
               <span className="rounded-md bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-strong">Merchant</span>
             </div>
-            <WhySell tone="light" short />
+            <WhySell tone="light" />
           </div>
           {children}
         </div>
