@@ -764,16 +764,24 @@ export const media = pgTable("media", {
 });
 
 export const bannerStyleEnum = pgEnum("banner_style", ["dark", "orange", "light"]);
-export const bannerLinkEnum = pgEnum("banner_link", ["none", "category", "product", "deals", "url"]);
+export const bannerLinkEnum = pgEnum("banner_link", ["none", "category", "product", "deals", "url", "store", "stores", "wallet"]);
+/** "art": Sotechy's designed slide (colours, circle, picture); "image": the picture is the whole banner */
+export const bannerLayoutEnum = pgEnum("banner_layout", ["art", "image"]);
 
 /** Home-screen carousel slides. */
 export const banners = pgTable("banners", {
   id: uuid().primaryKey().defaultRandom(),
   eyebrow: text(),
-  title: text().notNull(),
+  /** Optional: an image-only banner can go without words */
+  title: text(),
   subtitle: text(),
-  ctaLabel: text().notNull().default("Shop now"),
+  /** No button when empty */
+  ctaLabel: text(),
   imageUrl: text(),
+  layout: bannerLayoutEnum().notNull().default("art"),
+  /** A store's own banner, bought with a feature (one banner per payment); null for Sotechy's */
+  merchantId: uuid().references(() => merchants.id, { onDelete: "cascade" }),
+  featuredPurchaseId: uuid().references(() => featuredPurchases.id, { onDelete: "set null" }),
   style: bannerStyleEnum().notNull().default("dark"),
   linkType: bannerLinkEnum().notNull().default("none"),
   linkValue: text(),

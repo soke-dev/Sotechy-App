@@ -485,17 +485,24 @@ export const DEFAULT_FEATURES: AppFeatures = {
 };
 
 export type BannerStyle = "dark" | "orange" | "light";
-export type BannerLink = "none" | "category" | "product" | "deals" | "url";
+export type BannerLink = "none" | "category" | "product" | "deals" | "url" | "store" | "stores" | "wallet";
+export type BannerLayout = "art" | "image";
 
 export interface Banner {
   id: string;
   eyebrow: string | null;
-  title: string;
+  /** Optional on image-only banners */
+  title: string | null;
   subtitle: string | null;
-  ctaLabel: string;
+  /** No button when empty */
+  ctaLabel: string | null;
   imageUrl: string | null;
   style: BannerStyle;
-  /** category → slug, product → slug, url → https link */
+  /** "image": the picture is the whole banner */
+  layout: BannerLayout;
+  /** A store's own banner (bought with a feature) */
+  merchantId?: string | null;
+  /** category → slug, product → slug, store → store slug, url → https link; stores and wallet need nothing */
   linkType: BannerLink;
   linkValue: string | null;
   sortOrder: number;

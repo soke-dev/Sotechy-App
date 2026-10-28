@@ -21,12 +21,13 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const bannerFields = z.object({
   eyebrow: z.string().max(60).nullable().optional(),
-  title: z.string().min(2).max(80),
+  title: z.string().max(80).nullable().optional(),
   subtitle: z.string().max(140).nullable().optional(),
-  ctaLabel: z.string().min(1).max(30).optional(),
+  ctaLabel: z.string().max(30).nullable().optional(),
   imageUrl: z.string().max(500).nullable().optional(),
   style: z.enum(["dark", "orange", "light"]).optional(),
-  linkType: z.enum(["none", "category", "product", "deals", "url"]).optional(),
+  layout: z.enum(["art", "image"]).optional(),
+  linkType: z.enum(["none", "category", "product", "deals", "url", "store", "stores", "wallet"]).optional(),
   linkValue: z.string().max(500).nullable().optional(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
@@ -80,14 +81,32 @@ export const adminContentRoutes = new Hono<AppEnv>()
   })
 
   // --- Home banners ---
-  .get("/banners", async (c) => c.json(await db.select().from(banners).orderBy(asc(banners.sortOrder), desc(banners.createdAt))))
+  // Sotechy's banners and stores' paid ones (not those still waiting for their payment), with the store's name
+  .get("/banners", async (c) => {
+    const rows = await db
+      .select({ banner: banners, storeName: schema.merchants.name, paid: schema.featuredPurchases.status })
+      .from(banners)
+      .leftJoin(schema.merchants, eq(schema.merchants.id, banners.merchantId))
+      .leftJoin(schema.featuredPurchases, eq(schema.featuredPurchases.id, banners.featuredPurchaseId))
+      .orderBy(asc(banners.sortOrder), desc(banners.createdAt));
+    return c.json(rows.filter((r) => !r.banner.merchantId || r.paid === "paid").map((r) => ({ ...r.banner, storeName: r.storeName })));
+  })
   .post("/banners", requireRole(...MANAGERS), zValidator("json", bannerFields), async (c) => {
-    const [row] = await db.insert(banners).values(c.req.valid("json")).returning();
+    const input = c.req.valid("json");
+    if ((input.layout ?? "art") === "art" && !input.title?.trim()) throw badRequest("Add a title, or make it an image-only banner");
+    if (input.layout === "image" && !input.imageUrl) throw badRequest("An image-only banner needs its image");
+    const [row] = await db.insert(banners).values(input).returning();
     await audit(db, { actorId: c.get("user").id, action: "banner.create", entityType: "banner", entityId: row.id, details: { title: row.title } });
     return c.json(row, 201);
   })
   .patch("/banners/:id", requireRole(...MANAGERS), zValidator("json", bannerFields.partial()), async (c) => {
-    const [row] = await db.update(banners).set(c.req.valid("json")).where(eq(banners.id, c.req.param("id"))).returning();
+    const input = c.req.valid("json");
+    // Switching back on a banner whose run has ended (e.g. a store's feature) lets it show again, with no end
+    if (input.isActive === true && input.endsAt === undefined) {
+      const [now] = await db.select({ endsAt: banners.endsAt }).from(banners).where(eq(banners.id, c.req.param("id")));
+      if (now?.endsAt && now.endsAt < new Date()) input.endsAt = null;
+    }
+    const [row] = await db.update(banners).set(input).where(eq(banners.id, c.req.param("id"))).returning();
     if (!row) throw notFound("Banner not found");
     await audit(db, { actorId: c.get("user").id, action: "banner.update", entityType: "banner", entityId: row.id, details: c.req.valid("json") });
     return c.json(row);

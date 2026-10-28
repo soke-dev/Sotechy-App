@@ -145,7 +145,8 @@ export const storeRoutes = new Hono()
         .select()
         .from(b)
         .where(and(eq(b.isActive, true), or(isNull(b.startsAt), lte(b.startsAt, now)), or(isNull(b.endsAt), gt(b.endsAt, now))))
-        .orderBy(asc(b.sortOrder), desc(b.createdAt)),
+        // Stores' paid banners lead while their feature runs
+        .orderBy(sql`(${b.merchantId} is not null) desc`, asc(b.sortOrder), desc(b.createdAt)),
     ]);
     return c.json({
       branches: branchList,
@@ -197,7 +198,8 @@ export const storeRoutes = new Hono()
           ? [desc(catalogColumns.minPrice)]
           : query.sort === "rating"
             ? [sql`coalesce(${averageRating}, 0) desc`, desc(catalogColumns.ratingCount)]
-            : [desc(products.createdAt)]; // "newest" (popularity sort needs sales data — add later)
+            : // "newest" (popularity sort needs sales data — add later); featured stores' products lead
+              [sql`(${products.merchantId} in (select f.id from merchants f where f.featured_until > now())) desc`, desc(products.createdAt)];
 
     return c.json(await catalogQuery(and(...filters), having.length ? and(...having) : undefined).orderBy(...order, desc(products.createdAt)).limit(100));
   })

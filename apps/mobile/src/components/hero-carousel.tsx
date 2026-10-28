@@ -3,6 +3,7 @@ import { Image, type ImageSource } from "expo-image";
 import { router, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Linking, Pressable, ScrollView, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import type { Banner as AdminBanner } from "@sotechy/shared";
 import { useStoreConfig } from "@/lib/store-config";
 import { colors as theme, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
@@ -38,9 +39,11 @@ interface Slide {
   badge?: string;
   /** draw a hairline border (for light backgrounds) */
   outlined?: boolean;
+  /** An image-only banner: the picture fills it, with optional words and button over it */
+  cover?: ImageSource;
 }
 
-// Shown until banners are added in Admin → Home banners: what Sotechy is, no offers
+// Shown only while there are no banners at all in Admin → Home banners (they're added there as real banners)
 const builtInSlides: Slide[] = [
   {
     bg: colors.ink,
@@ -69,7 +72,32 @@ const builtInSlides: Slide[] = [
   },
 ];
 
+/** A picture that is the whole banner; the title and button sit over a soft shade when there are any */
+function ImageBanner({ s }: { s: Slide }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.surfaceAlt }}>
+      <Image source={s.cover} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} contentFit="cover" transition={150} />
+      {s.title || s.cta ? (
+        <LinearGradient colors={["rgba(23,18,14,0)", "rgba(23,18,14,0.72)"]} style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: space.xl, paddingTop: space.xxl, paddingBottom: space.lg, gap: 8 }}>
+          {s.title ? (
+            <Txt variant="title" color={colors.white} numberOfLines={2} style={{ fontFamily: fonts.displayHeavy, fontSize: 22, lineHeight: 25 }}>
+              {s.title}
+            </Txt>
+          ) : null}
+          {s.cta ? (
+            <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.white, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 7 }}>
+              <Txt variant="label" color={colors.ink} style={{ fontSize: 13 }}>{s.cta}</Txt>
+              <Ionicons name="arrow-forward" size={14} color={colors.ink} />
+            </View>
+          ) : null}
+        </LinearGradient>
+      ) : null}
+    </View>
+  );
+}
+
 function Banner({ s, width, height }: { s: Slide; width: number; height: number }) {
+  if (s.cover) return <ImageBanner s={s} />;
   const circle = Math.round(height * 0.88);
   const darkBg = s.bg === colors.ink || s.bg === colors.brand;
   return (
@@ -106,10 +134,12 @@ function Banner({ s, width, height }: { s: Slide; width: number; height: number 
           <Txt variant="title" color={s.fg} style={{ fontFamily: fonts.displayHeavy, fontSize: 25, lineHeight: 27 }}>{s.title}</Txt>
           <Txt variant="small" color={s.fg} style={{ opacity: 0.8 }}>{s.subtitle}</Txt>
         </View>
-        <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: s.fg === colors.white ? colors.white : colors.ink, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 }}>
-          <Txt variant="label" color={s.fg === colors.white ? colors.ink : colors.white} style={{ fontSize: 13 }}>{s.cta}</Txt>
-          <Ionicons name="arrow-forward" size={14} color={s.fg === colors.white ? colors.ink : colors.white} />
-        </View>
+        {s.cta ? (
+          <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: s.fg === colors.white ? colors.white : colors.ink, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 }}>
+            <Txt variant="label" color={s.fg === colors.white ? colors.ink : colors.white} style={{ fontSize: 13 }}>{s.cta}</Txt>
+            <Ionicons name="arrow-forward" size={14} color={s.fg === colors.white ? colors.ink : colors.white} />
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -130,17 +160,25 @@ function fromAdmin(b: AdminBanner): Slide {
         ? { pathname: "/product/[id]", params: { id: b.linkValue } }
         : b.linkType === "deals"
           ? { pathname: "/shop", params: { featured: "1" } }
+          : b.linkType === "store" && b.linkValue
+            ? { pathname: "/store/[slug]", params: { slug: b.linkValue } }
+            : b.linkType === "stores"
+              ? "/stores"
+              : b.linkType === "wallet"
+                ? "/wallet"
           : b.linkType === "url" && b.linkValue?.startsWith("https://")
             ? () => Linking.openURL(b.linkValue!)
             : () => {};
   return {
     ...STYLES[b.style],
     overline: b.eyebrow ?? "",
-    title: b.title,
+    title: b.title ?? "",
     subtitle: b.subtitle ?? "",
-    cta: b.ctaLabel,
+    cta: b.ctaLabel ?? "",
     action,
-    art: b.imageUrl ? [{ source: { uri: b.imageUrl }, w: 0.5, h: 0.7, right: 0.02, bottom: 0.1 }] : undefined,
+    ...(b.layout === "image" && b.imageUrl
+      ? { cover: { uri: b.imageUrl }, outlined: false }
+      : { art: b.imageUrl ? [{ source: { uri: b.imageUrl }, w: 0.5, h: 0.7, right: 0.02, bottom: 0.1 }] : undefined }),
   };
 }
 

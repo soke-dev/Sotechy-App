@@ -359,10 +359,22 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     const [settings, taken, purchases] = await Promise.all([featuringSettings(), featuredCount(), purchasesOf(store.id)]);
     return c.json({ ...settings, spotsLeft: Math.max(0, settings.maxStores - taken), featuredUntil: store.featuredUntil, purchases });
   })
-  .post("/featuring", zValidator("json", z.object({ months: z.number().int().min(1).max(3) })), async (c) => {
-    const [owner] = await db.select({ email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
-    return c.json(await buyFeaturing(c.get("store"), c.req.valid("json").months, { email: owner.email, name: owner.name }));
-  })
+  .post(
+    "/featuring",
+    zValidator(
+      "json",
+      z.object({
+        months: z.number().int().min(1).max(3),
+        // The store's own Home banner for these months (one per payment)
+        banner: z.object({ imageUrl: z.string().url().max(500), title: z.string().trim().max(80).nullable().optional(), ctaLabel: z.string().trim().max(30).nullable().optional() }).optional(),
+      }),
+    ),
+    async (c) => {
+      const [owner] = await db.select({ email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
+      const { months, banner } = c.req.valid("json");
+      return c.json(await buyFeaturing(c.get("store"), months, { email: owner.email, name: owner.name }, banner));
+    },
+  )
 
   // --- The store's token, and walk-in sales that earn it ---
   .get("/token", async (c) => {

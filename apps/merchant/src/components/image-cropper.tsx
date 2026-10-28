@@ -18,6 +18,8 @@ export interface CropSpec {
 
 export const LOGO_SPEC: CropSpec = { aspect: 1, width: 512, height: 512, round: true };
 export const COVER_SPEC: CropSpec = { aspect: 2, width: 1600, height: 800 };
+/** A Home banner in the app: as wide as the screen, a little over half as tall */
+export const BANNER_SPEC: CropSpec = { aspect: 1.92, width: 1600, height: 833 };
 
 const loadImage = (src: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {

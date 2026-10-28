@@ -155,6 +155,13 @@
       "when": 1793135884990,
       "tag": "0021_pickup_change",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793167429820,
+      "tag": "0022_banners_layout_store",
+      "breakpoints": true
     }
   ]
 }

@@ -45,6 +45,15 @@ await db
   ])
   .onConflictDoNothing();
 
+// The two banners the app used to draw itself, added once as real banners so they can be edited or deleted
+const [bannersSeeded] = await db.insert(s.appSettings).values({ key: "banners_seeded", value: { at: new Date().toISOString() } }).onConflictDoNothing().returning();
+if (bannersSeeded) {
+  await db.insert(s.banners).values([
+    { eyebrow: "Verified stores", title: "Shop stores you can trust", subtitle: "Every store is checked by Sotechy", ctaLabel: "Browse stores", style: "dark", linkType: "stores", sortOrder: 10 },
+    { eyebrow: "Store tokens", title: "Earn on every order", subtitle: "1 token per ₦1, spend it like cash", ctaLabel: "See your wallet", style: "light", linkType: "wallet", sortOrder: 11 },
+  ]);
+}
+
 const [headOffice] = await db
   .insert(s.branches)
   .values({

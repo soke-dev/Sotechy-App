@@ -119,8 +119,9 @@ export async function replyToReview(id: string, text: string): Promise<Result<{ 
 }
 
 /** Starts paying for featuring; returns the Money Moves checkout page */
-export async function buyFeaturing(months: number): Promise<Result<{ checkoutUrl: string }>> {
-  return attempt(() => api.post<{ checkoutUrl: string }>("/merchant/featuring", { months }));
+/** Pays for months of featuring; `banner` is the store's Home banner for those months (one per payment) */
+export async function buyFeaturing(months: number, banner?: { imageUrl: string; title?: string | null; ctaLabel?: string | null }): Promise<Result<{ checkoutUrl: string }>> {
+  return attempt(() => api.post<{ checkoutUrl: string }>("/merchant/featuring", { months, banner }));
 }
 
 /** Sends a message to everyone following the store */

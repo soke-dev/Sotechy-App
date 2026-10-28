@@ -419,11 +419,13 @@ function bannerFields(f: FormData, imageUrl: string | null) {
   const date = (k: string) => (str(f, k) ? new Date(`${str(f, k)}:00+01:00`).toISOString() : null);
   return {
     eyebrow: str(f, "eyebrow") ?? null,
-    title: str(f, "title"),
+    // Title and button are optional: empty means none
+    title: str(f, "title") ?? null,
     subtitle: str(f, "subtitle") ?? null,
-    ctaLabel: str(f, "ctaLabel") ?? "Shop now",
+    ctaLabel: str(f, "ctaLabel") ?? null,
     imageUrl,
     style: str(f, "style") ?? "dark",
+    layout: str(f, "layout") === "image" ? "image" : "art",
     linkType: str(f, "linkType") ?? "none",
     linkValue: str(f, "linkValue") ?? null,
     sortOrder: num(f, "sortOrder") ?? 0,
