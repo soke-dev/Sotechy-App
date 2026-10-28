@@ -300,7 +300,7 @@ export const deliveryZones = pgTable("delivery_zones", {
   /** Where it is, e.g. "2 Ring Road, Benin City" */
   pickupAddress: text(),
   /** Every pickup point in the area (up to 5), all at the area's pickup price; the first is pickupPoint/pickupAddress */
-  pickupPlaces: jsonb().$type<{ name: string; address: string; mapUrl?: string | null }[]>().notNull().default([]),
+  pickupPlaces: jsonb().$type<{ name: string; address: string; mapUrl?: string | null; fee?: number | null }[]>().notNull().default([]),
   days: text().notNull(),
   freeOver: money(),
   isActive: boolean().notNull().default(true),

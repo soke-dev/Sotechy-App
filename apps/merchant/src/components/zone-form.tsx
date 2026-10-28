@@ -43,20 +43,21 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
   const [hasPickup, setHasPickup] = useState(zone ? Boolean(zone.pickup) : true);
   const [pickupFee, setPickupFee] = useState(zone?.pickup?.fee ?? 0);
   // Up to 5 pickup points in the area, all at the area's pickup price
-  const [places, setPlaces] = useState<{ name: string; address: string; mapUrl?: string | null }[]>(
+  const [places, setPlaces] = useState<{ name: string; address: string; mapUrl?: string | null; fee?: number | null }[]>(
     zone?.pickup?.places?.length ? zone.pickup.places : zone?.pickup ? [{ name: zone.pickup.point, address: zone.pickup.address ?? "" }] : [{ name: "", address: "" }],
   );
-  const setPlace = (i: number, patch: Partial<{ name: string; address: string; mapUrl: string }>) => setPlaces((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
+  const setPlace = (i: number, patch: Partial<{ name: string; address: string; mapUrl: string; fee: number | null }>) => setPlaces((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
   // Which pickup points are open for editing: saved ones fold down to a summary with an Edit button
   const [editing, setEditing] = useState<boolean[]>(() => places.map((p) => !(p.name.trim().length >= 3 && p.address.trim().length >= 3)));
   const setOpen = (i: number, open: boolean) => setEditing((e) => places.map((_, j) => (j === i ? open : (e[j] ?? false))));
-  const placeReady = (p: { name: string; address: string; mapUrl?: string | null }) => p.name.trim().length >= 3 && p.address.trim().length >= 3 && !(p.mapUrl?.trim() && !isMapLink(p.mapUrl));
+  const placeReady = (p: { name: string; address: string; mapUrl?: string | null; fee?: number | null }) => p.name.trim().length >= 3 && p.address.trim().length >= 3 && !(p.mapUrl?.trim() && !isMapLink(p.mapUrl));
   const removePlace = (i: number) => {
     setPlaces(places.filter((_, j) => j !== i));
     setEditing(editing.filter((_, j) => j !== i));
   };
   // A map link is optional; without one, Directions searches the address
-  const cleanPlaces = places.map((p) => ({ name: p.name.trim(), address: p.address.trim(), ...(p.mapUrl?.trim() ? { mapUrl: p.mapUrl.trim() } : {}) }));
+  // A point's own price is optional too; without one it uses the area's pickup price
+  const cleanPlaces = places.map((p) => ({ name: p.name.trim(), address: p.address.trim(), ...(p.mapUrl?.trim() ? { mapUrl: p.mapUrl.trim() } : {}), ...(p.fee != null ? { fee: p.fee } : {}) }));
   const badLink = cleanPlaces.some((p) => p.mapUrl && !isMapLink(p.mapUrl));
   const [days, setDays] = useState(zone?.days ?? "1–2 days");
   const [freeOver, setFreeOver] = useState(zone?.freeOver ?? 0);
@@ -79,7 +80,8 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
     !zone ||
     zone.state !== state ||
     (whole ? zone.areas.length > 0 : zone.areas.join("|") !== areas.join("|")) ||
-    JSON.stringify(zone.pickup?.places ?? (zone.pickup ? [{ name: zone.pickup.point, address: zone.pickup.address ?? "" }] : [])) !== JSON.stringify(hasPickup ? cleanPlaces : []);
+    JSON.stringify((zone.pickup?.places ?? (zone.pickup ? [{ name: zone.pickup.point, address: zone.pickup.address ?? "" }] : [])).map(({ fee: _f, ...pl }) => pl)) !==
+      JSON.stringify((hasPickup ? cleanPlaces : []).map(({ fee: _f, ...pl }) => pl));
   const valid = (whole || areas.length > 0) && (!hasPickup || (cleanPlaces.every((p) => p.name.length >= 3 && p.address.length >= 3) && !badLink));
   const cheaper = hasPickup && homeFee > 0 && pickupFee >= homeFee;
 
@@ -212,6 +214,17 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
                   <Field required label="Address">
                     <AddressInput value={p.address} onChange={(v) => setPlace(i, { address: v })} placeholder="e.g. 2 Ring Road, Benin City" />
                   </Field>
+                  <Field label="Price at this point (₦)" hint={`Optional. Leave empty to use the pickup price above (${pickupFee ? formatNaira(pickupFee) : "free"}).`}>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={p.fee ?? ""}
+                      onChange={(e) => setPlace(i, { fee: e.target.value === "" ? null : Math.max(0, Math.round(Number(e.target.value))) })}
+                      className={inputClass}
+                      placeholder={pickupFee ? String(pickupFee) : "0 = free"}
+                    />
+                  </Field>
                   <Field label="Google Maps link" hint={p.mapUrl?.trim() && !isMapLink(p.mapUrl) ? "That isn't a Google Maps link. In Google Maps, tap Share and copy the link." : "Optional. Takes customers to the exact spot; without it we search the address."}>
                     <input value={p.mapUrl ?? ""} onChange={(e) => setPlace(i, { mapUrl: e.target.value })} inputMode="url" maxLength={500} className={inputClass} placeholder="https://maps.app.goo.gl/…" />
                   </Field>
@@ -228,7 +241,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{p.name}</p>
                     <p className="truncate text-xs text-muted">
-                      {p.address}
+                      {p.address} · {(p.fee ?? pickupFee) ? formatNaira(p.fee ?? pickupFee) : "Free"}
                       {p.mapUrl?.trim() ? (
                         <span className="ml-1.5 inline-flex items-center gap-0.5 text-good">
                           <MapPin size={11} /> Map link

@@ -194,9 +194,9 @@ export default function CheckoutScreen() {
   const where = chosen ?? address;
   const sellerArea = seller && fulfilment === "delivery" ? deliveryAreaFor(areas, where.state, where.city) : null;
   const pickupPoint = pickupPoints.find((a) => a.id === pickupZoneId) ?? pickupPoints[0] ?? null;
-  // Every pickup point across the store's areas (an area can have up to 5, all at its price)
+  // Every pickup point across the store's areas (up to 5 an area), each at its own price or the area's
   const spots = pickupPoints.flatMap((a) =>
-    (a.pickupPlaces?.length ? a.pickupPlaces : [{ name: a.pickupPoint ?? "", address: a.pickupAddress ?? "" }]).map((pl) => ({ key: `${a.id}:${pl.name}`, zoneId: a.id, name: pl.name, address: pl.address, fee: a.pickupFee, days: a.days, state: a.state })),
+    (a.pickupPlaces?.length ? a.pickupPlaces : [{ name: a.pickupPoint ?? "", address: a.pickupAddress ?? "", fee: null }]).map((pl) => ({ key: `${a.id}:${pl.name}`, zoneId: a.id, name: pl.name, address: pl.address, fee: pl.fee ?? a.pickupFee, days: a.days, state: a.state })),
   );
   const spot = spots.find((s) => s.zoneId === pickupPoint?.id && (!pickupPlace || s.name === pickupPlace)) ?? spots[0] ?? null;
   const chooseSpot = (s: (typeof spots)[number]) => {
@@ -211,7 +211,7 @@ export default function CheckoutScreen() {
       ? sellerArea
         ? areaDeliveryFee(sellerArea, cart.subtotal)
         : 0
-      : (pickupPoint?.pickupFee ?? 0)
+      : (spot?.fee ?? pickupPoint?.pickupFee ?? 0)
     : fulfilment === "delivery" && !freeDelivery
       ? cfg.delivery.flatFee
       : 0;
@@ -333,7 +333,7 @@ export default function CheckoutScreen() {
           )}
           {/* Side by side; one that can't be used here shows faded with why */}
           <View style={{ flexDirection: "row", gap: space.sm, alignItems: "stretch" }}>
-            {features.pickup && <FulfilmentCard illo="pin" title="Pickup location" subtitle={seller ? (pickupPoints.length ? `From ${formatNaira(Math.min(...pickupPoints.map((p) => p.pickupFee ?? 0)))}` : "Collect it yourself") : "Free · usually same day"} active={fulfilment === "pickup" && canPickup} locked={!itemsPickup || !storePickup} lockedNote={itemsPickup ? "Not available yet" : undefined} onPress={() => setFulfilment("pickup")} />}
+            {features.pickup && <FulfilmentCard illo="pin" title="Pickup location" subtitle={seller ? (spots.length ? `From ${formatNaira(Math.min(...spots.map((p) => p.fee ?? 0)))}` : "Collect it yourself") : "Free · usually same day"} active={fulfilment === "pickup" && canPickup} locked={!itemsPickup || !storePickup} lockedNote={itemsPickup ? "Not available yet" : undefined} onPress={() => setFulfilment("pickup")} />}
             {features.delivery && <FulfilmentCard
               illo="bike"
               title="Home delivery"

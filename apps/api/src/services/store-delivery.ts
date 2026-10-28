@@ -44,7 +44,8 @@ export async function storeDeliveryCharge(
     const places = point.pickupPlaces ?? [];
     const place = input.pickupPlace ? places.find((p) => p.name === input.pickupPlace) : places[0];
     if (input.pickupPlace && !place) throw badRequest("That pickup point isn't available. Choose another.");
-    return { fee: point.pickupFee ?? 0, zoneId: point.id, spot: place ? [place.name, place.address].filter(Boolean).join(", ") : null };
+    // The point's own price, or the area's pickup price
+    return { fee: place?.fee ?? point.pickupFee ?? 0, zoneId: point.id, spot: place ? [place.name, place.address].filter(Boolean).join(", ") : null };
   }
 
   const where = `${input.city ?? ""}, ${input.state ?? ""}`.replace(/^, |, $/g, "");

@@ -627,7 +627,7 @@ export interface StoreDeliveryArea {
   pickupPoint: string | null;
   pickupAddress?: string | null;
   /** All the area's pickup points (the first is pickupPoint) */
-  pickupPlaces?: { name: string; address: string; mapUrl?: string | null }[];
+  pickupPlaces?: { name: string; address: string; mapUrl?: string | null; fee?: number | null }[];
   days: string;
   freeOver: number | null;
 }
@@ -732,7 +732,7 @@ export interface DeliveryZone {
   areas: string[];
   homeFee: number;
   /** `point` is the place's name; `address` is where it is */
-  pickup?: { fee: number; point: string; address?: string | null; places?: { name: string; address: string; mapUrl?: string | null }[] };
+  pickup?: { fee: number; point: string; address?: string | null; places?: { name: string; address: string; mapUrl?: string | null; fee?: number | null }[] };
   days: string;
   freeOver?: number;
   active: boolean;

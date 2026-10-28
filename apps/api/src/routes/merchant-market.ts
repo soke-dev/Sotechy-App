@@ -298,7 +298,7 @@ async function ownOrder(storeId: string, orderId: string) {
 // Delivery areas
 // ---------------------------------------------------------------------------
 /** A pickup area's points as stored: every place, with the first also as the main point */
-function pickupColumns(pickup: { fee: number; point: string; address?: string | null; places?: { name: string; address: string; mapUrl?: string | null }[] } | null | undefined) {
+function pickupColumns(pickup: { fee: number; point: string; address?: string | null; places?: { name: string; address: string; mapUrl?: string | null; fee?: number | null }[] } | null | undefined) {
   if (!pickup) return { pickupFee: null, pickupPoint: null, pickupAddress: null, pickupPlaces: [] };
   const places = pickup.places?.length ? pickup.places : [{ name: pickup.point, address: pickup.address ?? "" }];
   return { pickupFee: pickup.fee, pickupPoint: places[0].name, pickupAddress: places[0].address || null, pickupPlaces: places };
@@ -329,7 +329,7 @@ const zoneInput = z.object({
       point: z.string().trim().min(3).max(140),
       address: z.string().trim().max(200).optional().nullable(),
       // Up to 5 pickup points in the area; when sent, the first one is `point`/`address`
-      places: z.array(z.object({ name: z.string().trim().min(3).max(140), address: z.string().trim().min(3).max(200), mapUrl: z.string().trim().max(500).refine(isMapLink, "Paste a Google Maps link").nullable().optional() })).min(1).max(5).optional(),
+      places: z.array(z.object({ name: z.string().trim().min(3).max(140), address: z.string().trim().min(3).max(200), fee: z.number().int().min(0).max(1_000_000).nullable().optional(), mapUrl: z.string().trim().max(500).refine(isMapLink, "Paste a Google Maps link").nullable().optional() })).min(1).max(5).optional(),
     })
     .optional()
     .nullable(),
@@ -702,7 +702,8 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     const coverageChanged =
       before.state !== z.state ||
       before.areas.join("|") !== z.areas.join("|") ||
-      JSON.stringify(before.pickupPlaces ?? []) !== JSON.stringify(pickupColumns(z.pickup).pickupPlaces);
+      // (a pickup point's own price is a price, so it doesn't count)
+      JSON.stringify((before.pickupPlaces ?? []).map(({ fee: _f, ...pl }) => pl)) !== JSON.stringify(pickupColumns(z.pickup).pickupPlaces.map(({ fee: _f, ...pl }) => pl));
     const [row] = await db
       .update(deliveryZones)
       .set({ state: z.state, areas: z.areas, homeFee: z.homeFee, ...pickupColumns(z.pickup), days: z.days, freeOver: z.freeOver ?? null, isActive: z.active, ...(coverageChanged && { review: "pending" as const, reviewNote: null }) })
