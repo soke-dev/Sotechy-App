@@ -237,7 +237,7 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
         <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: insets.bottom + space.md, gap: space.sm }}>
           {headOffice && (
             <Pressable
-              onPress={() => Linking.openURL(directionsUrl(`${headOffice.address}, ${headOffice.city}, Nigeria`, headOffice.mapUrl))}
+              onPress={() => Linking.openURL(directionsUrl(`SoTechy, ${headOffice.address}, ${headOffice.city}, Nigeria`, headOffice.mapUrl))}
               style={[ui.row, { gap: space.md }]}
             >
               <Image source={require("../../assets/brand/sotechy-office.jpg")} style={{ width: 44, height: 44, borderRadius: 12 }} contentFit="cover" contentPosition="top" />

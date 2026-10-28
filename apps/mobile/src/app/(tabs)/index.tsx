@@ -381,7 +381,7 @@ export default function HomeScreen() {
               size="sm"
               variant="outline"
               style={{ alignSelf: "flex-start", marginTop: space.sm }}
-              onPress={() => Linking.openURL(directionsUrl(`${headOffice.address}, ${headOffice.city}, Nigeria`, headOffice.mapUrl))}
+              onPress={() => Linking.openURL(directionsUrl(`SoTechy, ${headOffice.address}, ${headOffice.city}, Nigeria`, headOffice.mapUrl))}
             />
           </View>
         </View>
