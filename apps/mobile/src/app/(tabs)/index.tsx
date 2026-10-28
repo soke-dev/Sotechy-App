@@ -283,6 +283,7 @@ export default function HomeScreen() {
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.xs }}>
           {[
             { icon: "star" as IconName, text: "Up to 10% more for a review" },
+            { icon: "add-circle" as IconName, text: "Earn 10% $SOTECHY on every order" },
           ].map((x) => (
             <View key={x.text} style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface }}>
               <Ionicons name={x.icon} size={13} color={colors.brandPressed} />
