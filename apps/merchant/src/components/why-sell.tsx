@@ -16,7 +16,12 @@ const GAINS: { illo: IlloName; title: string; body: string }[] = [
   {
     illo: "sparkle",
     title: "Room to grow",
-    body: "Sotechy isn't crowded. Fewer stores selling what you sell means more eyes on yours, so you're not lost in a sea of sellers.",
+    body: "We hand-pick and review every store, and keep too many stores selling the same thing in the same area from crowding each other out. More eyes stay on yours.",
+  },
+  {
+    illo: "bag",
+    title: "Sell anything",
+    body: "Gadgets, fashion, beauty, food, home goods, crafts and more. If it's legal and you can deliver it, you can sell it on Sotechy.",
   },
   {
     illo: "shield",
