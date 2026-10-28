@@ -75,6 +75,21 @@ export function OrderView({ order }: { order: Order }) {
   const [tracking, setTracking] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [paybackRef, setPaybackRef] = useState("");
+  // Before marking it collected or delivered, the store ticks off what it checked
+  const handoverChecks =
+    order.fulfilment === "pickup"
+      ? [
+          `I called ${order.pickupPoint ? order.pickupPoint.split(",")[0] : "the pickup location"} (the park or courier) and they confirmed the customer collected it.`,
+          `The person who collected it gave the order number ${order.number} or the name ${order.customer.name}.`,
+          "I can show proof if Sotechy asks (a waybill, a photo or the courier's confirmation).",
+        ]
+      : [
+          `The rider confirmed they handed it to ${order.customer.name} at the delivery address.`,
+          "The customer, or someone they named, received it in person.",
+          "I can show proof if Sotechy asks (a photo, a call record or a signature).",
+        ];
+  const [ticked, setTicked] = useState<boolean[]>([]);
+  const allTicked = handoverChecks.every((_, i) => ticked[i]);
   const change = order.pickupChange;
   const waiting = change?.status === "pending";
   const move = (action: "accept" | "ship" | "deliver" | "decline" | "pickup-change" | "payback-sent", note?: string, handover?: { tracking?: string; driverPhone?: string }) =>
@@ -160,7 +175,13 @@ export function OrderView({ order }: { order: Order }) {
               : "When the customer has it, mark it delivered."
           }
         >
-          <button onClick={() => setDialog("deliver")} className={btn.dark}>
+          <button
+            onClick={() => {
+              setTicked([]);
+              setDialog("deliver");
+            }}
+            className={btn.dark}
+          >
             <Check size={16} /> {order.fulfilment === "pickup" ? "Mark as collected" : "Mark as delivered"}
           </button>
         </NextStep>
@@ -416,10 +437,24 @@ export function OrderView({ order }: { order: Order }) {
       </Modal>
 
       <Modal open={dialog === "deliver"} onClose={() => setDialog(null)} title={order.fulfilment === "pickup" ? "Mark as collected?" : "Mark as delivered?"}>
-        <p className="text-sm text-ink-2">We&apos;ll tell the customer and ask them to confirm they received it.</p>
+        <p className="text-sm text-ink-2">Only do this once you&apos;ve checked. Tick each one to go on.</p>
+        {/* What the store checks first: a wrong "collected" or "delivered" holds its final payment */}
+        <div className="mt-3 flex flex-col gap-2">
+          {handoverChecks.map((text, i) => (
+            <label key={i} className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-3.5 py-3 text-sm ${ticked[i] ? "border-good bg-good-soft" : "border-line bg-surface"}`}>
+              <input type="checkbox" checked={!!ticked[i]} onChange={(e) => setTicked((t) => handoverChecks.map((_, j) => (j === i ? e.target.checked : !!t[j])))} className="mt-0.5 h-4 w-4 shrink-0 accent-good" />
+              <span className="text-ink-2">{text}</span>
+            </label>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-muted">The customer is asked to confirm too. If they say they didn&apos;t get it, Sotechy checks with you and your final payment waits until it&apos;s sorted.</p>
         {error && <p className="mt-3 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
-        <button disabled={busy} onClick={() => move("deliver")} className={`${btn.dark} mt-4 w-full`}>
-          {busy ? "Saving…" : "Mark as delivered"}
+        <button
+          disabled={busy || !allTicked}
+          onClick={() => move("deliver", order.fulfilment === "pickup" ? "Collected (the store checked with the pickup location)" : "Delivered (the store checked with the rider)")}
+          className={`${btn.dark} mt-4 w-full`}
+        >
+          {busy ? "Saving…" : order.fulfilment === "pickup" ? "Mark as collected" : "Mark as delivered"}
         </button>
       </Modal>
     </>
