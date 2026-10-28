@@ -1,13 +1,15 @@
-import { getStoreSession } from "@/lib/api";
+import { getFeeRate, getStoreSession } from "@/lib/api";
+import { FeeProvider } from "@/components/fee-context";
 import OnboardingView, { type StepId } from "./onboarding-view";
 
 const STEPS: StepId[] = ["setup", "business", "documents", "you", "people", "store", "payout", "review"];
 
 /** ?step=you opens a step directly; Didit sends merchants back with ?verify=done after their ID check */
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ step?: string; verify?: string }> }) {
-  const [{ step, verify }, { user, store }] = await Promise.all([searchParams, getStoreSession()]);
+  const [{ step, verify }, { user, store }, fee] = await Promise.all([searchParams, getStoreSession(), getFeeRate()]);
   const initial = verify ? "you" : STEPS.find((s) => s === step);
   return (
+    <FeeProvider fee={fee}>
     <OnboardingView
       initialStep={initial}
       start={{
@@ -27,5 +29,6 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
         tokenApproved: !!store.tokenApprovedAt,
       }}
     />
+    </FeeProvider>
   );
 }

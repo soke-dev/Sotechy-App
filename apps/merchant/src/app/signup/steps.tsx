@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { FormError, PhoneField, ReferralField, StoreHandleField } from "@/components/account-fields";
 import { GoogleButton } from "@/components/google-button";
 import { Illo } from "@/components/illustrations";
-import { AuthHeading } from "@/components/auth-frame";
+import { AuthHeading } from "@/components/auth-heading";
 import { btn, Field, inputClass } from "@/components/ui";
 import { openStore, signOut, signUp } from "@/lib/session-actions";
 

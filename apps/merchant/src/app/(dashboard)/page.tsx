@@ -4,11 +4,13 @@ import { Illo } from "@/components/illustrations";
 import { btn, Card, Pill, ProductThumb, StatCard } from "@/components/ui";
 import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens } from "@/lib/money";
-import { api, getStoreSession } from "@/lib/api";
+import { api, getFeeRate, getStoreSession } from "@/lib/api";
+import { feeLabel } from "@/components/fee-context";
 import { ORDER_STATUS, orderMoney, orderTotal } from "@/lib/mock";
 import { tokenTicker } from "@/lib/token";
 
 export default async function HomePage() {
+  const fee = await getFeeRate();
   const { user, store } = await getStoreSession();
   const [orders, products, { salesByDay, offersWaiting }, tokenStats] = await Promise.all([
     api.merchantOrders(),
@@ -134,7 +136,7 @@ export default async function HomePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <Card title="Sales" description="Last 14 days, before Sotechy's 2% fee">
+        <Card title="Sales" description={`Last 14 days, before Sotechy's ${feeLabel(fee)} fee`}>
           {maxDay === 0 ? (
             <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-2xl bg-surface-alt text-center">
               <Illo name="receipt" size={36} />

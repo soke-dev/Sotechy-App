@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { redirect } from "next/navigation";
-import { ApiError, createApiClient, type MerchantSession } from "@sotechy/shared";
+import { ApiError, createApiClient, DEFAULT_PAYOUT_SETTINGS, type MerchantSession } from "@sotechy/shared";
 
 export const TOKEN_COOKIE = "sotechy_merchant_token";
 
@@ -9,6 +9,15 @@ export const api = createApiClient({
   baseUrl: process.env.API_URL ?? "http://localhost:4000",
   getToken: async () => (await cookies()).get(TOKEN_COOKIE)?.value,
   fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+});
+
+/** Sotechy's fee on each sale, as admin sets it (the standard fee if the API can't be reached) */
+export const getFeeRate = cache(async () => {
+  try {
+    return (await api.storeConfig()).marketplaceFee ?? DEFAULT_PAYOUT_SETTINGS.feeRate;
+  } catch {
+    return DEFAULT_PAYOUT_SETTINGS.feeRate;
+  }
 });
 
 /** The signed-in account and its store, once per request. Expired sessions are cleared and go to /login. */

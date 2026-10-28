@@ -1,9 +1,11 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { currentFeeRate } from "@/lib/market-actions";
 import { Illo, type IlloName } from "./illustrations";
 import { btn } from "./ui";
+import { feeLabel, useFeeRate } from "./fee-context";
 
 // The store token comes last: it's the reason customers keep coming back
 const GAINS: { illo: IlloName; title: string; body: string }[] = [
@@ -55,6 +57,12 @@ function WhatsAppIcon() {
 
 export function WhySell({ tone = "dark", className = "" }: { tone?: "dark" | "light"; className?: string }) {
   const [open, setOpen] = useState(false);
+  const known = useFeeRate();
+  const [fee, setFee] = useState(known);
+  // The live fee, as admin sets it
+  useEffect(() => {
+    if (open) currentFeeRate().then(setFee, () => {});
+  }, [open]);
   return (
     <>
       <button
@@ -93,8 +101,8 @@ export function WhySell({ tone = "dark", className = "" }: { tone?: "dark" | "li
 
             {/* The fee, and where it goes (no figures here: just that it's small and what it pays for) */}
             <div className="mt-6 rounded-2xl bg-surface-alt p-4">
-              <p className="font-semibold">A small fee, only when you sell</p>
-              <p className="mt-1 text-sm text-ink-2">Opening a store is free, with no monthly fee. A small fee comes out of each sale, and here&apos;s where it goes:</p>
+              <p className="font-semibold">A small {feeLabel(fee)} fee, only when you sell</p>
+              <p className="mt-1 text-sm text-ink-2">Opening a store is free, with no monthly fee. {feeLabel(fee)} comes out of each sale, and here&apos;s where it goes:</p>
               <ul className="mt-3 flex flex-col gap-2 text-sm">
                 <li className="flex gap-2">
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />

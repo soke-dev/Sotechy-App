@@ -5,7 +5,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { Promotion, MerchantAttention, AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantNotice, MerchantOrder, MerchantProduct, MerchantProductInput, OfferView, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
-import { api, errorMessage, TOKEN_COOKIE } from "./api";
+import { api, errorMessage, getFeeRate, TOKEN_COOKIE } from "./api";
 
 type Result<T> = { ok: T } | { error: string };
 
@@ -83,6 +83,11 @@ export async function saveZone(id: string | null, input: DeliveryZoneInput): Pro
 
 export async function removeZone(id: string): Promise<Result<{ deleted: true }>> {
   return attempt(() => api.deleteDeliveryZone(id), ["/delivery"]);
+}
+
+/** Sotechy's current fee on each sale (for the "Why sell on Sotechy?" pop-up on any page) */
+export async function currentFeeRate() {
+  return getFeeRate();
 }
 
 export async function orderAction(

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { FormError } from "@/components/account-fields";
-import { AuthFrame, AuthHeading } from "@/components/auth-frame";
+import { AuthFrame } from "@/components/auth-frame";
+import { AuthHeading } from "@/components/auth-heading";
 import { GoogleButton } from "@/components/google-button";
 import { btn, Field, inputClass } from "@/components/ui";
 import { signIn } from "@/lib/session-actions";

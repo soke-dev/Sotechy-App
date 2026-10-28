@@ -8,20 +8,6 @@ const PERKS: { illo: IlloName; title: string; body: string }[] = [
   { illo: "shield", title: "Verified stores only", body: "Every store is checked by Sotechy, so shoppers buy with confidence." },
 ];
 
-/** A page heading with "Why sell on Sotechy?" beside it on computers (phones show it by the logo) */
-export function AuthHeading({ children, whySell = true }: { children: ReactNode; whySell?: boolean }) {
-  return (
-    <div className="flex items-start justify-between gap-3">
-      <h2 className="text-3xl font-extrabold">{children}</h2>
-      {whySell && (
-        <span className="mt-1 hidden lg:block">
-          <WhySell tone="light" />
-        </span>
-      )}
-    </div>
-  );
-}
-
 /** Two-panel frame for sign-in, sign-up and invitations. */
 export function AuthFrame({ children, whySell = true }: { children: ReactNode; whySell?: boolean }) {
   return (

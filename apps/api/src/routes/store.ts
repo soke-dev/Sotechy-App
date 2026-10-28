@@ -9,6 +9,7 @@ import { getFeatures, requireFeature } from "../services/features";
 import { getUsdRate } from "../services/moneymoves";
 import { findPromotion } from "../services/promotions";
 import { liveAreas } from "../services/store-delivery";
+import { payoutSettings } from "../services/payouts";
 import { getSetting, type DeliverySettings } from "../services/settings";
 
 const { products, productVariants, inventory, categories, branches } = schema;
@@ -148,7 +149,7 @@ export const storeRoutes = new Hono()
   .get("/config", async (c) => {
     const now = new Date();
     const b = schema.banners;
-    const [branchList, methods, assets, promos, delivery, support, features, bannerRows] = await Promise.all([
+    const [branchList, methods, assets, promos, delivery, support, features, bannerRows, payouts] = await Promise.all([
       db.select().from(branches).where(and(eq(branches.isActive, true), isNull(branches.merchantId))).orderBy(asc(branches.name)),
       db.select().from(schema.paymentMethods),
       db.select().from(schema.cryptoAssets).where(eq(schema.cryptoAssets.isEnabled, true)),
@@ -162,6 +163,7 @@ export const storeRoutes = new Hono()
         .where(and(eq(b.isActive, true), or(isNull(b.startsAt), lte(b.startsAt, now)), or(isNull(b.endsAt), gt(b.endsAt, now))))
         // Stores' paid banners lead while their feature runs
         .orderBy(sql`(${b.merchantId} is not null) desc`, asc(b.sortOrder), desc(b.createdAt)),
+      payoutSettings(),
     ]);
     return c.json({
       branches: branchList,
@@ -172,6 +174,8 @@ export const storeRoutes = new Hono()
       support: support ?? { phone: null, email: null, whatsapp: null },
       features,
       banners: bannerRows,
+      // Sotechy's fee on each store sale, as admin sets it (stores see it before they sign up)
+      marketplaceFee: payouts.feeRate,
     });
   })
   .post("/promo/check", zValidator("json", z.object({ code: z.string().trim().min(1).max(40), subtotal: z.number().nonnegative(), store: z.string().max(80).optional() })), async (c) => {

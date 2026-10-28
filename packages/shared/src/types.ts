@@ -449,6 +449,8 @@ export interface CryptoAsset {
 }
 
 export interface StoreConfig {
+  /** Sotechy's fee on each store sale, as a fraction (e.g. 0.03), as admin sets it */
+  marketplaceFee?: number;
   branches: Branch[];
   paymentMethods: PaymentMethodConfig[];
   cryptoAssets: CryptoAsset[];

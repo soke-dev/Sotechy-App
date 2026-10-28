@@ -8,7 +8,8 @@ import { CategoryPicker } from "./category-picker";
 import { Illo } from "./illustrations";
 import { btn, Card, Field, inputClass, ProductThumb, Req } from "./ui";
 import { Sheet, ZoneForm, ZonePrices } from "./zone-form";
-import { formatNaira, formatTokens, PLATFORM_FEE, SOTECHY_CROSS_BONUS } from "@/lib/money";
+import { formatNaira, formatTokens, SOTECHY_CROSS_BONUS } from "@/lib/money";
+import { feeLabel, useFeeRate } from "./fee-context";
 import { hintsFor } from "@/lib/category-hints";
 import { saveProduct, uploadFiles } from "@/lib/market-actions";
 import { OFFER_HOURS, zoneLabel, type DeliveryZone, type OfferHours, type Product } from "@/lib/mock";
@@ -20,7 +21,7 @@ interface Option {
 }
 
 /** A price that leaves the store `price` after Sotechy's fee, rounded up to the next ₦10 */
-const coverFee = (price: number) => Math.ceil(price / (1 - PLATFORM_FEE) / 10) * 10;
+const coverFee = (price: number, fee: number) => Math.ceil(price / (1 - fee) / 10) * 10;
 
 const CONDITIONS = [
   ["new", "New"],
@@ -51,6 +52,7 @@ function Review({ title, children }: { title: string; children: ReactNode }) {
  */
 export function ProductForm({ product, zones: initialZones, ownCategories }: { product?: Product; zones: DeliveryZone[]; ownCategories: string[] }) {
   const { store } = useAccount();
+  const fee = useFeeRate();
   const [saving, startSaving] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(0);
@@ -309,7 +311,7 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
               <div className="mt-4 flex items-center gap-3 rounded-2xl bg-brand-soft px-4 py-3 text-sm">
                 <Illo name="coin" size={26} />
                 <span>
-                  Buyers earn <b>{formatTokens(tokens)} ${store.ticker}</b> and <b>{formatTokens(Math.round(price * SOTECHY_CROSS_BONUS))} $SOTECHY</b> for each one. You receive {formatNaira(price * 0.98)} after Sotechy&apos;s 2% fee.
+                  Buyers earn <b>{formatTokens(tokens)} ${store.ticker}</b> and <b>{formatTokens(Math.round(price * SOTECHY_CROSS_BONUS))} $SOTECHY</b> for each one. You receive {formatNaira(price * (1 - fee))} after Sotechy&apos;s {feeLabel(fee)} fee.
                 </span>
               </div>
             )}
@@ -317,18 +319,18 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
             {price > 0 && price !== tipUsed && (
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-dashed border-line px-4 py-3 text-sm">
                 <span className="min-w-0 flex-1 text-ink-2">
-                  <b className="text-ink">Tip:</b> to keep the full {formatNaira(price)}, price it at <b className="text-ink">{formatNaira(coverFee(price))}</b>. That adds Sotechy&apos;s {PLATFORM_FEE * 100}% fee on top. It&apos;s up to you.
+                  <b className="text-ink">Tip:</b> to keep the full {formatNaira(price)}, price it at <b className="text-ink">{formatNaira(coverFee(price, fee))}</b>. That adds Sotechy&apos;s {feeLabel(fee)} fee on top. It&apos;s up to you.
                 </span>
                 <button
                   type="button"
                   onClick={() => {
-                    const p = coverFee(price);
+                    const p = coverFee(price, fee);
                     setTipUsed(p);
                     setPrice(p);
                   }}
                   className={btn.outline}
                 >
-                  Use {formatNaira(coverFee(price))}
+                  Use {formatNaira(coverFee(price, fee))}
                 </button>
               </div>
             )}
@@ -578,7 +580,7 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
               {compareAt > price && <span className="ml-2 text-faint line-through">{formatNaira(compareAt)}</span>}
             </p>
             <p className="text-muted">
-              You receive {formatNaira(price * 0.98)} after Sotechy&apos;s 2% fee. Buyers earn {formatTokens(tokens)} ${store.ticker} + {formatTokens(Math.round(price * SOTECHY_CROSS_BONUS))} $SOTECHY.
+              You receive {formatNaira(price * (1 - fee))} after Sotechy&apos;s {feeLabel(fee)} fee. Buyers earn {formatTokens(tokens)} ${store.ticker} + {formatTokens(Math.round(price * SOTECHY_CROSS_BONUS))} $SOTECHY.
             </p>
           </Review>
 
