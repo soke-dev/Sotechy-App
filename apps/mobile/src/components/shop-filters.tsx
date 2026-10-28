@@ -20,6 +20,9 @@ export interface ShopFilters {
 
 export const NO_FILTERS: ShopFilters = { brands: [], inStock: false, deals: false };
 
+/** Brands shown before "Show all" (the facets list them most products first) */
+const BRANDS_SHOWN = 12;
+
 export const SORTS: { value: string; label: string; short: string; icon: IconName }[] = [
   { value: "newest", label: "Newest first", short: "Newest", icon: "time-outline" },
   { value: "price_asc", label: "Price: low to high", short: "Lowest price", icon: "trending-up" },
@@ -166,6 +169,17 @@ export function FilterSheet({
   const count = useAsync(async () => (visible && countKey ? (await api.products({ q: search, category, ...toQuery(JSON.parse(countKey)) })).length : null), [visible, countKey, search, category]);
 
   const set = (patch: Partial<ShopFilters>) => setDraft((d) => ({ ...d, ...patch }));
+  // Many brands: the top ones (and any picked), a search, and "show all"
+  const [brandQuery, setBrandQuery] = useState("");
+  const [allBrands, setAllBrands] = useState(false);
+  const brandList = facets.data?.brands ?? [];
+  const manyBrands = brandList.length > BRANDS_SHOWN;
+  const findBrand = brandQuery.trim().toLowerCase();
+  const brandsShown = findBrand
+    ? brandList.filter((b) => b.name.toLowerCase().includes(findBrand))
+    : allBrands || !manyBrands
+      ? brandList
+      : [...brandList.slice(0, BRANDS_SHOWN), ...brandList.slice(BRANDS_SHOWN).filter((b) => draft.brands.includes(b.name))];
   const toggleBrand = (name: string) => set({ brands: draft.brands.includes(name) ? draft.brands.filter((b) => b !== name) : [...draft.brands, name] });
   const setPrice = (min?: number, max?: number) => {
     set({ minPrice: min, maxPrice: max });
@@ -210,11 +224,18 @@ export function FilterSheet({
 
       {(facets.data?.brands.length ?? 0) > 0 && (
         <Section title="Brand" hint={draft.brands.length ? `${draft.brands.length} selected` : "Pick one or more"}>
+          {manyBrands && <Input icon="search" placeholder={`Search ${brandList.length} brands`} value={brandQuery} onChangeText={setBrandQuery} />}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
-            {facets.data!.brands.map((b) => (
+            {brandsShown.map((b) => (
               <Chip key={b.name} label={`${b.name} (${b.count})`} active={draft.brands.includes(b.name)} icon={draft.brands.includes(b.name) ? "checkmark" : undefined} onPress={() => toggleBrand(b.name)} />
             ))}
+            {findBrand && brandsShown.length === 0 && <Txt variant="small">No brand called &quot;{brandQuery.trim()}&quot; here.</Txt>}
           </View>
+          {manyBrands && !findBrand && (
+            <Pressable onPress={() => setAllBrands(!allBrands)} hitSlop={6} style={{ alignSelf: "flex-start" }}>
+              <Txt variant="label" color={colors.brandPressed}>{allBrands ? "Show fewer" : `Show all ${brandList.length} brands`}</Txt>
+            </Pressable>
+          )}
         </Section>
       )}
 

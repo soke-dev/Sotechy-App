@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
+import { anyCategory, MARKET_DEPARTMENTS } from "@sotechy/shared";
 import { FlatList, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { CartButton } from "@/components/cart-button";
 import { MenuButton } from "@/components/menu";
@@ -86,9 +87,31 @@ export default function ShopScreen() {
 
   const all = categories.data ?? [];
   const tops = all.filter((c) => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
-  const selected = all.find((c) => c.slug === category);
-  const group = selected?.parentId ? all.find((c) => c.id === selected.parentId) : selected;
-  const subs = group ? all.filter((c) => c.parentId === group.id).sort((a, b) => a.sortOrder - b.sortOrder) : [];
+  // Every department sold on Sotechy (Sotechy's own categories folded in), then any other Sotechy category
+  const departments = MARKET_DEPARTMENTS.map((d) => {
+    const own = tops.filter((c) => d.sotechy?.includes(c.slug)).map((c) => c.slug);
+    return {
+      key: d.name,
+      name: d.name,
+      value: anyCategory(...d.sections.flatMap((x) => x.items), ...own),
+      /** Sotechy's own categories in it (Home's tiles open Shop with one of these) */
+      slugs: own,
+      sections: d.sections.map((x) => ({ key: x.name, name: x.name, value: anyCategory(...x.items) })),
+    };
+  });
+  const covered = new Set(MARKET_DEPARTMENTS.flatMap((d) => d.sotechy ?? []));
+  const extra = tops
+    .filter((c) => !covered.has(c.slug))
+    .map((c) => ({
+      key: c.id,
+      name: c.name,
+      value: c.slug,
+      slugs: [c.slug],
+      sections: all.filter((k) => k.parentId === c.id).sort((a, b) => a.sortOrder - b.sortOrder).map((k) => ({ key: k.id, name: k.name, value: k.slug })),
+    }));
+  const groups = [...departments, ...extra];
+  const group = groups.find((g) => g.value === category || g.slugs.includes(category) || g.sections.some((x) => x.value === category)) ?? null;
+  const subs = group?.sections ?? [];
   // Sotechy's products and every store's, together
   const rows = products.data ?? [];
   const count = products.data ? rows.length : undefined;
@@ -114,18 +137,18 @@ export default function ShopScreen() {
       <View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.sm }}>
           <Chip label="All" active={!category} onPress={() => setCategory("")} />
-          {tops.map((c) => (
-            <Chip key={c.id} label={c.name} active={group?.id === c.id} onPress={() => setCategory(c.slug)} />
+          {groups.map((g) => (
+            <Chip key={g.key} label={g.name} active={group?.key === g.key} onPress={() => setCategory(g.value)} />
           ))}
         </ScrollView>
       </View>
       {subs.length > 0 && group && (
         <View style={{ flexShrink: 0 }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.lg, paddingTop: space.md }}>
-            {[{ id: group.id, name: "All", slug: group.slug }, ...subs].map((s) => {
-              const on = category === s.slug;
+            {[{ key: "all", name: "All", value: group.value }, ...subs].map((s) => {
+              const on = category === s.value;
               return (
-                <Pressable key={s.id} onPress={() => setCategory(s.slug)} style={{ paddingBottom: 6, borderBottomWidth: 2, borderBottomColor: on ? colors.brand : "transparent" }}>
+                <Pressable key={s.key} onPress={() => setCategory(s.value)} style={{ paddingBottom: 6, borderBottomWidth: 2, borderBottomColor: on ? colors.brand : "transparent" }}>
                   <Txt variant="label" color={on ? colors.ink : colors.muted} style={{ fontFamily: on ? fonts.semibold : fonts.medium }}>{s.name}</Txt>
                 </Pressable>
               );
