@@ -9,7 +9,7 @@ import * as s from "./schema";
 const withDemo = process.env.NODE_ENV !== "production" && (process.argv.includes("--demo") || process.env.SEED_DEMO_PRODUCTS === "true");
 
 /** Sotechy's head office on Google Maps */
-const HEAD_OFFICE_MAP = "https://www.google.com/maps/place/SoTechy/@6.2997079,5.6226397,17z/data=!3m1!4b1!4m6!3m5!1s0x1040d3e752724101:0x3f45bb7b391a3a62!8m2!3d6.2997079!4d5.6252146!16s%2Fg%2F11jzkvfxss";
+const HEAD_OFFICE_MAP = "https://maps.app.goo.gl/ZkE75Azzh7pfPHKy5";
 
 await db
   .insert(s.paymentMethods)
