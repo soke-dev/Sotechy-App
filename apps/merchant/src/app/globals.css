@@ -122,3 +122,48 @@
     display: none;
   }
 }
+
+/* Pop-ups: slide up from the bottom on phones, fade in on larger screens */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.sheet-anim {
+  animation: sheet-up 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.backdrop-anim {
+  animation: fade-in 0.2s ease-out;
+}
+@media (min-width: 640px) {
+  .sheet-anim {
+    animation: pop-in 0.22s ease-out;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-anim,
+  .backdrop-anim {
+    animation: none;
+  }
+}

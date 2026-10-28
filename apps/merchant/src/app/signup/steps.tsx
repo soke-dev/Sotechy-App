@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { FormError, PhoneField, ReferralField, StoreHandleField } from "@/components/account-fields";
 import { GoogleButton } from "@/components/google-button";
 import { Illo } from "@/components/illustrations";
+import { WhySell } from "@/components/why-sell";
 import { btn, Field, inputClass } from "@/components/ui";
 import { openStore, signOut, signUp } from "@/lib/session-actions";
 
@@ -49,7 +50,10 @@ export function StoreStep({ firstName, askReferral, phone, referral }: { firstNa
   return (
     <>
       <h2 className="text-3xl font-extrabold">{firstName ? `Hi ${firstName}, about your store` : "About your store"}</h2>
-      <p className="mb-8 mt-1 text-muted">You can change these later in settings.</p>
+      <p className="mt-1 text-muted">You can change these later in settings.</p>
+      <div className="mb-8 mt-4">
+        <WhySell tone="light" />
+      </div>
       <form action={action} className="flex flex-col gap-5">
         <Field label="Store name" required>
           <input name="storeName" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={60} className={inputClass} placeholder="e.g. Xena Gadgets" />

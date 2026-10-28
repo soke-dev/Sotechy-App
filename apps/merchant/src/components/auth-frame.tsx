@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Illo, type IlloName } from "./illustrations";
+import { WhySell } from "./why-sell";
 
 const PERKS: { illo: IlloName; title: string; body: string }[] = [
   { illo: "store", title: "Your own storefront", body: "Your brand, your colours, your products, inside the Sotechy app." },
@@ -33,6 +34,9 @@ export function AuthFrame({ children }: { children: ReactNode }) {
               </li>
             ))}
           </ul>
+          <div className="mt-8">
+            <WhySell />
+          </div>
         </div>
         <p className="relative text-xs text-white/40">Businesses and freelancers welcome. Every merchant is verified by Sotechy.</p>
       </aside>
@@ -42,6 +46,10 @@ export function AuthFrame({ children }: { children: ReactNode }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/brand/light-logo-small.png" alt="SoTechy" className="h-9" />
             <span className="rounded-md bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-brand-strong">Merchant</span>
+          </div>
+          {/* Phones don't show the side panel: the button sits above the form */}
+          <div className="-mt-6 mb-6 lg:hidden">
+            <WhySell tone="light" />
           </div>
           {children}
         </div>

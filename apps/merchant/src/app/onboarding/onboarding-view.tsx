@@ -9,6 +9,7 @@ import { checkTicker, saveApplication, uploadFiles } from "@/lib/market-actions"
 import { IdCheck } from "@/components/id-check";
 import { SellsPicker } from "@/components/sells-picker";
 import { Illo } from "@/components/illustrations";
+import { WhySell } from "@/components/why-sell";
 import { btn, Field, inputClass } from "@/components/ui";
 import { formatNaira, SOTECHY_CROSS_BONUS } from "@/lib/money";
 import { AddressInput } from "@/components/address-input";
@@ -228,9 +229,12 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
             <span className="hidden h-5 w-px bg-line sm:block" />
             <span className="hidden text-sm font-semibold text-ink-2 sm:block">Setting up {start.storeName}</span>
           </div>
-          <button type="button" disabled={saving} onClick={finishLater} className="text-sm font-semibold text-muted hover:text-ink">
-            Save and exit
-          </button>
+          <div className="flex items-center gap-3">
+            <WhySell tone="light" />
+            <button type="button" disabled={saving} onClick={finishLater} className="text-sm font-semibold text-muted hover:text-ink">
+              Save and exit
+            </button>
+          </div>
         </div>
         {/* Phone: progress */}
         <div className="h-1 bg-line lg:hidden">
