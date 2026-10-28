@@ -679,6 +679,12 @@ function TokenHelp() {
                   <p className="mt-1 text-ink-2">{p.body}</p>
                 </div>
               ))}
+              <div>
+                <p className="font-semibold">Why customers love it</p>
+                <p className="mt-1 text-ink-2">
+                  Holding your token is a bragging right. It shows they&apos;re a real customer of yours, and the more they buy, the more they hold. It makes them feel part of your business, not just someone who bought once.
+                </p>
+              </div>
               <p className="rounded-xl bg-surface-alt px-4 py-3 text-muted">It&apos;s a reward, not money or an investment. Customers can&apos;t cash it out, sell it or send it outside Sotechy, and its value doesn&apos;t go up.</p>
             </div>
             <button type="button" onClick={() => setOpen(false)} className={`${btn.primary} mt-5 w-full`}>
