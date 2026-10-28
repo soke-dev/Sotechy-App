@@ -52,6 +52,7 @@ export const adminPayoutRoutes = new Hono<AppEnv>()
           accountName: (sent ? r.p.accountName : store?.accountName) ?? r.p.accountName ?? null,
           accountNumber: (sent ? r.p.accountNumber : store?.accountNumber) ?? r.p.accountNumber ?? null,
           bankName: (sent ? r.p.bankName : store?.bankName) ?? r.p.bankName ?? null,
+          accountLast4: ((sent ? r.p.accountNumber : store?.accountNumber) ?? r.p.accountNumber)?.slice(-4) ?? null,
           accountReady: r.ready,
         };
       }),

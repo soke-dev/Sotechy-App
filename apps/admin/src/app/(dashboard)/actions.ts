@@ -42,6 +42,11 @@ async function run(fn: () => Promise<unknown>, paths: string[], message = "Saved
   return { message };
 }
 
+/** What's waiting for a decision, for the menu's numbers */
+export async function loadQueue(): Promise<Partial<import("@/components/queue-context").Queue> | null> {
+  return api.get<Partial<import("@/components/queue-context").Queue>>("/admin/queue").catch(() => null);
+}
+
 /** When anything admins watch last changed; open pages refresh when it moves */
 export async function loadAdminPulse(): Promise<string | null> {
   return api
