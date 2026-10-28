@@ -251,6 +251,9 @@ export interface Order {
   pickupLocation?: string | null;
   /** The pickup point's Google Maps link, when the store added one */
   pickupMapUrl?: string | null;
+  /** Sent to the pickup point: its tracking (waybill) number and the driver's phone, from the store */
+  handoverTracking?: string | null;
+  handoverPhone?: string | null;
   /** Products in it the customer has already reviewed (one review each) */
   reviewedProductIds?: string[];
   /** Tokens put towards it (held until it's paid), and the selling store's ticker */
@@ -699,6 +702,8 @@ export interface MerchantOrder {
   fulfilment: "delivery" | "pickup";
   /** Where the customer collects a pickup order */
   pickupPoint?: string;
+  /** How it got to the pickup point: tracking (waybill) number and the driver's phone */
+  handover?: { tracking: string | null; phone: string | null };
   /** Money the store owes back for a cancelled order it was paid for */
   payback?: { amount: number; settled: boolean; claimedAt: string | null; reference: string | null };
   paybackAccount?: { bankName: string; accountName: string; accountNumber: string };

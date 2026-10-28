@@ -499,6 +499,34 @@ export default function OrderScreen() {
               size="sm"
               onPress={() => Linking.openURL(directionsUrl(order.pickupLocation ?? "", order.pickupMapUrl))}
             />
+            {/* How the store sent it there */}
+            {order.handoverTracking ? (
+              <Pressable
+                onPress={async () => {
+                  await Clipboard.setStringAsync(order.handoverTracking!);
+                  toast("Tracking number copied", { icon: "copy-outline" });
+                }}
+                style={({ pressed }) => [ui.between, { padding: space.md, borderRadius: radius.lg, backgroundColor: pressed ? colors.line : colors.surfaceAlt }]}
+              >
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Txt variant="caption">Tracking number</Txt>
+                  <Txt variant="label" selectable>{order.handoverTracking}</Txt>
+                </View>
+                <Ionicons name="copy-outline" size={17} color={colors.muted} />
+              </Pressable>
+            ) : null}
+            {order.handoverPhone ? (
+              <Pressable
+                onPress={() => Linking.openURL(`tel:${order.handoverPhone!.replace(/[^\d+]/g, "")}`)}
+                style={({ pressed }) => [ui.between, { padding: space.md, borderRadius: radius.lg, backgroundColor: pressed ? colors.line : colors.surfaceAlt }]}
+              >
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Txt variant="caption">Driver&apos;s phone</Txt>
+                  <Txt variant="label">{order.handoverPhone}</Txt>
+                </View>
+                <Ionicons name="call-outline" size={17} color={colors.brandPressed} />
+              </Pressable>
+            ) : null}
             <Txt variant="caption">Bring your order number ({order.orderNumber}) when you collect.</Txt>
           </>
         ) : order.fulfilmentType === "pickup" && store ? (

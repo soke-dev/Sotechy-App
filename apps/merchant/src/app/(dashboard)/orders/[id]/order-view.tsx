@@ -10,7 +10,6 @@ import { RelTime } from "@/components/rel-time";
 import { DEFAULT_PAYOUT_SETTINGS, splitByPlan } from "@sotechy/shared";
 import { formatNaira, formatTokens } from "@/lib/money";
 import { orderAction } from "@/lib/market-actions";
-import { AddressInput } from "@/components/address-input";
 import { ORDER_STATUS, orderMoney, type Order } from "@/lib/mock";
 import { useAccount } from "@/components/account-context";
 
@@ -72,18 +71,16 @@ export function OrderView({ order }: { order: Order }) {
   const finalState = stageState("final");
   const afterDays = terms.finalAfterHours >= 48 && terms.finalAfterHours % 24 === 0 ? `${terms.finalAfterHours / 24} days` : `${terms.finalAfterHours} hours`;
   /** Sends the step to the server; the page reloads with the order's new state */
-  // Shipping details (sent with the update) and another pickup location (sent for approval)
-  const [courier, setCourier] = useState("");
+  // A pickup order going to the pickup point the customer chose: its tracking number and the driver's phone
   const [tracking, setTracking] = useState("");
-  const [otherPlace, setOtherPlace] = useState(false);
-  const [newPoint, setNewPoint] = useState("");
+  const [driverPhone, setDriverPhone] = useState("");
   const [paybackRef, setPaybackRef] = useState("");
   const change = order.pickupChange;
   const waiting = change?.status === "pending";
-  const move = (action: "accept" | "ship" | "deliver" | "decline" | "pickup-change" | "payback-sent", note?: string) =>
+  const move = (action: "accept" | "ship" | "deliver" | "decline" | "pickup-change" | "payback-sent", note?: string, handover?: { tracking?: string; driverPhone?: string }) =>
     start(async () => {
       setError(null);
-      const r = await orderAction(order.id, action, note);
+      const r = await orderAction(order.id, action, note, handover);
       if ("error" in r) setError(r.error);
       else {
         setDialog(null);
@@ -159,7 +156,7 @@ export function OrderView({ order }: { order: Order }) {
           title={order.fulfilment === "pickup" ? "Available for pickup" : "On the way"}
           body={
             order.fulfilment === "pickup"
-              ? `Waiting for the customer at ${order.pickupPoint ?? "your pickup location"}. They tap "I've picked it up" in the app, or mark it collected when you hand it over.`
+              ? `Waiting for the customer at ${order.pickupPoint ?? "your pickup location"}.${order.handover?.tracking ? ` Tracking number: ${order.handover.tracking}.` : ""}${order.handover?.phone ? ` Driver's phone: ${order.handover.phone}.` : ""} They tap "I've picked it up" in the app, or mark it collected when you hand it over.`
               : "When the customer has it, mark it delivered."
           }
         >
@@ -381,7 +378,7 @@ export function OrderView({ order }: { order: Order }) {
         </button>
       </Modal>
 
-      <Modal open={dialog === "ship"} onClose={() => setDialog(null)} title={order.fulfilment === "pickup" ? "Available for pickup?" : "Mark as shipped"}>
+      <Modal open={dialog === "ship"} onClose={() => setDialog(null)} title={order.fulfilment === "pickup" ? "Send to the pickup location" : "Mark as shipped"}>
         {order.fulfilment === "delivery" ? (
           <div className="flex flex-col gap-3">
             <div className="rounded-2xl bg-surface-alt px-4 py-3 text-sm">
@@ -389,51 +386,33 @@ export function OrderView({ order }: { order: Order }) {
               <p className="mt-0.5 font-semibold">{order.customer.name}</p>
               <p className="text-ink-2">{order.customer.address}</p>
             </div>
-            <Field label="Rider or courier">
-              <input value={courier} onChange={(e) => setCourier(e.target.value)} className={inputClass} placeholder="e.g. Kunle, or GIG Logistics" />
-            </Field>
-            <Field label="Phone or tracking number">
-              <input value={tracking} onChange={(e) => setTracking(e.target.value)} className={inputClass} placeholder="0806 000 1122" />
-            </Field>
-          </div>
-        ) : otherPlace ? (
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-ink-2">Sotechy checks a new pickup location before the customer is told. You can mark the order ready once it&apos;s approved.</p>
-            <Field label="New pickup location">
-              <AddressInput value={newPoint} onChange={setNewPoint} placeholder="e.g. GIG Logistics hub, Ekpoma" />
-            </Field>
-            <button type="button" onClick={() => setOtherPlace(false)} className="self-start text-sm font-semibold text-brand-strong hover:underline">
-              Use {order.pickupPoint ? "the approved location" : "my approved location"} instead
-            </button>
+            <p className="text-sm text-ink-2">We&apos;ll tell the customer it&apos;s on its way.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
+            {/* The pickup point the customer chose when ordering: it can't be swapped here */}
             <div className="rounded-2xl bg-surface-alt px-4 py-3 text-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Customer collects at</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">The customer chose</p>
               <p className="mt-0.5 font-semibold">{order.pickupPoint ?? "Your approved pickup location"}</p>
+              <p className="mt-1 text-xs text-muted">Send it here only. It&apos;s the location you set up and Sotechy approved.</p>
             </div>
-            <p className="text-sm text-ink-2">
-              We&apos;ll tell the customer it&apos;s available for pickup there. They tap &quot;I&apos;ve picked it up&quot; in the app once they have it, or you can mark it collected when you hand it over.
-            </p>
-            <button type="button" onClick={() => setOtherPlace(true)} className="self-start text-sm font-semibold text-brand-strong hover:underline">
-              Use another location
-            </button>
+            <Field label="Tracking or waybill number" hint="From the park or courier, if they gave you one.">
+              <input value={tracking} onChange={(e) => setTracking(e.target.value)} maxLength={60} className={inputClass} placeholder="e.g. GIG-4821-7763" />
+            </Field>
+            <Field label="Driver's phone number" hint="So the customer can call the driver.">
+              <input value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} inputMode="tel" maxLength={20} className={inputClass} placeholder="0806 000 1122" />
+            </Field>
+            <p className="text-sm text-ink-2">The customer sees both on their order. They tap &quot;I&apos;ve picked it up&quot; once they have it, or you can mark it collected.</p>
           </div>
         )}
         {error && <p className="mt-3 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
-        {order.fulfilment === "pickup" && otherPlace ? (
-          <button disabled={busy || newPoint.trim().length < 5} onClick={() => move("pickup-change", newPoint.trim())} className={`${btn.dark} mt-4 w-full`}>
-            {busy ? "Sending…" : "Send for approval"}
-          </button>
-        ) : (
-          <button
-            disabled={busy}
-            onClick={() => move("ship", order.fulfilment === "delivery" && (courier.trim() || tracking.trim()) ? `On its way${courier.trim() ? ` with ${courier.trim()}` : ""}${tracking.trim() ? ` · ${tracking.trim()}` : ""}` : undefined)}
-            className={`${btn.dark} mt-4 w-full`}
-          >
-            {busy ? "Saving…" : order.fulfilment === "pickup" ? "Yes, it's available for pickup" : "Confirm"}
-          </button>
-        )}
+        <button
+          disabled={busy || waiting}
+          onClick={() => move("ship", undefined, order.fulfilment === "pickup" ? { tracking: tracking.trim() || undefined, driverPhone: driverPhone.trim() || undefined } : undefined)}
+          className={`${btn.dark} mt-4 w-full`}
+        >
+          {busy ? "Saving…" : order.fulfilment === "pickup" ? "It's at the pickup location" : "Confirm"}
+        </button>
       </Modal>
 
       <Modal open={dialog === "deliver"} onClose={() => setDialog(null)} title={order.fulfilment === "pickup" ? "Mark as collected?" : "Mark as delivered?"}>

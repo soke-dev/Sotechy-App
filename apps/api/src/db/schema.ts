@@ -592,6 +592,9 @@ export const orders = pgTable(
     /** The customer said they didn't get it, after the store marked it delivered: Sotechy follows up */
     /** The pickup point the customer chose in the order's pickup area, "Name, address" */
     pickupSpot: text(),
+    /** A pickup order on its way to the pickup point: the courier or park's tracking (waybill) number, and the driver's phone */
+    handoverTracking: text(),
+    handoverPhone: text(),
     customerIssueAt: timestamp({ withTimezone: true }),
     customerIssueNote: text(),
     /** A store asking to hand this pickup order over somewhere other than its approved pickup location.

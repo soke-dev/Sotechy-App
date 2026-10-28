@@ -85,8 +85,13 @@ export async function removeZone(id: string): Promise<Result<{ deleted: true }>>
   return attempt(() => api.deleteDeliveryZone(id), ["/delivery"]);
 }
 
-export async function orderAction(id: string, action: "accept" | "ship" | "deliver" | "decline" | "pickup-change" | "payback-sent", note?: string): Promise<Result<MerchantOrder>> {
-  return attempt(() => api.merchantOrderAction(id, action, note), ["/orders", `/orders/${id}`, "/"]);
+export async function orderAction(
+  id: string,
+  action: "accept" | "ship" | "deliver" | "decline" | "pickup-change" | "payback-sent",
+  note?: string,
+  handover?: { tracking?: string; driverPhone?: string },
+): Promise<Result<MerchantOrder>> {
+  return attempt(() => api.merchantOrderAction(id, action, note, handover), ["/orders", `/orders/${id}`, "/"]);
 }
 
 export async function saveStorefront(input: { tagline?: string | null; logoUrl?: string | null; coverUrl?: string | null; storefront?: StorefrontSettings }) {

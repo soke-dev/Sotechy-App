@@ -273,6 +273,7 @@ async function ordersForDashboard(storeId: string, ids?: string[]) {
       fulfilment: o.fulfilmentType,
       pickupPoint: o.fulfilmentType === "pickup" ? ((o.pickupChangeStatus === "approved" ? o.pickupChangePoint : (o.pickupSpot ?? [point, pointAddress].filter(Boolean).join(", "))) || undefined) : undefined,
       pickupChange: o.pickupChangePoint && o.pickupChangeStatus ? { point: o.pickupChangePoint, status: o.pickupChangeStatus } : undefined,
+      handover: o.handoverTracking || o.handoverPhone ? { tracking: o.handoverTracking, phone: o.handoverPhone } : undefined,
       items: items
         .filter((i) => i.item.orderId === o.id)
         .map((i) => ({ name: i.item.productName, image: i.images?.[0] ?? null, qty: i.item.quantity, price: i.item.unitPrice, option: i.item.variantName !== "Standard" ? i.item.variantName : undefined })),
@@ -743,12 +744,25 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       }),
     });
   })
-  .post("/orders/:id/:action", zValidator("json", z.object({ note: z.string().trim().max(300).optional() }).default({})), async (c) => {
+  .post(
+    "/orders/:id/:action",
+    zValidator(
+      "json",
+      z
+        .object({
+          note: z.string().trim().max(300).optional(),
+          // Sending a pickup order to its pickup point
+          tracking: z.string().trim().max(60).optional(),
+          driverPhone: z.string().trim().max(20).regex(/^[\d+\s()-]*$/, "Enter a phone number").optional(),
+        })
+        .default({}),
+    ),
+    async (c) => {
     const store = c.get("store");
     const action = c.req.param("action");
     const o = await ownOrder(store.id, c.req.param("id"));
     const actor = c.get("user");
-    const note = c.req.valid("json").note;
+    const { note, tracking, driverPhone } = c.req.valid("json");
     if (action === "accept") {
       if (o.status !== "paid") throw conflict("This order can't be accepted now");
       await updateOrderStatus(actor, o.id, "processing", note ?? "Store accepted the order");
@@ -768,7 +782,17 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     } else if (action === "ship") {
       if (o.status !== "processing") throw conflict("Accept the order first");
       if (o.pickupChangeStatus === "pending") throw conflict("Wait for the new pickup location to be approved, or use your approved one");
-      await updateOrderStatus(actor, o.id, o.fulfilmentType === "pickup" ? "ready_for_pickup" : "dispatched", note ?? (o.fulfilmentType === "pickup" ? "Ready for pickup" : "On its way"));
+      if (o.fulfilmentType === "pickup") {
+        // How it reaches the pickup point the customer chose, so they can follow it
+        const t = tracking?.trim() || null;
+        const p = driverPhone?.trim() || null;
+        await db.update(orders).set({ handoverTracking: t, handoverPhone: p }).where(eq(orders.id, o.id));
+        const where = o.pickupSpot ?? null;
+        const parts = [where ? `Ready for pickup at ${where}` : "Ready for pickup", t && `Tracking number: ${t}`, p && `Driver's phone: ${p}`].filter(Boolean);
+        await updateOrderStatus(actor, o.id, "ready_for_pickup", note ?? parts.join(" · "));
+      } else {
+        await updateOrderStatus(actor, o.id, "dispatched", note ?? "On its way");
+      }
     } else if (action === "deliver") {
       if (o.status !== "dispatched" && o.status !== "ready_for_pickup") throw conflict("Send the order first");
       await updateOrderStatus(actor, o.id, "delivered", note ?? (o.fulfilmentType === "pickup" ? "Collected" : "Delivered"));
@@ -780,7 +804,8 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     }
     const [updated] = await ordersForDashboard(store.id, [o.id]);
     return c.json(updated);
-  })
+  },
+  )
 
   // --- Customers: everyone who has bought from the store ---
   .get("/customers", async (c) => {
