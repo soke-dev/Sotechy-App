@@ -279,13 +279,13 @@ export default function HomeScreen() {
             <Txt variant="small" color={colors.ink2}>1 store token for every ₦1 you spend. Use them like cash on your next order at that store.</Txt>
           </View>
         </View>
-        {/* The extras, small, side by side on one row */}
+        {/* The extras, small, side by side on one row ($SOTECHY gets the wider pill) */}
         <View style={{ flexDirection: "row", gap: 6 }}>
           {[
-            { icon: "star" as IconName, text: "+10% for a review" },
-            { icon: "add-circle" as IconName, text: "10% $SOTECHY on every order" },
+            { icon: "star" as IconName, text: "+10% for a review", flex: 2 },
+            { icon: "add-circle" as IconName, text: "10% $SOTECHY on every order", flex: 3 },
           ].map((x) => (
-            <View key={x.text} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface }}>
+            <View key={x.text} style={{ flex: x.flex, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface }}>
               <Ionicons name={x.icon} size={12} color={colors.brandPressed} />
               <Txt variant="caption" color={colors.ink} numberOfLines={1} style={{ flexShrink: 1, fontSize: 11, fontFamily: fonts.medium }}>{x.text}</Txt>
             </View>
