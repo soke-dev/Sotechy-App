@@ -19,6 +19,7 @@ export async function liveAreas(tx: Pick<Tx, "select">, merchantId: string): Pro
     homeFee: r.homeFee,
     pickupFee: r.pickupFee,
     pickupPoint: r.pickupPoint,
+    pickupAddress: r.pickupAddress,
     days: r.days,
     freeOver: r.freeOver,
   }));

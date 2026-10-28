@@ -75,8 +75,10 @@ export async function loadOrderDetail(orderId: string) {
   // A pickup order is collected at the store's pickup location, or at a change Sotechy approved
   let pickupLocation: string | null = null;
   if (order.fulfilmentType === "pickup") {
-    const [zone] = order.deliveryZoneId ? await db.select({ point: schema.deliveryZones.pickupPoint }).from(schema.deliveryZones).where(eq(schema.deliveryZones.id, order.deliveryZoneId)) : [];
-    pickupLocation = order.pickupChangeStatus === "approved" ? order.pickupChangePoint : (zone?.point ?? null);
+    const [zone] = order.deliveryZoneId
+      ? await db.select({ point: schema.deliveryZones.pickupPoint, address: schema.deliveryZones.pickupAddress }).from(schema.deliveryZones).where(eq(schema.deliveryZones.id, order.deliveryZoneId))
+      : [];
+    pickupLocation = order.pickupChangeStatus === "approved" ? order.pickupChangePoint : [zone?.point, zone?.address].filter(Boolean).join(", ") || null;
   }
   const { idempotencyKey: _k, pickupChangePoint: _p, pickupChangeStatus: _ps, pickupChangeAt: _pa, ...publicOrder } = order;
   return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation };

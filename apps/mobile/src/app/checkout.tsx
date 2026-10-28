@@ -43,14 +43,14 @@ function FulfilmentCard({ illo, title, subtitle, active, locked, lockedNote = "N
         tap();
         onPress();
       }}
-      style={{ flex: 1, padding: space.lg, borderRadius: radius.lg, borderWidth: active ? 1.5 : 1, borderColor: active ? colors.ink : colors.line, backgroundColor: active ? colors.surface : colors.bg, gap: 6, opacity: locked ? 0.55 : 1 }}
+      style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md, paddingHorizontal: space.lg, borderRadius: radius.lg, borderWidth: active ? 1.5 : 1, borderColor: active ? colors.ink : colors.line, backgroundColor: active ? colors.surface : colors.bg, opacity: locked ? 0.5 : 1 }}
     >
-      <View style={[ui.row, { gap: space.sm }]}>
-        <Illo name={illo} size={30} />
-        <Txt variant="label" style={{ flex: 1 }}>{title}</Txt>
-        {locked && <Ionicons name="lock-closed" size={16} color={colors.muted} />}
+      <Illo name={illo} size={32} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Txt variant="label">{title}</Txt>
+        <Txt variant="caption">{locked ? lockedNote : subtitle}</Txt>
       </View>
-      <Txt variant="caption">{locked ? lockedNote : subtitle}</Txt>
+      {!locked && <Ionicons name={active ? "radio-button-on" : "radio-button-off"} size={20} color={active ? colors.ink : colors.faint} />}
     </Pressable>
   );
 }
@@ -264,11 +264,12 @@ export default function CheckoutScreen() {
               This order comes from <Txt variant="label" style={{ fontSize: 14 }}>{seller.name}</Txt>. They send it to you, or have it ready to collect.
             </Txt>
           )}
-          <View style={[ui.row, { gap: space.md, alignItems: "stretch" }]}>
+          {/* One option per row; one that can't be used here shows faded with why */}
+          <View style={{ gap: space.sm }}>
             {features.pickup && <FulfilmentCard illo="pin" title="Pickup location" subtitle={seller ? (pickupPoints.length ? `From ${formatNaira(Math.min(...pickupPoints.map((p) => p.pickupFee ?? 0)))}` : "Collect it yourself") : "Free · usually same day"} active={fulfilment === "pickup" && canPickup} locked={!itemsPickup || !storePickup} lockedNote={itemsPickup ? "Not available yet" : undefined} onPress={() => setFulfilment("pickup")} />}
             {features.delivery && <FulfilmentCard
               illo="bike"
-              title="Delivery"
+              title="Home delivery"
               subtitle={
                 seller
                   ? sellerArea
@@ -291,7 +292,7 @@ export default function CheckoutScreen() {
               {canDelivery
                 ? itemsPickup
                   ? `${seller?.name ?? "This store"} has no pickup location yet.`
-                  : "Items in this order are for delivery only."
+                  : "Items in this order are for home delivery only."
                 : itemsDelivery
                   ? `${seller?.name ?? "This store"} doesn't deliver yet.`
                   : "Items in this order are for pickup only."}
@@ -311,7 +312,7 @@ export default function CheckoutScreen() {
           )}
         </Section>
 
-        <Section step={2} title={fulfilment === "pickup" ? "Pickup location" : "Delivery details"}>
+        <Section step={2} title={fulfilment === "pickup" ? "Pickup location" : "Home delivery details"}>
           {fulfilment === "pickup" &&
             seller &&
             pickupPoints.map((p) => (
@@ -319,7 +320,7 @@ export default function CheckoutScreen() {
                 key={p.id}
                 illo="pin"
                 title={p.pickupPoint ?? seller.name}
-                subtitle={`${p.state} · ${p.pickupFee ? formatNaira(p.pickupFee) : "Free"} · ${p.days}`}
+                subtitle={`${p.pickupAddress ? `${p.pickupAddress} · ` : `${p.state} · `}${p.pickupFee ? formatNaira(p.pickupFee) : "Free"} · ${p.days}`}
                 selected={pickupPoint?.id === p.id}
                 onPress={() => setPickupZoneId(p.id)}
               />
@@ -486,7 +487,7 @@ export default function CheckoutScreen() {
           ))}
           <Divider style={{ marginVertical: space.sm }} />
           <SummaryRow label="Subtotal" value={formatNaira(cart.subtotal)} />
-          <SummaryRow label={fulfilment === "pickup" ? "Pickup" : "Delivery"} value={deliveryFee ? formatNaira(deliveryFee) : "Free"} />
+          <SummaryRow label={fulfilment === "pickup" ? "Pickup" : "Home delivery"} value={deliveryFee ? formatNaira(deliveryFee) : "Free"} />
           {discount > 0 && <SummaryRow label={`Promo (${promo?.code})`} value={`-${formatNaira(discount)}`} tone={colors.success} />}
           {tokensValue > 0 && <SummaryRow label="Paid with tokens" value={`-${formatNaira(tokensValue)}`} tone={colors.success} />}
           <Divider style={{ marginVertical: space.sm }} />

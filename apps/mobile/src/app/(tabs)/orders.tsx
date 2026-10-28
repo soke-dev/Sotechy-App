@@ -74,7 +74,7 @@ function OrderCard({ order }: { order: OrderSummary }) {
         <View style={{ gap: 2 }}>
           <Txt variant="label" style={{ fontSize: 15 }}>{order.orderNumber}</Txt>
           <Txt variant="caption">
-            {formatDate(order.createdAt)} · {order.fulfilmentType === "pickup" ? "Pickup location" : "Delivery"}
+            {formatDate(order.createdAt)} · {order.fulfilmentType === "pickup" ? "Pickup location" : "Home delivery"}
           </Txt>
         </View>
         <StatusPill status={order.status} />

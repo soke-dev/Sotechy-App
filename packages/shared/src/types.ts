@@ -606,7 +606,9 @@ export interface StoreDeliveryArea {
   areas: string[];
   homeFee: number;
   pickupFee: number | null;
+  /** The pickup point's name, and where it is */
   pickupPoint: string | null;
+  pickupAddress?: string | null;
   days: string;
   freeOver: number | null;
 }
@@ -708,7 +710,8 @@ export interface DeliveryZone {
   /** Empty = the whole state */
   areas: string[];
   homeFee: number;
-  pickup?: { fee: number; point: string };
+  /** `point` is the place's name; `address` is where it is */
+  pickup?: { fee: number; point: string; address?: string | null };
   days: string;
   freeOver?: number;
   active: boolean;

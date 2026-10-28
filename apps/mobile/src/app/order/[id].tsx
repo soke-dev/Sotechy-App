@@ -451,7 +451,7 @@ export default function OrderScreen() {
         ))}
       </Section>
 
-      <Section title={order.fulfilmentType === "pickup" ? "Pickup" : "Delivery"} illo={order.fulfilmentType === "pickup" ? "store" : "bike"}>
+      <Section title={order.fulfilmentType === "pickup" ? "Pickup location" : "Home delivery"} illo={order.fulfilmentType === "pickup" ? "store" : "bike"}>
         {order.fulfilmentType === "pickup" && order.pickupLocation ? (
           <>
             <View style={{ gap: 2 }}>

@@ -291,7 +291,10 @@ export const deliveryZones = pgTable("delivery_zones", {
   homeFee: money().notNull(),
   /** Collected from a pickup point in the area (cheaper); null = no pickup there */
   pickupFee: money(),
+  /** The pickup point's name, e.g. "Edo Line Park" */
   pickupPoint: text(),
+  /** Where it is, e.g. "2 Ring Road, Benin City" */
+  pickupAddress: text(),
   days: text().notNull(),
   freeOver: money(),
   isActive: boolean().notNull().default(true),

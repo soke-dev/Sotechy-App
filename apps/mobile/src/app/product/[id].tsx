@@ -221,9 +221,9 @@ function OverviewTab({
           ))}
         {product.allowDelivery &&
           (store ? (
-            known && <InfoRow illo="bike" title={`Delivered by ${store.name}`} subtitle={areas.length ? "Fee and timing shown at checkout" : "Not available yet"} />
+            known && <InfoRow illo="bike" title={`Home delivery by ${store.name}`} subtitle={areas.length ? "Fee and timing shown at checkout" : "Not available yet"} />
           ) : (
-            <InfoRow illo="bike" title="Delivery in Benin City" subtitle="Fee and timing shown at checkout" />
+            <InfoRow illo="bike" title="Home delivery in Benin City" subtitle="Fee and timing shown at checkout" />
           ))}
         <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "Warranty details on request"} subtitle={product.returnPolicy ?? undefined} />
         <InfoRow illo="wallet" title="Pay your way" subtitle="Stablecoin through Money Moves, and your tokens" />

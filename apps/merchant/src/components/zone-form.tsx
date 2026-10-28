@@ -43,6 +43,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
   const [hasPickup, setHasPickup] = useState(zone ? Boolean(zone.pickup) : true);
   const [pickupFee, setPickupFee] = useState(zone?.pickup?.fee ?? 0);
   const [point, setPoint] = useState(zone?.pickup?.point ?? "");
+  const [pointAddress, setPointAddress] = useState(zone?.pickup?.address ?? "");
   const [days, setDays] = useState(zone?.days ?? "1–2 days");
   const [freeOver, setFreeOver] = useState(zone?.freeOver ?? 0);
 
@@ -64,8 +65,9 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
     !zone ||
     zone.state !== state ||
     (whole ? zone.areas.length > 0 : zone.areas.join("|") !== areas.join("|")) ||
-    (zone.pickup?.point ?? "").trim() !== (hasPickup ? point.trim() : "");
-  const valid = (whole || areas.length > 0) && (!hasPickup || point.trim().length > 0);
+    (zone.pickup?.point ?? "").trim() !== (hasPickup ? point.trim() : "") ||
+    (zone.pickup?.address ?? "").trim() !== (hasPickup ? pointAddress.trim() : "");
+  const valid = (whole || areas.length > 0) && (!hasPickup || (point.trim().length > 0 && pointAddress.trim().length > 0));
   const cheaper = hasPickup && homeFee > 0 && pickupFee >= homeFee;
 
   return (
@@ -180,8 +182,11 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
             <Field required label="Pickup price (₦)">
               <input type="number" inputMode="numeric" min={0} value={pickupFee || ""} onChange={(e) => setPickupFee(Number(e.target.value))} className={inputClass} placeholder="0 = free" />
             </Field>
-            <Field required label="Pickup point">
-              <AddressInput value={point} onChange={setPoint} placeholder="e.g. GIG Logistics hub, Ekpoma" />
+            <Field required label="Pickup point name" hint="What customers look for, e.g. the park, courier office or your shop's name.">
+              <input value={point} onChange={(e) => setPoint(e.target.value)} maxLength={140} className={inputClass} placeholder="e.g. Edo Line Park" />
+            </Field>
+            <Field required label="Pickup point address">
+              <AddressInput value={pointAddress} onChange={setPointAddress} placeholder="e.g. 2 Ring Road, Benin City" />
             </Field>
             {cheaper && <p className="text-xs text-warn">Pickup usually costs less than home delivery ({formatNaira(homeFee)}).</p>}
           </div>
@@ -220,7 +225,7 @@ export function ZoneForm({ zone, onSave, onDelete }: { zone?: DeliveryZone; onSa
                 state,
                 areas: whole ? [] : areas,
                 homeFee,
-                pickup: hasPickup ? { fee: pickupFee, point: point.trim() } : undefined,
+                pickup: hasPickup ? { fee: pickupFee, point: point.trim(), address: pointAddress.trim() || null } : undefined,
                 days,
                 freeOver: freeOver || undefined,
                 active: zone?.active ?? true,
@@ -245,7 +250,7 @@ export function ZonePrices({ zone }: { zone: DeliveryZone }) {
   return (
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-2">
       <span className="inline-flex items-center gap-1"><Home size={13} className="text-muted" /> Home {price(zone.homeFee)}</span>
-      {zone.pickup && <span className="inline-flex items-center gap-1"><Store size={13} className="text-muted" /> Pickup {price(zone.pickup.fee)}</span>}
+      {zone.pickup && <span className="inline-flex items-center gap-1"><Store size={13} className="text-muted" /> Pickup {price(zone.pickup.fee)} at {zone.pickup.point}</span>}
     </span>
   );
 }

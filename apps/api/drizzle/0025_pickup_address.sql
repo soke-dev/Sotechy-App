@@ -1,0 +1,1 @@
+ALTER TABLE "delivery_zones" ADD COLUMN "pickup_address" text;

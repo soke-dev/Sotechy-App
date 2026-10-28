@@ -216,7 +216,7 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
                         <p className="font-semibold">{z.areas.length ? `${z.areas.join(", ")} (${z.state})` : `All of ${z.state}`}</p>
                         <p className="text-sm text-muted">
                           Home {z.homeFee ? formatNaira(z.homeFee) : "free"}
-                          {z.pickupPoint ? ` · pickup ${z.pickupFee ? formatNaira(z.pickupFee) : "free"} at ${z.pickupPoint}` : ""} · {z.days}
+                          {z.pickupPoint ? ` · pickup ${z.pickupFee ? formatNaira(z.pickupFee) : "free"} at ${z.pickupPoint}${z.pickupAddress ? `, ${z.pickupAddress}` : ""}` : ""} · {z.days}
                           {z.freeOver ? ` · free over ${formatNaira(z.freeOver)}` : ""}
                         </p>
                         {z.review === "declined" && z.reviewNote && <p className="mt-1 text-sm text-bad">{z.reviewNote}</p>}
