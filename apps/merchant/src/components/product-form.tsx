@@ -8,7 +8,7 @@ import { CategoryPicker } from "./category-picker";
 import { Illo } from "./illustrations";
 import { btn, Card, Field, inputClass, ProductThumb, Req } from "./ui";
 import { Sheet, ZoneForm, ZonePrices } from "./zone-form";
-import { formatNaira, formatTokens, SOTECHY_CROSS_BONUS } from "@/lib/money";
+import { formatNaira, formatTokens, PLATFORM_FEE, SOTECHY_CROSS_BONUS } from "@/lib/money";
 import { hintsFor } from "@/lib/category-hints";
 import { saveProduct, uploadFiles } from "@/lib/market-actions";
 import { OFFER_HOURS, zoneLabel, type DeliveryZone, type OfferHours, type Product } from "@/lib/mock";
@@ -18,6 +18,9 @@ interface Option {
   name: string;
   stock: number;
 }
+
+/** A price that leaves the store `price` after Sotechy's fee, rounded up to the next ₦10 */
+const coverFee = (price: number) => Math.ceil(price / (1 - PLATFORM_FEE) / 10) * 10;
 
 const CONDITIONS = [
   ["new", "New"],
@@ -54,6 +57,8 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
   const [name, setName] = useState(product?.name ?? "");
   const [category, setCategory] = useState(product?.category ?? "");
   const [price, setPrice] = useState(product?.price ?? 0);
+  // The tip's price once the store takes it, so the tip doesn't offer to raise it again
+  const [tipUsed, setTipUsed] = useState<number | null>(null);
   const [compareAt, setCompareAt] = useState(product?.compareAt ?? 0);
   // Offers: customers can negotiate the price with the store
   const [negotiable, setNegotiable] = useState(Boolean(product?.negotiable));
@@ -306,6 +311,25 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
                 <span>
                   Buyers earn <b>{formatTokens(tokens)} ${store.ticker}</b> and <b>{formatTokens(Math.round(price * SOTECHY_CROSS_BONUS))} $SOTECHY</b> for each one. You receive {formatNaira(price * 0.98)} after Sotechy&apos;s 2% fee.
                 </span>
+              </div>
+            )}
+            {/* Only a tip: the price that leaves the store what it typed, after Sotechy's fee */}
+            {price > 0 && price !== tipUsed && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-dashed border-line px-4 py-3 text-sm">
+                <span className="min-w-0 flex-1 text-ink-2">
+                  <b className="text-ink">Tip:</b> to keep the full {formatNaira(price)}, price it at <b className="text-ink">{formatNaira(coverFee(price))}</b>. That adds Sotechy&apos;s {PLATFORM_FEE * 100}% fee on top. It&apos;s up to you.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const p = coverFee(price);
+                    setTipUsed(p);
+                    setPrice(p);
+                  }}
+                  className={btn.outline}
+                >
+                  Use {formatNaira(coverFee(price))}
+                </button>
               </div>
             )}
 
