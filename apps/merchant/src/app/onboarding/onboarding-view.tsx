@@ -607,16 +607,16 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
             </button>
             <span className="flex-1" />
             {/* Computers: beside the main button; phones: plain text in the middle, below */}
-            <span className="order-last w-full text-center sm:order-none sm:w-auto">
+            <div className="order-last w-full text-center sm:order-none sm:w-auto">
               <button type="button" disabled={saving || uploadingDoc !== null} onClick={finishLater} className="py-2 text-sm font-semibold text-muted hover:text-ink sm:hidden">
-                Finish later
+                Save and finish later
               </button>
               <span className="hidden sm:inline">
                 <button type="button" disabled={saving || uploadingDoc !== null} onClick={finishLater} className={btn.outline}>
-                  Finish later
+                  Save and finish later
                 </button>
               </span>
-            </span>
+            </div>
             {step === "review" ? (
               <button type="button" disabled={saving || !confirmed || outstanding.length > 0} onClick={() => persist(true, () => setSubmitted(true))} className={btn.primary}>
                 {saving ? "Submitting…" : "Submit for review"}
