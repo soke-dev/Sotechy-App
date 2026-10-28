@@ -276,7 +276,7 @@ export default function HomeScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Txt variant="title" style={{ fontFamily: fonts.displayHeavy, fontSize: 19 }}>Earn while you shop</Txt>
-            <Txt variant="small" color={colors.ink2}>1 token for every ₦1, spent at the store like cash.</Txt>
+            <Txt variant="small" color={colors.ink2}>1 store token for every ₦1, spent at the store like cash.</Txt>
           </View>
         </View>
         {/* The extras, small, side by side on one row */}
@@ -287,7 +287,7 @@ export default function HomeScreen() {
           ].map((x) => (
             <View key={x.text} style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface }}>
               <Ionicons name={x.icon} size={12} color={colors.brandPressed} />
-              <Txt variant="caption" color={colors.ink} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={{ flexShrink: 1, fontSize: 11.5, fontFamily: fonts.medium }}>{x.text}</Txt>
+              <Txt variant="caption" color={colors.ink} numberOfLines={1} style={{ flexShrink: 1, fontSize: 11, fontFamily: fonts.medium }}>{x.text}</Txt>
             </View>
           ))}
         </View>
