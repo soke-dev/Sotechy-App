@@ -177,11 +177,11 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="flex flex-col gap-6">
-          <Card required title="Photos" description="Up to 8. The main photo shows first everywhere. Tap a photo to make it the main one or move it. On a computer you can also drag photos into order.">
+          <Card required title="Photos" description="Up to 8. The main photo shows first everywhere. Tap a photo to make it the main one or move it, or × to delete it. On a computer you can also drag photos into order.">
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
               {photos.map((src, i) => (
+                <div key={src} className="relative">
                 <button
-                  key={src}
                   type="button"
                   draggable
                   onDragStart={() => setDragFrom(i)}
@@ -202,6 +202,20 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
                     <span className="absolute left-2 top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-surface/90 px-1.5 text-[10px] font-bold text-ink">{i + 1}</span>
                   )}
                 </button>
+                {/* Delete straight from the photo */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhotos(photos.filter((_, j) => j !== i));
+                    setPicked(null);
+                  }}
+                  aria-label={`Delete photo ${i + 1}`}
+                  title="Delete photo"
+                  className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-panel/85 text-white shadow hover:bg-bad"
+                >
+                  <X size={15} />
+                </button>
+                </div>
               ))}
               {Array.from({ length: uploading }, (_, i) => (
                 <span key={`up${i}`} className="flex aspect-square animate-pulse items-center justify-center rounded-2xl bg-surface-alt text-xs font-semibold text-muted">
