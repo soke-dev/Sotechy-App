@@ -62,13 +62,17 @@ export const requireRole = (...roles: Role[]) =>
     await next();
   });
 
+/** Asking admins for their password again before money and store actions (off for now) */
+const PASSWORD_CHECKS = false;
+
 // Wrong confirmation passwords per account, to stop guessing
 const wrongTries = new Map<string, { count: number; since: number }>();
 
 /** For actions that move money or open stores: the admin types their password again (header x-confirm-password) */
 export const requirePassword = createMiddleware<AppEnv>(async (c, next) => {
-  // Switched off for now (ADMIN_PASSWORD_CHECKS=on brings it back)
-  if (env.ADMIN_PASSWORD_CHECKS !== "on") return next();
+  // Switched off: admins aren't asked for their password again. Set PASSWORD_CHECKS to true (with the
+  // admin site's NEXT_PUBLIC_ADMIN_PASSWORD_CHECKS=on) to bring it back; the Railway variable alone doesn't.
+  if (!PASSWORD_CHECKS) return next();
   const user = c.get("user");
   const given = c.req.header("x-confirm-password");
   if (!given) throw new HttpError(428, "Enter your password to confirm this");
