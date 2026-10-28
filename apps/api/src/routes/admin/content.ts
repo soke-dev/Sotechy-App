@@ -12,6 +12,7 @@ import { MANAGERS, requireRole, type AppEnv } from "../../lib/auth";
 import { badRequest, notFound } from "../../lib/errors";
 import { getFeatures } from "../../services/features";
 import { getAccount, getUsdRate, moneyMovesConfigured, moneyMovesMode } from "../../services/moneymoves";
+import { bankProvider, bankProviderReady } from "../../services/bank-pay";
 import { compressImage } from "../../lib/images";
 
 const { media, banners, appSettings } = schema;
@@ -144,6 +145,14 @@ export const adminContentRoutes = new Hono<AppEnv>()
       rate: await getUsdRate(),
       account: null as null | { name: string; mode: string; verified: boolean },
       error: null as string | null,
+      // Bank transfer in the app: which provider, and whether each one has its keys
+      bank: {
+        provider: await bankProvider(),
+        moneymovesReady: bankProviderReady("moneymoves"),
+        bachsReady: bankProviderReady("bachs"),
+        bachsWebhookSecretSet: Boolean(env.BACHS_WEBHOOK_SECRET),
+        bachsWebhookUrl: `${base}/webhooks/bachs`,
+      },
     };
     if (status.configured) {
       try {

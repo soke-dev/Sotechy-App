@@ -12,46 +12,44 @@ import { useStoreConfig } from "@/lib/store-config";
 import { colors, space } from "@/lib/theme";
 import { Illo, type IlloName } from "./illustrations";
 import { Sheet } from "./shop-filters";
-import { Pill, tap, Txt, ui } from "./ui";
+import { tap, Txt, ui } from "./ui";
 
 export type PayMethod = "stablecoin" | "bank";
 
-// Both go through Money Moves: stablecoin on its checkout, bank transfer straight to our account (direct checkout)
+// Stablecoin goes through Money Moves; bank transfer through Money Moves or Bachs, as admin chooses
 const PAY_CHOICES: { id: PayMethod; illo: IlloName; title: string; subtitle: string }[] = [
-  { id: "stablecoin", illo: "coin", title: "Pay with stablecoin", subtitle: "Pay with USDT or USDC through Money Moves" },
+  { id: "stablecoin", illo: "coin", title: "Pay with stablecoin", subtitle: "Pay with USDT or USDC" },
   { id: "bank", illo: "bank", title: "Pay with bank transfer", subtitle: "Send the exact amount from any Nigerian bank app" },
 ];
 
-/** Bottom sheet of ways to pay; picking a live one calls `onPay` with it. `extra` sits above the choices (e.g. paying with tokens). */
+/** Bottom sheet of ways to pay; picking one calls `onPay` with it. `extra` sits above the choices (e.g. paying with tokens). */
 export function PayChoiceSheet({ visible, amount, onClose, onPay, extra }: { visible: boolean; amount: number; onClose: () => void; onPay: (method: PayMethod) => void; extra?: ReactNode }) {
-  // Bank transfer shows as coming soon until the API has its Money Moves direct key
-  const bankOn = !!useStoreConfig().config?.bankTransfer;
+  // Each way to pay shows only while admin has it switched on (stablecoin until the settings load)
+  const config = useStoreConfig().config;
+  const choices = PAY_CHOICES.filter((c) => (c.id === "bank" ? !!config?.bankTransfer : config?.stablecoin !== false));
   return (
     <Sheet visible={visible} title={`Pay ${formatNaira(amount)}`} onClose={onClose}>
       {extra}
       <View style={{ gap: space.md }}>
-        {PAY_CHOICES.map((c) => {
-          const live = c.id !== "bank" || bankOn;
-          return (
-            <Pressable
-              key={c.id}
-              disabled={!live}
-              onPress={() => {
-                tap();
-                onClose();
-                onPay(c.id);
-              }}
-              style={[ui.card, { flexDirection: "row", alignItems: "center", gap: space.md, opacity: live ? 1 : 0.55 }]}
-            >
-              <Illo name={c.illo} size={38} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <Txt variant="label">{c.title}</Txt>
-                <Txt variant="small">{c.subtitle}</Txt>
-              </View>
-              {live ? <Ionicons name="chevron-forward" size={18} color={colors.ink2} /> : <Pill label="Coming soon" />}
-            </Pressable>
-          );
-        })}
+        {choices.map((c) => (
+          <Pressable
+            key={c.id}
+            onPress={() => {
+              tap();
+              onClose();
+              onPay(c.id);
+            }}
+            style={[ui.card, { flexDirection: "row", alignItems: "center", gap: space.md }]}
+          >
+            <Illo name={c.illo} size={38} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt variant="label">{c.title}</Txt>
+              <Txt variant="small">{c.subtitle}</Txt>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.ink2} />
+          </Pressable>
+        ))}
+        {choices.length === 0 && <Txt variant="small">Paying in the app is paused right now. Please contact us to pay another way.</Txt>}
       </View>
     </Sheet>
   );
@@ -85,7 +83,7 @@ function PayWindow({ url, onDone }: { url: string; onDone: (returned: boolean) =
       <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.sm }}>
           <Ionicons name="lock-closed" size={15} color={colors.success} />
-          <Txt variant="label" style={{ flex: 1 }}>Secure payment · Money Moves</Txt>
+          <Txt variant="label" style={{ flex: 1 }}>Secure payment</Txt>
           <Pressable onPress={() => onDone(false)} hitSlop={10} accessibilityLabel="Close payment" style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="close" size={18} color={colors.ink} />
           </Pressable>

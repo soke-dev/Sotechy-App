@@ -7,7 +7,7 @@ import { db, schema } from "../db/client";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, HttpError, notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
-import { moneyMovesConfigured } from "../services/moneymoves";
+import { bankTransferAvailable, stablecoinAvailable } from "../services/bank-pay";
 import { cancelOrder, placeOrder, setOrderTokens, updateOrderStatus } from "../services/orders";
 import { finalDueNow, holdFinal } from "../services/payouts";
 import { sendEmailLater } from "../lib/email";
@@ -120,7 +120,7 @@ export const orderRoutes = new Hono<AppEnv>()
     if (input.fulfilmentType === "pickup" && !features.pickup) throw badRequest("Store pickup isn't available right now. Choose delivery.");
     if (input.promoCode && !features.promoCodes) throw badRequest("Promo codes can't be used right now");
     // Don't take an order nobody can pay for.
-    if (input.paymentMethod === "online" && !moneyMovesConfigured()) throw new HttpError(503, "Online payments aren't set up yet. Please contact us to order.");
+    if (input.paymentMethod === "online" && !((await stablecoinAvailable()) || (await bankTransferAvailable()))) throw new HttpError(503, "Online payments aren't set up yet. Please contact us to order.");
     const order = await placeOrder(c.get("user").id, input);
     return c.json(order, 201);
   })

@@ -204,3 +204,48 @@ export function bachsWebhookIsGenuine(raw: string, header: (name: string) => str
   const expected = createHmac("sha256", secret).update(`${t}.${raw}`).digest("hex");
   return parts.some(([k, v]) => k === "v1" && !!v && v.length === expected.length && timingSafeEqual(Buffer.from(v), Buffer.from(expected)));
 }
+
+// ---------------------------------------------------------------------------
+// Taking payments: a checkout session where the customer pays by bank transfer (NGN_BANK_TRANSFER)
+// ---------------------------------------------------------------------------
+export interface BachsCheckout {
+  checkout_id: string;
+  checkout_url?: string;
+  /** "open" until paid, then "completed"; "expired" once it lapses */
+  status: string;
+  payment_status?: string;
+  amount?: string;
+  currency?: string;
+  /** Our payment id, with the attempt after a colon */
+  reference?: string | null;
+  charge?: { id: string; amount: string; currency: string; status: string } | null;
+  expires_at?: string | null;
+}
+
+/** Opens a bank-transfer checkout for an exact naira amount. `reference` must be new each time (Bachs keeps expired ones). */
+export function bachsCreateCheckout(input: {
+  reference: string;
+  amount: number;
+  customer: { email: string; name?: string | null };
+  returnUrl: string;
+  expiresAt: Date;
+  metadata: Record<string, string>;
+}) {
+  return call<BachsCheckout>("POST", "/v1/checkout-sessions", {
+    idempotencyKey: input.reference,
+    body: {
+      pricing: { currency: "NGN", amount: naira(input.amount) },
+      payment_method_types: ["NGN_BANK_TRANSFER"],
+      billing_currency: "NGN",
+      reference: input.reference,
+      customer: { email: input.customer.email, ...(input.customer.name ? { name: input.customer.name } : {}) },
+      success_url: input.returnUrl,
+      cancel_url: input.returnUrl,
+      expires_in_minutes: Math.min(1440, Math.max(1, Math.ceil((input.expiresAt.getTime() - Date.now()) / 60_000))),
+      metadata: input.metadata,
+    },
+  });
+}
+
+export const bachsCheckout = (id: string) => call<BachsCheckout>("GET", `/v1/checkout-sessions/${encodeURIComponent(id)}`);
+export const bachsCheckoutPaid = (s: BachsCheckout) => s.payment_status === "paid" || s.status === "completed";

@@ -1,5 +1,6 @@
-// Money Moves payments: start a hosted checkout for an order, send the customer back to the app
-// afterwards, and confirm orders from signed webhooks (each payment re-read from the Money Moves API).
+// App payments: stablecoin on a Money Moves hosted checkout; bank transfer on a Money Moves direct checkout
+// or a Bachs checkout (Admin → Settings picks which). Customers come back to the app afterwards, and orders are
+// confirmed from signed webhooks or while the app waits, each payment re-read from the provider first.
 import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
@@ -12,13 +13,66 @@ import { badRequest, conflict, HttpError, notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
 import { createCheckout, createDirectCheckout, MoneyMovesError, retrieveCheckout, retrievePayment, verifyWebhookSignature, type MMEvent, type MMPayment } from "../services/moneymoves";
 import { confirmPayment } from "../services/orders";
+import { bachsCheckout, bachsCheckoutPaid, bachsCreateCheckout, type BachsCheckout } from "../services/bachs";
+import { bankProvider, bankTransferAvailable, stablecoinAvailable } from "../services/bank-pay";
 import { FEATURE_REF, settleFeaturing } from "../services/featuring";
 import { settleWalkIn, WALK_IN_REF } from "../services/walk-in";
 
 const isUuid = (v: string | null | undefined): v is string => !!v && /^[0-9a-f-]{36}$/i.test(v);
 
-/** Checkout we opened for a payment, kept on payments.raw until the payment completes. `bank` = a direct (bank transfer) checkout. */
-type SavedCheckout = { id: string; url: string; attempt: number; bank?: boolean };
+/**
+ * Checkout we opened for a payment, kept on payments.raw until the payment completes. `bank` = a bank transfer
+ * checkout, on Money Moves (direct) or, with `provider: "bachs"`, on Bachs.
+ */
+type SavedCheckout = { id: string; url: string; attempt: number; bank?: boolean; provider?: "bachs" };
+
+/** A saved checkout as its provider has it now: open (with its page), paid (settled here), or neither */
+async function lookUp(saved: SavedCheckout): Promise<{ state: "open" | "paid" | "other"; url: string; expiresAt: string | null }> {
+  if (saved.provider === "bachs") {
+    const s = await bachsCheckout(saved.id).catch(() => null);
+    if (!s) return { state: "other", url: saved.url, expiresAt: null };
+    if (bachsCheckoutPaid(s)) {
+      await settleFromBachs(s);
+      return { state: "paid", url: saved.url, expiresAt: null };
+    }
+    return { state: s.status === "open" ? "open" : "other", url: s.checkout_url ?? saved.url, expiresAt: s.expires_at ?? null };
+  }
+  const mm = await retrieveCheckout(saved.id, !!saved.bank).catch(() => null);
+  if (mm?.status === "paid") {
+    if (mm.payment) await settleFromMoneyMoves(mm.payment.id);
+    return { state: "paid", url: mm.url, expiresAt: null };
+  }
+  return { state: mm?.status === "open" ? "open" : "other", url: mm?.url ?? saved.url, expiresAt: mm?.expires_at ?? null };
+}
+
+/** Applies a paid Bachs checkout to our payment (its reference is "<payment id>:<attempt>"). Read from Bachs, never from a webhook body. */
+export async function settleFromBachs(s: BachsCheckout) {
+  const ourId = s.reference?.split(":")[0];
+  if (!isUuid(ourId) || !bachsCheckoutPaid(s)) return;
+  const charge = s.charge;
+  if ((charge?.currency ?? s.currency ?? "NGN").toUpperCase() !== "NGN") return;
+  if (charge?.status === "underpaid") {
+    await db
+      .update(schema.payments)
+      .set({ verificationNote: `Underpaid on Bachs (${charge.id}): received ₦${charge.amount} by bank transfer`, raw: s })
+      .where(and(eq(schema.payments.id, ourId), eq(schema.payments.status, "pending")));
+    await audit(db, { actorId: null, action: "payment.underpaid", entityType: "payment", entityId: ourId, details: { provider: "bachs", checkout: s.checkout_id, received: charge.amount } });
+    return;
+  }
+  await confirmPayment(ourId, {
+    amountPaid: Number(charge?.amount ?? s.amount ?? 0),
+    providerReference: charge?.id ?? s.checkout_id,
+    provider: "bachs",
+    raw: s,
+    verifiedBy: null,
+    note: `Bachs ${s.checkout_id} · bank transfer`,
+  });
+}
+
+/** A Bachs payments event (checkout.completed, collection.succeeded, collection.underpaid): re-read its checkout and settle */
+export async function bachsPaymentEvent(checkoutId: string) {
+  await settleFromBachs(await bachsCheckout(checkoutId));
+}
 
 /** What a refused direct checkout means for the customer (Money Moves → Direct payments → If a call is refused) */
 const DIRECT_REFUSED: Record<string, string> = {
@@ -65,7 +119,7 @@ const ASK_EVERY_MS = 4000;
 
 export const paymentRoutes = new Hono<AppEnv>()
   /**
-   * The app asks this while the customer waits. If the order's checkout is paid on Money Moves we settle it
+   * The app asks this while the customer waits. If the order's checkout is paid at its provider we settle it
    * straight away, without waiting for the webhook (a bank transfer is matched about a minute after it lands).
    */
   .post("/online/check", requireAuth, zValidator("json", z.object({ orderId: z.uuid() })), async (c) => {
@@ -83,20 +137,23 @@ export const paymentRoutes = new Hono<AppEnv>()
     if (!saved || Date.now() - (lastAsked.get(payment.id) ?? 0) < ASK_EVERY_MS) return c.json({ status: before });
     lastAsked.set(payment.id, Date.now());
     if (lastAsked.size > 5000) lastAsked.clear();
-    const checkout = await retrieveCheckout(saved.id, !!saved.bank).catch(() => null);
-    if (checkout?.status === "paid" && checkout.payment) await settleFromMoneyMoves(checkout.payment.id).catch(() => {});
+    await lookUp(saved).catch(() => {});
     return c.json({ status: (await status()) ?? before });
   })
 
   /**
-   * Opens (or reuses) a Money Moves checkout for one of the customer's unpaid orders: stablecoin on the hosted
-   * checkout, or `method: "bank"` for a direct checkout (bank transfer to our account).
+   * Opens (or reuses) a checkout for one of the customer's unpaid orders: stablecoin on Money Moves' hosted
+   * checkout, or `method: "bank"` for a bank transfer through the provider chosen in Admin → Settings.
    */
   .post("/online/initialize", requireAuth, zValidator("json", z.object({ orderId: z.uuid(), method: z.enum(["stablecoin", "bank"]).default("stablecoin") })), async (c) => {
     await requireFeature("ordering", "Online ordering is paused right now");
     const user = c.get("user");
     const { orderId, method } = c.req.valid("json");
     const bank = method === "bank";
+    if (bank ? !(await bankTransferAvailable()) : !(await stablecoinAvailable())) {
+      throw new HttpError(503, bank ? "Bank transfer isn't available right now. Please pay with stablecoin." : "Stablecoin payments aren't available right now. Please pay by bank transfer.");
+    }
+    const provider = bank ? await bankProvider() : "moneymoves";
     const [order] = await db
       .select()
       .from(schema.orders)
@@ -113,13 +170,11 @@ export const paymentRoutes = new Hono<AppEnv>()
     // Reuse an open checkout so one order never has two live payment pages (unless the customer switches how they pay).
     const saved = savedCheckout(payment.raw);
     if (saved) {
-      const existing = await retrieveCheckout(saved.id, !!saved.bank).catch(() => null);
-      const minuteLeft = !existing?.expires_at || new Date(existing.expires_at).getTime() > Date.now() + 60_000;
-      if (existing?.status === "open" && minuteLeft && !!saved.bank === bank) return c.json({ checkoutUrl: existing.url });
-      if (existing?.status === "paid") {
-        if (existing.payment) await settleFromMoneyMoves(existing.payment.id);
-        throw conflict("This order is already paid. It will update in a moment.");
-      }
+      const existing = await lookUp(saved);
+      const minuteLeft = !existing.expiresAt || new Date(existing.expiresAt).getTime() > Date.now() + 60_000;
+      const same = !!saved.bank === bank && (saved.provider ?? "moneymoves") === provider;
+      if (existing.state === "open" && minuteLeft && same) return c.json({ checkoutUrl: existing.url });
+      if (existing.state === "paid") throw conflict("This order is already paid. It will update in a moment.");
     }
 
     const [customer] = await db.select({ email: schema.users.email, fullName: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, user.id));
@@ -127,6 +182,19 @@ export const paymentRoutes = new Hono<AppEnv>()
     const attempt = ((payment.raw as { checkout?: { attempt?: number } } | null)?.checkout?.attempt ?? saved?.attempt ?? 0) + 1;
     // Keep the payment page open about as long as the items are held (at least six minutes).
     const expiresAt = new Date(Math.max(order.reservationExpiresAt?.getTime() ?? 0, Date.now() + 6 * 60_000));
+    const returnUrl = publicApiUrl ? `${publicApiUrl}/payments/return?order=${order.id}` : undefined;
+    const metadata = { order_id: order.id, order_number: order.orderNumber };
+    if (provider === "bachs") {
+      if (!returnUrl) throw new HttpError(503, "Bank transfer isn't available right now. Please pay with stablecoin.");
+      // Amount comes from the database, never from the client. Bachs keeps every reference, so each page gets a new one.
+      const s = await bachsCreateCheckout({ reference: `${payment.id}:${attempt}`, amount: payment.amount, customer: { email: customer.email, name: customer.fullName }, returnUrl, expiresAt, metadata });
+      if (!s.checkout_url) throw new HttpError(502, "Bank transfer didn't open. Please try again.");
+      await db
+        .update(schema.payments)
+        .set({ provider: "bachs", raw: { checkout: { id: s.checkout_id, url: s.checkout_url, attempt, bank: true, provider: "bachs" } satisfies SavedCheckout } })
+        .where(eq(schema.payments.id, payment.id));
+      return c.json({ checkoutUrl: s.checkout_url });
+    }
     let checkout;
     try {
       // Amount comes from the database, never from the client.
@@ -136,9 +204,9 @@ export const paymentRoutes = new Hono<AppEnv>()
         amount: payment.amount,
         description: `Sotechy Shop order ${order.orderNumber}`,
         customer: { email: customer.email, name: customer.fullName },
-        redirectUrl: publicApiUrl ? `${publicApiUrl}/payments/return?order=${order.id}` : undefined,
+        redirectUrl: returnUrl,
         expiresAt,
-        metadata: { order_id: order.id, order_number: order.orderNumber },
+        metadata,
       });
     } catch (err) {
       if (bank && err instanceof MoneyMovesError && DIRECT_REFUSED[err.code]) throw new HttpError(503, DIRECT_REFUSED[err.code]);
@@ -154,7 +222,7 @@ export const paymentRoutes = new Hono<AppEnv>()
     return c.json({ checkoutUrl: checkout.url });
   })
 
-  /** Money Moves sends customers here after paying; we hand them back to the app. */
+  /** Money Moves and Bachs send customers here after paying; we hand them back to the app. */
   .get("/return", (c) => {
     const order = c.req.query("order");
     const deepLink = `${env.APP_SCHEME}://${isUuid(order) ? `order/${order}` : "orders"}`;

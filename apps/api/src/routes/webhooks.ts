@@ -5,6 +5,7 @@ import { env } from "../env";
 import { bachsWebhookIsGenuine } from "../services/bachs";
 import { applyIdResult, webhookIsGenuine } from "../services/didit";
 import { transferWebhook } from "../services/payouts";
+import { bachsPaymentEvent } from "./payments";
 
 /** Flutterwave sends back the secret hash set on the webhook in its dashboard */
 const sameSecret = (given: string | undefined, expected: string | undefined) =>
@@ -19,12 +20,23 @@ export const webhookRoutes = new Hono()
     if (event.session_id && event.status) await applyIdResult(event.session_id, event.status, event.decision);
     return c.json({ ok: true });
   })
-  /** Bachs: a store's payout reached its bank or failed (Developer Portal → Webhooks → URL https://<api>/webhooks/bachs,
-   *  Connect events payout.paid and payout.failed). The payout is then checked with Bachs itself. */
+  /** Bachs (Developer Portal → Webhooks → URL https://<api>/webhooks/bachs): a store's payout reached its bank or failed
+   *  (Connect events payout.paid and payout.failed), or a customer paid by bank transfer (checkout.completed,
+   *  collection.succeeded, collection.underpaid). Each is checked with Bachs itself first. */
   .post("/bachs", async (c) => {
     const raw = await c.req.text();
     if (!bachsWebhookIsGenuine(raw, (name) => c.req.header(name))) return c.json({ error: "Invalid signature" }, 401);
-    const event = JSON.parse(raw) as { type?: string; data?: { id?: string; reference?: string; object?: { id?: string; reference?: string } } };
+    const event = JSON.parse(raw) as { type?: string; data?: { id?: string; reference?: string; checkout_id?: string; object?: { id?: string; reference?: string } } };
+    // A customer's bank transfer for an order (Payments events): the checkout is read from Bachs before the order changes
+    if ((event.type === "checkout.completed" || event.type?.startsWith("collection.")) && event.data?.checkout_id) {
+      try {
+        await bachsPaymentEvent(event.data.checkout_id);
+      } catch (err) {
+        console.warn("Bachs payment webhook:", err instanceof Error ? err.message : err);
+        return c.json({ error: "Try again" }, 500);
+      }
+      return c.json({ ok: true });
+    }
     const payout = event.data?.object ?? event.data;
     if ((event.type === "payout.paid" || event.type === "payout.failed") && payout?.reference && payout.id) {
       await transferWebhook(payout.reference, payout.id).catch((err) => console.warn("Bachs payout webhook:", err instanceof Error ? err.message : err));

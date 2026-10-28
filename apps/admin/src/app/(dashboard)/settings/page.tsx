@@ -16,6 +16,7 @@ interface MoneyMovesStatus {
   rate: { rate: number; source: string; updatedAt: string };
   account: { name: string; mode: string; verified: boolean } | null;
   error: string | null;
+  bank: { provider: "moneymoves" | "bachs"; moneymovesReady: boolean; bachsReady: boolean; bachsWebhookSecretSet: boolean; bachsWebhookUrl: string };
 }
 
 function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
@@ -43,7 +44,7 @@ export default async function SettingsPage() {
     <>
       <PageHeader title="Settings" description="Payments, exchange rate, delivery and contact details (admins)" icon={SettingsIcon} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <Card title="Money Moves (online payments)" className="xl:col-span-2">
+        <Card title="Money Moves (stablecoin)" className="xl:col-span-2">
           <ErrorNote error={mm.error} />
           {m && (
             <div className="flex flex-col gap-3 text-sm">
@@ -66,10 +67,36 @@ export default async function SettingsPage() {
                 <p className="text-xs text-muted">In Money Moves → Developers → Webhooks, add this endpoint:</p>
                 <code className="mt-1 block select-all break-all text-sm">{m.webhookUrl}</code>
               </div>
-              <p className="text-xs text-muted">Customers choose bank transfer, crypto or the Money Moves app on the Money Moves page. Keep &quot;Money Moves&quot; below enabled and set to Online.</p>
+              <p className="text-xs text-muted">&quot;Pay with stablecoin&quot; in the app. Keep &quot;Money Moves&quot; below enabled and set to Online.</p>
             </div>
           )}
         </Card>
+
+        {m && (
+          <Card title="Bank transfer in the app" className="xl:col-span-2" description="Who takes “Pay with bank transfer”. Stablecoin always goes through Money Moves.">
+            <ActionForm action={saveSetting} className="flex flex-wrap items-end gap-3">
+              <input type="hidden" name="key" value="bank_provider" />
+              <Field label="Provider">
+                <select name="provider" defaultValue={m.bank.provider} className={inputClass}>
+                  <option value="moneymoves">Money Moves (direct, no fee)</option>
+                  <option value="bachs">Bachs</option>
+                </select>
+              </Field>
+            </ActionForm>
+            <ul className="mt-3 flex flex-col gap-1 text-sm">
+              <Check ok={m.bank.moneymovesReady}>Money Moves direct key set (<code>MONEYMOVES_DIRECT_KEY</code>)</Check>
+              <Check ok={m.bank.bachsReady}>Bachs key set (<code>BACHS_SECRET_KEY</code>)</Check>
+              <Check ok={m.bank.bachsWebhookSecretSet}>Bachs webhook secret set (<code>BACHS_WEBHOOK_SECRET</code>)</Check>
+              <Check ok={!!data.paymentMethods.find((p) => p.code === "bank_transfer" && p.isEnabled && p.online)}>&quot;Bank transfer&quot; below is enabled and set to Online</Check>
+            </ul>
+            {m.bank.provider === "bachs" && (
+              <div className="mt-3 rounded-xl border border-line bg-canvas p-3">
+                <p className="text-xs text-muted">In Bachs → Developer Portal → Webhooks, send checkout.completed, collection.succeeded and collection.underpaid to:</p>
+                <code className="mt-1 block select-all break-all text-sm">{m.bank.bachsWebhookUrl}</code>
+              </div>
+            )}
+          </Card>
+        )}
 
         <Card title="Dollar exchange rate">
           {m && (
@@ -89,7 +116,7 @@ export default async function SettingsPage() {
           </ActionForm>
         </Card>
 
-        <Card className="xl:col-span-2" title="Payment methods" description="The app pays through Money Moves only. Cash, POS terminal and bank transfer are for walk-in sales at the POS.">
+        <Card className="xl:col-span-2" title="Payment methods" description="Online = shown in the app: “Money Moves” is Pay with stablecoin, “Bank transfer” is Pay with bank transfer. In store = offered at the POS.">
           <div className="flex flex-col divide-y divide-line">
             {data.paymentMethods.map((m) => (
               <ActionForm

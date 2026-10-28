@@ -112,7 +112,12 @@ async function priceAndHoldStock(
 
 async function assertPaymentMethod(tx: Tx, code: PaymentMethodCode, channel: "online" | "in_store", cryptoAsset?: string | null) {
   const [method] = await tx.select().from(schema.paymentMethods).where(eq(schema.paymentMethods.code, code));
-  const allowed = method?.isEnabled && (channel === "online" ? method.online : method.inStore);
+  // App orders ("online") are paid by stablecoin or bank transfer: either one switched on for the app will do
+  const bankForApp = async () => {
+    const [b] = await tx.select().from(schema.paymentMethods).where(eq(schema.paymentMethods.code, "bank_transfer"));
+    return !!b?.isEnabled && b.online;
+  };
+  const allowed = (method?.isEnabled && (channel === "online" ? method.online : method.inStore)) || (code === "online" && channel === "online" && (await bankForApp()));
   if (!allowed) throw badRequest(`${method?.label ?? code} is not available ${channel === "online" ? "online" : "in store"}`);
   if (code === "crypto") {
     const [asset] = await tx

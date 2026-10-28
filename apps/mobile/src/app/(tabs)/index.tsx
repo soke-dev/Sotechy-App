@@ -106,9 +106,6 @@ function DealBubble({ deal, size }: { deal: Deal; size: number }) {
   );
 }
 
-/** The floating live chat bubble on Home (off for now) */
-const HOME_CHAT_BUBBLE = false;
-
 /** Top-level category id for any category (itself if already top-level). */
 const topOf = (cats: Category[], id: string | null) => {
   const c = cats.find((x) => x.id === id);
@@ -403,7 +400,7 @@ export default function HomeScreen() {
       </View>
     </ScrollView>
     {/* Live chat bubble hidden on Home for now (chat is still in the menu and on orders) */}
-    {HOME_CHAT_BUBBLE && features.liveChat && <SupportChat teaser bottomOffset={tabInset} />}
+    {features.liveChat && <SupportChat teaser bottomOffset={tabInset} />}
     </View>
   );
 }
