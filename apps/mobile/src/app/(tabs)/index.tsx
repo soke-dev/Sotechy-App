@@ -283,7 +283,7 @@ export default function HomeScreen() {
         <View style={{ flexDirection: "row", gap: 6 }}>
           {[
             { icon: "star" as IconName, text: "+10% for a review", flex: 2 },
-            { icon: "add-circle" as IconName, text: "10% $SOTECHY on every order", flex: 3 },
+            { icon: "add-circle" as IconName, text: "+10% $SOTECHY on any order", flex: 3 },
           ].map((x) => (
             <View key={x.text} style={{ flex: x.flex, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface }}>
               <Ionicons name={x.icon} size={12} color={colors.brandPressed} />
