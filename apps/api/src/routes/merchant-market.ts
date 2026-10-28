@@ -740,6 +740,86 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     return c.json(rows);
   })
 
+  // --- The bell: what needs the store now, and the latest goings-on (under /summary so every role can read it) ---
+  .get("/summary/attention", async (c) => {
+    const storeId = c.get("store").id;
+    const naira = (n: number) => `₦${Math.round(n).toLocaleString("en-NG")}`;
+    const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+    const [byStatus, offersWaiting, issues, pickupAnswers, history, paid, offerRows] = await Promise.all([
+      db.select({ status: orders.status, fulfilment: orders.fulfilmentType, n: sql<number>`count(*)::int` }).from(orders).where(eq(orders.merchantId, storeId)).groupBy(orders.status, orders.fulfilmentType),
+      db.select({ n: sql<number>`count(*)::int` }).from(schema.offers).where(and(eq(schema.offers.merchantId, storeId), eq(schema.offers.status, "waiting_store"))),
+      db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(orders)
+        .where(and(eq(orders.merchantId, storeId), eq(orders.status, "delivered"), sql`${orders.customerIssueAt} is not null`, sql`${orders.customerConfirmedAt} is null`)),
+      db.select({ id: orders.id, number: orders.orderNumber, status: orders.pickupChangeStatus, point: orders.pickupChangePoint, at: orders.updatedAt }).from(orders).where(and(eq(orders.merchantId, storeId), eq(orders.status, "processing"), inArray(orders.pickupChangeStatus, ["approved", "declined"]))),
+      db
+        .select({ id: schema.orderStatusHistory.id, orderId: orders.id, number: orders.orderNumber, fulfilment: orders.fulfilmentType, total: orders.subtotal, from: schema.orderStatusHistory.fromStatus, to: schema.orderStatusHistory.toStatus, note: schema.orderStatusHistory.note, at: schema.orderStatusHistory.createdAt })
+        .from(schema.orderStatusHistory)
+        .innerJoin(orders, eq(orders.id, schema.orderStatusHistory.orderId))
+        .where(and(eq(orders.merchantId, storeId), sql`${schema.orderStatusHistory.toStatus} <> 'pending_payment'`, sql`${schema.orderStatusHistory.toStatus} <> 'payment_failed'`))
+        .orderBy(desc(schema.orderStatusHistory.createdAt))
+        .limit(12),
+      db
+        .select({ id: schema.merchantPayouts.id, amount: schema.merchantPayouts.amount, stage: schema.merchantPayouts.stage, paidAt: schema.merchantPayouts.paidAt, number: orders.orderNumber })
+        .from(schema.merchantPayouts)
+        .innerJoin(orders, eq(orders.id, schema.merchantPayouts.orderId))
+        .where(and(eq(schema.merchantPayouts.merchantId, storeId), eq(schema.merchantPayouts.status, "paid")))
+        .orderBy(desc(schema.merchantPayouts.paidAt))
+        .limit(5),
+      db
+        .select({ id: schema.offers.id, status: schema.offers.status, amount: schema.offers.lastAmount, at: schema.offers.updatedAt, product: schema.products.name })
+        .from(schema.offers)
+        .innerJoin(schema.products, eq(schema.products.id, schema.offers.productId))
+        .where(eq(schema.offers.merchantId, storeId))
+        .orderBy(desc(schema.offers.updatedAt))
+        .limit(5),
+    ]);
+    const count = (status: string, fulfilment?: string) => byStatus.filter((r) => r.status === status && (!fulfilment || r.fulfilment === fulfilment)).reduce((n, r) => n + r.n, 0);
+    const newOrders = count("paid");
+    const toSend = count("processing");
+    const offers = offersWaiting[0]?.n ?? 0;
+    const problems = issues[0]?.n ?? 0;
+    const needs = [
+      newOrders && { key: "new", count: newOrders, title: plural(newOrders, "new order"), hint: "Accept within 24 hours", href: "/orders", illo: "box" },
+      offers && { key: "offers", count: offers, title: plural(offers, "price offer"), hint: "Accept, counter or decline", href: "/offers", illo: "tag" },
+      toSend && { key: "send", count: toSend, title: `${plural(toSend, "order")} to send`, hint: "Ship them, or get them ready for pickup", href: "/orders", illo: "bike" },
+      problems && { key: "issues", count: problems, title: `${plural(problems, "customer")} didn't get their order`, hint: "Sotechy is checking; your final payment waits", href: "/orders", illo: "chat" },
+      ...pickupAnswers.map((p) => ({
+        key: `pickup-${p.id}`,
+        count: 1,
+        title: p.status === "approved" ? `${p.number}: new pickup location approved` : `${p.number}: pickup location declined`,
+        hint: p.status === "approved" ? `Collect at ${p.point}. Mark it ready when it is.` : "Use your approved pickup location",
+        href: `/orders/${p.id}`,
+        illo: "pin",
+      })),
+    ].filter(Boolean) as { key: string; count: number; title: string; hint: string; href: string; illo: string }[];
+
+    const STEP: Record<string, (h: (typeof history)[number]) => { title: string; illo: string }> = {
+      paid: (h) => ({ title: `New order ${h.number} · ${naira(h.total)}`, illo: "box" }),
+      processing: (h) => ({ title: `You accepted ${h.number}`, illo: "box" }),
+      dispatched: (h) => ({ title: `${h.number} is on its way`, illo: "bike" }),
+      ready_for_pickup: (h) => ({ title: `${h.number} is available for pickup`, illo: "pin" }),
+      delivered: (h) => ({ title: h.from === "delivered" ? `${h.number}: ${h.note ?? "update"}` : `${h.number} ${h.fulfilment === "pickup" ? "collected" : "delivered"}`, illo: "heart" }),
+      cancelled: (h) => ({ title: `${h.number} was cancelled`, illo: "doc" }),
+      refunded: (h) => ({ title: `${h.number} was refunded`, illo: "doc" }),
+    };
+    const OFFER: Record<string, string> = { waiting_store: "Offer waiting for you", waiting_customer: "Waiting on the customer", agreed: "Offer agreed", declined: "Offer declined", expired: "Offer expired", used: "Offer bought" };
+    const recent = [
+      ...history.map((h) => {
+        const step = STEP[h.to]?.(h) ?? { title: `${h.number} updated`, illo: "box" };
+        return { id: `h-${h.id}`, title: step.title, hint: h.from === "delivered" && h.to === "delivered" ? "From the customer" : "Order update", href: `/orders/${h.orderId}`, illo: step.illo, at: h.at.toISOString() };
+      }),
+      ...paid
+        .filter((p) => p.paidAt)
+        .map((p) => ({ id: `p-${p.id}`, title: `${naira(p.amount)} paid to you`, hint: `${p.stage === "first" ? "First" : "Final"} payment for ${p.number}`, href: "/payouts", illo: "bank", at: p.paidAt!.toISOString() })),
+      ...offerRows.map((o) => ({ id: `o-${o.id}`, title: `${OFFER[o.status] ?? "Offer updated"}: ${naira(o.amount)}`, hint: o.product, href: "/offers", illo: "tag", at: o.at.toISOString() })),
+    ]
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 8);
+    return c.json({ needs, recent });
+  })
+
   // --- Home page numbers ---
   .get("/summary", async (c) => {
     const storeId = c.get("store").id;

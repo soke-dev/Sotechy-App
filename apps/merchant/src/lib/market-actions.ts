@@ -4,7 +4,7 @@
 // storefront and setup. Each returns { error } instead of throwing, so forms can show what went wrong.
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantNotice, MerchantOrder, MerchantProduct, MerchantProductInput, OfferView, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
+import type { MerchantAttention, AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantNotice, MerchantOrder, MerchantProduct, MerchantProductInput, OfferView, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
 import { api, errorMessage, TOKEN_COOKIE } from "./api";
 
 type Result<T> = { ok: T } | { error: string };
@@ -17,6 +17,11 @@ async function attempt<T>(fn: () => Promise<T>, revalidate?: string[]): Promise<
   } catch (err) {
     return { error: errorMessage(err) };
   }
+}
+
+/** The bell's contents, checked again while the dashboard is open */
+export async function loadAttention(): Promise<MerchantAttention | null> {
+  return api.get<MerchantAttention>("/merchant/summary/attention").catch(() => null);
 }
 
 /** Uploads photos (public) or business documents (private). Returns their addresses. */

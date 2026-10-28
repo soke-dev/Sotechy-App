@@ -858,6 +858,12 @@ export interface MerchantNotice {
   createdAt: string;
 }
 
+/** The merchant bell: what needs the store, and what happened lately */
+export interface MerchantAttention {
+  needs: { key: string; count: number; title: string; hint: string; href: string; illo: string }[];
+  recent: { id: string; title: string; hint: string; href: string; illo: string; at: string }[];
+}
+
 /** A customer's live chat with Sotechy */
 export interface SupportChat {
   ticketId: string | null;

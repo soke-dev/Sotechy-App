@@ -4,7 +4,10 @@
 // and the account menu.
 import { ChevronRight, Eye, EyeOff, LogOut } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import type { MerchantAttention } from "@sotechy/shared";
+import { loadAttention } from "@/lib/market-actions";
 import { signOut } from "@/lib/session-actions";
 import { formatNaira } from "@/lib/money";
 import { Illo, type IlloName } from "./illustrations";
@@ -32,7 +35,7 @@ const hiddenStore = {
 };
 
 /** A button that opens a small panel under it, closing on an outside click */
-function Popover({ button, label, children, align = "right" }: { button: ReactNode; label: string; children: (close: () => void) => ReactNode; align?: "right" | "left" }) {
+function Popover({ button, label, children, align = "right", onOpen, wide }: { button: ReactNode; label: string; children: (close: () => void) => ReactNode; align?: "right" | "left"; onOpen?: () => void; wide?: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -43,11 +46,20 @@ function Popover({ button, label, children, align = "right" }: { button: ReactNo
   }, [open]);
   return (
     <div ref={box} className="relative">
-      <button type="button" aria-label={label} aria-expanded={open} onClick={() => setOpen(!open)} className="flex items-center">
+      <button
+        type="button"
+        aria-label={label}
+        aria-expanded={open}
+        onClick={() => {
+          if (!open) onOpen?.();
+          setOpen(!open);
+        }}
+        className="flex items-center"
+      >
         {button}
       </button>
       {open && (
-        <div className={`absolute top-full z-40 mt-2 w-72 overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_18px_40px_-18px_rgba(23,18,14,0.35)] ${align === "right" ? "right-0" : "left-0"}`}>
+        <div className={`absolute top-full z-40 mt-2 ${wide ? "w-[min(22rem,calc(100vw-2rem))]" : "w-72"} overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_18px_40px_-18px_rgba(23,18,14,0.35)] ${align === "right" ? "right-0" : "left-0"}`}>
           {children(() => setOpen(false))}
         </div>
       )}
@@ -68,6 +80,11 @@ function Row({ href, illo, title, hint, onClick }: { href: string; illo: IlloNam
   );
 }
 
+const ago = (iso: string) => {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  return mins < 1 ? "just now" : mins < 60 ? `${mins} min ago` : mins < 1440 ? `${Math.round(mins / 60)}h ago` : `${Math.round(mins / 1440)}d ago`;
+};
+
 export function TopBar({
   storeName,
   balance,
@@ -82,7 +99,28 @@ export function TopBar({
   user: { name: string; role: string; avatar?: string | null };
 }) {
   const hidden = useSyncExternalStore(hiddenStore.subscribe, hiddenStore.get, () => false);
-  const alerts = newOrders + offersWaiting;
+  // The bell checks again every 30 seconds and whenever it's opened, so it never goes stale
+  const [attention, setAttention] = useState<MerchantAttention | null>(null);
+  const router = useRouter();
+  // The sidebar's Orders and Offers badges come from the page; refresh it when the bell sees new numbers
+  useEffect(() => {
+    if (!attention) return;
+    const n = (key: string) => attention.needs.find((x) => x.key === key)?.count ?? 0;
+    if (n("new") !== newOrders || n("offers") !== offersWaiting) router.refresh();
+  }, [attention, newOrders, offersWaiting, router]);
+  const refresh = useCallback(() => {
+    void loadAttention().then((a) => a && setAttention(a));
+  }, []);
+  useEffect(() => {
+    refresh();
+    const t = setInterval(() => document.visibilityState === "visible" && refresh(), 30_000);
+    return () => clearInterval(t);
+  }, [refresh]);
+  const needs = attention?.needs ?? [
+    ...(newOrders ? [{ key: "new", count: newOrders, title: `${newOrders} new order${newOrders === 1 ? "" : "s"}`, hint: "Accept within 24 hours", href: "/orders", illo: "box" }] : []),
+    ...(offersWaiting ? [{ key: "offers", count: offersWaiting, title: `${offersWaiting} price offer${offersWaiting === 1 ? "" : "s"}`, hint: "Accept, counter or decline", href: "/offers", illo: "tag" }] : []),
+  ];
+  const alerts = needs.reduce((n, x) => n + x.count, 0);
   const initials = user.name
     .split(/\s+/)
     .filter(Boolean)
@@ -114,6 +152,8 @@ export function TopBar({
 
         {/* What needs attention */}
         <Popover
+          wide
+          onOpen={refresh}
           label={alerts ? `${alerts} things need you` : "Notifications"}
           button={
             <span className="relative flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface hover:bg-surface-alt">
@@ -125,9 +165,28 @@ export function TopBar({
           {(close) => (
             <div className="py-1">
               <p className="px-4 pb-1 pt-3 text-xs font-semibold text-muted">Needs you</p>
-              {alerts === 0 && <p className="px-4 pb-4 pt-1 text-sm text-ink-2">You&apos;re all caught up.</p>}
-              {newOrders > 0 && <Row href="/orders" illo="box" title={`${newOrders} new order${newOrders === 1 ? "" : "s"}`} hint="Accept within 24 hours" onClick={close} />}
-              {offersWaiting > 0 && <Row href="/offers" illo="tag" title={`${offersWaiting} price offer${offersWaiting === 1 ? "" : "s"}`} hint="Accept, counter or decline" onClick={close} />}
+              {needs.length === 0 && <p className="px-4 pb-3 pt-1 text-sm text-ink-2">You&apos;re all caught up.</p>}
+              {needs.map((n) => (
+                <Row key={n.key} href={n.href} illo={n.illo as IlloName} title={n.title} hint={n.hint} onClick={close} />
+              ))}
+              {attention && attention.recent.length > 0 && (
+                <div className="border-t border-line">
+                  <p className="px-4 pb-1 pt-3 text-xs font-semibold text-muted">Recent</p>
+                  <div className="max-h-72 overflow-y-auto">
+                    {attention.recent.map((r) => (
+                      <Link key={r.id} href={r.href} onClick={close} className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-surface-alt">
+                        <Illo name={r.illo as IlloName} size={22} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">{r.title}</span>
+                          <span className="block truncate text-xs text-muted">
+                            {r.hint} · {ago(r.at)}
+                          </span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="border-t border-line">
                 <Row href="/notifications" illo="chat" title="Message your followers" onClick={close} />
               </div>
