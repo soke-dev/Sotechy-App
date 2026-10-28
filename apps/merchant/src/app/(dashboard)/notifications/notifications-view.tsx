@@ -16,15 +16,16 @@ const sentToday = (iso: string, now: number) => now - new Date(iso).getTime() < 
 
 /** How the message looks when it pops up on a subscriber's phone */
 function PhonePop({ title, body }: { title: string; body: string }) {
-  const { store, user } = useAccount();
+  const { store } = useAccount();
   return (
     <div className="rounded-[32px] bg-panel p-3">
       <div className="rounded-[24px] bg-gradient-to-br from-[#3a2a1c] via-[#20180f] to-[#100c08] p-3 pb-16">
         <div className="flex gap-3 rounded-2xl bg-white/95 p-3 text-[#17120e] shadow-lg">
+          {/* The store's logo, as customers see it next to the message */}
           <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand">
-            {user.avatarUrl ? (
+            {store.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.avatarUrl} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+              <img src={store.logoUrl} alt="" className="h-full w-full object-cover" />
             ) : (
               <span className="text-sm font-extrabold text-white">{store.name.slice(0, 2).toUpperCase()}</span>
             )}
