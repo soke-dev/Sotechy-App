@@ -246,14 +246,10 @@ export default function CheckoutScreen() {
     }
   }
 
-  /** Paying with tokens, shown in the payment sheet: one row per token, its amount on the same row */
+  /** Paying with tokens, in the payment sheet: the tokens side by side, each with its amount */
   const tokenRows =
     tokenPlan.length > 0 ? (
-      <View style={{ gap: space.sm, marginBottom: space.lg }}>
-        <View style={ui.between}>
-          <Txt variant="label">Use your tokens</Txt>
-          <Txt variant="caption">At least ₦{TOKEN_RULES.minCashPerOrder} in money</Txt>
-        </View>
+      <View style={{ flexDirection: "row", gap: space.sm, marginBottom: space.lg }}>
         {tokenPlan.map((t) => {
           const on = !!useTokens[t.ticker];
           return (
@@ -265,25 +261,17 @@ export default function CheckoutScreen() {
               }}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
-              style={{ flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 10, paddingHorizontal: space.md, borderRadius: radius.lg, borderWidth: on ? 1.5 : 1, borderColor: on ? colors.brand : colors.line, backgroundColor: on ? colors.brandSoft : colors.surface }}
+              accessibilityLabel={`Use $${t.ticker}`}
+              style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10, paddingHorizontal: space.sm, borderRadius: radius.lg, borderWidth: on ? 1.5 : 1, borderColor: on ? colors.brand : colors.line, backgroundColor: on ? colors.brandSoft : colors.surface }}
             >
-              <Illo name="coin" size={26} />
-              <Txt variant="label" numberOfLines={1} style={{ flex: 1 }}>
-                ${t.ticker} <Txt variant="caption">· {t.balance.toLocaleString("en-NG")}</Txt>
+              <Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={20} color={on ? colors.brand : colors.faint} />
+              <Txt variant="label" numberOfLines={1} style={{ flex: 1, fontSize: 14 }}>${t.ticker}</Txt>
+              <Txt variant="label" numberOfLines={1} color={on ? colors.success : colors.muted} style={{ fontSize: 13 }}>
+                {on ? `−${formatNaira(t.value)}` : formatNaira(tokensToNaira(t.most))}
               </Txt>
-              <Txt variant="label" color={on ? colors.success : colors.muted}>
-                {on ? `−${formatNaira(t.value)}` : `up to ${formatNaira(tokensToNaira(t.most))}`}
-              </Txt>
-              <Ionicons name={on ? "checkmark-circle" : "ellipse-outline"} size={22} color={on ? colors.brand : colors.faint} />
             </Pressable>
           );
         })}
-        {tokensValue > 0 && (
-          <View style={ui.between}>
-            <Txt variant="small" color={colors.ink2}>Order {formatNaira(total)} − tokens {formatNaira(tokensValue)}</Txt>
-            <Txt variant="label">{formatNaira(due)} to pay</Txt>
-          </View>
-        )}
       </View>
     ) : null;
 
