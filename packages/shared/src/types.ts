@@ -814,6 +814,8 @@ export interface WalletBalance {
   /** Put towards an order that isn't paid yet; back in `amount` if that order is cancelled or expires */
   held?: number;
   pending: number;
+  /** Earned in all, ever (less what refunds took back) */
+  earned?: number;
 }
 
 export interface WalletActivity {
@@ -836,6 +838,8 @@ export interface WalletView {
   addressUrl: string;
   contractUrl: string | null;
   balances: WalletBalance[];
+  /** Every token earned in all, across stores */
+  totalEarned?: number;
   activity: WalletActivity[];
 }
 

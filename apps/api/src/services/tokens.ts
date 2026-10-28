@@ -416,7 +416,22 @@ export async function walletFor(userId: string) {
     })
     .filter((b) => b.ticker && (b.amount > 0 || b.pending > 0 || b.held > 0))
     .sort((a, b) => (a.tokenId === SOTECHY_TOKEN.id ? -1 : b.tokenId === SOTECHY_TOKEN.id ? 1 : b.amount - a.amount));
-  return { address: walletAddress(userId), balances, activity: await activityFor(userId) };
+  // Earned in all, per token: orders, the $SOTECHY bonus, reviews and walk-ins, less what refunds took back
+  const earnedRows = await db
+    .select({
+      tokenId: entries.tokenId,
+      n: sql<number>`coalesce(sum(case when ${entries.toUserId} = ${userId} and ${entries.reason} in ('earned', 'bonus', 'review', 'walk_in') then ${entries.amount} when ${entries.fromUserId} = ${userId} and ${entries.reason} = 'refunded' then -${entries.amount} else 0 end), 0)::int`,
+    })
+    .from(entries)
+    .where(or(eq(entries.toUserId, userId), eq(entries.fromUserId, userId)))
+    .groupBy(entries.tokenId);
+  const earnedOf = (id: number) => Math.max(0, Number(earnedRows.find((e) => e.tokenId === id)?.n ?? 0));
+  return {
+    address: walletAddress(userId),
+    balances: balances.map((b) => ({ ...b, earned: earnedOf(b.tokenId) })),
+    totalEarned: earnedRows.reduce((n, e) => n + Math.max(0, Number(e.n)), 0),
+    activity: await activityFor(userId),
+  };
 }
 
 type ActivityKind = "earned" | "bonus" | "review" | "walk_in" | "spent" | "returned" | "sent" | "received" | "refunded";
