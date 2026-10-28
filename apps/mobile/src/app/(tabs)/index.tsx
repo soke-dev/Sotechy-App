@@ -315,7 +315,7 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
-      <MarketRail title="Fresh from the stores" subtitle="Verified shops, each with its own token" items={storeItems} onSeeAll={() => router.push("/stores")} />
+      <MarketRail title="Fresh from the store" subtitle="Verified shops, each with its own token" items={storeItems} onSeeAll={() => router.push("/stores")} />
 
       <ProductRail title="Top deals" subtitle="Sold by Sotechy" products={deals} dark onSeeAll={() => shop({ featured: "1" })} />
 
