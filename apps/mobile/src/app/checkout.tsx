@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { areaDeliveryFee, deliveryAreaFor, formatNaira, formatUsd, nairaToTokens, TOKEN_RULES, tokensToNaira, type FulfilmentType, type PromoCheck } from "@sotechy/shared";
@@ -104,7 +104,11 @@ function PickupCard({ spot, selected, count, onPress, onChange }: { spot: Spot; 
 }
 
 export default function CheckoutScreen() {
-  const cart = useCart();
+  // Checks out one store's items (the cart can hold several stores); the rest stay in the cart
+  const { store } = useLocalSearchParams<{ store?: string }>();
+  const fullCart = useCart();
+  const group = fullCart.groupFor(store);
+  const cart = { ...group, clear: () => fullCart.clearStore(group.key) };
   const { user, updateProfile } = useAuth();
   const toast = useToast();
   const moneyMoves = useMoneyMoves();
