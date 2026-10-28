@@ -1,17 +1,30 @@
-# Sotechy Shop
+# Sotechy
 
-Hybrid electronics retail platform for Sotechy Shop: online store, physical branches, inventory, payments and admin, all in one system.
+Sotechy is a multi-store marketplace. Verified stores sell through the Sotechy app, each with its own storefront and its own reward token, and Sotechy itself is one of those stores (its own electronics catalogue, branches and the **$SOTECHY** token). Sotechy collects every payment, pays stores out, checks every store before it goes live, and runs support.
 
-| App | Path | Stack | What it is |
+| App | Path | Stack | Who uses it |
 | --- | --- | --- | --- |
-| Customer app | `apps/mobile` | Expo SDK 58 + Expo Router | Android, iOS **and** web shop |
+| Customer app | `apps/mobile` | Expo SDK 58 + Expo Router | Shoppers: Android, iOS **and** web |
+| Merchant dashboard | `apps/merchant` | Next.js 16 + Tailwind | Stores: setup and verification, products, orders, delivery and pickup, payouts, token, promotions, walk-in sales, team |
+| Admin dashboard | `apps/admin` | Next.js 16 + Tailwind | Sotechy: store review, payouts, orders, banners, support, tokens, settings; plus Sotechy's own catalogue, branches and POS |
 | Landing page | `apps/web` | Next.js 16 + Tailwind | Marketing site (sotechy.shop) |
-| Admin dashboard | `apps/admin` | Next.js 16 + Tailwind | Admin, managers and store staff (POS) |
-| API | `apps/api` | Hono + Drizzle ORM + Postgres | Backend on **Railway** |
-| Shared | `packages/shared` | TypeScript | Types, constants, formatting, API client |
+| API | `apps/api` | Hono + Drizzle ORM + Postgres | Backend for all of the above, on **Railway** |
+| Shared | `packages/shared` | TypeScript | Types, money and token rules, categories, API client |
 | Brand assets | `brand-assets/` | — | Logo and images → `pnpm assets:sync` |
 
-The UI is deliberately rough. Pages and flows are in place, and the design comes later.
+How tokens, the reserve and payouts work is in [docs/tokens/README.md](docs/tokens/README.md).
+
+## What the marketplace does
+
+- **Stores and verification.** A store signs up in the merchant dashboard, sets up its business (CAC details or as an individual), passes an ID and selfie check (Didit), adds a payout account and names its token. Admin approves it, asks for changes, or declines it, with a note the owner sees.
+- **Products and categories.** Stores list products under the shared departments in `packages/shared/src/market-categories.ts` (the app's menu browses the same tree). Sotechy's own catalogue uses its own categories alongside.
+- **Delivery and pickup.** Each store sets delivery areas with home delivery prices, and up to 5 pickup points per area (each with an optional price of its own and a Google Maps link). New areas and pickup changes wait for admin approval.
+- **Cart and checkout.** One cart can hold several stores; each store checks out on its own. Customers pay with stablecoin through Money Moves (bank transfer is coming), and can put store tokens towards an order.
+- **Orders.** The store accepts, sends it (with tracking and the driver's phone for pickup), and marks it collected or delivered after ticking what it checked. The customer confirms they got it, or says it didn't arrive and Sotechy follows up.
+- **Payouts.** Each order pays the store in two parts: the first when it accepts, the rest when the customer confirms delivery. Admin pays them by hand for now and marks them paid; the store is emailed.
+- **Store tokens.** Customers earn the store's token on every order (plus $SOTECHY), held until it's paid and released on delivery. Tokens live on Monad; every delivered order also gets a receipt fingerprint recorded on-chain.
+- **Selling tools.** Price offers, store promo codes, paid featuring and banners, walk-in sales that still earn customers tokens, reviews, followers and store news.
+- **Talking to people.** Push notifications and an in-app notifications list, email (Resend), WhatsApp links, and live chat with Sotechy's team in the app.
 
 ## Getting started
 
@@ -30,11 +43,15 @@ pnpm dev:api                                # http://localhost:4000
 cp apps/admin/.env.example apps/admin/.env.local
 pnpm dev:admin                              # http://localhost:3001 — sign in with SEED_ADMIN_EMAIL
 
-# 3. Customer app (press w for web, a for Android, i for iOS)
+# 3. Merchant dashboard
+cp apps/merchant/.env.example apps/merchant/.env.local
+pnpm dev:merchant                           # http://localhost:3002 — open a test store
+
+# 4. Customer app (press w for web, a for Android, i for iOS)
 cp apps/mobile/.env.example apps/mobile/.env
 pnpm dev:mobile
 
-# 4. Landing page
+# 5. Landing page
 cp apps/web/.env.example apps/web/.env.local
 pnpm dev:web                                # http://localhost:3000
 ```
@@ -45,7 +62,8 @@ Leave out `--demo` when seeding production. Demo products are clearly labelled `
 
 ```bash
 pnpm dev:local     # API + built-in Postgres + local Money Moves test page, on your Wi-Fi address
-pnpm dev:admin     # admin at http://localhost:3000 (admin@local.test / password123)
+pnpm dev:admin     # admin at http://localhost:3001 (admin@local.test / password123)
+pnpm dev:merchant  # merchant dashboard at http://localhost:3002
 pnpm dev:mobile    # app; set EXPO_PUBLIC_API_URL in apps/mobile/.env to the address dev:local prints
 ```
 
@@ -54,10 +72,13 @@ pnpm dev:mobile    # app; set EXPO_PUBLIC_API_URL in apps/mobile/.env to the add
 ## How it fits together
 
 ```
-Expo app (Android / iOS / web) ─┐
-Admin dashboard (Next.js) ──────┼──► API (Hono, Railway) ──► Postgres (Railway)
-Landing page (Next.js) ─────────┘         ▲
-                                           └── Money Moves webhook (online payments)
+Customer app (Expo) ────────┐
+Merchant dashboard (Next.js) ┼──► API (Hono, Railway) ──► Postgres (Railway)
+Admin dashboard (Next.js) ───┤        │  ▲
+Landing page (Next.js) ──────┘        │  └── Money Moves webhook (payments)
+                                      ├──► Monad (store tokens, receipt fingerprints)
+                                      ├──► Resend (email), Expo push
+                                      └──► Didit (store owners' ID checks)
 ```
 
 ### Rules the API enforces (from the business blueprint)
@@ -71,34 +92,36 @@ Landing page (Next.js) ─────────┘         ▲
   Screenshots and customer-submitted hashes never mark an order paid.
 - **Idempotent.** Checkout requires an idempotency key, and payment confirmation is safe to repeat.
 - **Prices captured at checkout.** Order items store the price and cost at the time of purchase.
-- **Roles.** `customer` → `staff` (POS at their branch) → `manager` (stock, payment verification, products, reports) → `admin` (settings, staff, branches, audit log).
+- **Roles.** `customer` → `staff` (POS at their branch) → `manager` (stock, payment verification, products, reports) → `admin` (settings, staff, branches, stores, payouts, audit log). A store has its own team roles (owner and invited staff) in the merchant dashboard.
+- **One store per order.** Each order comes from one seller, and the store's delivery or pickup price is worked out on the server from its approved areas and the pickup point chosen.
+- **Stores sell once verified.** Products, orders and payouts need a store Sotechy has approved; a store waiting for review can look around but not sell.
 - **Audit trail** for payments, refunds, stock changes, order status changes and settings.
 - **Cost prices are never returned** by storefront endpoints. Profit is shown only when cost data exists.
 - **No private keys.** Only public crypto receiving addresses are stored.
 
 ## Deploying to Railway
 
-The Railway project (**Sotechy Shop**: Postgres, `api`, `admin`) is defined in [`.railway/railway.ts`](.railway/railway.ts) using Railway's Infrastructure as Code. It sets the build and start commands, health check, watch patterns and variables for each service. Preview and apply changes from the repo root:
+Railway deploys from GitHub: **pushing to `main` deploys** the `api`, `admin` and `merchant` services (and the landing page). Each API deploy runs the database migrations first (`pnpm --filter @sotechy/api db:migrate:prod`, the pre-deploy command), then starts the API. To keep deploys down, give each service Watch Paths so it only rebuilds for its own code (for example `/apps/api/**` and `/packages/**` for the API).
 
-```bash
-railway config plan     # what would change on Railway
-railway config apply    # apply it
-railway up --service api --detach      # upload and deploy the API
-railway up --service admin --detach    # upload and deploy the admin
-```
+The service setup is also described in [`.railway/railway.ts`](.railway/railway.ts). Secrets aren't in the repo: set them in each service's Variables. Every API variable is explained in [`apps/api/.env.example`](apps/api/.env.example).
 
-Every API deploy runs the migrations and then the seed, which only adds what's missing: payment methods, the head office, base categories, and the first admin (`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`). `SEED_DEMO_PRODUCTS=true` adds a few `[DEMO]` products to test with.
+**Money Moves.** In the Money Moves dashboard, create an API key and add a webhook endpoint `https://<api-domain>/payments/webhooks/moneymoves`. Put the key and the webhook's `whsec_…` secret in the api service. Admin → Settings shows whether the connection works and the exact webhook URL.
 
-Secrets aren't in the repo. They use `preserve()` in `railway.ts`, so set them once with `railway variable set NAME --stdin --service api` or in the dashboard: `JWT_SECRET`, `SEED_ADMIN_PASSWORD`, `MONEYMOVES_SECRET_KEY`, `MONEYMOVES_WEBHOOK_SECRET`, `GOOGLE_CLIENT_IDS`. Every variable is explained in [`apps/api/.env.example`](apps/api/.env.example).
+**Chain keys.** The keys that send token and receipt transactions on Monad stay out of the repo. The contract owner key is kept off Railway entirely and only used locally when needed.
 
-**Money Moves.** In the Money Moves dashboard, create an API key (`sk_test_…` while testing) and add a webhook endpoint `https://<api-domain>/payments/webhooks/moneymoves`. Put the key and the webhook's `whsec_…` secret in the api service. Admin → Settings shows whether the connection works and the exact webhook URL. Switch to the `sk_live_…` key and the live webhook secret when you go live.
+**Customer app.** Point it at the API with `EXPO_PUBLIC_API_URL=https://<api-domain>` in `apps/mobile/.env`. Build Android and iOS with EAS: `cd apps/mobile && npx eas-cli@latest build`.
 
-**Customer app.** Point it at the API with `EXPO_PUBLIC_API_URL=https://<api-domain>` in `apps/mobile/.env` (leave it empty for demo mode). Build Android and iOS with EAS: `cd apps/mobile && npx eas-cli@latest build`. `EXPO_PUBLIC_API_URL` is baked in at build time, or loaded live by the dev build.
+## Running Sotechy from the admin dashboard
 
-## Running the shop from the admin dashboard
-
-| Admin page | What it controls in the app |
+| Admin page | What it controls |
 | --- | --- |
+| **Merchants** | Review stores (ID check result, business details, payout account), then approve, ask for changes or decline. Suspend or reinstate live stores. |
+| **Delivery areas** | Approve or decline stores' delivery areas and pickup points |
+| **Merchant payouts** | Each store's first and final payments: pay by hand and mark paid, hold or release, paybacks for cancelled orders, payout plans |
+| **Featured stores**, **Banners** | Paid featuring and Home banners (built-in, Sotechy's own, and stores') |
+| **Order reviews** | Orders that need Sotechy: "didn't get it", pickup location changes, paybacks |
+| **Support** | Live chat with customers, with photos |
+| **Tokens** | Store tokens, $SOTECHY, the reserve and recycling pool, and on-chain status |
 | **App switches** | Online ordering, delivery, pickup, promo codes, reviews, dollar estimates, low-stock badges, live chat, WhatsApp ordering, sign-ups, Google sign-in, **maintenance mode** (with message) and the **announcement bar**. Each switch saves straight away; the app picks changes up within a minute. The API enforces them too. |
 | **Home banners** | The Home carousel: text, colour, picture upload, what it opens (category, product, Deals or a link), order, start/end dates, show/hide. With none on, the app shows its built-in banners. |
 | Products, Categories | Everything on a product page, including photo uploads, key features, what's in the box, specs and options. Categories have pictures and sub-categories. |
@@ -154,20 +177,11 @@ Put the logo and images in `brand-assets/`, run `pnpm assets:sync`, and commit. 
 
 | Item | Status |
 | --- | --- |
-| **Money Moves** keys | Integration done (checkout, signed webhooks, live exchange rate). Needs `MONEYMOVES_SECRET_KEY` and `MONEYMOVES_WEBHOOK_SECRET` on the API, and the webhook endpoint registered in Money Moves. Online orders are refused until the key is set. |
-| Orders over ₦1,000,000 | Money Moves takes ₦100 to ₦1,000,000 per checkout for a registered business. Bigger orders get a message asking the customer to split the order or contact the store. |
-| **$MOVE discount** | It applied when customers picked crypto at checkout. Crypto is now chosen inside Money Moves, so the automatic discount doesn't apply. Decide whether to run it as a promo code or apply it once Money Moves reports the method. |
-| Bank details, delivery fees, support contacts | Admin → Settings |
-| Notifications (email / SMS / push) | Not started |
+| **Bank transfer at checkout** | Shown as "Coming soon". Planned with Nomba (a virtual account per order), waiting for the Nomba keys. |
+| **Automatic payouts** | Payouts are paid by hand from admin for now; the Bachs integration is in place but not used. |
+| Orders over ₦1,000,000 | Money Moves takes ₦100 to ₦1,000,000 per checkout. Bigger orders are asked to split the order or contact the store. |
 | Policies (delivery, returns, warranty, privacy) | Placeholder text in `apps/web/src/app/policies` |
 | App icons and store listings | Expo default icons in `brand-assets/app-icon/` |
-
-## Roadmap
-
-1. **Core store.** Catalogue, cart, checkout, orders, bank payments, admin products and orders. *(scaffolded)*
-2. **Store operations.** Branch inventory, walk-in sales, stock adjustments and transfers, suppliers, reports, staff roles, audit log. *(scaffolded)*
-3. **Crypto payments.** Verified MOVE payments, discount, reconciliation, crypto reporting.
-4. **Marketplace.** Merchant onboarding, listings, commissions and payouts. The `merchants` table and `products.merchant_id` already exist, and onboarding is off.
 
 ## Useful commands
 
@@ -176,4 +190,5 @@ pnpm typecheck                         # all packages
 pnpm --filter @sotechy/api db:generate # after editing apps/api/src/db/schema.ts
 pnpm --filter @sotechy/api db:studio   # browse the database
 pnpm assets:sync                       # copy brand-assets into the apps
+pnpm dev:local                         # API + database + payment test page, all on your computer
 ```
