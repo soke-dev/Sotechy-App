@@ -91,7 +91,7 @@ export function OrderView({ order }: { order: Order }) {
       }
     });
 
-  const steps = order.fulfilment === "pickup" ? ["Placed", "Accepted", "Ready", "Collected", "Completed"] : ["Placed", "Accepted", "Shipped", "Delivered", "Completed"];
+  const steps = order.fulfilment === "pickup" ? ["Placed", "Accepted", "Available", "Collected", "Completed"] : ["Placed", "Accepted", "Shipped", "Delivered", "Completed"];
   const stepIndex = { new: 0, accepted: 1, shipped: 2, delivered: 3, completed: 4, declined: 0, payback: 1 }[s];
 
   return (
@@ -133,7 +133,7 @@ export function OrderView({ order }: { order: Order }) {
       {s === "accepted" && (
         <NextStep
           illo={order.fulfilment === "pickup" ? "store" : "bike"}
-          title={order.fulfilment === "pickup" ? (waiting ? "New pickup location waiting for approval" : "Get it ready for pickup") : "Ship the order"}
+          title={order.fulfilment === "pickup" ? (waiting ? "New pickup location waiting for approval" : "Get it ready, then mark it available for pickup") : "Ship the order"}
           body={
             waiting
               ? `You asked to hand it over at ${change!.point}. You can mark it ready once it's approved.`
@@ -144,7 +144,7 @@ export function OrderView({ order }: { order: Order }) {
         >
           <div className="flex flex-col items-end gap-2">
             <button onClick={() => setDialog("ship")} disabled={waiting} className={btn.dark}>
-              {order.fulfilment === "pickup" ? <Store size={16} /> : <Truck size={16} />} {order.fulfilment === "pickup" ? "Ready for pickup" : "Mark as shipped"}
+              {order.fulfilment === "pickup" ? <Store size={16} /> : <Truck size={16} />} {order.fulfilment === "pickup" ? "Mark available for pickup" : "Mark as shipped"}
             </button>
             {/* Backing out after accepting: the customer is refunded and anything already paid comes back */}
             <button onClick={() => setDialog("decline")} className="text-xs font-semibold text-muted hover:text-bad hover:underline">
@@ -381,7 +381,7 @@ export function OrderView({ order }: { order: Order }) {
         </button>
       </Modal>
 
-      <Modal open={dialog === "ship"} onClose={() => setDialog(null)} title={order.fulfilment === "pickup" ? "Ready for pickup" : "Mark as shipped"}>
+      <Modal open={dialog === "ship"} onClose={() => setDialog(null)} title={order.fulfilment === "pickup" ? "Available for pickup?" : "Mark as shipped"}>
         {order.fulfilment === "delivery" ? (
           <div className="flex flex-col gap-3">
             <div className="rounded-2xl bg-surface-alt px-4 py-3 text-sm">
@@ -412,7 +412,7 @@ export function OrderView({ order }: { order: Order }) {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">Customer collects at</p>
               <p className="mt-0.5 font-semibold">{order.pickupPoint ?? "Your approved pickup location"}</p>
             </div>
-            <p className="text-sm text-ink-2">We&apos;ll tell the customer it&apos;s ready to collect there.</p>
+            <p className="text-sm text-ink-2">WeWe&apos;ll tell the customer it&apos;s ready to collect there.apos;ll tell the customer itWe&apos;ll tell the customer it&apos;s ready to collect there.apos;s available for pickup there. They tap We&apos;ll tell the customer it&apos;s ready to collect there.quot;IWe&apos;ll tell the customer it&apos;s ready to collect there.apos;ve picked it upWe&apos;ll tell the customer it&apos;s ready to collect there.quot; in the app once they have it, or you can mark it collected when you hand it over.</p>
             <button type="button" onClick={() => setOtherPlace(true)} className="self-start text-sm font-semibold text-brand-strong hover:underline">
               Use another location
             </button>
@@ -429,7 +429,7 @@ export function OrderView({ order }: { order: Order }) {
             onClick={() => move("ship", order.fulfilment === "delivery" && (courier.trim() || tracking.trim()) ? `On its way${courier.trim() ? ` with ${courier.trim()}` : ""}${tracking.trim() ? ` · ${tracking.trim()}` : ""}` : undefined)}
             className={`${btn.dark} mt-4 w-full`}
           >
-            {busy ? "Saving…" : order.fulfilment === "pickup" ? "Confirm, it's ready" : "Confirm"}
+            {busy ? "Saving…" : order.fulfilment === "pickup" ? "Yes, it's available for pickup" : "Confirm"}
           </button>
         )}
       </Modal>
