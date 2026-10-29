@@ -11,12 +11,16 @@ const BANNER_STYLES = {
   light: { bg: "#FFF1DF", fg: "#17120E", accent: "#E07F0C", circle: "#F7931E", cta: "bg-ink text-white" },
 } as const;
 
-// The app's colours for pop-ups (kept the same in light and dark mode)
+// The app's colours for pop-ups (kept the same in light and dark mode), as the app draws them
 const POPUP_STYLES = {
-  orange: { bg: "#F7931E", fg: "#17120E", circle: "#FDB913" },
-  dark: { bg: "#17120E", fg: "#FFFFFF", circle: "#F7931E" },
-  light: { bg: "#FFF1DF", fg: "#17120E", circle: "#F7931E" },
+  orange: { bg: "#F7931E", fg: "#17120E", sub: "rgba(23,18,14,0.78)", doodle: "#17120E", accent: "#FDB913", btnBg: "#17120E", btnFg: "#FFFFFF" },
+  dark: { bg: "#17120E", fg: "#FFFFFF", sub: "rgba(255,255,255,0.72)", doodle: "#FDB913", accent: "#F7931E", btnBg: "#F7931E", btnFg: "#17120E" },
+  light: { bg: "#FFF1DF", fg: "#17120E", sub: "#3A322C", doodle: "#F7931E", accent: "#FDB913", btnBg: "#17120E", btnFg: "#FFFFFF" },
 } as const;
+
+/** A four-point sparkle, as in the app */
+const sparkle = (x: number, y: number, r: number) =>
+  `M${x} ${y - r} C${x + r * 0.18} ${y - r * 0.18} ${x + r * 0.18} ${y - r * 0.18} ${x + r} ${y} C${x + r * 0.18} ${y + r * 0.18} ${x + r * 0.18} ${y + r * 0.18} ${x} ${y + r} C${x - r * 0.18} ${y + r * 0.18} ${x - r * 0.18} ${y + r * 0.18} ${x - r} ${y} C${x - r * 0.18} ${y - r * 0.18} ${x - r * 0.18} ${y - r * 0.18} ${x} ${y - r}Z`;
 
 type BannerLook = Pick<Banner, "layout" | "style" | "eyebrow" | "title" | "subtitle" | "ctaLabel" | "imageUrl">;
 type PopupLook = Pick<Popup, "layout" | "style" | "title" | "body" | "imageUrl" | "ctaLabel" | "dismissLabel">;
@@ -58,43 +62,67 @@ export function BannerPreview({ banner }: { banner: BannerLook }) {
   );
 }
 
-/** Roughly how it looks over the app's Home screen */
+/** Roughly how it looks in the app: a sheet risen from the bottom of the screen */
 export function PopupPreview({ popup }: { popup: PopupLook }) {
-  const s = POPUP_STYLES[popup.style];
-  const buttons = (
-    <div className="flex flex-col items-center gap-1.5 px-4 pb-4">
-      <span className="w-full rounded-full bg-[#17120E] py-2 text-center text-xs font-bold text-white">{popup.ctaLabel || "Button"}</span>
-      {popup.dismissLabel && <span className="text-[11px] font-semibold text-[#6B5E53]">{popup.dismissLabel}</span>}
+  const t = POPUP_STYLES[popup.style];
+  const W = 236;
+  const button = (bg: string, fg: string, sub: string) => (
+    <div className="flex flex-col items-center gap-1">
+      <span className="flex w-full items-center justify-center gap-1 rounded-full py-2 text-center text-[11px] font-bold" style={{ background: bg, color: fg }}>
+        {popup.ctaLabel || "Button"} →
+      </span>
+      {popup.dismissLabel && <span className="py-0.5 text-[10px] font-semibold" style={{ color: sub }}>{popup.dismissLabel}</span>}
     </div>
   );
+  const close = (glass: boolean) => (
+    <span className={`absolute right-2.5 top-2.5 z-10 grid h-6 w-6 place-items-center rounded-full text-[11px] ${glass ? "bg-black/40 text-white" : "bg-white/55 text-[#17120E]"}`}>✕</span>
+  );
   return (
-    <div className="mx-auto w-full max-w-[260px] rounded-[28px] bg-[#2A2421] p-3">
-      <div className="relative overflow-hidden rounded-2xl bg-white">
-        <span className="absolute right-2 top-2 z-10 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-xs text-[#17120E] shadow">✕</span>
+    <div className="mx-auto flex aspect-[9/17] w-full max-w-[260px] flex-col justify-end overflow-hidden rounded-[30px] bg-[#3a3330] p-2.5" style={{ backgroundImage: "linear-gradient(rgba(12,9,7,.55),rgba(12,9,7,.7))" }}>
+      <span className="mx-auto mb-1.5 h-1 w-8 rounded-full bg-white/70" />
+      <div className="relative overflow-hidden rounded-[22px] shadow-xl" style={{ background: popup.layout === "image" ? "#17120E" : t.bg }}>
         {popup.layout === "image" ? (
-          <>
+          <div className="relative">
             {popup.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={popup.imageUrl} alt="" className="block max-h-80 w-full object-cover" />
+              <img src={popup.imageUrl} alt="" className="block max-h-[360px] w-full object-cover" />
             ) : (
-              <div className="grid aspect-[4/5] place-items-center bg-[#F3EDE6] text-xs text-[#6B5E53]">Your picture shows here</div>
+              <div className="grid aspect-[4/5] place-items-center bg-[#2A2421] text-xs text-white/60">Your picture shows here</div>
             )}
-            <div className="pt-3">{buttons}</div>
-          </>
+            <svg width="60" height="46" className="absolute left-2 top-2" aria-hidden>
+              <path d={sparkle(14, 16, 10)} fill="#fff" />
+              <path d={sparkle(34, 9, 5)} fill="#FDB913" />
+              <path d={sparkle(30, 31, 3.5)} fill="#fff" opacity=".7" />
+            </svg>
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent via-black/55 to-black/85 px-4 pb-3 pt-10">{button("#FFFFFF", "#17120E", "rgba(255,255,255,.85)")}</div>
+            {close(true)}
+          </div>
         ) : (
-          <>
-            <div className="relative flex h-36 flex-col items-center justify-start overflow-hidden px-4 pt-5" style={{ background: s.bg, color: s.fg }}>
-              <div className="absolute -left-6 bottom-[-30px] h-20 w-20 rounded-full" style={{ background: s.circle }} />
-              <div className="absolute -right-5 top-[-20px] h-14 w-14 rounded-full opacity-60" style={{ background: s.circle }} />
-              <p className="relative text-center text-lg font-extrabold leading-tight">{popup.title || <span className="opacity-50">Your title</span>}</p>
-            </div>
+          <div className="relative px-4 pb-4 pt-8">
+            <svg viewBox={`0 0 ${W} 300`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
+              <circle cx={-20} cy={95} r={75} fill={t.accent} opacity=".55" />
+              <circle cx={W + 14} cy={-6} r={60} fill={t.accent} opacity=".35" />
+              <path d="M16 262 q 12 -18 24 0 t 24 0 t 24 0" stroke={t.doodle} strokeWidth="2.5" strokeLinecap="round" fill="none" opacity=".22" />
+            </svg>
+            <svg width={W} height="80" className="absolute left-0 top-0" aria-hidden>
+              <path d={sparkle(W - 36, 38, 10)} fill={t.doodle} opacity=".85" />
+              <path d={sparkle(W - 56, 64, 5)} fill={t.doodle} opacity=".5" />
+              <path d={sparkle(28, 32, 6)} fill={t.doodle} opacity=".55" />
+            </svg>
             {popup.imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={popup.imageUrl} alt="" className="relative mx-auto -mt-10 h-28 w-28 rounded-2xl border-4 border-white object-cover shadow" />
+              <div className="relative mx-auto mb-4 h-24 w-24">
+                <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 rotate-6 rounded-[20px]" style={{ background: t.accent }} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={popup.imageUrl} alt="" className="relative h-24 w-24 -rotate-[4deg] rounded-[20px] object-cover" />
+              </div>
             )}
-            {popup.body && <p className="px-4 pt-3 text-center text-[11px] leading-snug text-[#3D332C]">{popup.body}</p>}
-            <div className="pt-3">{buttons}</div>
-          </>
+            <p className="relative text-center text-xl font-extrabold leading-tight tracking-tight" style={{ color: t.fg }}>
+              {popup.title || <span className="opacity-50">Your title</span>}
+            </p>
+            {popup.body && <p className="relative mt-2 text-center text-[11px] leading-snug" style={{ color: t.sub }}>{popup.body}</p>}
+            <div className="relative mt-4">{button(t.btnBg, t.btnFg, t.sub)}</div>
+            {close(popup.style === "dark")}
+          </div>
         )}
       </div>
     </div>

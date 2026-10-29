@@ -39,10 +39,10 @@ function PopupFields({ popup, categories, stores }: { popup?: Popup; categories:
           <Field label="Kind of pop-up">
             <select name="layout" defaultValue={popup?.layout ?? "art"} className={inputClass}>
               <option value="art">Designed: Sotechy colours, title, words and a picture</option>
-              <option value="image">Just a picture, with the buttons under it</option>
+              <option value="image">Just a picture, with the buttons on it</option>
             </select>
           </Field>
-          <Field label="Picture" hint="A picture pop-up: portrait or square, about 1080 × 1350 px. A designed one: a square photo or illustration.">
+          <Field label="Picture" hint="A picture pop-up: portrait, about 1080 × 1350 px (keep words away from the bottom, where the buttons sit). A designed one: a square photo, shown as a tilted sticker.">
             <input name="image" type="file" accept="image/png,image/jpeg,image/webp" className="text-sm" />
             {popup?.imageUrl && (
               <span className="mt-1 flex items-center gap-2 text-xs text-muted">
