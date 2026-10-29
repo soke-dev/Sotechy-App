@@ -2,6 +2,7 @@
 
 import type { StoreRole } from "@sotechy/shared";
 import { roleSees } from "@/lib/roles";
+import { STOREFRONT_TABS } from "./storefront-tabs";
 import { ExternalLink, Headset, LogOut, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,6 +33,8 @@ export interface ShellStore {
   newOrders: number;
   /** Price offers waiting for an answer */
   offersWaiting: number;
+  /** Inside Storefront: reviews to answer, and store details waiting for (or declined by) Sotechy */
+  storefrontWaiting?: number;
   /** Payouts on their way to the store */
   balance: number;
   /** How the signed-in person runs the store; the menu shows what their role can open */
@@ -43,19 +46,15 @@ const items = (s: ShellStore): NavItem[][] => [
     { href: "/", label: "Home", illo: "home" },
     { href: "/orders", label: "Orders", illo: "box", badge: s.newOrders },
     { href: "/offers", label: "Offers", illo: "tag", badge: s.offersWaiting },
-    { href: "/promotions", label: "Promo codes", illo: "sparkle" },
     { href: "/customers", label: "Customers", illo: "user" },
     { href: "/products", label: "Products", illo: "bag" },
-    { href: "/storefront", label: "Storefront", illo: "store" },
+    { href: "/storefront", label: "Storefront", illo: "store", badge: s.storefrontWaiting },
     { href: "/delivery", label: "Delivery", illo: "bike" },
   ],
   [
     { href: "/token", label: s.ticker ? `$${s.ticker} token` : "Store token", illo: "coin" },
     { href: "/walk-in", label: "Walk-in sale", illo: "receipt" },
     { href: "/payouts", label: "Payouts", illo: "bank" },
-    { href: "/reviews", label: "Reviews", illo: "heart" },
-    { href: "/notifications", label: "Notifications", illo: "chat" },
-    { href: "/featured", label: "Get featured", illo: "sparkle" },
   ],
   [
     { href: "/team", label: "Team", illo: "user" },
@@ -78,10 +77,10 @@ const initials = (name: string) =>
     .slice(0, 2)
     .toUpperCase();
 
-/** Pages that live inside another menu item (Store details is a tab of Storefront) */
-const INSIDE: Record<string, string[]> = { "/storefront": ["/store-details"] };
+/** Storefront's tabs all light up its menu item */
+const INSIDE = STOREFRONT_TABS.map((t) => t.href);
 const isActive = (href: string, path: string) =>
-  href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`) || (INSIDE[href] ?? []).some((p) => path === p || path.startsWith(`${p}/`));
+  href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`) || (INSIDE.includes(href) && INSIDE.some((p) => path === p || path.startsWith(`${p}/`)));
 
 function StoreCard({ store }: { store: ShellStore }) {
   return (
@@ -110,7 +109,14 @@ function NavList({ store, onNavigate }: { store: ShellStore; onNavigate?: () => 
   return (
     <nav className="flex flex-col gap-4">
       {items(store)
-        .map((group) => group.filter((item) => roleSees(store.access, item.href)))
+        // Storefront holds several pages: shown when the role can open any of them, linking to the first
+        .map((group) =>
+          group.flatMap((item) => {
+            if (item.href !== "/storefront") return roleSees(store.access, item.href) ? [item] : [];
+            const first = STOREFRONT_TABS.find((t) => roleSees(store.access, t.href === "/store-details" ? "/storefront" : t.href));
+            return first ? [{ ...item, href: first.href }] : [];
+          }),
+        )
         .filter((group) => group.length > 0)
         .map((group, i) => (
         <div key={i} className="flex flex-col gap-0.5">

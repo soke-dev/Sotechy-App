@@ -1112,8 +1112,16 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.offers)
       .where(and(eq(schema.offers.merchantId, c.get("store").id), eq(schema.offers.status, "waiting_store")));
+    // Customers' reviews the store hasn't replied to yet
+    const r = schema.productReviews;
+    const [toReply] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(r)
+      .innerJoin(products, eq(products.id, r.productId))
+      .where(and(eq(products.merchantId, storeId), eq(r.isPublished, true), sql`${r.storeReply} is null`));
     return c.json({
       offersWaiting: offersWaiting?.n ?? 0,
+      reviewsToReply: toReply?.n ?? 0,
       salesByDay: days,
       completedOrders: count("delivered"),
       waiting: count("paid"),

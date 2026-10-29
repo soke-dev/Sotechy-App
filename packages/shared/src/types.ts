@@ -862,6 +862,8 @@ export interface MerchantSummary {
   inProgress: number;
   /** Price offers waiting for the store's answer */
   offersWaiting: number;
+  /** Customers' reviews without the store's reply yet */
+  reviewsToReply?: number;
 }
 
 export interface MerchantApplicationInput {
