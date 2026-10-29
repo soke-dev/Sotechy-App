@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useAccount } from "@/components/account-context";
-import { StoreDetails } from "@/components/store-details";
 import { StorefrontView, type StorefrontLook } from "@/components/storefront-view";
 import { btn, inputClass, PageHeader } from "@/components/ui";
 import { COVER_SPEC, ImageCropper, LOGO_SPEC } from "@/components/image-cropper";
@@ -166,9 +165,6 @@ export function StorefrontEditor({ products, facts }: { products: Product[]; fac
               ))}
             </Section>
 
-            <Section title="Store details" hint="Name, about line, what you sell and socials. Sotechy approves changes before they show.">
-              <StoreDetails />
-            </Section>
 
             <Section title="Announcement" hint="Optional. A strip across your page for a sale or delivery news.">
               <Counted value={look.announcement} max={80} onChange={(announcement) => set({ announcement })} placeholder="e.g. 10% off all fans this week" />

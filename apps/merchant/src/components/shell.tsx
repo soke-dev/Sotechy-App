@@ -47,6 +47,7 @@ const items = (s: ShellStore): NavItem[][] => [
     { href: "/customers", label: "Customers", illo: "user" },
     { href: "/products", label: "Products", illo: "bag" },
     { href: "/storefront", label: "Storefront", illo: "store" },
+    { href: "/store-details", label: "Edit store details", illo: "doc" },
     { href: "/delivery", label: "Delivery", illo: "bike" },
   ],
   [
