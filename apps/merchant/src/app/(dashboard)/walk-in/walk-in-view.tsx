@@ -1,7 +1,7 @@
 "use client";
 
 // A sale in the store's own shop: find the customer on Sotechy, pay the 1% fee, and they get the tokens.
-import { Check, Loader2, Search } from "lucide-react";
+import { Check, ChevronRight, Landmark, Loader2, Search, Wallet } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { TOKEN_RULES } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
@@ -9,6 +9,7 @@ import { btn, Card, Field, inputClass, PageHeader, Pill } from "@/components/ui"
 import { RelTime } from "@/components/rel-time";
 import { formatNaira, formatTokens } from "@/lib/money";
 import { useAccount } from "@/components/account-context";
+import { Sheet } from "@/components/zone-form";
 import { findWalkInCustomer, startWalkIn } from "@/lib/market-actions";
 
 export interface WalkInSale {
@@ -24,7 +25,7 @@ export interface WalkInSale {
 
 type Customer = { id: string; name: string | null; username: string | null };
 
-export function WalkInView({ sales, paidId }: { sales: WalkInSale[]; paidId: string | null }) {
+export function WalkInView({ sales, paidId, payMethods }: { sales: WalkInSale[]; paidId: string | null; payMethods: { stablecoin: boolean; bank: boolean } }) {
   const { store } = useAccount();
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<{ q: string; customer: Customer | null; problem?: string } | null>(null);
@@ -48,10 +49,12 @@ export function WalkInView({ sales, paidId }: { sales: WalkInSale[]; paidId: str
     return () => clearTimeout(timer);
   }, [q]);
 
-  const pay = () =>
+  const [choosing, setChoosing] = useState(false);
+  const pay = (method: "stablecoin" | "bank") =>
     start(async () => {
+      setChoosing(false);
       setError(null);
-      const r = await startWalkIn({ customer: q, amount, note: note.trim() || undefined });
+      const r = await startWalkIn({ customer: q, amount, note: note.trim() || undefined, method });
       if ("error" in r) return setError(r.error);
       window.location.href = r.ok.checkoutUrl;
     });
@@ -138,10 +141,38 @@ export function WalkInView({ sales, paidId }: { sales: WalkInSale[]; paidId: str
               <p className="px-1 text-xs text-muted">Tokens are only sent after this fee is paid. The sale itself stays between you and the customer.</p>
             </div>
             {error && <p className="mt-4 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
-            <button disabled={!customer || amount <= 0 || busy} onClick={pay} className={`${btn.primary} mt-5 w-full`}>
+            <button disabled={!customer || amount <= 0 || busy || (!payMethods.stablecoin && !payMethods.bank)} onClick={() => setChoosing(true)} className={`${btn.primary} mt-5 w-full`}>
               {busy ? "Opening payment…" : `Pay ${formatNaira(fee)} and send tokens`}
             </button>
           </Card>
+
+          <Sheet open={choosing} onClose={() => setChoosing(false)} title={`Pay ${formatNaira(fee)}`}>
+            <p className="mb-4 text-sm text-muted">Sotechy&apos;s {TOKEN_RULES.walkInFeeRate * 100}% fee for this sale. Choose how to pay:</p>
+            <div className="flex flex-col gap-3">
+              {[
+                { id: "bank" as const, on: payMethods.bank, icon: Landmark, title: "Bank transfer", text: "Send the exact amount from any Nigerian bank app" },
+                { id: "stablecoin" as const, on: payMethods.stablecoin, icon: Wallet, title: "Pay with stablecoin", text: "USDT or USDC, through Money Moves" },
+              ].map((w) => (
+                <button
+                  key={w.id}
+                  type="button"
+                  disabled={!w.on || busy}
+                  onClick={() => pay(w.id)}
+                  className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left transition hover:border-ink disabled:opacity-50 disabled:hover:border-line"
+                >
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-strong">
+                    <w.icon size={20} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold">{w.title}</span>
+                    <span className="block text-sm text-muted">{w.on ? w.text : "Not available right now"}</span>
+                  </span>
+                  <ChevronRight size={18} className="text-muted" />
+                </button>
+              ))}
+            </div>
+            <p className="mt-4 text-xs text-muted">The customer gets their tokens as soon as the fee is confirmed. A bank transfer usually shows within a minute or two.</p>
+          </Sheet>
 
           <Card title="Recent walk-in sales">
             {sales.length === 0 ? (

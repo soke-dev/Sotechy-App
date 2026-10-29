@@ -17,6 +17,7 @@ import { buyFeaturing, featuredCount, featuringPayMethods, featuringSettings, pr
 import { roleAllows, storeAccess, type StoreRole } from "../services/team";
 import { addPayoutAccount, makeDefault, payoutAccountsOf, removePayoutAccount } from "../services/payout-accounts";
 import { findCustomer, startWalkIn, walkInsOf } from "../services/walk-in";
+import { feePayMethods } from "../services/fee-checkout";
 import { storeTokenStats } from "../services/tokens";
 import { CHAINS, currentContract } from "../services/chain";
 import { answerOffer, storeOffers } from "../services/offers";
@@ -445,7 +446,9 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
   })
   .get("/walk-in/customer", async (c) => c.json(await findCustomer(c.req.query("q") ?? "")))
   .get("/walk-in", async (c) => c.json(await walkInsOf(c.get("store").id)))
-  .post("/walk-in", zValidator("json", z.object({ customer: z.string().min(3).max(60), amount: z.number().positive().max(100_000_000), note: z.string().max(200).optional() })), async (c) => {
+  /** How the fee can be paid right now */
+  .get("/walk-in/pay-methods", async (c) => c.json(await feePayMethods()))
+  .post("/walk-in", zValidator("json", z.object({ customer: z.string().min(3).max(60), amount: z.number().positive().max(100_000_000), note: z.string().max(200).optional(), method: z.enum(["stablecoin", "bank"]).default("stablecoin") })), async (c) => {
     const [me] = await db.select({ id: schema.users.id, email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
     return c.json(await startWalkIn(c.get("store"), me, c.req.valid("json")), 201);
   })

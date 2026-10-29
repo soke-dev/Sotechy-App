@@ -197,7 +197,7 @@ export async function findWalkInCustomer(q: string): Promise<Result<{ id: string
 }
 
 /** Records a walk-in sale and opens the payment for Sotechy's fee; tokens follow once it's paid */
-export async function startWalkIn(input: { customer: string; amount: number; note?: string }): Promise<Result<{ id: string; fee: number; checkoutUrl: string }>> {
+export async function startWalkIn(input: { customer: string; amount: number; note?: string; method: "stablecoin" | "bank" }): Promise<Result<{ id: string; fee: number; checkoutUrl: string }>> {
   return attempt(() => api.post<{ id: string; fee: number; checkoutUrl: string }>("/merchant/walk-in", input));
 }
 

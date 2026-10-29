@@ -7,9 +7,7 @@ import { env } from "../env";
 import { featuredEmail } from "../emails/templates";
 import { sendEmailLater } from "../lib/email";
 import { badRequest, conflict } from "../lib/errors";
-import { bachsCreateCheckout } from "./bachs";
-import { bankProvider, bankProviderReady } from "./bank-pay";
-import { createCheckout, createDirectCheckout, moneyMovesConfigured } from "./moneymoves";
+import { feePayMethods, openFeeCheckout } from "./fee-checkout";
 import { getSetting } from "./settings";
 
 export type FeatureTier = "standard" | "pro";
@@ -60,9 +58,7 @@ export interface StoreBannerInput {
 /** Starts a payment for months of featuring and returns the Money Moves checkout page. A banner designed
  *  with it is saved switched off, and goes live for the feature's months once the payment arrives. */
 /** The ways a store can pay for featuring right now: stablecoin on Money Moves, or bank transfer (Admin → Settings picks who takes it) */
-export async function featuringPayMethods() {
-  return { stablecoin: moneyMovesConfigured(), bank: bankProviderReady(await bankProvider()) };
-}
+export const featuringPayMethods = feePayMethods;
 
 export async function buyFeaturing(
   store: typeof schema.merchants.$inferSelect,
@@ -81,8 +77,7 @@ export async function buyFeaturing(
   if (tier === "pro" && !alreadyPro && (await proCount()) >= settings.maxPro) throw conflict(`Both Pro spots are taken right now. Featured is still open, or try Pro again when one ends.`);
   if ((await storeFeatureCount(store.id)) >= settings.maxPerStore)
     throw conflict(`A store can have ${settings.maxPerStore} features at a time. You can buy another when one ends.`);
-  const ways = await featuringPayMethods();
-  if (!ways[method]) throw badRequest(method === "bank" ? "Bank transfer isn't available right now. Please pay with Money Moves." : "Money Moves isn't available right now. Please pay by bank transfer.");
+  if (!(await feePayMethods())[method]) throw badRequest(method === "bank" ? "Bank transfer isn't available right now. Please pay with stablecoin." : "Stablecoin isn't available right now. Please pay by bank transfer.");
   const amount = (tier === "pro" ? settings.proPricePerMonth : settings.pricePerMonth) * months;
   const [purchase] = await db.insert(schema.featuredPurchases).values({ merchantId: store.id, months, amount, tier }).returning();
   if (banner) {
@@ -104,23 +99,7 @@ export async function buyFeaturing(
   const returnUrl = `${env.MERCHANT_APP_URL.replace(/\/$/, "")}/featured?paid=1`;
   const expiresAt = new Date(Date.now() + 30 * 60_000);
   const metadata = { featured_purchase: purchase.id, merchant_id: store.id };
-  if (method === "bank" && (await bankProvider()) === "bachs") {
-    const s = await bachsCreateCheckout({ reference, amount, customer: buyer, returnUrl, expiresAt, metadata });
-    await db.update(schema.featuredPurchases).set({ checkoutId: s.checkout_id }).where(eq(schema.featuredPurchases.id, purchase.id));
-    if (!s.checkout_url) throw badRequest("Bank transfer didn't open. Please try again.");
-    return { checkoutUrl: s.checkout_url };
-  }
-  // Stablecoin on Money Moves' checkout, or a bank transfer on its direct checkout
-  const checkout = await (method === "bank" ? createDirectCheckout : createCheckout)({
-    reference,
-    idempotencyKey: reference,
-    amount,
-    description,
-    customer: buyer,
-    redirectUrl: returnUrl,
-    expiresAt,
-    metadata,
-  });
+  const checkout = await openFeeCheckout(method, { reference, amount, description, customer: buyer, returnUrl, expiresAt, metadata });
   await db.update(schema.featuredPurchases).set({ checkoutId: checkout.id }).where(eq(schema.featuredPurchases.id, purchase.id));
   return { checkoutUrl: checkout.url };
 }

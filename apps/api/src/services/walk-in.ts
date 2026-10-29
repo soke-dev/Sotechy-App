@@ -1,12 +1,12 @@
 // Walk-in sales: a customer buys in the store's own shop and gives their @username or phone number.
-// The sale itself stays between them; the store pays a 1% fee through Money Moves, and only
+// The sale itself stays between them; the store pays a 1% fee (by bank transfer or stablecoin), and only
 // then does the customer get the store's token (plus $SOTECHY), as with an online order.
 import { and, desc, eq } from "drizzle-orm";
 import { TOKEN_RULES } from "@sotechy/shared";
 import { db, schema } from "../db/client";
 import { env } from "../env";
 import { badRequest, notFound } from "../lib/errors";
-import { createCheckout, type MMPayment } from "./moneymoves";
+import { openFeeCheckout, type FeeMethod } from "./fee-checkout";
 import { earnForWalkIn } from "./tokens";
 
 export const WALK_IN_REF = "walk-";
@@ -29,20 +29,23 @@ export async function findCustomer(query: string) {
 }
 
 /** Records the sale and opens the fee payment; the tokens follow once it's paid */
-export async function startWalkIn(store: typeof schema.merchants.$inferSelect, by: { id: string; email: string; name: string | null }, input: { customer: string; amount: number; note?: string }) {
+export async function startWalkIn(
+  store: typeof schema.merchants.$inferSelect,
+  by: { id: string; email: string; name: string | null },
+  input: { customer: string; amount: number; note?: string; method?: FeeMethod },
+) {
   if (store.status !== "approved" || !store.tokenId) throw badRequest("Walk-in sales open once Sotechy approves your store and its token is created");
   const customer = await findCustomer(input.customer);
   if (!customer) throw notFound("No Sotechy account found. Ask them to sign up in the app, then try again.");
   if (customer.id === store.ownerId) throw badRequest("You can't reward your own account");
   const fee = Math.max(1, Math.round(input.amount * TOKEN_RULES.walkInFeeRate * 100) / 100);
   const [sale] = await db.insert(sales).values({ merchantId: store.id, customerId: customer.id, amount: input.amount, fee, note: input.note ?? null, createdBy: by.id }).returning();
-  const checkout = await createCheckout({
+  const checkout = await openFeeCheckout(input.method ?? "stablecoin", {
     reference: `${WALK_IN_REF}${sale.id}`,
-    idempotencyKey: `${WALK_IN_REF}${sale.id}`,
     amount: fee,
     description: `Sotechy fee for a ₦${input.amount.toLocaleString("en-NG")} walk-in sale at ${store.name}`,
     customer: { email: by.email, name: by.name },
-    redirectUrl: `${env.MERCHANT_APP_URL.replace(/\/$/, "")}/walk-in?paid=${sale.id}`,
+    returnUrl: `${env.MERCHANT_APP_URL.replace(/\/$/, "")}/walk-in?paid=${sale.id}`,
     expiresAt: new Date(Date.now() + 30 * 60_000),
     metadata: { walk_in_sale: sale.id, merchant_id: store.id },
   });
@@ -50,12 +53,12 @@ export async function startWalkIn(store: typeof schema.merchants.$inferSelect, b
   return { id: sale.id, fee, checkoutUrl: checkout.url, customer: { name: customer.name, username: customer.username } };
 }
 
-/** Money Moves says the fee arrived: release the customer's tokens */
-export async function settleWalkIn(saleId: string, p: MMPayment) {
-  if (p.status !== "successful") return;
+/** The fee arrived (Money Moves or Bachs, read from the provider): release the customer's tokens */
+export async function settleWalkIn(saleId: string, p: { paid: boolean; amount: number }) {
+  if (!p.paid) return;
   await db.transaction(async (tx) => {
     const [sale] = await tx.select().from(sales).where(eq(sales.id, saleId)).for("update");
-    if (!sale || sale.status !== "pending" || p.amount_ngn < sale.fee) return;
+    if (!sale || sale.status !== "pending" || p.amount + 0.005 < sale.fee) return;
     await tx.update(sales).set({ status: "paid", paidAt: new Date() }).where(eq(sales.id, sale.id));
     await earnForWalkIn(tx, sale);
   });
