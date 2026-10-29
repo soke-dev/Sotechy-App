@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { directionsUrl, formatNaira, type Category } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
 import { HeroCarousel } from "@/components/hero-carousel";
+import { HomePopup } from "@/components/home-popup";
 import { HomeSearch } from "@/components/home-search";
 import { MenuButton } from "@/components/menu";
 import { ProductRail } from "@/components/product-rail";
@@ -399,8 +400,9 @@ export default function HomeScreen() {
         ))}
       </View>
     </ScrollView>
-    {/* Live chat bubble hidden on Home for now (chat is still in the menu and on orders) */}
+    {/* Live chat bubble (Admin → App switches) */}
     {features.liveChat && <SupportChat teaser bottomOffset={tabInset} />}
+    <HomePopup />
     </View>
   );
 }

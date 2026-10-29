@@ -150,7 +150,8 @@ export const storeRoutes = new Hono()
   .get("/config", async (c) => {
     const now = new Date();
     const b = schema.banners;
-    const [branchList, methods, assets, promos, delivery, support, features, bannerRows, payouts] = await Promise.all([
+    const pp = schema.popups;
+    const [branchList, methods, assets, promos, delivery, support, features, bannerRows, payouts, popupRows] = await Promise.all([
       db.select().from(branches).where(and(eq(branches.isActive, true), isNull(branches.merchantId))).orderBy(asc(branches.name)),
       db.select().from(schema.paymentMethods),
       db.select().from(schema.cryptoAssets).where(eq(schema.cryptoAssets.isEnabled, true)),
@@ -165,6 +166,13 @@ export const storeRoutes = new Hono()
         // Stores' paid banners lead while their feature runs
         .orderBy(sql`(${b.merchantId} is not null) desc`, asc(b.sortOrder), desc(b.createdAt)),
       payoutSettings(),
+      // Live pop-ups for Home, newest first (the app shows the first one the phone hasn't closed)
+      db
+        .select()
+        .from(pp)
+        .where(and(eq(pp.isActive, true), or(isNull(pp.startsAt), lte(pp.startsAt, now)), or(isNull(pp.endsAt), gt(pp.endsAt, now))))
+        .orderBy(desc(pp.createdAt))
+        .limit(10),
     ]);
     return c.json({
       branches: branchList,
@@ -175,6 +183,7 @@ export const storeRoutes = new Hono()
       support: support ?? { phone: null, email: null, whatsapp: null },
       features,
       banners: bannerRows,
+      popups: popupRows,
       // Sotechy's fee on each store sale, as admin sets it (stores see it before they sign up)
       marketplaceFee: payouts.feeRate,
       // The app's two ways to pay, as Admin → Settings has them

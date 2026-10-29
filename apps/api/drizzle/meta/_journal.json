@@ -225,6 +225,13 @@
       "when": 1793202324508,
       "tag": "0031_store_review_note",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793257233946,
+      "tag": "0032_app_popups",
+      "breakpoints": true
     }
   ]
 }

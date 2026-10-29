@@ -476,6 +476,50 @@ export async function deleteBanner(_: Prev, f: FormData) {
   return run(() => api.delete(`/admin/banners/${str(f, "id")}`), ["/banners"], "Banner deleted");
 }
 
+// --- App pop-ups ---
+export async function savePopup(_: Prev, f: FormData) {
+  const id = str(f, "id");
+  // Times are typed in Lagos time (UTC+1, no daylight saving), whatever the server's timezone.
+  const date = (k: string) => (str(f, k) ? new Date(`${str(f, k)}:00+01:00`).toISOString() : null);
+  return run(
+    async () => {
+      const [uploaded] = await uploadImages(f.getAll("image"));
+      const body = {
+        layout: str(f, "layout") === "image" ? "image" : "art",
+        style: str(f, "style") ?? "orange",
+        title: str(f, "title") ?? null,
+        body: str(f, "body") ?? null,
+        imageUrl: bool(f, "removeImage") ? null : (uploaded ?? str(f, "imageUrl") ?? null),
+        ctaLabel: str(f, "ctaLabel") ?? "Take a look",
+        linkType: str(f, "linkType") ?? "none",
+        linkValue: str(f, "linkValue") ?? null,
+        dismissLabel: str(f, "dismissLabel") ?? null,
+        showOnce: bool(f, "showOnce"),
+        isActive: bool(f, "isActive"),
+        startsAt: date("startsAt"),
+        endsAt: date("endsAt"),
+      };
+      return id ? api.patch(`/admin/popups/${id}`, body) : api.post("/admin/popups", body);
+    },
+    ["/popups"],
+    id ? "Pop-up saved" : "Pop-up added",
+  );
+}
+
+export async function setPopupActive(id: string, isActive: boolean): Promise<{ error?: string }> {
+  try {
+    await api.patch(`/admin/popups/${id}`, { isActive });
+  } catch (err) {
+    return { error: errorMessage(err) };
+  }
+  revalidatePath("/popups");
+  return {};
+}
+
+export async function deletePopup(_: Prev, f: FormData) {
+  return run(() => api.delete(`/admin/popups/${str(f, "id")}`), ["/popups"], "Pop-up deleted");
+}
+
 export async function saveFx(_: Prev, f: FormData) {
   return run(
     () => api.put("/admin/settings/fx", { source: str(f, "source") === "manual" ? "manual" : "moneymoves", manualRate: num(f, "manualRate") ?? null }),

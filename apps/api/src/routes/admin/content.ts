@@ -1,4 +1,4 @@
-// App content and switches: image uploads, home banners, app switches, exchange rate and the
+// App content and switches: image uploads, home banners, app pop-ups, app switches, exchange rate and the
 // Money Moves connection check.
 import { zValidator } from "@hono/zod-validator";
 import { asc, desc, eq } from "drizzle-orm";
@@ -15,7 +15,23 @@ import { getAccount, getUsdRate, moneyMovesConfigured, moneyMovesMode } from "..
 import { bankProvider, bankProviderReady } from "../../services/bank-pay";
 import { compressImage } from "../../lib/images";
 
-const { media, banners, appSettings } = schema;
+const { media, banners, popups, appSettings } = schema;
+
+const popupFields = z.object({
+  layout: z.enum(["art", "image"]).optional(),
+  style: z.enum(["dark", "orange", "light"]).optional(),
+  title: z.string().max(60).nullable().optional(),
+  body: z.string().max(300).nullable().optional(),
+  imageUrl: z.string().max(500).nullable().optional(),
+  ctaLabel: z.string().trim().min(1).max(30).optional(),
+  linkType: z.enum(["none", "category", "product", "deals", "url", "store", "stores", "wallet"]).optional(),
+  linkValue: z.string().max(300).nullable().optional(),
+  dismissLabel: z.string().max(20).nullable().optional(),
+  showOnce: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  startsAt: z.coerce.date().nullable().optional(),
+  endsAt: z.coerce.date().nullable().optional(),
+});
 const ADMIN = requireRole("admin");
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -119,6 +135,29 @@ export const adminContentRoutes = new Hono<AppEnv>()
     const [row] = await db.delete(banners).where(eq(banners.id, c.req.param("id"))).returning();
     if (!row) throw notFound("Banner not found");
     await audit(db, { actorId: c.get("user").id, action: "banner.delete", entityType: "banner", entityId: row.id, details: { title: row.title } });
+    return c.json({ deleted: true });
+  })
+
+  // --- App pop-ups (over Home) ---
+  .get("/popups", async (c) => c.json(await db.select().from(popups).orderBy(desc(popups.createdAt))))
+  .post("/popups", requireRole(...MANAGERS), zValidator("json", popupFields), async (c) => {
+    const input = c.req.valid("json");
+    if ((input.layout ?? "art") === "art" && !input.title?.trim()) throw badRequest("Add a title, or make it a picture pop-up");
+    if (input.layout === "image" && !input.imageUrl) throw badRequest("A picture pop-up needs its picture");
+    const [row] = await db.insert(popups).values(input).returning();
+    await audit(db, { actorId: c.get("user").id, action: "popup.create", entityType: "popup", entityId: row.id, details: { title: row.title } });
+    return c.json(row, 201);
+  })
+  .patch("/popups/:id", requireRole(...MANAGERS), zValidator("json", popupFields.partial()), async (c) => {
+    const [row] = await db.update(popups).set(c.req.valid("json")).where(eq(popups.id, c.req.param("id"))).returning();
+    if (!row) throw notFound("Pop-up not found");
+    await audit(db, { actorId: c.get("user").id, action: "popup.update", entityType: "popup", entityId: row.id, details: c.req.valid("json") });
+    return c.json(row);
+  })
+  .delete("/popups/:id", requireRole(...MANAGERS), async (c) => {
+    const [row] = await db.delete(popups).where(eq(popups.id, c.req.param("id"))).returning();
+    if (!row) throw notFound("Pop-up not found");
+    await audit(db, { actorId: c.get("user").id, action: "popup.delete", entityType: "popup", entityId: row.id, details: { title: row.title } });
     return c.json({ deleted: true });
   })
 

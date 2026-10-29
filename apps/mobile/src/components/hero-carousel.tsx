@@ -152,23 +152,27 @@ const STYLES: Record<AdminBanner["style"], Pick<Slide, "bg" | "fg" | "accent" | 
   light: { bg: colors.brandSoft, fg: colors.ink, accent: colors.brandPressed, circle: colors.brand, outlined: true },
 };
 
+/** Where an admin banner (or pop-up) link goes: a screen, or a function for web links and "nothing" */
+export function bannerLink(linkType: AdminBanner["linkType"], linkValue: string | null): Slide["action"] {
+  return linkType === "category" && linkValue
+    ? { pathname: "/shop", params: { category: linkValue } }
+    : linkType === "product" && linkValue
+      ? { pathname: "/product/[id]", params: { id: linkValue } }
+      : linkType === "deals"
+        ? { pathname: "/shop", params: { featured: "1" } }
+        : linkType === "store" && linkValue
+          ? { pathname: "/store/[slug]", params: { slug: linkValue } }
+          : linkType === "stores"
+            ? "/stores"
+            : linkType === "wallet"
+              ? "/wallet"
+              : linkType === "url" && linkValue?.startsWith("https://")
+                ? () => Linking.openURL(linkValue)
+                : () => {};
+}
+
 function fromAdmin(b: AdminBanner): Slide {
-  const action: Slide["action"] =
-    b.linkType === "category" && b.linkValue
-      ? { pathname: "/shop", params: { category: b.linkValue } }
-      : b.linkType === "product" && b.linkValue
-        ? { pathname: "/product/[id]", params: { id: b.linkValue } }
-        : b.linkType === "deals"
-          ? { pathname: "/shop", params: { featured: "1" } }
-          : b.linkType === "store" && b.linkValue
-            ? { pathname: "/store/[slug]", params: { slug: b.linkValue } }
-            : b.linkType === "stores"
-              ? "/stores"
-              : b.linkType === "wallet"
-                ? "/wallet"
-          : b.linkType === "url" && b.linkValue?.startsWith("https://")
-            ? () => Linking.openURL(b.linkValue!)
-            : () => {};
+  const action = bannerLink(b.linkType, b.linkValue);
   return {
     ...STYLES[b.style],
     overline: b.eyebrow ?? "",

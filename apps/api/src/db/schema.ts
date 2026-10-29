@@ -837,6 +837,33 @@ export const banners = pgTable("banners", {
   updatedAt: updatedAt(),
 });
 
+/**
+ * Pop-ups shown over the app's Home screen, made in Admin → App pop-ups: either one picture with buttons under it
+ * ("image"), or Sotechy's own design of colours, title, words and a picture ("art"). The newest live one that a
+ * phone hasn't closed yet shows, one per app open.
+ */
+export const popups = pgTable("popups", {
+  id: uuid().primaryKey().defaultRandom(),
+  layout: bannerLayoutEnum().notNull().default("art"),
+  style: bannerStyleEnum().notNull().default("orange"),
+  title: text(),
+  body: text(),
+  imageUrl: text(),
+  /** The main button; it closes the pop-up and opens the link */
+  ctaLabel: text().notNull().default("Take a look"),
+  linkType: bannerLinkEnum().notNull().default("none"),
+  linkValue: text(),
+  /** A second, quieter button that just closes it (e.g. "Not now"); none when empty */
+  dismissLabel: text(),
+  /** Once a phone closes it, it doesn't come back; off = it shows again on each app open */
+  showOnce: boolean().notNull().default(true),
+  isActive: boolean().notNull().default(true),
+  startsAt: timestamp({ withTimezone: true }),
+  endsAt: timestamp({ withTimezone: true }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 /** Payment-provider webhook events already handled (the same event can arrive more than once). */
 export const webhookEvents = pgTable("webhook_events", {
   id: text().primaryKey(),

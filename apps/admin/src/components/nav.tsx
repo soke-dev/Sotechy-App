@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  MessageSquareMore,
   BadgePercent,
   BarChart3,
   Banknote,
@@ -108,6 +109,7 @@ export const NAV: NavGroup[] = [
       { href: "/settings", label: "Settings", icon: Settings, illo: "shield" },
       { href: "/switches", label: "App switches", icon: ToggleRight, illo: "phone" },
       { href: "/banners", label: "Home banners", icon: Images, illo: "sparkle" },
+      { href: "/popups", label: "App pop-ups", icon: MessageSquareMore, illo: "phone" },
       { href: "/branches", label: "Branches", icon: Building2, illo: "store" },
       { href: "/staff", label: "Staff & roles", icon: UserCog, illo: "user" },
     ],

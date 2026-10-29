@@ -464,6 +464,8 @@ export interface StoreConfig {
   features: AppFeatures;
   /** Home carousel slides from Admin → Banners (empty = the app's built-in ones) */
   banners: Banner[];
+  /** Live pop-ups for Home, newest first */
+  popups?: Popup[];
 }
 
 /** On/off switches for the customer app, controlled from the admin dashboard. */
@@ -532,6 +534,28 @@ export interface Banner {
   isActive: boolean;
   startsAt: string | null;
   endsAt: string | null;
+}
+
+/** A pop-up over Home, made in Admin → App pop-ups */
+export interface Popup {
+  id: string;
+  /** "image": one picture with the buttons under it; "art": colours, title, words and a picture */
+  layout: BannerLayout;
+  style: BannerStyle;
+  title: string | null;
+  body: string | null;
+  imageUrl: string | null;
+  ctaLabel: string;
+  linkType: BannerLink;
+  linkValue: string | null;
+  /** A second button that only closes it; none when empty */
+  dismissLabel: string | null;
+  /** Once closed on a phone it doesn't come back */
+  showOnce: boolean;
+  isActive: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  createdAt: string;
 }
 
 export interface PlaceOrderInput {
