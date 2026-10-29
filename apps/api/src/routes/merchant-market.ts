@@ -13,7 +13,7 @@ import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem, isMapLink } from "@sotechy/shared";
 import { slugify } from "../lib/identity";
 import { railBanks } from "../services/payout-rail";
-import { buyFeaturing, featuredCount, featuringSettings, proCount, purchasesOf, storeFeatureCount } from "../services/featuring";
+import { buyFeaturing, featuredCount, featuringPayMethods, featuringSettings, proCount, purchasesOf, storeFeatureCount } from "../services/featuring";
 import { roleAllows, storeAccess, type StoreRole } from "../services/team";
 import { addPayoutAccount, makeDefault, payoutAccountsOf, removePayoutAccount } from "../services/payout-accounts";
 import { findCustomer, startWalkIn, walkInsOf } from "../services/walk-in";
@@ -396,7 +396,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
   // --- Paid featuring ---
   .get("/featuring", async (c) => {
     const store = c.get("store");
-    const [settings, taken, proTaken, purchases, mine] = await Promise.all([featuringSettings(), featuredCount(), proCount(), purchasesOf(store.id), storeFeatureCount(store.id)]);
+    const [settings, taken, proTaken, purchases, mine, payMethods] = await Promise.all([featuringSettings(), featuredCount(), proCount(), purchasesOf(store.id), storeFeatureCount(store.id), featuringPayMethods()]);
     return c.json({
       ...settings,
       spotsLeft: Math.max(0, settings.maxStores - taken),
@@ -405,6 +405,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       proUntil: store.proUntil,
       purchases,
       activeFeatures: mine,
+      payMethods,
     });
   })
   .post(
@@ -414,14 +415,15 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       z.object({
         months: z.number().int().min(1).max(3),
         tier: z.enum(["standard", "pro"]).default("standard"),
+        method: z.enum(["stablecoin", "bank"]).default("stablecoin"),
         // The store's own Home banner for these months (one per payment)
         banner: z.object({ imageUrl: z.string().url().max(500), title: z.string().trim().max(80).nullable().optional(), ctaLabel: z.string().trim().max(30).nullable().optional() }).optional(),
       }),
     ),
     async (c) => {
       const [owner] = await db.select({ email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, c.get("user").id));
-      const { months, banner, tier } = c.req.valid("json");
-      return c.json(await buyFeaturing(c.get("store"), months, { email: owner.email, name: owner.name }, banner, tier));
+      const { months, banner, tier, method } = c.req.valid("json");
+      return c.json(await buyFeaturing(c.get("store"), months, { email: owner.email, name: owner.name }, banner, tier, method));
     },
   )
 

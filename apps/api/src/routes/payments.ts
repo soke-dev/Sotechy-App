@@ -47,6 +47,10 @@ async function lookUp(saved: SavedCheckout): Promise<{ state: "open" | "paid" | 
 
 /** Applies a paid Bachs checkout to our payment (its reference is "<payment id>:<attempt>"). Read from Bachs, never from a webhook body. */
 export async function settleFromBachs(s: BachsCheckout) {
+  // A store paying for featuring by bank transfer
+  if (s.reference?.startsWith(FEATURE_REF) && bachsCheckoutPaid(s) && (s.charge?.currency ?? s.currency ?? "NGN").toUpperCase() === "NGN" && s.charge?.status !== "underpaid") {
+    return settleFeaturing(s.reference.slice(FEATURE_REF.length), { paid: true, amount: Number(s.charge?.amount ?? s.amount ?? 0) });
+  }
   const ourId = s.reference?.split(":")[0];
   if (!isUuid(ourId) || !bachsCheckoutPaid(s)) return;
   const charge = s.charge;
@@ -89,7 +93,7 @@ const savedCheckout = (raw: unknown): SavedCheckout | null => {
 export async function settleFromMoneyMoves(paymentId: string) {
   const p: MMPayment = await retrievePayment(paymentId);
   const ourId = p.checkout_reference;
-  if (ourId?.startsWith(FEATURE_REF)) return settleFeaturing(ourId.slice(FEATURE_REF.length), p);
+  if (ourId?.startsWith(FEATURE_REF)) return settleFeaturing(ourId.slice(FEATURE_REF.length), { paid: p.status === "successful", amount: Math.max(p.amount_ngn, p.received_ngn ?? 0) });
   if (ourId?.startsWith(WALK_IN_REF)) return settleWalkIn(ourId.slice(WALK_IN_REF.length), p);
   if (!isUuid(ourId)) return; // not one of our checkouts (e.g. a payment link)
   if (p.status === "successful") {

@@ -3,7 +3,7 @@
 // Paying to have the store featured: shown first on the Sotechy app's Home, in Shop and in Stores, with a
 // Home banner. Pro costs more and adds the store's own dark row of products on Home (two stores at a time).
 // Prices and how many stores can have each at once are set by Sotechy.
-import { ArrowRight, Check, CreditCard, Crown, ImagePlus, Sparkles, Star, Trash2 } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, CreditCard, Crown, ImagePlus, Landmark, Sparkles, Star, Trash2, Wallet } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useAccount } from "@/components/account-context";
 import { BANNER_SPEC, ImageCropper } from "@/components/image-cropper";
@@ -26,6 +26,8 @@ export interface Featuring {
   maxPerStore: number;
   activeFeatures: number;
   spotsLeft: number;
+  /** Ways to pay right now */
+  payMethods?: { stablecoin: boolean; bank: boolean };
   featuredUntil: string | null;
   purchases: {
     id: string;
@@ -164,10 +166,13 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
   const atLimit = data.activeFeatures >= data.maxPerStore;
   const approved = store.status === "approved";
 
-  const pay = () =>
+  const [choosing, setChoosing] = useState(false);
+  const ways = data.payMethods ?? { stablecoin: true, bank: false };
+  const pay = (method: "stablecoin" | "bank") =>
     start(async () => {
+      setChoosing(false);
       setError(null);
-      const r = await buyFeaturing(months, bannerImage ? { imageUrl: bannerImage, title: bannerTitle.trim() || null, ctaLabel: bannerCta.trim() || null } : undefined, tier);
+      const r = await buyFeaturing(months, bannerImage ? { imageUrl: bannerImage, title: bannerTitle.trim() || null, ctaLabel: bannerCta.trim() || null } : undefined, tier, method);
       if ("error" in r) return setError(r.error);
       window.location.href = r.ok.checkoutUrl;
     });
@@ -257,7 +262,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
           <p className="text-xs text-muted">{tier === "pro" ? "Featured Pro" : "Featured"} until {fmtDate(newUntil)} · includes one Home banner (design it below)</p>
           {error && <p className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
           {!bannerImage && <p className="text-xs text-muted">No banner picture? Pay anyway: Sotechy designs your banner for you, and it goes live within 24 hours.</p>}
-          <button disabled={busy || full || atLimit || !approved || uploading} onClick={pay} className={btn.primary}>
+          <button disabled={busy || full || atLimit || !approved || uploading || (!ways.stablecoin && !ways.bank)} onClick={() => setChoosing(true)} className={btn.primary}>
             <CreditCard size={16} /> {busy ? "Opening payment…" : `Pay ${formatNaira(total)}`}
           </button>
           {!approved && <p className="text-xs text-warn">You can be featured once Sotechy approves your store.</p>}
@@ -269,6 +274,35 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
         </div>
       </Card>
 
+      <Sheet open={choosing} onClose={() => setChoosing(false)} title={`Pay ${formatNaira(total)}`}>
+        <p className="mb-4 text-sm text-muted">
+          {tier === "pro" ? "Featured Pro" : "Featured"} for {months} month{months === 1 ? "" : "s"}. Choose how to pay:
+        </p>
+        <div className="flex flex-col gap-3">
+          {[
+            { id: "bank" as const, on: ways.bank, icon: Landmark, title: "Bank transfer", text: "Send the exact amount from any Nigerian bank app" },
+            { id: "stablecoin" as const, on: ways.stablecoin, icon: Wallet, title: "Money Moves", text: "Pay with USDT or USDC" },
+          ].map((w) => (
+            <button
+              key={w.id}
+              type="button"
+              disabled={!w.on || busy}
+              onClick={() => pay(w.id)}
+              className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left transition hover:border-ink disabled:opacity-50 disabled:hover:border-line"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-strong">
+                <w.icon size={20} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">{w.title}</span>
+                <span className="block text-sm text-muted">{w.on ? w.text : "Not available right now"}</span>
+              </span>
+              <ChevronRight size={18} className="text-muted" />
+            </button>
+          ))}
+        </div>
+        <p className="mt-4 text-xs text-muted">Your feature starts as soon as the payment is confirmed. A bank transfer usually shows within a minute or two.</p>
+      </Sheet>
       <Sheet open={cropping !== null} onClose={() => setCropping(null)} title="Your banner picture">
         {cropping && <ImageCropper file={cropping} spec={BANNER_SPEC} onDone={upload} onCancel={() => setCropping(null)} />}
       </Sheet>

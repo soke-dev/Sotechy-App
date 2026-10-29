@@ -7,7 +7,9 @@ import { env } from "../env";
 import { featuredEmail } from "../emails/templates";
 import { sendEmailLater } from "../lib/email";
 import { badRequest, conflict } from "../lib/errors";
-import { createCheckout, type MMPayment } from "./moneymoves";
+import { bachsCreateCheckout } from "./bachs";
+import { bankProvider, bankProviderReady } from "./bank-pay";
+import { createCheckout, createDirectCheckout, moneyMovesConfigured } from "./moneymoves";
 import { getSetting } from "./settings";
 
 export type FeatureTier = "standard" | "pro";
@@ -57,7 +59,19 @@ export interface StoreBannerInput {
 
 /** Starts a payment for months of featuring and returns the Money Moves checkout page. A banner designed
  *  with it is saved switched off, and goes live for the feature's months once the payment arrives. */
-export async function buyFeaturing(store: typeof schema.merchants.$inferSelect, months: number, buyer: { email: string; name: string | null }, banner?: StoreBannerInput, tier: FeatureTier = "standard") {
+/** The ways a store can pay for featuring right now: stablecoin on Money Moves, or bank transfer (Admin → Settings picks who takes it) */
+export async function featuringPayMethods() {
+  return { stablecoin: moneyMovesConfigured(), bank: bankProviderReady(await bankProvider()) };
+}
+
+export async function buyFeaturing(
+  store: typeof schema.merchants.$inferSelect,
+  months: number,
+  buyer: { email: string; name: string | null },
+  banner?: StoreBannerInput,
+  tier: FeatureTier = "standard",
+  method: "stablecoin" | "bank" = "stablecoin",
+) {
   if (store.status !== "approved") throw badRequest("Your store can be featured once Sotechy approves it");
   const settings = await featuringSettings();
   const now = new Date();
@@ -67,6 +81,8 @@ export async function buyFeaturing(store: typeof schema.merchants.$inferSelect, 
   if (tier === "pro" && !alreadyPro && (await proCount()) >= settings.maxPro) throw conflict(`Both Pro spots are taken right now. Featured is still open, or try Pro again when one ends.`);
   if ((await storeFeatureCount(store.id)) >= settings.maxPerStore)
     throw conflict(`A store can have ${settings.maxPerStore} features at a time. You can buy another when one ends.`);
+  const ways = await featuringPayMethods();
+  if (!ways[method]) throw badRequest(method === "bank" ? "Bank transfer isn't available right now. Please pay with Money Moves." : "Money Moves isn't available right now. Please pay by bank transfer.");
   const amount = (tier === "pro" ? settings.proPricePerMonth : settings.pricePerMonth) * months;
   const [purchase] = await db.insert(schema.featuredPurchases).values({ merchantId: store.id, months, amount, tier }).returning();
   if (banner) {
@@ -83,26 +99,38 @@ export async function buyFeaturing(store: typeof schema.merchants.$inferSelect, 
       isActive: false,
     });
   }
-  const checkout = await createCheckout({
-    reference: `${FEATURE_REF}${purchase.id}`,
-    idempotencyKey: `${FEATURE_REF}${purchase.id}`,
+  const reference = `${FEATURE_REF}${purchase.id}`;
+  const description = `${tier === "pro" ? "Featured Pro" : "Featuring"} for ${store.name} on Sotechy, ${months} month${months === 1 ? "" : "s"}`;
+  const returnUrl = `${env.MERCHANT_APP_URL.replace(/\/$/, "")}/featured?paid=1`;
+  const expiresAt = new Date(Date.now() + 30 * 60_000);
+  const metadata = { featured_purchase: purchase.id, merchant_id: store.id };
+  if (method === "bank" && (await bankProvider()) === "bachs") {
+    const s = await bachsCreateCheckout({ reference, amount, customer: buyer, returnUrl, expiresAt, metadata });
+    await db.update(schema.featuredPurchases).set({ checkoutId: s.checkout_id }).where(eq(schema.featuredPurchases.id, purchase.id));
+    if (!s.checkout_url) throw badRequest("Bank transfer didn't open. Please try again.");
+    return { checkoutUrl: s.checkout_url };
+  }
+  // Stablecoin on Money Moves' checkout, or a bank transfer on its direct checkout
+  const checkout = await (method === "bank" ? createDirectCheckout : createCheckout)({
+    reference,
+    idempotencyKey: reference,
     amount,
-    description: `${tier === "pro" ? "Featured Pro" : "Featuring"} for ${store.name} on Sotechy, ${months} month${months === 1 ? "" : "s"}`,
+    description,
     customer: buyer,
-    redirectUrl: `${env.MERCHANT_APP_URL.replace(/\/$/, "")}/featured?paid=1`,
-    expiresAt: new Date(Date.now() + 30 * 60_000),
-    metadata: { featured_purchase: purchase.id, merchant_id: store.id },
+    redirectUrl: returnUrl,
+    expiresAt,
+    metadata,
   });
   await db.update(schema.featuredPurchases).set({ checkoutId: checkout.id }).where(eq(schema.featuredPurchases.id, purchase.id));
   return { checkoutUrl: checkout.url };
 }
 
-/** A Money Moves payment for featuring arrived: add the months, from the end of any current feature */
-export async function settleFeaturing(purchaseId: string, p: MMPayment) {
-  if (p.status !== "successful") return;
+/** A payment for featuring arrived (Money Moves or Bachs, read from the provider): add the months, from the end of any current feature */
+export async function settleFeaturing(purchaseId: string, p: { paid: boolean; amount: number }) {
+  if (!p.paid) return;
   const done = await db.transaction(async (tx) => {
     const [purchase] = await tx.select().from(schema.featuredPurchases).where(eq(schema.featuredPurchases.id, purchaseId)).for("update");
-    if (!purchase || purchase.status !== "pending" || p.amount_ngn < purchase.amount) return null;
+    if (!purchase || purchase.status !== "pending" || p.amount + 0.005 < purchase.amount) return null;
     const [store] = await tx.select().from(schema.merchants).where(eq(schema.merchants.id, purchase.merchantId)).for("update");
     if (!store) return null;
     const from = store.featuredUntil && store.featuredUntil > new Date() ? store.featuredUntil : new Date();
