@@ -15,12 +15,10 @@ export function StoreBadgeSheet({ visible, official, storeName, onClose }: { vis
     ? [
         ["business", "A registered business", "Its CAC registration and business documents were checked by Sotechy."],
         ["person", "The owner is who they say", "Their ID and a live selfie were checked."],
-        ["card", "A checked business account", "The account it's paid into was checked with its bank."],
         ["bicycle", "Real delivery areas", "Every area it delivers to was approved by Sotechy."],
       ]
     : [
         ["person", "A real, checked person", "Their ID and a live selfie were checked by Sotechy."],
-        ["card", "A checked bank account", "The account they're paid into was checked with their bank."],
         ["bicycle", "Real delivery areas", "Every area they deliver to was approved by Sotechy."],
       ];
   return (
