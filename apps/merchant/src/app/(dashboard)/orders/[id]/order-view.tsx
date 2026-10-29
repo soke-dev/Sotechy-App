@@ -187,7 +187,7 @@ export function OrderView({ order }: { order: Order }) {
         </NextStep>
       )}
       {s === "delivered" && (
-        <NextStep illo="heart" title="Waiting for the customer to confirm" body={`Once ${order.customer.username ? `@${order.customer.username}` : "the customer"} confirms, they get their tokens. If they don't respond, Sotechy reviews and confirms.`} />
+        <NextStep illo="heart" title="Waiting for the customer to confirm" body={`Once ${order.customer.username ? `@${order.customer.username}` : "the customer"} confirms they got it, your final payment (the balance for this order) is sent to you. If they don't respond, Sotechy reviews and confirms.`} />
       )}
       {s === "completed" && <NextStep illo="sparkle" title="Completed" body={`Delivered, and the customer earns their $${store.ticker}. Your money is paid out on your payout plan.`} />}
       {s === "declined" && <NextStep illo="doc" title="You declined this order" body="The customer was refunded and their pending tokens were cancelled." />}
