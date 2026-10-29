@@ -76,8 +76,10 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
             )}
           </View>
           {/* Three short rows: name; price with any discount; the brand with the rating */}
-          <View style={{ padding: 10, gap: 4 }}>
-            <Txt variant="medium" numberOfLines={2} style={{ fontSize: 13.5, lineHeight: 18, minHeight: 36 }}>
+          {/* Room for a two-line name is kept at the foot of the card, so short names sit right on their price
+              and cards in a row stay the same height */}
+          <View style={{ padding: 10, gap: 4, minHeight: 104 }}>
+            <Txt variant="medium" numberOfLines={2} style={{ fontSize: 13.5, lineHeight: 18 }}>
               {product.name}
             </Txt>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "nowrap" }}>
