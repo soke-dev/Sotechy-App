@@ -294,7 +294,7 @@ export default function HomeScreen() {
       {/* Categories */}
       <View>
         <View style={{ paddingHorizontal: gutter }}>
-          <SectionHeader title="Shop by category" action="All stores" onAction={() => router.push("/stores")} />
+          <SectionHeader title="Shop by category" action="See all" onAction={() => router.push("/shop")} />
         </View>
         {/* Sotechy's own categories, then every kind of store on the marketplace, in two rows that scroll */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter }}>
