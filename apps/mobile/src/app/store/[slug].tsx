@@ -15,6 +15,7 @@ import { EmptyState, ErrorView, IconButton, Loading, tap } from "@/components/ui
 import { formatTokens, isOfficialStore, loadStore, tileColor, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { ProductArt, StoreCover } from "@/components/store-brand";
 import { useExternalLink } from "@/components/external-link";
+import { StoreBadgeSheet } from "@/components/store-badge-sheet";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
@@ -118,6 +119,7 @@ export default function StoreScreen() {
   const loaded = useAsync(() => loadStore(slug ?? ""), [slug]);
   // A store's socials are outside websites: ask before leaving the app
   const external = useExternalLink();
+  const [badgeOpen, setBadgeOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>("products");
@@ -253,11 +255,21 @@ export default function StoreScreen() {
           </View>
           <T color={t.text} size={22} weight={fonts.displayHeavy} lines={2} style={{ textAlign: "center", letterSpacing: -0.3 }}>{store.name}</T>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              {/* Orange tick for an official store (a registered business), blue for a freelancer */}
+            {/* Orange tick for an official store (a registered business), blue for a freelancer; tap to see what it means */}
+            <Pressable
+              onPress={() => {
+                tap();
+                setBadgeOpen(true);
+              }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`${isOfficialStore(store) ? "Official store" : "Verified"}. What this means`}
+              style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+            >
               <Ionicons name="checkmark-circle" size={15} color={isOfficialStore(store) ? "#F7931E" : "#2F6FB3"} />
               <T color={isOfficialStore(store) ? "#E07F0C" : "#2F6FB3"} size={13.5} weight={fonts.semibold}>{isOfficialStore(store) ? "Official store" : "Verified"}</T>
-            </View>
+              <Ionicons name="information-circle-outline" size={14} color={isOfficialStore(store) ? "#E07F0C" : "#2F6FB3"} />
+            </Pressable>
             {store.delivery.states.length > 0 && (
               <>
                 <View style={{ width: 1, height: 14, backgroundColor: t.muted, opacity: 0.4 }} />
@@ -368,6 +380,7 @@ export default function StoreScreen() {
         </View>
       </ScrollView>
       {external.sheet}
+      <StoreBadgeSheet visible={badgeOpen} official={isOfficialStore(store)} storeName={store.name} onClose={() => setBadgeOpen(false)} />
     </View>
   );
 }
