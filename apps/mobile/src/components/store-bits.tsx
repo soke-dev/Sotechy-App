@@ -137,7 +137,7 @@ export function StoreRow({ store }: { store: MarketStore }) {
   );
 }
 
-/** A product from a marketplace store, labelled with the store that sells it */
+/** A product from a marketplace store, with the store that sells it on its picture */
 export function MarketProductCard({ store, product, width = 150, onDark }: { store: MarketStore; product: StoreProduct; width?: number; onDark?: boolean }) {
   const off = product.compareAt && product.compareAt > product.price ? Math.round(((product.compareAt - product.price) / product.compareAt) * 100) : 0;
   return (
@@ -150,25 +150,23 @@ export function MarketProductCard({ store, product, width = 150, onDark }: { sto
             <Text style={{ fontFamily: fonts.bold, fontSize: 11, color: colors.onInverse }}>-{off}%</Text>
           </View>
         ) : null}
-        {isFeatured(store) && (
-          <View style={{ position: "absolute", top: 8, right: 8 }}>
-            <FeaturedTag small />
-          </View>
-        )}
+        {/* Open to offers: a price-tag badge in the corner */}
         {product.negotiable ? (
-          <View style={{ position: "absolute", bottom: 8, left: 8, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: store.theme.hero, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
-            <Ionicons name="pricetag" size={10} color={store.theme.onHero} />
-            <Text style={{ fontFamily: fonts.bold, fontSize: 10.5, color: store.theme.onHero }}>Offers</Text>
+          <View accessibilityLabel="Open to offers" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: 13, backgroundColor: store.theme.hero, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="pricetag" size={13} color={store.theme.onHero} />
           </View>
         ) : null}
+        {/* Who sells it, as on Shop; a featured store gets a star instead of the shop icon */}
+        <View style={{ position: "absolute", left: 8, right: 8, bottom: 8, flexDirection: "row", justifyContent: "flex-end" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "100%", paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.92)" }}>
+            <Ionicons name={isFeatured(store) ? "star" : "storefront"} size={10} color={isFeatured(store) ? colors.brandYellow : colors.brandPressed} />
+            <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.semibold, fontSize: 10.5, color: "#17120E" }}>{store.name}</Text>
+          </View>
+        </View>
       </View>
       <View style={{ paddingTop: space.sm, gap: 2 }}>
         <Text numberOfLines={2} style={{ fontFamily: fonts.medium, fontSize: 13.5, lineHeight: 18, color: onDark ? colors.white : colors.ink }}>{product.name}</Text>
         <Text style={{ fontFamily: fonts.bold, fontSize: 15, color: onDark ? colors.white : colors.ink }}>{formatNaira(product.price)}</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
-          <StoreLogo store={store} size={16} />
-          <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.semibold, fontSize: 11.5, color: onDark ? "rgba(255,255,255,0.7)" : colors.muted }}>{store.name}</Text>
-        </View>
       </View>
     </Pressable>
   );
