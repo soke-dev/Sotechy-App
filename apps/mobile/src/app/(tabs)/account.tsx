@@ -19,6 +19,29 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
+/** Sun or moon on a little track, for the top right of the name card */
+function ThemeSwitch() {
+  const { resolved, setTheme } = useThemeMode();
+  const dark = resolved === "dark";
+  return (
+    <Pressable
+      onPress={() => {
+        tap();
+        setTheme(dark ? "light" : "dark");
+      }}
+      hitSlop={8}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: dark }}
+      accessibilityLabel="Dark mode"
+      style={{ width: 52, height: 28, borderRadius: 14, backgroundColor: dark ? colors.brand : colors.surfaceAlt, borderWidth: 1, borderColor: colors.line, padding: 2, alignItems: dark ? "flex-end" : "flex-start" }}
+    >
+      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.white, alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 2 }}>
+        <Ionicons name={dark ? "moon" : "sunny"} size={13} color={dark ? "#17120E" : "#F7931E"} />
+      </View>
+    </Pressable>
+  );
+}
+
 /** Compact dark-mode switch (light is the default). */
 function DarkModeRow() {
   const { resolved, setTheme } = useThemeMode();
@@ -73,11 +96,15 @@ export default function AccountScreen() {
           <Pressable onPress={() => router.push("/profile")} style={({ pressed }) => [ui.card, ui.row, { gap: space.lg, opacity: pressed ? 0.9 : 1 }]}>
             <UserAvatar seed={user.id} preset={user.avatarStyle} size={60} />
             <View style={{ flex: 1 }}>
-              <Txt variant="heading" numberOfLines={1}>{user.fullName ?? "Sotechy customer"}</Txt>
+              <Txt variant="heading" numberOfLines={1} style={{ marginRight: 44 }}>{user.fullName ?? "Sotechy customer"}</Txt>
               <Txt variant="small" numberOfLines={1}>{user.email}</Txt>
               <Txt variant="caption" color={colors.brandPressed} style={{ marginTop: 2, fontFamily: fonts.semibold }}>View and edit profile</Txt>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+            {/* Light or dark, at the card's top right */}
+            <View style={{ position: "absolute", top: space.md, right: space.md }}>
+              <ThemeSwitch />
+            </View>
           </Pressable>
         ) : (
           <View style={{ backgroundColor: colors.panel, borderRadius: radius.xl, padding: space.xl, gap: space.md }}>
@@ -115,7 +142,8 @@ export default function AccountScreen() {
           <ListRow illo="store" title="Stores" onPress={() => router.push("/stores")} />
         </Group>
 
-        <DarkModeRow />
+        {/* Signed in, the switch is on the name card */}
+        {!user && <DarkModeRow />}
 
         <Group title="Help">
           <ListRow illo="chat" title="Help & support" subtitle="Call, WhatsApp or send a message" onPress={() => router.push("/support")} />
