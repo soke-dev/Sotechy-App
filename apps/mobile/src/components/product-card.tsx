@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from "
 import { formatNaira, type CatalogProduct } from "@sotechy/shared";
 import { api } from "@/lib/api";
 import { useFeatures } from "@/lib/store-config";
-import { colors, radius, space } from "@/lib/theme";
+import { colors, fonts, lightPalette, radius, space } from "@/lib/theme";
 import { sellerOf, useAddToCart } from "./add-to-cart";
 import { useCartFeedback } from "./cart-feedback";
 import { useToast } from "./toast";
@@ -61,14 +61,21 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
       <Link href={{ pathname: "/product/[id]", params: { id: product.slug } }} asChild>
         <Pressable style={styles.card}>
           <View style={{ width: "100%", aspectRatio: 1 }}>
-            <ProductImage uri={product.imageUrl} name={product.name} style={{ flex: 1 }} padding={14} mark dimmed={soldOut} />
+            <ProductImage uri={product.imageUrl} name={product.name} style={{ flex: 1 }} padding={14} dimmed={soldOut} />
+            {/* Who sells it, on the photo (Sotechy's own products have no store name) */}
+            <View style={{ position: "absolute", left: 8, bottom: 8, right: 8, flexDirection: "row" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "100%", paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.92)" }}>
+                <Ionicons name="storefront" size={10} color={colors.brandPressed} />
+                <Txt numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.semibold, fontSize: 10.5, color: lightPalette.ink }}>{product.storeName ?? "Sotechy"}</Txt>
+              </View>
+            </View>
             {soldOut && (
               <View style={{ position: "absolute", top: 8, left: 8 }}>
                 <Pill label="Sold out" tone="dark" />
               </View>
             )}
           </View>
-          {/* Three short rows: name; price with any discount; who sells it with the rating */}
+          {/* Three short rows: name; price with any discount; the brand with the rating */}
           <View style={{ padding: 10, gap: 4 }}>
             <Txt variant="medium" numberOfLines={2} style={{ fontSize: 13.5, lineHeight: 18, minHeight: 36 }}>
               {product.name}
@@ -85,10 +92,10 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
               ) : null}
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, minHeight: 16 }}>
-              {product.storeName || product.brand ? (
+              {product.brand ? (
                 <>
-                  <Ionicons name={product.storeName ? "storefront-outline" : "pricetag-outline"} size={11} color={colors.muted} />
-                  <Txt variant="caption" numberOfLines={1} style={{ flex: 1, fontSize: 11.5 }}>{product.storeName ?? product.brand}</Txt>
+                  <Ionicons name="pricetag-outline" size={11} color={colors.muted} />
+                  <Txt variant="caption" numberOfLines={1} style={{ flex: 1, fontSize: 11.5 }}>{product.brand}</Txt>
                 </>
               ) : (
                 <View style={{ flex: 1 }} />
