@@ -13,7 +13,7 @@ import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem, isMapLink } from "@sotechy/shared";
 import { slugify } from "../lib/identity";
 import { railBanks } from "../services/payout-rail";
-import { buyFeaturing, featuredCount, featuringPayMethods, featuringSettings, proCount, purchasesOf, storeFeatureCount } from "../services/featuring";
+import { buyFeaturing, featuredCount, featuringPayMethods, featuringSettings, proCount, purchasesOf, standardUntil, storeFeatureCount } from "../services/featuring";
 import { roleAllows, storeAccess, type StoreRole } from "../services/team";
 import { addPayoutAccount, makeDefault, payoutAccountsOf, removePayoutAccount } from "../services/payout-accounts";
 import { findCustomer, startWalkIn, walkInsOf } from "../services/walk-in";
@@ -396,13 +396,23 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
   // --- Paid featuring ---
   .get("/featuring", async (c) => {
     const store = c.get("store");
-    const [settings, taken, proTaken, purchases, mine, payMethods] = await Promise.all([featuringSettings(), featuredCount(), proCount(), purchasesOf(store.id), storeFeatureCount(store.id), featuringPayMethods()]);
+    const [settings, taken, proTaken, purchases, mine, payMethods, featuredOnly] = await Promise.all([
+      featuringSettings(),
+      featuredCount(),
+      proCount(),
+      purchasesOf(store.id),
+      storeFeatureCount(store.id),
+      featuringPayMethods(),
+      standardUntil(db, store.id),
+    ]);
     return c.json({
       ...settings,
       spotsLeft: Math.max(0, settings.maxStores - taken),
       proSpotsLeft: Math.max(0, settings.maxPro - proTaken),
       featuredUntil: store.featuredUntil,
       proUntil: store.proUntil,
+      // When the paid Featured months end (they run alongside Pro)
+      standardUntil: featuredOnly,
       purchases,
       activeFeatures: mine,
       payMethods,

@@ -133,13 +133,16 @@ export async function settleFeaturing(purchaseId: string, p: { paid: boolean; am
     if (!purchase || purchase.status !== "pending" || p.amount + 0.005 < purchase.amount) return null;
     const [store] = await tx.select().from(schema.merchants).where(eq(schema.merchants.id, purchase.merchantId)).for("update");
     if (!store) return null;
-    const from = store.featuredUntil && store.featuredUntil > new Date() ? store.featuredUntil : new Date();
+    // Featured and Pro each run on their own clock, at the same time: a payment adds months to the end of its
+    // own kind only. The store is featured while either runs (Pro includes everything Featured gives).
+    const now = new Date();
+    const pro = purchase.tier === "pro";
+    const from = pro ? (store.proUntil && store.proUntil > now ? store.proUntil : now) : ((await standardUntil(tx, store.id, now)) ?? now);
     const until = new Date(from.getTime() + purchase.months * MONTH_MS);
-    // Pro runs its own months too (and is always featured while it runs)
-    const proFrom = store.proUntil && store.proUntil > new Date() ? store.proUntil : new Date();
-    const proUntil = purchase.tier === "pro" ? new Date(proFrom.getTime() + purchase.months * MONTH_MS) : store.proUntil;
-    await tx.update(schema.merchants).set({ featuredUntil: proUntil && proUntil > until ? proUntil : until, proUntil }).where(eq(schema.merchants.id, store.id));
-    await tx.update(schema.featuredPurchases).set({ status: "paid", paidAt: new Date(), until }).where(eq(schema.featuredPurchases.id, purchase.id));
+    const proUntil = pro ? until : store.proUntil;
+    const latest = [store.featuredUntil, until, proUntil].filter((d): d is Date => !!d && d > now).sort((a, b) => b.getTime() - a.getTime())[0];
+    await tx.update(schema.merchants).set({ featuredUntil: latest, proUntil }).where(eq(schema.merchants.id, store.id));
+    await tx.update(schema.featuredPurchases).set({ status: "paid", paidAt: now, until }).where(eq(schema.featuredPurchases.id, purchase.id));
     // Its banner shows for exactly these months, then switches off (an admin can switch it on again)
     await tx.update(schema.banners).set({ isActive: true, startsAt: from, endsAt: until }).where(eq(schema.banners.featuredPurchaseId, purchase.id));
     return { store, until, amount: purchase.amount };
@@ -147,6 +150,16 @@ export async function settleFeaturing(purchaseId: string, p: { paid: boolean; am
   if (!done?.store.ownerId) return;
   const [owner] = await db.select({ email: schema.users.email }).from(schema.users).where(eq(schema.users.id, done.store.ownerId));
   if (owner) sendEmailLater(featuredEmail(owner.email, { store: done.store.name, until: done.until, price: done.amount }));
+}
+
+/** When a store's paid Featured (not Pro) time ends, if it's still running */
+export async function standardUntil(tx: Pick<typeof db, "select">, merchantId: string, now = new Date()) {
+  const fp = schema.featuredPurchases;
+  const [row] = await tx
+    .select({ until: sql<Date | null>`max(${fp.until})` })
+    .from(fp)
+    .where(and(eq(fp.merchantId, merchantId), eq(fp.status, "paid"), eq(fp.tier, "standard"), gt(fp.until, now)));
+  return row?.until ? new Date(row.until) : null;
 }
 
 /** A store's featuring payments, newest first, each with the banner it paid for */

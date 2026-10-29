@@ -22,6 +22,8 @@ export interface Featuring {
   maxPro: number;
   proSpotsLeft: number;
   proUntil: string | null;
+  /** When the paid Featured months end (they run alongside Pro) */
+  standardUntil?: string | null;
   /** Features one store can hold at a time, and how many this store holds */
   maxPerStore: number;
   activeFeatures: number;
@@ -161,7 +163,10 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
   const proActive = proUntil !== null && proUntil > now;
   const price = tier === "pro" ? data.proPricePerMonth : data.pricePerMonth;
   const total = price * months;
-  const newUntil = ((tier === "pro" ? (proActive ? proUntil : null) : active ? until : null) ?? now) + months * 30 * DAY;
+  // Featured and Pro run side by side: new months go on the end of the same kind only
+  const stdUntil = data.standardUntil ? new Date(data.standardUntil).getTime() : null;
+  const stdActive = stdUntil !== null && stdUntil > now;
+  const newUntil = ((tier === "pro" ? (proActive ? proUntil : null) : stdActive ? stdUntil : null) ?? now) + months * 30 * DAY;
   const full = (!active && data.spotsLeft === 0) || (tier === "pro" && !proActive && data.proSpotsLeft === 0);
   const atLimit = data.activeFeatures >= data.maxPerStore;
   const approved = store.status === "approved";
@@ -190,9 +195,8 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-sm">
         <span className={`font-display font-bold ${active ? "text-good" : ""}`}>{proActive ? "Featured Pro" : active ? "Featured" : "Not featured"}</span>
         <span className="text-muted">{active
-            ? proActive && until! > proUntil! + DAY
-              ? `Pro until ${fmtDate(proUntil!)}, then Featured until ${fmtDate(until!)} (${daysLeft} days in all)`
-              : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left${proActive ? ` · Pro until ${fmtDate(proUntil!)}` : ` · until ${fmtDate(until!)}`}`
+            ? [proActive && `Pro until ${fmtDate(proUntil!)}`, stdActive && `Featured until ${fmtDate(stdUntil!)}`, !proActive && !stdActive && `Featured until ${fmtDate(until!)}`].filter(Boolean).join(" · ") +
+              ` (${daysLeft} day${daysLeft === 1 ? "" : "s"} left)`
             : "Your store shows in its normal place"}</span>
       </div>
 
@@ -249,8 +253,8 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
       </div>
 
       <Card
-        title={(tier === "pro" ? proActive : active) ? "Add more time" : "Get featured"}
-        description={`${tier === "pro" ? "Featured Pro" : "Featured"} · ${(tier === "pro" ? proActive : active) ? "extra months start when your current feature ends." : "starts as soon as your payment is confirmed."}`}
+        title={(tier === "pro" ? proActive : stdActive) ? "Add more time" : "Get featured"}
+        description={`${tier === "pro" ? "Featured Pro" : "Featured"} · ${(tier === "pro" ? proActive : stdActive) ? "extra months start when your current one ends." : "starts as soon as your payment is confirmed, alongside any other feature you have."}`}
       >
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-3 gap-2">

@@ -253,6 +253,13 @@
       "when": 1793261549283,
       "tag": "0035_featured_pro",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793263276266,
+      "tag": "0036_featuring_side_by_side",
+      "breakpoints": true
     }
   ]
 }
