@@ -100,8 +100,7 @@ export default function AccountScreen() {
               <Txt variant="small" numberOfLines={1}>{user.email}</Txt>
               <Txt variant="caption" color={colors.brandPressed} style={{ marginTop: 2, fontFamily: fonts.semibold }}>View and edit profile</Txt>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.faint} />
-            {/* Light or dark, at the card's top right */}
+            {/* Light or dark, at the card's top right (the card opens the profile; "View and edit profile" says so) */}
             <View style={{ position: "absolute", top: space.md, right: space.md }}>
               <ThemeSwitch />
             </View>
