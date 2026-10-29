@@ -123,8 +123,6 @@ export function StoreRow({ store }: { store: MarketStore }) {
         <Txt variant="small" numberOfLines={1}>{store.tagline}</Txt>
         <Rating store={store} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
-          {/* "Earn $TICKER" for everyone: no token balance on store cards */}
-          <TokenChip store={store} />
           {store.delivery.states.length > 0 && (
             <Txt variant="caption" numberOfLines={1} style={{ flexShrink: 1 }}>
               Delivers to {store.delivery.states.slice(0, 2).join(", ")}
