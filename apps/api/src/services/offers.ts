@@ -220,7 +220,7 @@ export async function agreedPriceFor(tx: Tx, customerId: string, line: { variant
   return o;
 }
 
-/** An unpaid order with an agreed price was cancelled: the price is the customer's again while it lasts */
+/** An unpaid order with an agreed price was cancelled: the price is lost (the offer ends; the order stays linked for the record) */
 export async function releaseOffers(tx: Pick<Tx, "update">, orderId: string) {
-  await tx.update(offers).set({ status: "agreed", orderId: null }).where(and(eq(offers.orderId, orderId), eq(offers.status, "used")));
+  await tx.update(offers).set({ status: "expired" }).where(and(eq(offers.orderId, orderId), eq(offers.status, "used")));
 }

@@ -136,6 +136,9 @@ async function assertBranch(tx: Tx, branchId: string) {
   return branch;
 }
 
+/** An unpaid app order (and the stock it holds) is cancelled this long after it's placed */
+export const UNPAID_ORDER_HOURS = 24;
+
 async function holdMinutes(tx: Tx) {
   return (await getSetting<{ minutes: number }>("reservation_hold", tx))?.minutes ?? 30;
 }
@@ -234,7 +237,7 @@ export async function placeOrder(userId: string, input: PlaceOrderInput): Promis
           deliveryFee,
           total,
           idempotencyKey: input.idempotencyKey,
-          reservationExpiresAt: new Date(Date.now() + (await holdMinutes(tx)) * 60_000),
+          reservationExpiresAt: new Date(Date.now() + UNPAID_ORDER_HOURS * 3_600_000),
           createdBy: userId,
         })
         .returning();
@@ -535,7 +538,7 @@ export async function setOrderTokens(userId: string, orderId: string, tokens: { 
   });
 }
 
-/** Cancels unpaid orders whose stock hold has expired. Runs on an interval from index.ts. */
+/** Cancels unpaid orders whose time to pay has run out (24 hours for app orders). Runs on an interval from index.ts. */
 export async function releaseExpiredReservations() {
   const expired = await db
     .select({ id: orders.id })
@@ -551,7 +554,7 @@ export async function releaseExpiredReservations() {
       await releaseOffers(tx, id);
       await tx.update(payments).set({ status: "expired" }).where(and(eq(payments.orderId, id), eq(payments.status, "pending")));
       await tx.update(orders).set({ status: "cancelled", reservationExpiresAt: null }).where(eq(orders.id, id));
-      await recordStatus(tx, id, "pending_payment", "cancelled", null, "Payment window expired");
+      await recordStatus(tx, id, "pending_payment", "cancelled", null, "Not paid in time");
       return true;
     });
     if (cancelled) {

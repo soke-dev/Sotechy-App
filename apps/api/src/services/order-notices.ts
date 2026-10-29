@@ -78,7 +78,8 @@ export async function notifyOrderStatus(orderId: string, status: OrderStatus) {
     if (!found.customerId) return; // walk-in sale without an account
     const { title, body } = push(found.data.number, found.data.fulfilment === "pickup");
     sendPushLater([found.customerId], { kind: "order", title, body, data: { url: `/order/${orderId}` } });
-    const email = found.email ? orderUpdateEmail(found.email, status, { name: found.name, order: found.data }) : null;
+    // Cancelled orders get the push only, no email
+    const email = found.email && status !== "cancelled" ? orderUpdateEmail(found.email, status, { name: found.name, order: found.data }) : null;
     if (email) sendEmailLater(email);
   } catch (err) {
     console.error("Order notice failed:", err instanceof Error ? err.message : err);

@@ -91,7 +91,7 @@ function Hero({ order, onCopy }: { order: OrderDetail; onCopy: (v: string) => vo
         <View style={[ui.row, { alignSelf: "flex-start", backgroundColor: "rgba(253,185,19,0.16)", borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 }]}>
           <Ionicons name="time-outline" size={14} color={colors.brandYellow} />
           <Txt variant="caption" color={colors.brandYellow} style={{ fontFamily: fonts.semibold }}>
-            {minutes > 0 ? `Items held for ${minutes} more min` : "Hold expired. Pay soon or contact us"}
+            {minutes > 0 ? `Pay within ${minutes >= 120 ? `${Math.floor(minutes / 60)} hours` : `${minutes} min`} or the order is cancelled` : "Time to pay has run out. Contact us"}
           </Txt>
         </View>
       )}

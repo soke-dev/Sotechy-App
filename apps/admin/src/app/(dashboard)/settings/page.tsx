@@ -160,7 +160,7 @@ export default async function SettingsPage() {
           </ActionForm>
         </Card>
 
-        <Card title="Stock hold for unpaid orders">
+        <Card title="Stock hold for unpaid walk-in sales" description="Unpaid app orders are cancelled after 24 hours.">
           <ActionForm action={saveSetting}>
             <input type="hidden" name="key" value="reservation_hold" />
             <input type="hidden" name="$num_minutes" value="1" />

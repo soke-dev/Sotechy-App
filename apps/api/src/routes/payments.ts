@@ -180,8 +180,8 @@ export const paymentRoutes = new Hono<AppEnv>()
     const [customer] = await db.select({ email: schema.users.email, fullName: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, user.id));
     // Counted even after the page was dropped (e.g. the tokens changed), so a new page never reuses an old key
     const attempt = ((payment.raw as { checkout?: { attempt?: number } } | null)?.checkout?.attempt ?? saved?.attempt ?? 0) + 1;
-    // Keep the payment page open about as long as the items are held (at least six minutes).
-    const expiresAt = new Date(Math.max(order.reservationExpiresAt?.getTime() ?? 0, Date.now() + 6 * 60_000));
+    // A page lasts up to an hour (at least six minutes, never past the order's deadline); a fresh one opens after that.
+    const expiresAt = new Date(Math.max(Math.min(order.reservationExpiresAt?.getTime() ?? Infinity, Date.now() + 60 * 60_000), Date.now() + 6 * 60_000));
     const returnUrl = publicApiUrl ? `${publicApiUrl}/payments/return?order=${order.id}` : undefined;
     const metadata = { order_id: order.id, order_number: order.orderNumber };
     if (provider === "bachs") {
