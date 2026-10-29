@@ -519,6 +519,9 @@ export interface AppFeatures {
   googleSignIn: boolean;
   /** "Only 3 left" badges */
   lowStockBadges: boolean;
+  /** "Earn while you shop": the first slide on Home, and the card further down */
+  earnBanner: boolean;
+  earnCard: boolean;
   /** Shows a full-screen notice instead of the app */
   maintenance: boolean;
   maintenanceMessage: string;
@@ -539,6 +542,8 @@ export const DEFAULT_FEATURES: AppFeatures = {
   signups: true,
   googleSignIn: true,
   lowStockBadges: true,
+  earnBanner: true,
+  earnCard: true,
   maintenance: false,
   maintenanceMessage: "We're making improvements and will be back shortly.",
   announcement: "",

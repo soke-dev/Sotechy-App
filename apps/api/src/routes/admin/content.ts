@@ -67,6 +67,8 @@ const featureFields = z
     signups: z.boolean(),
     googleSignIn: z.boolean(),
     lowStockBadges: z.boolean(),
+    earnBanner: z.boolean(),
+    earnCard: z.boolean(),
     maintenance: z.boolean(),
     maintenanceMessage: z.string().max(300),
     announcement: z.string().max(160),

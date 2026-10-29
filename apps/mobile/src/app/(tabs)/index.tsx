@@ -309,30 +309,32 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* How store tokens work */}
-      <View style={{ marginHorizontal: gutter, borderRadius: radius.xl, backgroundColor: colors.brandSoft, padding: space.lg, gap: space.sm }}>
-        <View style={{ flexDirection: "row", gap: space.md, alignItems: "center" }}>
-          <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-            <Illo name="coin" size={28} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Txt variant="title" style={{ fontFamily: fonts.displayHeavy, fontSize: 19 }}>Earn while you shop</Txt>
-            <Txt variant="small" color={colors.ink2}>1 store token for every ₦1 you spend. Use them like cash on your next order at that store.</Txt>
-          </View>
-        </View>
-        {/* The extras, small, side by side on one row ($SOTECHY gets the wider pill) */}
-        <View style={{ flexDirection: "row", gap: 6 }}>
-          {[
-            { icon: "star" as IconName, text: "+10% for a review", flex: 2 },
-            { icon: "add-circle" as IconName, text: "+10% $SOTECHY on any order", flex: 3 },
-          ].map((x) => (
-            <View key={x.text} style={{ flex: x.flex, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface }}>
-              <Ionicons name={x.icon} size={12} color={colors.brandPressed} />
-              <Txt variant="caption" color={colors.ink} numberOfLines={1} style={{ flexShrink: 1, fontSize: 11, fontFamily: fonts.medium }}>{x.text}</Txt>
+      {/* How store tokens work (Admin → App switches) */}
+      {features.earnCard && (
+        <View style={{ marginHorizontal: gutter, borderRadius: radius.xl, backgroundColor: colors.brandSoft, padding: space.lg, gap: space.sm }}>
+          <View style={{ flexDirection: "row", gap: space.md, alignItems: "center" }}>
+            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+              <Illo name="coin" size={28} />
             </View>
-          ))}
+            <View style={{ flex: 1 }}>
+              <Txt variant="title" style={{ fontFamily: fonts.displayHeavy, fontSize: 19 }}>Earn while you shop</Txt>
+              <Txt variant="small" color={colors.ink2}>1 store token for every ₦1 you spend. Use them like cash on your next order at that store.</Txt>
+            </View>
+          </View>
+          {/* The extras, small, side by side on one row ($SOTECHY gets the wider pill) */}
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            {[
+              { icon: "star" as IconName, text: "+10% for a review", flex: 2 },
+              { icon: "add-circle" as IconName, text: "+10% $SOTECHY on any order", flex: 3 },
+            ].map((x) => (
+              <View key={x.text} style={{ flex: x.flex, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: colors.surface }}>
+                <Ionicons name={x.icon} size={12} color={colors.brandPressed} />
+                <Txt variant="caption" color={colors.ink} numberOfLines={1} style={{ flexShrink: 1, fontSize: 11, fontFamily: fonts.medium }}>{x.text}</Txt>
+              </View>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Categories */}
       <View>

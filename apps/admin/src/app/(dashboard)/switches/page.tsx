@@ -24,6 +24,8 @@ const GROUPS: { title: string; items: { key: Switch; label: string; description:
       { key: "reviews", label: "Product reviews", description: "Show star ratings and the Reviews tab, and accept new reviews." },
       { key: "usdPrices", label: "Dollar estimates", description: "Show “≈ $” next to naira prices on products and at checkout." },
       { key: "lowStockBadges", label: "Low-stock badges", description: "Show “Only 3 left” on products running low." },
+      { key: "earnBanner", label: "“Earn while you shop” banner", description: "The first slide at the top of Home, about earning store tokens." },
+      { key: "earnCard", label: "“Earn while you shop” card", description: "The card about store tokens further down Home." },
     ],
   },
   {

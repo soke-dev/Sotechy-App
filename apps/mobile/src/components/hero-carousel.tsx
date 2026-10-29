@@ -5,7 +5,8 @@ import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Linking, Pressable, ScrollView, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Banner as AdminBanner } from "@sotechy/shared";
-import { useStoreConfig } from "@/lib/store-config";
+import Svg, { Circle, Path } from "react-native-svg";
+import { useFeatures, useStoreConfig } from "@/lib/store-config";
 import { colors as theme, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
 
 // Banners are designed artwork: they keep the same colours in light and dark mode.
@@ -41,6 +42,80 @@ interface Slide {
   outlined?: boolean;
   /** An image-only banner: the picture fills it, with optional words and button over it */
   cover?: ImageSource;
+  /** Drawn by its own design instead of the shared layout */
+  design?: "earn";
+}
+
+/** "Earn while you shop": always the first slide while it's switched on (Admin → App switches) */
+const earnSlide: Slide = {
+  bg: colors.ink,
+  fg: colors.white,
+  accent: colors.brandYellow,
+  overline: "Store tokens",
+  title: "Earn while\nyou shop",
+  subtitle: "1 token for every ₦1. Spend them like cash at that store.",
+  cta: "See your wallet",
+  circle: colors.brand,
+  action: "/wallet",
+  design: "earn",
+};
+
+/** A four-point sparkle */
+const sparkle = (x: number, y: number, r: number) =>
+  `M${x} ${y - r} C${x + r * 0.18} ${y - r * 0.18} ${x + r * 0.18} ${y - r * 0.18} ${x + r} ${y} C${x + r * 0.18} ${y + r * 0.18} ${x + r * 0.18} ${y + r * 0.18} ${x} ${y + r} C${x - r * 0.18} ${y + r * 0.18} ${x - r * 0.18} ${y + r * 0.18} ${x - r} ${y} C${x - r * 0.18} ${y - r * 0.18} ${x - r * 0.18} ${y - r * 0.18} ${x} ${y - r}Z`;
+
+/** A gold coin seen a little from the side */
+function Coin({ cx, cy, r }: { cx: number; cy: number; r: number }) {
+  const rim = r * 0.22;
+  return (
+    <>
+      <Circle cx={cx} cy={cy + rim} r={r} fill="#C97A0A" />
+      <Circle cx={cx} cy={cy} r={r} fill={colors.brandYellow} />
+      <Circle cx={cx} cy={cy} r={r * 0.74} fill="none" stroke="#E9A21A" strokeWidth={r * 0.1} />
+      <Path d={`M${cx - r * 0.5} ${cy - r * 0.55} q ${r * 0.3} ${-r * 0.25} ${r * 0.75} ${-r * 0.2}`} stroke="#FFF3C4" strokeWidth={r * 0.12} strokeLinecap="round" fill="none" opacity={0.9} />
+    </>
+  );
+}
+
+/** The earn banner: a stack of gold coins and sparkles on dark, with the two extras as chips */
+function EarnBanner({ s, width, height }: { s: Slide; width: number; height: number }) {
+  const r = height * 0.17;
+  const cx = width * 0.78;
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.ink }}>
+      <LinearGradient colors={["rgba(247,147,30,0.0)", "rgba(247,147,30,0.28)"]} start={{ x: 0.2, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />
+      <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }} pointerEvents="none">
+        <Circle cx={cx} cy={height * 0.5} r={height * 0.46} fill={colors.brand} opacity={0.22} />
+        <Circle cx={cx} cy={height * 0.5} r={height * 0.33} fill={colors.brand} opacity={0.25} />
+        <Coin cx={cx - r * 0.9} cy={height * 0.64} r={r * 0.8} />
+        <Coin cx={cx + r * 0.85} cy={height * 0.58} r={r * 0.85} />
+        <Coin cx={cx} cy={height * 0.4} r={r} />
+        <Path d={sparkle(cx + r * 1.7, height * 0.2, r * 0.32)} fill={colors.brandYellow} />
+        <Path d={sparkle(cx - r * 1.6, height * 0.24, r * 0.2)} fill={colors.white} opacity={0.8} />
+        <Path d={sparkle(cx + r * 0.3, height * 0.86, r * 0.18)} fill={colors.white} opacity={0.6} />
+      </Svg>
+      <View style={{ flex: 1, width: "62%", paddingHorizontal: space.xl, paddingVertical: space.lg, justifyContent: "space-between" }}>
+        <View style={{ gap: 4 }}>
+          <Txt variant="caption" color={colors.brandYellow} style={{ fontFamily: fonts.bold, letterSpacing: 0.6, textTransform: "uppercase", fontSize: 11 }}>{s.overline}</Txt>
+          <Txt color={colors.white} style={{ fontFamily: fonts.displayHeavy, fontSize: 24, lineHeight: 26 }}>{s.title}</Txt>
+          <Txt variant="caption" color="rgba(255,255,255,0.72)" numberOfLines={2} style={{ fontSize: 11.5, lineHeight: 15 }}>{s.subtitle}</Txt>
+        </View>
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: "row", gap: 5 }}>
+            {["+10% for a review", "+10% $SOTECHY"].map((t) => (
+              <View key={t} style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.12)" }}>
+                <Txt color={colors.white} numberOfLines={1} style={{ fontFamily: fonts.semibold, fontSize: 10 }}>{t}</Txt>
+              </View>
+            ))}
+          </View>
+          <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.brand, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 7 }}>
+            <Txt variant="label" color={colors.ink} style={{ fontSize: 13 }}>{s.cta}</Txt>
+            <Ionicons name="arrow-forward" size={14} color={colors.ink} />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
 }
 
 // Shown only while there are no banners at all in Admin → Home banners (they're added there as real banners)
@@ -97,6 +172,7 @@ function ImageBanner({ s }: { s: Slide }) {
 }
 
 function Banner({ s, width, height }: { s: Slide; width: number; height: number }) {
+  if (s.design === "earn") return <EarnBanner s={s} width={width} height={height} />;
   if (s.cover) return <ImageBanner s={s} />;
   const circle = Math.round(height * 0.88);
   const darkBg = s.bg === colors.ink || s.bg === colors.brand;
@@ -195,7 +271,8 @@ export function HeroCarousel({ width }: { width: number }) {
   const height = Math.round(width * 0.52);
   const step = width + space.md;
   const adminBanners = useStoreConfig().config?.banners;
-  const slides = adminBanners?.length ? adminBanners.map(fromAdmin) : builtInSlides;
+  const { earnBanner } = useFeatures();
+  const slides = [...(earnBanner ? [earnSlide] : []), ...(adminBanners?.length ? adminBanners.map(fromAdmin) : builtInSlides.filter((b) => !earnBanner || b.action !== "/wallet"))];
 
   // Auto-advance; pauses for a while after the user swipes.
   useEffect(() => {
