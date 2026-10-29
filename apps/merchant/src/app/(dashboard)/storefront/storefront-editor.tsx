@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useAccount } from "@/components/account-context";
+import { StorefrontTabs } from "@/components/storefront-tabs";
 import { StorefrontView, type StorefrontLook } from "@/components/storefront-view";
 import { btn, inputClass, PageHeader } from "@/components/ui";
 import { COVER_SPEC, ImageCropper, LOGO_SPEC } from "@/components/image-cropper";
@@ -106,6 +107,7 @@ export function StorefrontEditor({ products, facts }: { products: Product[]; fac
           </Link>
         }
       />
+      <StorefrontTabs />
 
       {error && <p className="mb-4 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
       <Sheet open={cropping !== null} onClose={() => setCropping(null)} title={cropping?.key === "logo" ? "Your logo" : "Your cover photo"}>

@@ -47,7 +47,6 @@ const items = (s: ShellStore): NavItem[][] => [
     { href: "/customers", label: "Customers", illo: "user" },
     { href: "/products", label: "Products", illo: "bag" },
     { href: "/storefront", label: "Storefront", illo: "store" },
-    { href: "/store-details", label: "Edit store details", illo: "doc" },
     { href: "/delivery", label: "Delivery", illo: "bike" },
   ],
   [
@@ -79,7 +78,10 @@ const initials = (name: string) =>
     .slice(0, 2)
     .toUpperCase();
 
-const isActive = (href: string, path: string) => (href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`));
+/** Pages that live inside another menu item (Store details is a tab of Storefront) */
+const INSIDE: Record<string, string[]> = { "/storefront": ["/store-details"] };
+const isActive = (href: string, path: string) =>
+  href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`) || (INSIDE[href] ?? []).some((p) => path === p || path.startsWith(`${p}/`));
 
 function StoreCard({ store }: { store: ShellStore }) {
   return (
