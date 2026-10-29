@@ -5,7 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { formatNaira } from "@sotechy/shared";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { isFeatured, tileColor, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { isFeatured, isOfficialStore, tileColor, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { useHeldTokens } from "@/lib/held-tokens";
 import { Illo } from "./illustrations";
 import { BrandMark, ProductArt, StoreCover } from "./store-brand";
@@ -36,6 +36,16 @@ export function StoreLogo({ store, size = 52, ring }: { store: MarketStore; size
   );
 }
 
+/** A brand's own store (Sotechy's, or one Sotechy marked) */
+export function OfficialTag({ small }: { small?: boolean }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 3, alignSelf: "flex-start", backgroundColor: colors.brandSoft, borderRadius: radius.pill, paddingHorizontal: small ? 6 : 8, paddingVertical: small ? 1 : 3 }}>
+      <Ionicons name="checkmark-circle" size={small ? 10 : 12} color={colors.brandPressed} />
+      <Text style={{ fontFamily: fonts.bold, fontSize: small ? 10 : 11, color: colors.brandPressed }}>Official store</Text>
+    </View>
+  );
+}
+
 /** Marks a store that paid to be featured */
 export function FeaturedTag({ small }: { small?: boolean }) {
   return (
@@ -61,7 +71,7 @@ function Rating({ store, color }: { store: MarketStore; color?: string }) {
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
       <Ionicons name="star" size={12} color={colors.brandYellow} />
       <Txt variant="caption" color={color ?? colors.ink2}>
-        {store.isSotechy ? "Official store · Benin City" : `${store.rating ?? "New"} · ${store.productCount} product${store.productCount === 1 ? "" : "s"}`}
+        {store.isSotechy ? "Benin City" : `${store.rating ?? "New"} · ${store.productCount} product${store.productCount === 1 ? "" : "s"}`}
       </Txt>
     </View>
   );
@@ -90,6 +100,7 @@ export function FeaturedStoreCard({ store, width }: { store: MarketStore; width:
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
           <Txt variant="label" numberOfLines={1} style={{ fontSize: 15.5, flexShrink: 1 }}>{store.name}</Txt>
           <Ionicons name="checkmark-circle" size={15} color={store.isSotechy ? colors.brand : "#2F6FB3"} />
+          {isOfficialStore(store) && <OfficialTag small />}
         </View>
         <Txt variant="small" numberOfLines={1}>{store.tagline}</Txt>
         {/* No token balance here: Home cards stay the same for everyone */}
@@ -118,6 +129,7 @@ export function StoreRow({ store }: { store: MarketStore }) {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
           <Txt variant="label" numberOfLines={1} style={{ fontSize: 15.5, flexShrink: 1 }}>{store.name}</Txt>
           <Ionicons name="checkmark-circle" size={15} color={store.isSotechy ? colors.brand : "#2F6FB3"} />
+          {isOfficialStore(store) && <OfficialTag small />}
           {isFeatured(store) && <FeaturedTag small />}
         </View>
         <Txt variant="small" numberOfLines={1}>{store.tagline}</Txt>

@@ -1,0 +1,1 @@
+ALTER TABLE "merchants" ADD COLUMN "is_official" boolean DEFAULT false NOT NULL;

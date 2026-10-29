@@ -12,7 +12,7 @@ import { Illo } from "@/components/illustrations";
 import { openProduct, StoreLogo } from "@/components/store-bits";
 import { useHeldTokens } from "@/lib/held-tokens";
 import { EmptyState, ErrorView, IconButton, Loading, tap } from "@/components/ui";
-import { formatTokens, loadStore, tileColor, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { formatTokens, isOfficialStore, loadStore, tileColor, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { ProductArt, StoreCover } from "@/components/store-brand";
 import { useExternalLink } from "@/components/external-link";
 import { useStoreNotifications } from "@/lib/store-notifications";
@@ -257,6 +257,12 @@ export default function StoreScreen() {
               <Ionicons name="shield-checkmark" size={15} color="#1C8A4C" />
               <T color="#1C8A4C" size={13.5} weight={fonts.semibold}>Verified</T>
             </View>
+            {isOfficialStore(store) && (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Ionicons name="checkmark-circle" size={15} color={t.accent} />
+                <T color={t.accent} size={13.5} weight={fonts.semibold}>Official store</T>
+              </View>
+            )}
             {store.delivery.states.length > 0 && (
               <>
                 <View style={{ width: 1, height: 14, backgroundColor: t.muted, opacity: 0.4 }} />

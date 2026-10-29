@@ -72,6 +72,8 @@ export interface MarketStore {
   featuredUntil?: string;
   /** Featured Pro until this date: also gets its own dark row of products on Home */
   proUntil?: string;
+  /** A brand's own store, marked by Sotechy */
+  isOfficial?: boolean;
   productCount: number;
   /** The branch the store's orders ship from */
   branchId?: string | null;
@@ -158,6 +160,7 @@ export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "bra
     announcement: look?.announcement ?? undefined,
     featuredUntil: s.featuredUntil ?? undefined,
     proUntil: s.proUntil ?? undefined,
+    isOfficial: !!s.isOfficial,
     productCount: s.productCount ?? s.products?.length ?? 0,
     branchId: s.branchId,
     products: (s.products ?? []).map(toStoreProduct),
@@ -217,6 +220,8 @@ export const findProduct = (storeSlug: string, productId: string) => storeBySlug
 
 /** Whether a store's paid feature is running */
 export const isFeatured = (s: MarketStore) => !!s.featuredUntil && new Date(s.featuredUntil).getTime() > Date.now();
+/** Sotechy's own store, or one Sotechy marked as a brand's official store */
+export const isOfficialStore = (s: Pick<MarketStore, "isSotechy" | "isOfficial">) => !!s.isSotechy || !!s.isOfficial;
 export const isPro = (s: MarketStore) => !!s.proUntil && new Date(s.proUntil).getTime() > Date.now();
 /** Featured stores first, keeping the order otherwise */
 export const byFeatured = <T extends MarketStore>(list: T[]) => [...list.filter(isFeatured), ...list.filter((s) => !isFeatured(s))];

@@ -267,6 +267,13 @@
       "when": 1793264473006,
       "tag": "0037_store_profile_change",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793267666599,
+      "tag": "0038_store_official",
+      "breakpoints": true
     }
   ]
 }

@@ -22,6 +22,12 @@ export async function setStoreStatus(id: string, status: "pending" | "approved" 
   return attempt(() => withPassword("PATCH", `/admin/merchants/${id}/status`, { status, note }, password), id);
 }
 
+/** The "Official store" badge, on or off (saves as soon as it's flipped) */
+export async function setOfficial(id: string, official: boolean): Promise<{ error?: string }> {
+  const r = await attempt(() => api.put(`/admin/merchants/${id}/official`, { official }), id);
+  return "error" in r ? { error: r.error } : {};
+}
+
 /** Send a waiting store back for changes, or decline it, with a note the owner sees */
 export async function reviewStore(id: string, outcome: "changes" | "declined", note: string): Promise<Result> {
   return attempt(() => api.post(`/admin/merchants/${id}/review`, { outcome, note }), id);

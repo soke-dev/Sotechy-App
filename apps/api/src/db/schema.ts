@@ -263,6 +263,8 @@ export const merchants = pgTable("merchants", {
   reviewNoteAt: timestamp({ withTimezone: true }),
   /** Shown first on the app's home and in search until then */
   featuredUntil: timestamp({ withTimezone: true }),
+  /** Marked by Sotechy as a brand's own store: shown with an "Official store" badge, like Sotechy's */
+  isOfficial: boolean().notNull().default(false),
   /** Featured Pro until then: everything featured gives, plus its own dark store row on Home (two stores at a time) */
   proUntil: timestamp({ withTimezone: true }),
   /**

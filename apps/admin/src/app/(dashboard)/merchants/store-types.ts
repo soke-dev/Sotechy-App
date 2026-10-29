@@ -68,6 +68,7 @@ export interface AdminZone {
 }
 
 export interface AdminStoreDetail extends Omit<AdminStore, "ownerName" | "ownerEmail" | "productCount" | "orderCount" | "pendingZones"> {
+  isOfficial?: boolean;
   owner: { id: string; name: string | null; email: string; username: string | null; phone: string | null; avatarUrl: string | null; createdAt: string } | null;
   zones: AdminZone[];
   products: number;

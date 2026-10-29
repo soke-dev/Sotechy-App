@@ -159,7 +159,7 @@ export interface ProductDetail extends Product {
   variants: ProductVariant[];
   stock: BranchStock[];
   /** The marketplace store selling it (its branch is where it ships from); null for Sotechy */
-  store?: { id: string; name: string; slug: string; ticker: string; logoUrl: string | null; branchId: string | null } | null;
+  store?: { id: string; name: string; slug: string; ticker: string; logoUrl: string | null; isOfficial?: boolean; branchId: string | null } | null;
   storeCategory?: string | null;
   negotiable?: boolean;
   offerHours?: number | null;
@@ -685,6 +685,8 @@ export interface MarketStore {
   featuredUntil: string | null;
   /** Featured Pro: its own dark row of products on Home */
   proUntil?: string | null;
+  /** A brand's own store, marked by Sotechy */
+  isOfficial?: boolean;
   productCount?: number;
   ratingAverage?: number | null;
   /** How many reviews the rating is from */

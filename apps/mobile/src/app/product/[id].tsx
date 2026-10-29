@@ -195,7 +195,7 @@ function OverviewTab({
               <Txt variant="overline">Sold by</Txt>
               <Txt variant="label" numberOfLines={1}>{store.name}</Txt>
             </View>
-            <Pill label="Verified" tone="success" icon="shield-checkmark" />
+            {store.isOfficial ? <Pill label="Official store" tone="brand" icon="checkmark-circle" /> : <Pill label="Verified" tone="success" icon="shield-checkmark" />}
             <Ionicons name="chevron-forward" size={18} color={colors.faint} />
           </View>
           <Divider />
