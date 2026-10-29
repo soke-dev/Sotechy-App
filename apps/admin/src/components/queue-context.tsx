@@ -8,6 +8,8 @@ import { loadQueue } from "@/app/(dashboard)/actions";
  *  page change and when the tab comes back, since things fall due without anything changing (a payout's time) */
 export interface Queue {
   merchants: number;
+  /** Stores' new details waiting for approval */
+  storeChanges: number;
   zones: number;
   cases: number;
   /** Support conversations waiting on Sotechy */
@@ -17,7 +19,7 @@ export interface Queue {
   refunds: number;
 }
 
-const EMPTY: Queue = { merchants: 0, zones: 0, cases: 0, support: 0, payouts: 0, refunds: 0 };
+const EMPTY: Queue = { merchants: 0, storeChanges: 0, zones: 0, cases: 0, support: 0, payouts: 0, refunds: 0 };
 const QueueContext = createContext<Queue>(EMPTY);
 
 export function QueueProvider({ value, children }: { value: Queue; children: ReactNode }) {

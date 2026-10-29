@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  FilePen,
   MessageSquareMore,
   BadgePercent,
   BarChart3,
@@ -67,6 +68,7 @@ export const NAV: NavGroup[] = [
     illo: "store",
     pages: [
       { href: "/merchants", label: "Merchants", icon: Store, illo: "store", countKey: "merchants" },
+      { href: "/store-changes", label: "Store changes", icon: FilePen, illo: "doc", countKey: "storeChanges" },
       { href: "/delivery-areas", label: "Delivery areas", icon: MapPin, illo: "pin", countKey: "zones" },
       { href: "/merchant-payouts", label: "Merchant payouts", icon: Banknote, illo: "bank", countKey: "payouts" },
       { href: "/featured-stores", label: "Featured stores", icon: Sparkles, illo: "sparkle" },

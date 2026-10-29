@@ -408,6 +408,15 @@ export interface User {
   createdAt: string;
 }
 
+/** A store's name, about line, what it sells, socials and website, as asked for */
+export interface StoreProfileChange {
+  name: string;
+  tagline: string | null;
+  sells: string[];
+  socials: StoreSocials;
+  website: string | null;
+}
+
 /** A merchant's store, as its owner sees it */
 export interface MerchantStore {
   id: string;
@@ -425,6 +434,12 @@ export interface MerchantStore {
   /** The owner's ID + liveness check (Didit) */
   kycStatus: KycStatus;
   tagline?: string | null;
+  /** Details sent for Sotechy's approval: the app shows the current ones until then */
+  profileChange?: StoreProfileChange | null;
+  profileChangeStatus?: "pending" | "declined" | null;
+  /** Sotechy's reason when it declined */
+  profileChangeNote?: string | null;
+  profileChangeAt?: string | null;
   logoUrl?: string | null;
   coverUrl?: string | null;
   storefront?: StorefrontSettings | null;

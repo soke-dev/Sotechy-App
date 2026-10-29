@@ -557,13 +557,68 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     return c.json({ payouts: rows.map(toPayoutRow), plan: store.payoutPlan ?? settings.standard, feeRate: settings.feeRate, finalAfterHours: settings.finalAfterHours });
   })
 
+  // --- Store details, changed only once Sotechy approves ---
+  .put(
+    "/profile-change",
+    zValidator(
+      "json",
+      z.object({
+        name: z.string().trim().min(2, "Give your store a name").max(60),
+        tagline: z.string().trim().max(90).nullable().optional(),
+        sells: z.array(z.string().trim().min(1).max(40)).min(1, "Choose what you sell").max(3),
+        socials: z.object({
+          instagram: z.string().trim().max(100).nullable().optional(),
+          x: z.string().trim().max(100).nullable().optional(),
+          facebook: z.string().trim().max(200).nullable().optional(),
+          tiktok: z.string().trim().max(100).nullable().optional(),
+        }),
+        website: z.string().trim().max(200).nullable().optional(),
+      }),
+    ),
+    async (c) => {
+      const store = c.get("store");
+      const v = c.req.valid("json");
+      const clean = (x: string | null | undefined) => x?.trim() || null;
+      const change = {
+        name: v.name,
+        tagline: clean(v.tagline),
+        sells: v.sells,
+        socials: { instagram: clean(v.socials.instagram), x: clean(v.socials.x), facebook: clean(v.socials.facebook), tiktok: clean(v.socials.tiktok) },
+        website: clean(v.website),
+      };
+      const now = store.application?.socials ?? {};
+      const same =
+        change.name === store.name &&
+        change.tagline === (store.tagline ?? null) &&
+        change.sells.join("|") === store.sells.join("|") &&
+        (["instagram", "x", "facebook", "tiktok"] as const).every((k) => change.socials[k] === (now[k] || null)) &&
+        change.website === (store.application?.website || null);
+      if (same) throw badRequest("Nothing has changed yet");
+      const [row] = await db
+        .update(schema.merchants)
+        .set({ profileChange: change, profileChangeStatus: "pending", profileChangeNote: null, profileChangeAt: new Date(), updatedAt: new Date() })
+        .where(eq(schema.merchants.id, store.id))
+        .returning();
+      await audit(db, { actorId: c.get("user").id, action: "merchant.profile_change", entityType: "merchant", entityId: store.id, details: change });
+      return c.json(row);
+    },
+  )
+  /** Takes back a request that's waiting, or clears a declined one */
+  .delete("/profile-change", async (c) => {
+    const [row] = await db
+      .update(schema.merchants)
+      .set({ profileChange: null, profileChangeStatus: null, profileChangeNote: null, profileChangeAt: null })
+      .where(eq(schema.merchants.id, c.get("store").id))
+      .returning();
+    return c.json(row);
+  })
+
   // --- Storefront look ---
   .patch(
     "/storefront",
     zValidator(
       "json",
       z.object({
-        tagline: z.string().trim().max(90).nullable().optional(),
         logoUrl: z.string().url().nullable().optional(),
         coverUrl: z.string().url().nullable().optional(),
         storefront: z

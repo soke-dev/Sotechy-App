@@ -389,6 +389,8 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     const [row] = await db
       .select({
         merchants: sql<number>`(select count(*)::int from merchants m where m.status = 'pending' and m.submitted_at is not null)`,
+        // Stores' new names, about lines, categories or socials waiting for approval
+        storeChanges: sql<number>`(select count(*)::int from merchants m where m.profile_change_status = 'pending')`,
         zones: sql<number>`(select count(*)::int from delivery_zones z where z.review = 'pending')`,
         // Conversations waiting on Sotechy's answer
         support: sql<number>`(select count(*)::int from support_tickets t where t.status = 'open')`,
@@ -401,6 +403,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       .limit(1);
     return c.json({
       merchants: row?.merchants ?? 0,
+      storeChanges: row?.storeChanges ?? 0,
       zones: row?.zones ?? 0,
       support: row?.support ?? 0,
       payouts: row?.payouts ?? 0,
@@ -408,6 +411,64 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       cases: (await orderCases()).length,
     });
   })
+  /** Stores' asked-for details (name, about, what they sell, socials, website), each beside what the app shows now */
+  .get("/store-changes", async (c) => {
+    const m = schema.merchants;
+    const rows = await db
+      .select({ id: m.id, name: m.name, slug: m.slug, logoUrl: m.logoUrl, tagline: m.tagline, sells: m.sells, application: m.application, change: m.profileChange, status: m.profileChangeStatus, note: m.profileChangeNote, at: m.profileChangeAt })
+      .from(m)
+      .where(sql`${m.profileChangeStatus} is not null`)
+      .orderBy(sql`(${m.profileChangeStatus} = 'pending') desc`, desc(m.profileChangeAt))
+      .limit(200);
+    return c.json(
+      rows.map(({ application, ...r }) => ({
+        ...r,
+        now: { name: r.name, tagline: r.tagline, sells: r.sells, socials: application?.socials ?? {}, website: application?.website ?? null },
+      })),
+    );
+  })
+  /** Approves a store's details (they show in the app straight away) or declines them with a reason */
+  .post(
+    "/store-changes/:id",
+    requireRole(...MANAGERS),
+    zValidator("json", z.object({ decision: z.enum(["approve", "decline"]), note: z.string().trim().max(500).optional() })),
+    async (c) => {
+      const { decision, note } = c.req.valid("json");
+      const m = schema.merchants;
+      const [store] = await db.select().from(m).where(eq(m.id, c.req.param("id")));
+      if (!store || store.profileChangeStatus !== "pending" || !store.profileChange) throw notFound("No changes waiting for this store");
+      if (decision === "decline" && !note) throw badRequest("Say why, so the store can fix it");
+      const ch = store.profileChange;
+      if (decision === "approve") {
+        await db
+          .update(m)
+          .set({
+            name: ch.name,
+            tagline: ch.tagline,
+            sells: ch.sells,
+            application: { ...(store.application ?? {}), socials: ch.socials, website: ch.website } as typeof store.application,
+            profileChange: null,
+            profileChangeStatus: null,
+            profileChangeNote: null,
+            profileChangeAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(m.id, store.id));
+      } else {
+        await db.update(m).set({ profileChangeStatus: "declined", profileChangeNote: note!, profileChangeAt: new Date() }).where(eq(m.id, store.id));
+      }
+      await audit(db, { actorId: c.get("user").id, action: `merchant.profile_${decision}`, entityType: "merchant", entityId: store.id, details: { change: ch, note } });
+      if (store.ownerId) {
+        sendPushLater([store.ownerId], {
+          audience: "store",
+          kind: "store",
+          title: decision === "approve" ? "Your store details are updated" : "Your store details weren't approved",
+          body: decision === "approve" ? "Sotechy approved your changes. Customers see them in the app now." : `Sotechy says: ${note}`,
+        });
+      }
+      return c.json({ ok: true });
+    },
+  )
   /** Every store's delivery areas, waiting ones first */
   .get("/delivery-zones", async (c) => {
     const z = schema.deliveryZones;

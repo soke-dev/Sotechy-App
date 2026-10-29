@@ -260,6 +260,13 @@
       "when": 1793263276266,
       "tag": "0036_featuring_side_by_side",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793264473006,
+      "tag": "0037_store_profile_change",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,7 @@
 // storefront and setup. Each returns { error } instead of throwing, so forms can show what went wrong.
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import type { Promotion, MerchantAttention, AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantNotice, MerchantOrder, MerchantProduct, MerchantProductInput, OfferView, PayoutAccount, StorefrontSettings } from "@sotechy/shared";
+import type { Promotion, MerchantAttention, AddressSuggestion, Bank, DeliveryZone, DeliveryZoneInput, MerchantApplicationInput, MerchantNotice, MerchantOrder, MerchantProduct, MerchantProductInput, OfferView, PayoutAccount, StoreProfileChange, StorefrontSettings } from "@sotechy/shared";
 import { api, errorMessage, getFeeRate, TOKEN_COOKIE } from "./api";
 
 type Result<T> = { ok: T } | { error: string };
@@ -105,6 +105,22 @@ export async function orderAction(
   handover?: { tracking?: string; driverPhone?: string },
 ): Promise<Result<MerchantOrder>> {
   return attempt(() => api.merchantOrderAction(id, action, note, handover), ["/orders", `/orders/${id}`, "/"]);
+}
+
+/** Sends new store details (name, about, what it sells, socials, website) for Sotechy's approval */
+export async function sendProfileChange(input: StoreProfileChange): Promise<Result<true>> {
+  return attempt(async () => {
+    await api.put("/merchant/profile-change", input);
+    return true as const;
+  }, ["/storefront", "/"]);
+}
+
+/** Takes back a waiting request, or clears a declined one */
+export async function withdrawProfileChange(): Promise<Result<true>> {
+  return attempt(async () => {
+    await api.delete("/merchant/profile-change");
+    return true as const;
+  }, ["/storefront", "/"]);
 }
 
 export async function saveStorefront(input: { tagline?: string | null; logoUrl?: string | null; coverUrl?: string | null; storefront?: StorefrontSettings }) {

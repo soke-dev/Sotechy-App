@@ -220,6 +220,15 @@ export const passwordResets = pgTable("password_resets", {
 // ---------------------------------------------------------------------------
 // Marketplace: a store is owned by an ordinary account, so one sign-in works in the app and the dashboard
 // ---------------------------------------------------------------------------
+/** A store's asked-for details (see merchants.profileChange) */
+export interface StoreProfileChange {
+  name: string;
+  tagline: string | null;
+  sells: string[];
+  socials: { instagram?: string | null; x?: string | null; facebook?: string | null; tiktok?: string | null };
+  website: string | null;
+}
+
 export const merchants = pgTable("merchants", {
   id: uuid().primaryKey().defaultRandom(),
   name: text().notNull(),
@@ -256,6 +265,14 @@ export const merchants = pgTable("merchants", {
   featuredUntil: timestamp({ withTimezone: true }),
   /** Featured Pro until then: everything featured gives, plus its own dark store row on Home (two stores at a time) */
   proUntil: timestamp({ withTimezone: true }),
+  /**
+   * Changes the store asked for to its name, about line, what it sells, socials or website. The app keeps
+   * showing the current details until Sotechy approves; a declined request keeps Sotechy's reason.
+   */
+  profileChange: jsonb().$type<StoreProfileChange>(),
+  profileChangeStatus: text().$type<"pending" | "declined">(),
+  profileChangeNote: text(),
+  profileChangeAt: timestamp({ withTimezone: true }),
   /** Owner's ID + liveness check through Didit; admin still approves the store itself */
   kycStatus: kycStatusEnum().notNull().default("not_started"),
   kycSessionId: text().unique(),

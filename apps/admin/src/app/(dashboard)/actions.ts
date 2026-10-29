@@ -42,6 +42,11 @@ async function run(fn: () => Promise<unknown>, paths: string[], message = "Saved
   return { message };
 }
 
+/** Approves a store's asked-for details, or declines them with a reason */
+export async function decideStoreChange(id: string, decision: "approve" | "decline", note?: string): Promise<ActionResult> {
+  return run(() => api.post(`/admin/store-changes/${id}`, { decision, note }), ["/store-changes", "/merchants"], decision === "approve" ? "Approved" : "Declined");
+}
+
 /** What's waiting for a decision, for the menu's numbers */
 export async function loadQueue(): Promise<Partial<import("@/components/queue-context").Queue> | null> {
   return api.get<Partial<import("@/components/queue-context").Queue>>("/admin/queue").catch(() => null);
