@@ -77,6 +77,14 @@ export async function saveProduct(id: string | null, input: MerchantProductInput
   return attempt(() => (id ? api.updateProduct(id, input) : api.createProduct(input)), ["/products", "/"]);
 }
 
+export async function duplicateProduct(id: string): Promise<Result<MerchantProduct>> {
+  return attempt(() => api.duplicateProduct(id), ["/products", "/"]);
+}
+
+export async function productActions(ids: string[], action: "live" | "hidden" | "out_of_stock" | "delete"): Promise<Result<{ done: number; deleted: number; archived: number }>> {
+  return attempt(() => api.productActions(ids, action), ["/products", "/"]);
+}
+
 export async function saveZone(id: string | null, input: DeliveryZoneInput): Promise<Result<DeliveryZone>> {
   return attempt(() => (id ? api.updateDeliveryZone(id, input) : api.createDeliveryZone(input)), ["/delivery"]);
 }

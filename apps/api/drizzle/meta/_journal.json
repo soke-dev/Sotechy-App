@@ -239,6 +239,13 @@
       "when": 1793258309395,
       "tag": "0033_refund_details",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793260785369,
+      "tag": "0034_product_deleted_at",
+      "breakpoints": true
     }
   ]
 }

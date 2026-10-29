@@ -129,6 +129,11 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     merchantProduct: (id: string) => get<MerchantProduct>(`/merchant/products/${encodeURIComponent(id)}`),
     createProduct: (input: MerchantProductInput) => send<MerchantProduct>("POST", "/merchant/products", input),
     updateProduct: (id: string, input: MerchantProductInput) => send<MerchantProduct>("PUT", `/merchant/products/${encodeURIComponent(id)}`, input),
+    /** A draft copy with no stock */
+    duplicateProduct: (id: string) => send<MerchantProduct>("POST", `/merchant/products/${encodeURIComponent(id)}/duplicate`),
+    /** Make live, hide, mark out of stock, or delete several products at once */
+    productActions: (ids: string[], action: "live" | "hidden" | "out_of_stock" | "delete") =>
+      send<{ done: number; deleted: number; archived: number }>("POST", "/merchant/products/actions", { ids, action }),
     deliveryZones: () => get<DeliveryZone[]>("/merchant/delivery-zones"),
     createDeliveryZone: (input: DeliveryZoneInput) => send<DeliveryZone>("POST", "/merchant/delivery-zones", input),
     updateDeliveryZone: (id: string, input: DeliveryZoneInput) => send<DeliveryZone>("PUT", `/merchant/delivery-zones/${encodeURIComponent(id)}`, input),

@@ -1,7 +1,7 @@
 // A marketplace store's own business: products, delivery areas, orders, customers and setup.
 // Mounted under /merchant. Everything is scoped to the signed-in owner's store.
 import { zValidator } from "@hono/zod-validator";
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
@@ -97,7 +97,7 @@ async function productsForDashboard(storeId: string, ids?: string[]) {
   const rows = await db
     .select()
     .from(products)
-    .where(and(eq(products.merchantId, storeId), ids ? inArray(products.id, ids) : undefined))
+    .where(and(eq(products.merchantId, storeId), isNull(products.deletedAt), ids ? inArray(products.id, ids) : undefined))
     .orderBy(desc(products.createdAt));
   if (!rows.length) return [];
   const variants = await db
@@ -675,7 +675,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     assertVerified(store);
     const input = c.req.valid("json");
     const id = c.req.param("id");
-    const [own] = await db.select({ id: products.id }).from(products).where(and(eq(products.id, id), eq(products.merchantId, store.id)));
+    const [own] = await db.select({ id: products.id }).from(products).where(and(eq(products.id, id), eq(products.merchantId, store.id), isNull(products.deletedAt)));
     if (!own) throw notFound("Product not found");
     await checkZones(store.id, input.deliveryZoneIds);
     await db.transaction(async (tx) => {
@@ -685,6 +685,69 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     const [p] = await productsForDashboard(store.id, [id]);
     return c.json(p);
   })
+
+  /** A copy to edit: a draft with no stock, so nothing sells before it's checked */
+  .post("/products/:id/duplicate", async (c) => {
+    const store = c.get("store");
+    assertVerified(store);
+    const [src] = await db.select().from(products).where(and(eq(products.id, c.req.param("id")), eq(products.merchantId, store.id), isNull(products.deletedAt)));
+    if (!src) throw notFound("Product not found");
+    const variants = await db.select().from(productVariants).where(and(eq(productVariants.productId, src.id), eq(productVariants.isActive, true)));
+    const id = await db.transaction(async (tx) => {
+      const { id: _id, slug: _slug, createdAt: _c, updatedAt: _u, ...rest } = src;
+      const name = `${src.name} (copy)`.slice(0, 140);
+      const [p] = await tx
+        .insert(products)
+        .values({ ...rest, name, isPublished: false, isHidden: false, deletedAt: null, slug: await uniqueSlug(tx, `${store.slug}-${slugify(name)}`.slice(0, 80)) })
+        .returning({ id: products.id });
+      const first = variants[0];
+      const options = variants.filter((v) => v.name !== "Standard").map((v) => ({ name: v.name, stock: 0 }));
+      await syncVariants(tx, store, p.id, { price: first?.price ?? 0, compareAt: first?.compareAtPrice ?? null, stock: 0, options } as ProductInput);
+      return p.id;
+    });
+    await audit(db, { actorId: c.get("user").id, action: "product.duplicate", entityType: "product", entityId: id, details: { from: src.id } });
+    const [p] = await productsForDashboard(store.id, [id]);
+    return c.json(p, 201);
+  })
+  /**
+   * One change to several products: make them live, hide them from the store, mark them out of stock, or delete
+   * them. A product that has sold is kept for its orders (taken off the store and out of the dashboard).
+   */
+  .post(
+    "/products/actions",
+    zValidator("json", z.object({ ids: z.array(z.uuid()).min(1).max(200), action: z.enum(["live", "hidden", "out_of_stock", "delete"]) })),
+    async (c) => {
+      const store = c.get("store");
+      const { ids, action } = c.req.valid("json");
+      if (action === "live") assertVerified(store);
+      const mine = await db.select({ id: products.id }).from(products).where(and(eq(products.merchantId, store.id), isNull(products.deletedAt), inArray(products.id, ids)));
+      const own = mine.map((p) => p.id);
+      if (!own.length) throw notFound("Product not found");
+      let deleted = 0;
+      let archived = 0;
+      if (action === "live" || action === "hidden") {
+        await db.update(products).set({ isPublished: action === "live", isHidden: action === "hidden" }).where(inArray(products.id, own));
+      } else if (action === "out_of_stock") {
+        // Nothing left to sell; stock held for unpaid orders stays held
+        const branch = await storeBranch(db, store);
+        const vs = await db.select({ id: productVariants.id }).from(productVariants).where(inArray(productVariants.productId, own));
+        if (vs.length) await db.update(inventory).set({ quantity: inventory.reserved }).where(and(eq(inventory.branchId, branch.id), inArray(inventory.variantId, vs.map((v) => v.id))));
+      } else {
+        for (const id of own) {
+          try {
+            // Gone for good when nothing points at it; a product with orders can't be removed
+            await db.transaction((tx) => tx.delete(products).where(eq(products.id, id)));
+            deleted++;
+          } catch {
+            await db.update(products).set({ deletedAt: new Date(), isPublished: false, isHidden: true }).where(eq(products.id, id));
+            archived++;
+          }
+        }
+      }
+      await audit(db, { actorId: c.get("user").id, action: `product.bulk_${action}`, entityType: "product", details: { ids: own, deleted, archived } });
+      return c.json({ done: own.length, deleted, archived });
+    },
+  )
 
   // --- Delivery areas (each new area or change in coverage waits for Sotechy) ---
   .get("/delivery-zones", async (c) => {

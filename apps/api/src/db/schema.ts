@@ -356,6 +356,8 @@ export const products = pgTable(
     inTheBox: text().array().notNull().default(sql`'{}'::text[]`),
     /** A store hid this product on purpose (vs a draft it hasn't finished) */
     isHidden: boolean().notNull().default(false),
+    /** A store deleted it after it had sold: kept for past orders, gone from the store and its dashboard */
+    deletedAt: timestamp({ withTimezone: true }),
     /** A marketplace store's own category name (from its list or typed under "Other") */
     storeCategory: text(),
     /** Customers can make an offer; `offerFloor` is the lowest the store will consider (only it sees this) */
