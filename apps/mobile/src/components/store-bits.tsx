@@ -69,7 +69,6 @@ function Rating({ store, color }: { store: MarketStore; color?: string }) {
 
 /** Big card for the "Stores on Sotechy" carousel on Home */
 export function FeaturedStoreCard({ store, width }: { store: MarketStore; width: number }) {
-  const held = useHeldTokens(store.ticker);
   return (
     <Pressable onPress={() => openStore(store.slug)} style={({ pressed }) => ({ width, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, overflow: "hidden", opacity: pressed ? 0.9 : 1 })}>
       <View style={{ height: 72 }}>
@@ -93,13 +92,9 @@ export function FeaturedStoreCard({ store, width }: { store: MarketStore; width:
           <Ionicons name="checkmark-circle" size={15} color={store.isSotechy ? colors.brand : "#2F6FB3"} />
         </View>
         <Txt variant="small" numberOfLines={1}>{store.tagline}</Txt>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
+        {/* No token balance here: Home cards stay the same for everyone */}
+        <View style={{ marginTop: 2 }}>
           <Rating store={store} />
-          {held > 0 && (
-            <Txt variant="caption" color={colors.brandPressed} style={{ fontFamily: fonts.bold }}>
-              You have {formatTokens(held)}
-            </Txt>
-          )}
         </View>
       </View>
     </Pressable>

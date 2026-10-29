@@ -14,6 +14,7 @@ import type { Popup } from "@sotechy/shared";
 import { useStoreConfig } from "@/lib/store-config";
 import { fonts, lightPalette as colors, space } from "@/lib/theme";
 import { bannerLink } from "./hero-carousel";
+import { useTabBarInset } from "./tab-bar";
 import { tap, Txt } from "./ui";
 
 const SEEN_KEY = "sotechy_popups_closed";
@@ -92,6 +93,8 @@ export function HomePopup() {
 
 function PopupSheet({ popup, onGone }: { popup: Popup; onGone: () => void }) {
   const insets = useSafeAreaInsets();
+  // Sits just above the tab bar, so its icons stay in view
+  const tabInset = useTabBarInset();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const width = Math.min(screenW - 24, 420);
   const [ratio, setRatio] = useState(4 / 5);
@@ -147,7 +150,7 @@ function PopupSheet({ popup, onGone }: { popup: Popup; onGone: () => void }) {
 
   const t = THEMES[popup.style];
   const picture = popup.layout === "image" && !!popup.imageUrl;
-  const maxPicture = screenH - insets.top - insets.bottom - 120;
+  const maxPicture = screenH - insets.top - tabInset - 110;
   const pictureHeight = Math.min(width / ratio, maxPicture);
 
   const closeButton = (glass: boolean) => (
@@ -166,7 +169,7 @@ function PopupSheet({ popup, onGone }: { popup: Popup; onGone: () => void }) {
       <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(12,9,7,0.62)", opacity: fade }}>
         <Pressable style={{ flex: 1 }} onPress={() => close()} accessibilityLabel="Close" />
       </Animated.View>
-      <View style={{ flex: 1, justifyContent: "flex-end", alignItems: "center", paddingBottom: insets.bottom + 12 }} pointerEvents="box-none">
+      <View style={{ flex: 1, justifyContent: "flex-end", alignItems: "center", paddingBottom: tabInset + 6 }} pointerEvents="box-none">
         <Animated.View {...pan.panHandlers} style={{ width, transform: [{ translateY: y }] }}>
           {/* Grab bar */}
           <View style={{ alignSelf: "center", width: 44, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.7)", marginBottom: 10 }} />
