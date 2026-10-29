@@ -168,28 +168,64 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
   // --- Refunds ---
   .get("/refunds", async (c) => {
     const rows = await db
-      .select({ refund: refunds, orderNumber: orders.orderNumber })
+      .select({ refund: refunds, orderNumber: orders.orderNumber, paidBy: payments.provider, paidMethod: orders.paymentMethod, customer: users.fullName, email: users.email })
       .from(refunds)
       .innerJoin(orders, eq(orders.id, refunds.orderId))
+      .leftJoin(payments, eq(payments.id, refunds.paymentId))
+      .leftJoin(users, eq(users.id, orders.customerId))
       .orderBy(desc(refunds.createdAt))
       .limit(200);
-    return c.json(rows.map((r) => ({ ...r.refund, orderNumber: r.orderNumber })));
+    return c.json(rows.map((r) => ({ ...r.refund, orderNumber: r.orderNumber, paidBy: r.paidBy, paidMethod: r.paidMethod, customer: r.customer, email: r.email })));
   })
   .patch(
     "/refunds/:id",
     requireRole(...MANAGERS),
     requirePassword,
-    zValidator("json", z.object({ status: z.enum(["approved", "rejected", "processed"]) })),
+    zValidator(
+      "json",
+      z.object({
+        status: z.enum(["approved", "rejected", "processed", "needs_info"]),
+        // Asking the customer: what for, and the message they see
+        infoNeeded: z.enum(["bank", "crypto", "other"]).optional(),
+        infoMessage: z.string().trim().max(500).optional(),
+        // Sent: how, and the proof the customer sees
+        method: z.enum(["bank", "crypto"]).optional(),
+        reference: z.string().trim().max(120).optional(),
+        txHash: z.string().trim().max(200).optional(),
+        cryptoAsset: z.string().trim().max(20).optional(),
+        network: z.string().trim().max(40).optional(),
+        note: z.string().trim().max(500).optional(),
+      }),
+    ),
     async (c) => {
       const actor = c.get("user");
-      const { status } = c.req.valid("json");
+      const input = c.req.valid("json");
+      const { status } = input;
+      if (status === "needs_info" && !input.infoNeeded) throw badRequest("Choose what you need from the customer");
+      if (status === "processed" && !input.method) throw badRequest("Choose how the refund was sent");
+      if (status === "processed" && input.method === "crypto" && !(input.txHash && input.cryptoAsset && input.network)) throw badRequest("Add the coin, network and transaction hash");
       const refund = await db.transaction(async (tx) => {
+        const [before] = await tx.select().from(refunds).where(eq(refunds.id, c.req.param("id"))).for("update");
+        if (!before) throw notFound("Refund not found");
+        if (before.status === "processed" || before.status === "rejected") throw badRequest(`This refund is already ${before.status}`);
         const [row] = await tx
           .update(refunds)
-          .set({ status, processedBy: actor.id, processedAt: status === "processed" ? new Date() : null })
-          .where(eq(refunds.id, c.req.param("id")))
+          .set({
+            status,
+            processedBy: actor.id,
+            processedAt: status === "processed" ? new Date() : null,
+            ...(status === "needs_info" && { infoNeeded: input.infoNeeded, infoMessage: input.infoMessage || null, customerDetails: null, customerRepliedAt: null }),
+            ...(status === "processed" && {
+              method: input.method,
+              reference: input.reference || null,
+              txHash: input.method === "crypto" ? input.txHash : null,
+              cryptoAsset: input.method === "crypto" ? input.cryptoAsset : null,
+              network: input.method === "crypto" ? input.network : null,
+            }),
+            ...(input.note !== undefined && { note: input.note || null }),
+          })
+          .where(eq(refunds.id, before.id))
           .returning();
-        if (!row) throw notFound("Refund not found");
         if (status === "processed") {
           await tx.update(orders).set({ status: "refunded" }).where(eq(orders.id, row.orderId));
           if (row.paymentId) await tx.update(payments).set({ status: "refunded" }).where(eq(payments.id, row.paymentId));
@@ -197,6 +233,13 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
         await audit(tx, { actorId: actor.id, action: `refund.${status}`, entityType: "refund", entityId: row.id, details: { amount: row.amount } });
         return row;
       });
+      const [o] = await db.select({ customerId: orders.customerId, number: orders.orderNumber }).from(orders).where(eq(orders.id, refund.orderId));
+      if (o?.customerId && status === "needs_info") {
+        sendPushLater([o.customerId], { kind: "order", title: "We need a few details for your refund", body: `Tell us where to send the refund for ${o.number}. Open the order to reply.`, data: { url: `/order/${refund.orderId}` } });
+      }
+      if (o?.customerId && status === "rejected") {
+        sendPushLater([o.customerId], { kind: "order", title: "About your refund", body: `There's an update on the refund for ${o.number}. Open the order to see it.`, data: { url: `/order/${refund.orderId}` } });
+      }
       if (status === "processed") {
         void notifyOrderStatus(refund.orderId, "refunded");
         await payoutsForStatus(refund.orderId, "refunded");

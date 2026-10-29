@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { PaymentInstructions } from "@sotechy/shared";
 import { db, schema } from "../db/client";
+import { audit } from "../lib/audit";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, HttpError, notFound } from "../lib/errors";
 import { requireFeature } from "../services/features";
@@ -54,12 +55,13 @@ export async function loadOrderDetail(orderId: string) {
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
   if (!order) return null;
 
-  const [items, paymentRows, history, branch, method] = await Promise.all([
+  const [items, paymentRows, history, branch, method, refundRows] = await Promise.all([
     itemsWithImages([orderId]),
     db.select().from(payments).where(eq(payments.orderId, orderId)).orderBy(desc(payments.createdAt)),
     db.select().from(orderStatusHistory).where(eq(orderStatusHistory.orderId, orderId)).orderBy(asc(orderStatusHistory.createdAt)),
     order.branchId ? db.select().from(schema.branches).where(eq(schema.branches.id, order.branchId)) : Promise.resolve([]),
     db.select().from(schema.paymentMethods).where(eq(schema.paymentMethods.code, order.paymentMethod)),
+    db.select().from(schema.refunds).where(eq(schema.refunds.orderId, orderId)).orderBy(desc(schema.refunds.createdAt)),
   ]);
 
   let paymentInstructions: PaymentInstructions | null = null;
@@ -95,7 +97,9 @@ export async function loadOrderDetail(orderId: string) {
   const [seller] = order.merchantId ? await db.select({ ticker: schema.merchants.ticker }).from(schema.merchants).where(eq(schema.merchants.id, order.merchantId)) : [];
   const reviewed = order.customerId ? await reviewedBy(order.customerId) : new Set<string>();
   const { idempotencyKey: _k, pickupChangePoint: _p, pickupChangeStatus: _ps, pickupChangeAt: _pa, ...publicOrder } = order;
-  return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation, pickupMapUrl, storeTicker: seller?.ticker ?? null,
+  return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p),
+    // The order's refunds with how they were sent (staff ids left out)
+    refunds: refundRows.map(({ requestedBy: _r, processedBy: _pb, paymentId: _pi, orderId: _o, ...r }) => r), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation, pickupMapUrl, storeTicker: seller?.ticker ?? null,
     // Products in it the customer has already reviewed (one review each)
     reviewedProductIds: items.map((i) => i.productId).filter((id): id is string => !!id && reviewed.has(id)) };
 }
@@ -147,6 +151,40 @@ export const orderRoutes = new Hono<AppEnv>()
   .post("/:id/cancel", async (c) => {
     return c.json(await cancelOrder(c.get("user"), c.req.param("id")));
   })
+  /** The customer sends the details Sotechy asked for to send their refund (bank account, wallet or a note) */
+  .post(
+    "/:id/refunds/:refundId/details",
+    zValidator(
+      "json",
+      z.object({
+        bankName: z.string().trim().max(80).optional(),
+        accountNumber: z.string().trim().regex(/^\d{10}$/, "Account numbers have 10 digits").optional(),
+        accountName: z.string().trim().max(120).optional(),
+        walletAddress: z.string().trim().min(20).max(120).optional(),
+        network: z.string().trim().max(40).optional(),
+        note: z.string().trim().max(1000).optional(),
+      }),
+    ),
+    async (c) => {
+      const user = c.get("user");
+      const details = c.req.valid("json");
+      const [row] = await db
+        .select({ refund: schema.refunds })
+        .from(schema.refunds)
+        .innerJoin(orders, eq(orders.id, schema.refunds.orderId))
+        .where(and(eq(schema.refunds.id, c.req.param("refundId")), eq(orders.id, c.req.param("id")), eq(orders.customerId, user.id)));
+      if (!row) throw notFound("Refund not found");
+      if (row.refund.status !== "needs_info") throw badRequest("We already have what we need for this refund");
+      const need = row.refund.infoNeeded;
+      if (need === "bank" && !(details.bankName && details.accountNumber && details.accountName)) throw badRequest("Add your bank, account number and account name");
+      if (need === "crypto" && !(details.walletAddress && details.network)) throw badRequest("Add your wallet address and its network");
+      if (need === "other" && !details.note) throw badRequest("Write us a short reply");
+      // Back to staff, who send it with these details
+      await db.update(schema.refunds).set({ customerDetails: details, customerRepliedAt: new Date(), status: "requested" }).where(eq(schema.refunds.id, row.refund.id));
+      await audit(db, { actorId: user.id, action: "refund.details", entityType: "refund", entityId: row.refund.id, details: { kind: need } });
+      return c.json(await loadOrderDetail(c.req.param("id")));
+    },
+  )
   /** Changes the tokens put towards an unpaid order before paying */
   .post("/:id/tokens", zValidator("json", z.object({ tokens: z.array(z.object({ ticker: z.string().min(1).max(12), amount: z.number().int().min(0).max(1_000_000_000) })).max(4) })), async (c) => {
     await setOrderTokens(c.get("user").id, c.req.param("id"), c.req.valid("json").tokens);

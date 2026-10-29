@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { directionsUrl, formatDate, formatNaira, ORDER_STATUS_LABELS, PAYMENT_METHOD_LABELS, type OrderDetail } from "@sotechy/shared";
 import { useDialog } from "@/components/dialog";
+import { RefundCard } from "@/components/refund-card";
 import { isPaid, PayChoiceSheet, useMoneyMoves, type PayMethod } from "@/components/money-moves";
 import { useToast } from "@/components/toast";
 import { Button, Divider, ErrorView, Loading, SummaryRow, tap, Txt, ui } from "@/components/ui";
@@ -315,6 +316,8 @@ export default function OrderScreen() {
       <Stack.Screen options={{ title: "Track order" }} />
 
       <Hero order={order} onCopy={copy} />
+
+      <RefundCard order={order} onCopy={copy} onUpdated={() => void reload()} />
 
       {watching && (
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: space.md }}>

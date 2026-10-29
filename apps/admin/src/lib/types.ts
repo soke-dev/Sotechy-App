@@ -1,5 +1,5 @@
 // Admin-only response shapes (see apps/api/src/routes/admin/*).
-import type { OrderStatus, PaymentMethodCode, PaymentStatus, RefundStatus, SalesChannel, StockMovementType } from "@sotechy/shared";
+import type { OrderStatus, PaymentMethodCode, PaymentStatus, RefundDetails, RefundStatus, SalesChannel, StockMovementType } from "@sotechy/shared";
 
 export interface AdminOrderRow {
   id: string;
@@ -43,6 +43,22 @@ export interface RefundRow {
   reason: string | null;
   status: RefundStatus;
   createdAt: string;
+  /** How the order was paid */
+  paidBy: string | null;
+  paidMethod: PaymentMethodCode;
+  customer: string | null;
+  email: string | null;
+  infoNeeded: "bank" | "crypto" | "other" | null;
+  infoMessage: string | null;
+  customerDetails: RefundDetails | null;
+  customerRepliedAt: string | null;
+  method: "bank" | "crypto" | null;
+  reference: string | null;
+  txHash: string | null;
+  cryptoAsset: string | null;
+  network: string | null;
+  note: string | null;
+  processedAt: string | null;
 }
 
 export interface InventoryRow {

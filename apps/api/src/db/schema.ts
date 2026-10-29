@@ -45,7 +45,8 @@ export const fulfilmentTypeEnum = pgEnum("fulfilment_type", ["delivery", "pickup
 export const salesChannelEnum = pgEnum("sales_channel", ["online", "in_store"]);
 export const paymentMethodEnum = pgEnum("payment_method", ["bank_transfer", "online", "crypto", "cash", "pos_terminal"]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "confirmed", "failed", "expired", "refunded"]);
-export const refundStatusEnum = pgEnum("refund_status", ["requested", "approved", "rejected", "processed"]);
+/** needs_info: Sotechy asked the customer for details (bank account, wallet, …) before it can send the refund */
+export const refundStatusEnum = pgEnum("refund_status", ["requested", "approved", "rejected", "processed", "needs_info"]);
 export const productConditionEnum = pgEnum("product_condition", ["new", "used", "refurbished"]);
 export const stockMovementTypeEnum = pgEnum("stock_movement_type", [
   "restock",
@@ -684,9 +685,34 @@ export const refunds = pgTable("refunds", {
   status: refundStatusEnum().notNull().default("requested"),
   requestedBy: uuid().references(() => users.id, { onDelete: "set null" }),
   processedBy: uuid().references(() => users.id, { onDelete: "set null" }),
+  /** What Sotechy asked the customer for: "bank" (account), "crypto" (wallet) or "other", with its message */
+  infoNeeded: text().$type<"bank" | "crypto" | "other">(),
+  infoMessage: text(),
+  /** What the customer sent back */
+  customerDetails: jsonb().$type<RefundDetails>(),
+  customerRepliedAt: timestamp({ withTimezone: true }),
+  /** How it was sent: "bank" (transfer) or "crypto", and the proof the customer sees */
+  method: text().$type<"bank" | "crypto">(),
+  /** Bank transfer reference or session ID */
+  reference: text(),
+  txHash: text(),
+  cryptoAsset: text(),
+  network: text(),
+  /** Shown to the customer with the refund (e.g. why it was turned down) */
+  note: text(),
   createdAt: createdAt(),
   processedAt: timestamp({ withTimezone: true }),
 });
+
+/** A customer's details for sending their refund */
+export interface RefundDetails {
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  walletAddress?: string;
+  network?: string;
+  note?: string;
+}
 
 export const shipments = pgTable("shipments", {
   id: uuid().primaryKey().defaultRandom(),

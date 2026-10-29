@@ -222,8 +222,11 @@ export async function verifyPayment(_: Prev, f: FormData) {
   );
 }
 
+/** One step on a refund: approve or turn down, ask the customer for details, or record it as sent (with its proof) */
 export async function updateRefund(_: Prev, f: FormData) {
-  return run(() => withPassword("PATCH", `/admin/refunds/${str(f, "id")}`, { status: str(f, "status") }, str(f, "password") ?? ""), ["/payments"]);
+  const body: Record<string, string | undefined> = { status: str(f, "status") };
+  for (const k of ["infoNeeded", "infoMessage", "method", "reference", "txHash", "cryptoAsset", "network", "note"]) body[k] = str(f, k);
+  return run(() => withPassword("PATCH", `/admin/refunds/${str(f, "id")}`, body, str(f, "password") ?? ""), ["/payments"], "Refund updated");
 }
 
 /** Walk-in sale from the POS screen. */

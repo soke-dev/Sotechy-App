@@ -79,7 +79,7 @@ const ORDER_COPY: Partial<Record<OrderStatus, (o: OrderEmailData) => { hero: Her
     lead: `Thanks for shopping with **${o.store}**. Your tokens arrive once the order is complete.`,
   }),
   cancelled: (o) => ({ hero: "cancelled", subject: `${o.number} was cancelled`, heading: "Your order was cancelled", lead: `**${o.store}** couldn't complete this order. If you paid, your refund is being processed and we'll email you when it's sent.` }),
-  refunded: (o) => ({ hero: "refunded", subject: `Refund sent for ${o.number}`, heading: "Your refund is on its way", lead: `We've sent back **${formatNaira(o.total)}** for this order. Bank transfers can take up to 24 hours to show.` }),
+  refunded: (o) => ({ hero: "refunded", subject: `Refund sent for ${o.number}`, heading: "Your refund is on its way", lead: `We've sent back **${formatNaira(o.total)}** for this order. Bank transfers can take up to 24 hours to show. Your order in the Sotechy app shows how it was sent, with the bank reference or transaction hash.` }),
 };
 
 export const ORDER_EMAIL_STATUSES = Object.keys(ORDER_COPY) as OrderStatus[];

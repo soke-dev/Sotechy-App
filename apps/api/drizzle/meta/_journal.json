@@ -232,6 +232,13 @@
       "when": 1793257233946,
       "tag": "0032_app_popups",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793258309395,
+      "tag": "0033_refund_details",
+      "breakpoints": true
     }
   ]
 }

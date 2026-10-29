@@ -17,7 +17,40 @@ export type FulfilmentType = "delivery" | "pickup";
 export type SalesChannel = "online" | "in_store";
 export type PaymentMethodCode = "bank_transfer" | "online" | "crypto" | "cash" | "pos_terminal";
 export type PaymentStatus = "pending" | "confirmed" | "failed" | "expired" | "refunded";
-export type RefundStatus = "requested" | "approved" | "rejected" | "processed";
+/** needs_info: Sotechy asked the customer for details (bank account, wallet, …) to send it */
+export type RefundStatus = "requested" | "approved" | "rejected" | "processed" | "needs_info";
+
+/** A customer's details for sending their refund */
+export interface RefundDetails {
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  walletAddress?: string;
+  network?: string;
+  note?: string;
+}
+
+/** A refund on an order, as the customer sees it */
+export interface OrderRefund {
+  id: string;
+  amount: number;
+  status: RefundStatus;
+  reason: string | null;
+  /** What Sotechy asked for, and its message */
+  infoNeeded: "bank" | "crypto" | "other" | null;
+  infoMessage: string | null;
+  customerDetails: RefundDetails | null;
+  customerRepliedAt: string | null;
+  /** How it was sent, with the proof: a bank reference, or the coin, network and transaction hash */
+  method: "bank" | "crypto" | null;
+  reference: string | null;
+  txHash: string | null;
+  cryptoAsset: string | null;
+  network: string | null;
+  note: string | null;
+  createdAt: string;
+  processedAt: string | null;
+}
 export type ProductCondition = "new" | "used" | "refurbished";
 export type StockMovementType =
   | "restock"
@@ -318,6 +351,7 @@ export interface OrderStatusChange {
 export interface OrderDetail extends Order {
   items: OrderItem[];
   payments: Payment[];
+  refunds?: OrderRefund[];
   history: OrderStatusChange[];
   branch: Branch | null;
   paymentInstructions: PaymentInstructions | null;
