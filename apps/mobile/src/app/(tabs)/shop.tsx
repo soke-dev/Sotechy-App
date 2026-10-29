@@ -6,6 +6,7 @@ import { FlatList, Pressable, ScrollView, Text, useWindowDimensions, View } from
 import { CartButton } from "@/components/cart-button";
 import { MenuButton } from "@/components/menu";
 import { ProductCard } from "@/components/product-card";
+import { RecentSearches, useRecentSearches } from "@/lib/recent-searches";
 import { brandLabel, countFilters, FilterSheet, NO_FILTERS, priceLabel, SORTS, SortSheet, toQuery, type ShopFilters } from "@/components/shop-filters";
 import { SupportChat } from "@/components/support-chat";
 import { useTabBarInset } from "@/components/tab-bar";
@@ -72,6 +73,9 @@ export default function ShopScreen() {
 
   const categories = useAsync(() => api.categories());
   // Category, search, sort and every filter combine into one query.
+  // What was searched lately, shown when the empty search box is tapped
+  const recent = useRecentSearches();
+  const [searchFocused, setSearchFocused] = useState(false);
   const products = useAsync(() => api.products({ q: search, category, sort, ...toQuery(filters) }), [search, category, sort, JSON.stringify(filters)]);
   const cardWidth = (Math.min(width, 720) - gutter * 2 - space.md) / 2;
   const sortShort = SORTS.find((s) => s.value === sort)?.short ?? "Newest";
@@ -126,10 +130,30 @@ export default function ShopScreen() {
             setQuery(t);
             if (!t) setSearch("");
           }}
-          onSubmitEditing={() => setSearch(query.trim())}
+          onSubmitEditing={() => {
+            recent.add(query);
+            setSearch(query.trim());
+          }}
+          onFocus={() => setSearchFocused(true)}
+          // A moment, so a tap on a recent search lands before the list goes
+          onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
           returnKeyType="search"
           clearButtonMode="while-editing"
         />
+        {searchFocused && !query.trim() && (
+          <View style={{ marginTop: space.sm }}>
+            <RecentSearches
+              items={recent.items}
+              onPick={(t) => {
+                setQuery(t);
+                setSearch(t);
+                recent.add(t);
+              }}
+              onRemove={recent.remove}
+              onClear={recent.clear}
+            />
+          </View>
+        )}
       </View>
       <View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.sm }}>

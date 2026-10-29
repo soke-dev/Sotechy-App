@@ -8,6 +8,7 @@ import { openStore, StoreLogo } from "@/components/store-bits";
 import { Txt } from "@/components/ui";
 import { api } from "@/lib/api";
 import { SOTECHY_STORE, useStores, type MarketStore } from "@/lib/marketplace";
+import { RecentSearches, useRecentSearches } from "@/lib/recent-searches";
 import { colors, fonts, radius, space } from "@/lib/theme";
 
 const MAX_PRODUCTS = 6;
@@ -17,6 +18,8 @@ export function HomeSearch() {
   const [q, setQ] = useState("");
   const [products, setProducts] = useState<CatalogProduct[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const recent = useRecentSearches();
   const { stores } = useStores();
   const term = q.trim();
 
@@ -41,7 +44,10 @@ export function HomeSearch() {
   const matchStore = (s: MarketStore) => [s.name, s.tagline, s.ticker, ...s.sells].some((x) => x?.toLowerCase().includes(needle));
   const storeHits = term.length < 2 ? [] : [SOTECHY_STORE, ...(stores ?? [])].filter(matchStore).slice(0, 4);
   const brands = [...new Set((products ?? []).map((p) => p.brand).filter((b): b is string => !!b && b.toLowerCase().includes(needle)))].slice(0, 6);
-  const shopFor = (query: string) => router.push({ pathname: "/shop", params: { q: query } } as Href);
+  const shopFor = (query: string) => {
+    recent.add(query);
+    router.push({ pathname: "/shop", params: { q: query } } as Href);
+  };
   const nothing = !busy && products !== null && products.length === 0 && storeHits.length === 0;
 
   return (
@@ -55,6 +61,9 @@ export function HomeSearch() {
           placeholderTextColor={colors.faint}
           returnKeyType="search"
           onSubmitEditing={() => term && shopFor(term)}
+          onFocus={() => setFocused(true)}
+          // A moment, so a tap on a recent search lands before the list goes
+          onBlur={() => setTimeout(() => setFocused(false), 150)}
           style={{ flex: 1, height: "100%", fontFamily: fonts.body, fontSize: 15, color: colors.ink }}
         />
         {busy ? <ActivityIndicator size="small" color={colors.brand} /> : null}
@@ -65,13 +74,21 @@ export function HomeSearch() {
         ) : null}
       </View>
 
+      {/* Tapping the empty box shows what was searched lately */}
+      {focused && term.length < 2 && <RecentSearches items={recent.items} onPick={(t) => setQ(t)} onRemove={recent.remove} onClear={recent.clear} />}
+
       {term.length >= 2 && (
         <View style={{ borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, padding: space.md, gap: space.md }}>
           {storeHits.length > 0 && (
             <View style={{ gap: space.xs }}>
               <Txt variant="overline">Stores</Txt>
               {storeHits.map((s) => (
-                <Pressable key={s.slug} onPress={() => openStore(s.slug)} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}>
+                <Pressable
+                  key={s.slug}
+                  onPress={() => {
+                    recent.add(term);
+                    openStore(s.slug);
+                  }} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}>
                   <StoreLogo store={s} size={34} />
                   <View style={{ flex: 1 }}>
                     <Txt variant="label" numberOfLines={1}>{s.name}</Txt>
@@ -100,7 +117,12 @@ export function HomeSearch() {
             <View style={{ gap: space.xs }}>
               <Txt variant="overline">Products</Txt>
               {products!.slice(0, MAX_PRODUCTS).map((p) => (
-                <Pressable key={p.id} onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.slug } })} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 5, opacity: pressed ? 0.7 : 1 })}>
+                <Pressable
+                  key={p.id}
+                  onPress={() => {
+                    recent.add(term);
+                    router.push({ pathname: "/product/[id]", params: { id: p.slug } });
+                  }} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 5, opacity: pressed ? 0.7 : 1 })}>
                   <ProductImage uri={p.imageUrl} name={p.name} style={{ width: 42, height: 42 }} radius={10} iconSize={18} />
                   <View style={{ flex: 1 }}>
                     <Txt variant="label" numberOfLines={1}>{p.name}</Txt>
