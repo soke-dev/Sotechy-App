@@ -113,6 +113,9 @@ const topOf = (cats: Category[], id: string | null) => {
   return c?.parentId ?? c?.id ?? null;
 };
 
+/** Products in each scrolling row of store products */
+const ROW_SIZE = 10;
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -127,6 +130,14 @@ export default function HomeScreen() {
     const [config, categories, products] = await Promise.all([api.storeConfig(), api.categories(), api.products({ sort: "newest" })]);
     return { config, categories, products };
   });
+  // Each store row on Home gets the store's own newest products (up to 10), not just those in the catalogue's newest
+  // (the first 12: Home has a row for each top category, and never that many)
+  const rowSlugs = byFeatured(stores ?? []).slice(0, 12).map((st) => st.slug).join(",");
+  const storeRows = useAsync(async () => {
+    const slugs = rowSlugs ? rowSlugs.split(",") : [];
+    const lists = await Promise.all(slugs.map((slug) => api.products({ store: slug, sort: "newest" }).catch(() => [])));
+    return new Map(slugs.map((slug, i) => [slug, lists[i].slice(0, ROW_SIZE)]));
+  }, [rowSlugs]);
 
   if (loading && !data) return <Loading />;
   if (error && !data) return <ErrorView message={error} onRetry={reload} />;
@@ -168,7 +179,7 @@ export default function HomeScreen() {
     <ScrollView
       style={ui.screen}
       contentContainerStyle={{ paddingTop: insets.top + space.sm, paddingBottom: tabInset + space.xl, gap: space.xxl }}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={colors.brand} />}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => { void reload(); void storeRows.reload(); }} tintColor={colors.brand} />}
       showsVerticalScrollIndicator={false}
     >
       {/* Header, search and WhatsApp ordering */}
@@ -318,7 +329,7 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
-      <MarketRail title="Fresh from the store" subtitle="Verified shops, each with its own token" items={storeItems} onSeeAll={() => router.push("/stores")} />
+      <MarketRail title="Fresh from the stores" subtitle="Verified shops, each with its own token" items={storeItems.slice(0, ROW_SIZE)} onSeeAll={() => router.push("/stores")} />
 
       <ProductRail title="Top deals" subtitle="Sold by Sotechy" products={deals} dark onSeeAll={() => shop({ featured: "1" })} />
 
@@ -338,7 +349,7 @@ export default function HomeScreen() {
               <MarketRail
                 title={`From ${st.name}`}
                 subtitle={`Earn $${st.ticker} on every order`}
-                items={storeItems.filter((x) => x.store.slug === st.slug)}
+                items={(storeRows.data?.get(st.slug) ?? products.filter((p) => p.storeSlug === st.slug)).slice(0, ROW_SIZE).map((p) => ({ store: st, product: toStoreProduct(p) }))}
                 dark={i % 3 === 1}
                 onSeeAll={() => openStore(st.slug)}
               />
