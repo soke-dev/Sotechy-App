@@ -1,4 +1,4 @@
-import { ArrowRight, Clock, Sparkles } from "lucide-react";
+import { ArrowRight, Clock, Megaphone } from "lucide-react";
 import Link from "next/link";
 import { Illo } from "@/components/illustrations";
 import { btn, Card, Pill, ProductThumb, StatCard } from "@/components/ui";
@@ -58,7 +58,7 @@ export default async function HomePage() {
               <span className="hidden sm:inline">Add a product</span>
             </Link>
             <Link href="/featured" className="inline-flex h-9 items-center justify-center whitespace-nowrap gap-1 rounded-full bg-white/10 px-2 text-[12.5px] font-semibold text-white hover:bg-white/15 sm:px-4 sm:text-[13px]">
-              <Sparkles size={14} className="text-sun" /> Get featured
+              <Megaphone size={14} className="text-sun" /> Get featured
             </Link>
           </div>
         </div>

@@ -223,7 +223,7 @@ function TabBar({ store, onMore }: { store: ShellStore; onMore: () => void }) {
       })}
       <button onClick={onMore} className="flex flex-1 flex-col items-center gap-0.5 py-1">
         <span className="flex h-9 w-12 items-center justify-center rounded-2xl opacity-55">
-          <Illo name="sparkle" size={26} />
+          <Illo name="grid" size={26} />
         </span>
         <span className="text-[11px] text-muted">More</span>
       </button>

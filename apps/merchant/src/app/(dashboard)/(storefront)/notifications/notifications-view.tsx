@@ -71,7 +71,7 @@ export function NotificationsView({ followers, sent, products }: { followers: nu
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <StatCard accent illo="chat" label="Followers" value={followers.toLocaleString()} hint="Will get your message" />
-        <StatCard illo="sparkle" label="Messages sent" value={sent.length.toLocaleString()} hint="All time" />
+        <StatCard illo="chat" label="Messages sent" value={sent.length.toLocaleString()} hint="All time" />
         <StatCard illo="receipt" label="Left today" value={`${left} of ${PER_DAY}`} hint="So followers don't switch you off" />
       </div>
 

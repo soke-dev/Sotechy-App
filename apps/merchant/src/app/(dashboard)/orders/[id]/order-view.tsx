@@ -189,7 +189,7 @@ export function OrderView({ order }: { order: Order }) {
       {s === "delivered" && (
         <NextStep illo="heart" title="Waiting for the customer to confirm" body={`Once ${order.customer.username ? `@${order.customer.username}` : "the customer"} confirms they got it, your final payment (the balance for this order) is sent to you. If they don't respond, Sotechy reviews and confirms, usually within 24 hours.`} />
       )}
-      {s === "completed" && <NextStep illo="sparkle" title="Completed" body={`Delivered, and the customer earns their $${store.ticker}. Your money is paid out on your payout plan.`} />}
+      {s === "completed" && <NextStep illo="heart" title="Completed" body={`Delivered, and the customer earns their $${store.ticker}. Your money is paid out on your payout plan.`} />}
       {s === "declined" && <NextStep illo="doc" title="You declined this order" body="The customer was refunded and their pending tokens were cancelled." />}
       {s === "payback" && order.payback && (
         <section className="mb-6 rounded-2xl border-2 border-bad/30 bg-bad-soft p-6">
@@ -336,7 +336,7 @@ export function OrderView({ order }: { order: Order }) {
               </div>
               <div className="flex min-w-0 flex-col gap-1.5 rounded-2xl bg-surface-alt px-3 py-3">
                 <span className="flex items-center gap-1.5 text-sm font-semibold">
-                  <Illo name="sparkle" size={20} /> <span className="truncate">{formatTokens(m.sotechyBonus)} $SOTECHY</span>
+                  <Illo name="coin" size={20} /> <span className="truncate">{formatTokens(m.sotechyBonus)} $SOTECHY</span>
                 </span>
                 <span className="text-xs text-muted">Sotechy bonus</span>
               </div>

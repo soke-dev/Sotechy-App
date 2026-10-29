@@ -31,11 +31,13 @@ const Tag = ({ size }: P) => (
   </S>
 );
 
-const Sparkle = ({ size }: P) => (
+/** Four tiles, for "More" */
+const Grid = ({ size }: P) => (
   <S size={size}>
-    <path d="M21 8 C22.6 19 25 21.4 36 23 C25 24.6 22.6 27 21 38 C19.4 27 17 24.6 6 23 C17 21.4 19.4 19 21 8 Z" fill={C.yellow} />
-    <path d="M37 5 C37.7 9.6 38.4 10.3 43 11 C38.4 11.7 37.7 12.4 37 17 C36.3 12.4 35.6 11.7 31 11 C35.6 10.3 36.3 9.6 37 5 Z" fill={C.orange} />
-    <circle cx={38} cy={36} r={3} fill={C.orange} />
+    <rect x={7} y={7} width={14} height={14} rx={4} fill={C.orange} />
+    <rect x={27} y={7} width={14} height={14} rx={4} fill={C.yellow} />
+    <rect x={7} y={27} width={14} height={14} rx={4} fill={C.yellow} />
+    <rect x={27} y={27} width={14} height={14} rx={4} fill={C.ink} />
   </S>
 );
 
@@ -201,6 +203,15 @@ const Mail = ({ size }: P) => (
   </S>
 );
 
+/** Kept for the email artwork only: the dashboard doesn't use the sparkle */
+export const Sparkle = ({ size }: P) => (
+  <S size={size}>
+    <path d="M21 8 C22.6 19 25 21.4 36 23 C25 24.6 22.6 27 21 38 C19.4 27 17 24.6 6 23 C17 21.4 19.4 19 21 8 Z" fill={C.yellow} />
+    <path d="M37 5 C37.7 9.6 38.4 10.3 43 11 C38.4 11.7 37.7 12.4 37 17 C36.3 12.4 35.6 11.7 31 11 C35.6 10.3 36.3 9.6 37 5 Z" fill={C.orange} />
+    <circle cx={38} cy={36} r={3} fill={C.orange} />
+  </S>
+);
+
 export const ILLUSTRATIONS = {
   home: ({ size }: P) => <HomeIcon active size={size} />,
   bag: ({ size }: P) => <ShopIcon active size={size} />,
@@ -208,7 +219,7 @@ export const ILLUSTRATIONS = {
   box: ({ size }: P) => <OrdersIcon active size={size} />,
   user: ({ size }: P) => <AccountIcon active size={size} />,
   tag: Tag,
-  sparkle: Sparkle,
+  grid: Grid,
   store: Store,
   bike: Bike,
   shield: Shield,

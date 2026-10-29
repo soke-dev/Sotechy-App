@@ -94,7 +94,7 @@ export default async function TokenPage() {
       </section>
 
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard illo="sparkle" label="Earned by customers" value={formatTokens(s.issued)} hint={`$${t} all time`} />
+        <StatCard illo="coin" label="Earned by customers" value={formatTokens(s.issued)} hint={`$${t} all time`} />
         <StatCard illo="user" label="Holders" value={s.holders.toLocaleString()} hint="Customers holding it now" />
         <StatCard illo="cart" label="Spent in your store" value={formatTokens(s.spent)} hint="You're paid for it in naira" />
         <StatCard illo="receipt" label="From walk-in sales" value={formatTokens(s.walkInThisMonth)} hint="This month" />

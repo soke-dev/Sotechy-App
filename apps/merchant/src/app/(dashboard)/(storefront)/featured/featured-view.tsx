@@ -3,7 +3,7 @@
 // Paying to have the store featured: shown first on the Sotechy app's Home, in Shop and in Stores, with a
 // Home banner. Pro costs more and adds the store's own dark row of products on Home (two stores at a time).
 // Prices and how many stores can have each at once are set by Sotechy.
-import { ArrowRight, Check, ChevronRight, CreditCard, Crown, ImagePlus, Landmark, Sparkles, Star, Trash2, Wallet } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, CreditCard, Crown, ImagePlus, Landmark, Megaphone, Star, Trash2, Wallet } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useAccount } from "@/components/account-context";
 import { BANNER_SPEC, ImageCropper } from "@/components/image-cropper";
@@ -184,7 +184,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
 
   return (
     <>
-      <PageHeader illo="sparkle" title="Get featured" description="Be the first store customers see in the Sotechy app, with your own banner on Home." />
+      <PageHeader illo="store" title="Get featured" description="Be the first store customers see in the Sotechy app, with your own banner on Home." />
       {justPaid && (
         <p className="mb-4 flex items-center gap-2 rounded-2xl bg-good-soft px-4 py-3 text-sm font-semibold text-good">
           <Check size={16} /> Thanks! Your feature starts as soon as your payment is confirmed, usually within a minute or two.
@@ -218,7 +218,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <span className="flex items-center gap-1.5 font-display text-xl font-bold">
-                    {pro ? <Crown size={18} className="text-[#FDB913]" /> : <Sparkles size={18} className="text-brand" />} {pro ? "Featured Pro" : "Featured"}
+                    {pro ? <Crown size={18} className="text-[#FDB913]" /> : <Megaphone size={18} className="text-brand" />} {pro ? "Featured Pro" : "Featured"}
                   </span>
                   <span className={`text-sm ${pro ? "text-white/70" : "text-muted"}`}>
                     <b className={pro ? "text-white" : "text-ink"}>{formatNaira(pro ? data.proPricePerMonth : data.pricePerMonth)}</b> a month

@@ -5,13 +5,16 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import sharp from "sharp";
-import { Illo, type IlloName } from "../src/components/illustrations";
+import { Illo, Sparkle, type IlloName as DashboardIllo } from "../src/components/illustrations";
+
+// The emails still use the sparkle, which the dashboard doesn't
+type IlloName = DashboardIllo | "sparkle";
 
 const here = __dirname;
 const out = join(here, "../../api/public/email");
 mkdirSync(out, { recursive: true });
 
-const svgOf = (name: IlloName, size: number) => renderToStaticMarkup(<Illo name={name} size={size} />);
+const svgOf = (name: IlloName, size: number) => renderToStaticMarkup(name === "sparkle" ? <Sparkle size={size} /> : <Illo name={name} size={size} />);
 /** An illustration's inner drawing, placed at x,y and scaled to `size` */
 const place = (name: IlloName, x: number, y: number, size: number, rotate = 0) => {
   const inner = svgOf(name, size).replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");

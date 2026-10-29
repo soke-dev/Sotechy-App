@@ -751,7 +751,7 @@ function TokenHelp() {
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-soft">
-                  <Illo name="sparkle" size={30} />
+                  <Illo name="coin" size={30} />
                 </span>
                 <h3 className="font-display text-xl font-bold">Your store token</h3>
               </div>
@@ -805,7 +805,7 @@ function Submitted({ ticker }: { ticker: string | null }) {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
       <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-brand-soft">
-        <Illo name="sparkle" size={48} />
+        <Illo name="doc" size={48} />
       </span>
       <h1 className="mt-5 text-center font-display text-3xl font-bold">Submitted for review</h1>
       <p className="mt-2 text-center text-muted">We usually review new stores within 1–2 working days and we&apos;ll email you. Meanwhile, you can explore your dashboard and get your store ready.</p>

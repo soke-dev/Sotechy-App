@@ -62,7 +62,7 @@ export function PromosView({ promos }: { promos: Promotion[] }) {
   return (
     <>
       <PageHeader
-        illo="sparkle"
+        illo="tag"
         title="Promo codes"
         description="Give customers a code for money off your products. They type it at checkout; the discount comes off what you're paid for that order."
         actions={
@@ -121,7 +121,7 @@ export function PromosView({ promos }: { promos: Promotion[] }) {
       )}
 
       {promos.length === 0 && !creating ? (
-        <EmptyState illo="sparkle" title="No promo codes yet" message="Make one to share with your customers on WhatsApp or Instagram." />
+        <EmptyState illo="tag" title="No promo codes yet" message="Make one to share with your customers on WhatsApp or Instagram." />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {promos.map((p) => {

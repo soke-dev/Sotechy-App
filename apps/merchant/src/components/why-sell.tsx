@@ -16,7 +16,7 @@ const GAINS: { illo: IlloName; title: string; body: string }[] = [
     body: "Shoppers find you through search, categories, deals and featured spots, and customers of other stores come to you too, because they earn on every order.",
   },
   {
-    illo: "sparkle",
+    illo: "store",
     title: "Room to grow",
     body: "We hand-pick and review every store, and keep too many stores selling the same thing in the same area from crowding each other out. More eyes stay on yours.",
   },

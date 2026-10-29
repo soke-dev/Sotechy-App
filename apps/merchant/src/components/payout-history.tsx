@@ -14,7 +14,7 @@ const PHONE_SHOWS = 3;
 
 const STAGE = {
   first: { label: "First payment", when: "When you accepted", illo: "box", tint: "bg-brand-soft" },
-  final: { label: "Final payment", when: "After delivery", illo: "sparkle", tint: "bg-good-soft" },
+  final: { label: "Final payment", when: "After delivery", illo: "bank", tint: "bg-good-soft" },
   payback: { label: "To pay back", when: "Order cancelled after payment", illo: "doc", tint: "bg-bad-soft" },
 } as const;
 
