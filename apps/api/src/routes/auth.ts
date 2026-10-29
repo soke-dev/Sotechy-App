@@ -202,6 +202,24 @@ export const authRoutes = new Hono<AppEnv>()
     const [owner] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.username, n));
     return c.json({ username: n, available: !owner, reason: owner ? `@${n} is taken` : null });
   })
+  /** Changes the password (the current one first), or sets one for an account that only used Google */
+  .post(
+    "/password/change",
+    requireAuth,
+    zValidator("json", z.object({ current: z.string().max(200).optional(), next: z.string().min(8, "Use at least 8 characters").max(200) })),
+    async (c) => {
+      const { current, next } = c.req.valid("json");
+      const id = c.get("user").id;
+      const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id));
+      if (!user) throw unauthorized("Sign in again");
+      if (user.passwordHash && !(current && (await checkPassword(current, user.passwordHash)))) throw badRequest("Your current password isn't right");
+      if (current && current === next) throw badRequest("Choose a password you haven't used here");
+      await db.update(schema.users).set({ passwordHash: await hashPassword(next) }).where(eq(schema.users.id, id));
+      await securityNotice(id, user.passwordHash ? "Password changed" : "Password set", `${user.passwordHash ? "Your password was changed" : "You can now sign in with a password too"} in the app. If this wasn't you, contact support now.`);
+      await audit(db, { actorId: id, action: user.passwordHash ? "user.password_change" : "user.password_set", entityType: "user", entityId: id });
+      return c.json({ ok: true });
+    },
+  )
   .get("/me", requireAuth, async (c) => {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, c.get("user").id));
     return c.json(publicUser(user));
@@ -217,6 +235,7 @@ export const authRoutes = new Hono<AppEnv>()
         phone: z.string().max(30).nullable().optional(),
         whatsappPhone: z.string().max(30).nullable().optional(),
         // A character (m1–m6, f1–f6), or a photo they uploaded to Sotechy (its /media/ address)
+        pushPrefs: z.object({ order: z.boolean(), offer: z.boolean(), store: z.boolean(), tokens: z.boolean(), support: z.boolean() }).partial().optional(),
         avatarStyle: z
           .string()
           .max(500)
@@ -240,6 +259,7 @@ export const authRoutes = new Hono<AppEnv>()
       const patch = {
         ...(input.fullName !== undefined && { fullName: input.fullName }),
         ...(input.avatarStyle !== undefined && { avatarStyle: input.avatarStyle }),
+        ...(input.pushPrefs !== undefined && { pushPrefs: input.pushPrefs }),
         // An uploaded photo is the account's picture too (a character leaves it as it was)
         ...(input.avatarStyle?.startsWith("http") && { avatarUrl: input.avatarStyle }),
         ...(input.username !== undefined && { username: await claimUsername(input.username, id, { staff: c.get("user").role !== "customer" }) }),

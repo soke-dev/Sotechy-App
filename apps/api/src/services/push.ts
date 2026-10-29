@@ -19,9 +19,19 @@ interface Ticket {
   details?: { error?: string };
 }
 
-/** Sends to every registered phone of these accounts. Tokens Expo says are dead are removed. */
+/** Kinds a customer can switch off in the app (security notices always go) */
+const MUTABLE = ["order", "offer", "store", "tokens", "support"] as const;
+
+/** Sends to every registered phone of these accounts, skipping anyone who switched this kind off. Tokens Expo says are dead are removed. */
 export async function sendPush(userIds: string[], push: Push) {
   if (!userIds.length) return;
+  const kind = push.kind as (typeof MUTABLE)[number] | undefined;
+  if (kind && MUTABLE.includes(kind) && (push.audience ?? "customer") === "customer") {
+    const prefs = await db.select({ id: schema.users.id, prefs: schema.users.pushPrefs }).from(schema.users).where(inArray(schema.users.id, userIds));
+    const off = new Set(prefs.filter((p) => p.prefs?.[kind] === false).map((p) => p.id));
+    userIds = userIds.filter((id) => !off.has(id));
+    if (!userIds.length) return;
+  }
   const devices = await db.select().from(schema.pushDevices).where(inArray(schema.pushDevices.userId, userIds));
   for (let i = 0; i < devices.length; i += 100) {
     const batch = devices.slice(i, i + 100);

@@ -504,7 +504,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       const [notice] = await db.insert(schema.storeNotices).values({ merchantId: store.id, title: input.title, body: input.body, productId: input.productId ?? null, sentTo: followers.length }).returning();
       sendPushLater(
         followers.map((f) => f.userId),
-        { title: `${store.name}: ${input.title}`, body: input.body, data: { url: productSlug ? `/product/${productSlug}` : `/store/${store.slug}` } },
+        { kind: "store", title: `${store.name}: ${input.title}`, body: input.body, data: { url: productSlug ? `/product/${productSlug}` : `/store/${store.slug}` } },
       );
       return c.json(notice, 201);
     },

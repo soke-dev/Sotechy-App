@@ -404,6 +404,10 @@ export interface User {
   branchId: string | null;
   avatarUrl?: string | null;
   /** Chosen illustrated avatar (m1–m3, f1–f3); null = generated */
+  /** Push notifications switched off by kind; missing = on */
+  pushPrefs?: Partial<Record<"order" | "offer" | "store" | "tokens" | "support", boolean>> | null;
+  /** False for accounts that only sign in with Google (they can set a password) */
+  hasPassword?: boolean;
   avatarStyle?: string | null;
   createdAt: string;
 }

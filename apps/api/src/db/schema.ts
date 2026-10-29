@@ -134,6 +134,8 @@ export const users = pgTable("users", {
   id: uuid().primaryKey().defaultRandom(),
   email: text().notNull().unique(),
   passwordHash: text(), // null for accounts that only use Google sign-in
+  /** Push notifications switched off by kind (order, offer, store, tokens, support); missing = on. Security ones always send. */
+  pushPrefs: jsonb().$type<Partial<Record<"order" | "offer" | "store" | "tokens" | "support", boolean>>>(),
   googleId: text().unique(),
   /** The Sotechy wallet address (worked out from the id), kept so a wallet can be found by its address. Filled on first need. */
   walletAddress: text().unique(),

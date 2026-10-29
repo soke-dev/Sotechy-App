@@ -115,7 +115,16 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     forgotPassword: (email: string) => send<{ ok: true }>("POST", "/auth/password/forgot", { email }),
     resetPassword: (input: { email: string; code: string; password: string }) => send<AuthResponse>("POST", "/auth/password/reset", input),
     me: () => get<User>("/auth/me"),
-    updateProfile: (input: { fullName?: string; username?: string; phone?: string | null; whatsappPhone?: string | null; avatarStyle?: string | null }) =>
+    /** Changes the password (send the current one), or sets one for a Google-only account */
+    changePassword: (input: { current?: string; next: string }) => send<{ ok: true }>("POST", "/auth/password/change", input),
+    updateProfile: (input: {
+      fullName?: string;
+      username?: string;
+      phone?: string | null;
+      whatsappPhone?: string | null;
+      avatarStyle?: string | null;
+      pushPrefs?: Partial<Record<"order" | "offer" | "store" | "tokens" | "support", boolean>>;
+    }) =>
       send<User>("PATCH", "/auth/me", input),
     checkUsername: (name: string) => get<{ username: string; available: boolean; reason: string | null }>(`/auth/username/${encodeURIComponent(name)}`),
 

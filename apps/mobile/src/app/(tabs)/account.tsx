@@ -92,6 +92,8 @@ export default function AccountScreen() {
             <ListRow illo="user" title="Profile & details" subtitle="Name, phone and email" onPress={() => router.push("/profile")} />
             <Divider style={{ marginLeft: 66 }} />
             <ListRow illo="pin" title="Saved addresses" subtitle="Used automatically at checkout" onPress={() => router.push("/addresses")} />
+            <Divider style={{ marginLeft: 66 }} />
+            <ListRow illo="shield" title="Security & notifications" subtitle="Password, and which notifications you get" onPress={() => router.push("/security")} />
           </Group>
         )}
 

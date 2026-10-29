@@ -12,7 +12,7 @@ interface AuthState {
   signUp: (input: { email: string; password: string; fullName?: string; phone?: string; referralCode?: string }) => Promise<void>;
   /** Resolves true when the account was just created */
   signInWithGoogle: (idToken: string) => Promise<boolean>;
-  updateProfile: (input: { fullName?: string; username?: string; phone?: string | null; whatsappPhone?: string | null; avatarStyle?: string | null }) => Promise<void>;
+  updateProfile: (input: Parameters<typeof api.updateProfile>[0]) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
