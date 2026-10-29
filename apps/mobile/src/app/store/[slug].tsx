@@ -254,15 +254,10 @@ export default function StoreScreen() {
           <T color={t.text} size={22} weight={fonts.displayHeavy} lines={2} style={{ textAlign: "center", letterSpacing: -0.3 }}>{store.name}</T>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Ionicons name="shield-checkmark" size={15} color="#1C8A4C" />
-              <T color="#1C8A4C" size={13.5} weight={fonts.semibold}>Verified</T>
+              {/* Orange tick for an official store (a registered business), blue for a freelancer */}
+              <Ionicons name="checkmark-circle" size={15} color={isOfficialStore(store) ? "#F7931E" : "#2F6FB3"} />
+              <T color={isOfficialStore(store) ? "#E07F0C" : "#2F6FB3"} size={13.5} weight={fonts.semibold}>{isOfficialStore(store) ? "Official store" : "Verified"}</T>
             </View>
-            {isOfficialStore(store) && (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Ionicons name="checkmark-circle" size={15} color={t.accent} />
-                <T color={t.accent} size={13.5} weight={fonts.semibold}>Official store</T>
-              </View>
-            )}
             {store.delivery.states.length > 0 && (
               <>
                 <View style={{ width: 1, height: 14, backgroundColor: t.muted, opacity: 0.4 }} />

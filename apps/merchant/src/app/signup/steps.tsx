@@ -1,5 +1,6 @@
 "use client";
 
+import { BadgeHint } from "@/components/badge-hint";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { FormError, PhoneField, ReferralField, StoreHandleField } from "@/components/account-fields";
@@ -79,6 +80,7 @@ export function StoreStep({ firstName, askReferral, phone, referral }: { firstNa
               </span>
             </button>
           ))}
+          <BadgeHint />
         </div>
         <PhoneField name="phone" label="Phone for orders" required defaultValue={phone} hint="We call or text this number about orders. Customers don't see it." />
         <label className="-mt-2 flex items-center gap-2 text-sm text-ink-2">

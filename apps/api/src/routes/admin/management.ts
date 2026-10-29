@@ -534,14 +534,6 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       return c.json(store);
     },
   )
-  /** Marks a store as a brand's official store (or takes the badge away) */
-  .put("/merchants/:id/official", ADMIN, zValidator("json", z.object({ official: z.boolean() })), async (c) => {
-    const { official } = c.req.valid("json");
-    const [row] = await db.update(schema.merchants).set({ isOfficial: official }).where(eq(schema.merchants.id, c.req.param("id"))).returning({ id: schema.merchants.id });
-    if (!row) throw notFound("Store not found");
-    await audit(db, { actorId: c.get("user").id, action: official ? "merchant.official" : "merchant.unofficial", entityType: "merchant", entityId: row.id });
-    return c.json({ official });
-  })
   /** Approve (go live), suspend or send a store back to review. Approving emails the owner. */
   .patch(
     "/merchants/:id/status",

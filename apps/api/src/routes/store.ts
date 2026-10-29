@@ -254,7 +254,8 @@ export const storeRoutes = new Hono()
         sells: m.sells,
         featuredUntil: m.featuredUntil,
         proUntil: m.proUntil,
-        isOfficial: m.isOfficial,
+        // A registered business (its documents checked by Sotechy) is an official store; freelancers aren't
+        isOfficial: sql<boolean>`${m.sellerKind} = 'registered'`,
         productCount: sql<number>`(select count(*)::int from products p where p.merchant_id = "merchants"."id" and p.is_published)`,
         ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
         ratingCount: sql<number>`(select count(*)::int from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
@@ -280,7 +281,8 @@ export const storeRoutes = new Hono()
         sells: m.sells,
         featuredUntil: m.featuredUntil,
         proUntil: m.proUntil,
-        isOfficial: m.isOfficial,
+        // A registered business (its documents checked by Sotechy) is an official store; freelancers aren't
+        isOfficial: sql<boolean>`${m.sellerKind} = 'registered'`,
         branchId: branches.id,
         // The store's rating: every published review of its products
         ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
@@ -325,7 +327,7 @@ export const storeRoutes = new Hono()
     const { offerFloor: _floor, ...shown } = product;
     const [seller] = product.merchantId
       ? await db
-          .select({ id: schema.merchants.id, name: schema.merchants.name, slug: schema.merchants.slug, ticker: schema.merchants.ticker, logoUrl: schema.merchants.logoUrl, isOfficial: schema.merchants.isOfficial, branchId: branches.id })
+          .select({ id: schema.merchants.id, name: schema.merchants.name, slug: schema.merchants.slug, ticker: schema.merchants.ticker, logoUrl: schema.merchants.logoUrl, isOfficial: sql<boolean>`${schema.merchants.sellerKind} = 'registered'`, branchId: branches.id })
           .from(schema.merchants)
           .leftJoin(branches, eq(branches.merchantId, schema.merchants.id))
           .where(eq(schema.merchants.id, product.merchantId))

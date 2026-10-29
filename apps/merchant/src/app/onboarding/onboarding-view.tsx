@@ -1,5 +1,6 @@
 "use client";
 
+import { BadgeHint } from "@/components/badge-hint";
 import { ArrowLeft, Building2, Check, ChevronRight, CircleHelp, FileText, Globe, Loader2, Plus, Trash2, Upload, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -331,6 +332,9 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Option on={kind === "registered"} onClick={() => setKind("registered")} icon={<Building2 size={20} />} title="Registered business" body="Registered with CAC" />
                     <Option on={kind === "individual"} onClick={() => setKind("individual")} icon={<UserRound size={20} />} title="Freelancer or individual" body="Selling in your own name" />
+                  </div>
+                  <div className="mt-3">
+                    <BadgeHint />
                   </div>
                 </Section>
                 {kind === "registered" && (

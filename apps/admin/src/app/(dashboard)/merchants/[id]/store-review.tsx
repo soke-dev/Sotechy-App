@@ -8,8 +8,7 @@ import { formatNaira } from "@sotechy/shared";
 import { CheckIcon } from "@/components/merchant-bits";
 import { RelTime } from "@/components/rel-time";
 import { Card, dangerButtonClass, inputClass, Pill, primaryButtonClass, secondaryButtonClass, Sheet } from "@/components/ui";
-import { reviewStore, reviewZone, setOfficial, setStoreStatus } from "../actions";
-import { LiveSwitch } from "@/components/switch";
+import { reviewStore, reviewZone, setStoreStatus } from "../actions";
 import { StoreAvatar } from "../merchants-list";
 import { KYC, STAGE, stageOf, type AdminStoreDetail, type AdminZone } from "../store-types";
 import { usePasswordPrompt } from "@/components/password-prompt";
@@ -276,12 +275,7 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
             <Row label="WhatsApp alerts">{store.contactWhatsapp ?? store.contactPhone}</Row>
           </Card>
           <Card title="Store">
-            <LiveSwitch
-              label="Official store"
-              description="A brand's own store. Customers see an “Official store” badge on its page, its card and its products."
-              initial={!!store.isOfficial}
-              onChange={setOfficial.bind(null, store.id)}
-            />
+            <Row label="Badge in the app">{store.sellerKind === "registered" ? "Orange tick · Official store (registered business)" : "Blue tick · Verified (freelancer)"}</Row>
             <Row label="Token ticker">{`$${store.ticker}`}{!store.tokenApprovedAt && <span className="block text-xs font-normal text-muted">{store.application?.tickerChosen ? "Chosen by the store · fixed when you approve" : "Not chosen yet"}</span>}</Row>
             <Row label="Sells">{store.sells.length ? store.sells.join(", ") : null}</Row>
             {store.sellerKind === "individual" && (

@@ -72,7 +72,7 @@ export interface MarketStore {
   featuredUntil?: string;
   /** Featured Pro until this date: also gets its own dark row of products on Home */
   proUntil?: string;
-  /** A brand's own store, marked by Sotechy */
+  /** A registered business (orange tick, "Official store"); freelancers get the blue tick */
   isOfficial?: boolean;
   productCount: number;
   /** The branch the store's orders ship from */
@@ -220,7 +220,7 @@ export const findProduct = (storeSlug: string, productId: string) => storeBySlug
 
 /** Whether a store's paid feature is running */
 export const isFeatured = (s: MarketStore) => !!s.featuredUntil && new Date(s.featuredUntil).getTime() > Date.now();
-/** Sotechy's own store, or one Sotechy marked as a brand's official store */
+/** Sotechy's own store, or a registered business: the orange tick and "Official store" */
 export const isOfficialStore = (s: Pick<MarketStore, "isSotechy" | "isOfficial">) => !!s.isSotechy || !!s.isOfficial;
 export const isPro = (s: MarketStore) => !!s.proUntil && new Date(s.proUntil).getTime() > Date.now();
 /** Featured stores first, keeping the order otherwise */

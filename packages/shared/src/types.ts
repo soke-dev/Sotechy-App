@@ -685,7 +685,7 @@ export interface MarketStore {
   featuredUntil: string | null;
   /** Featured Pro: its own dark row of products on Home */
   proUntil?: string | null;
-  /** A brand's own store, marked by Sotechy */
+  /** A registered business: "Official store" with the orange tick (freelancers get the blue one) */
   isOfficial?: boolean;
   productCount?: number;
   ratingAverage?: number | null;
