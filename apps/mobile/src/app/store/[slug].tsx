@@ -79,6 +79,39 @@ function Fact({ label, children, color, muted, divider }: { label: string; child
 
 const SOCIAL_ICON = { instagram: "logo-instagram", x: "logo-x", facebook: "logo-facebook", tiktok: "logo-tiktok", website: "globe-outline" } as const;
 
+/** "Lead first, second +3": the first few items, with the rest one tap away */
+function MoreRow({ icon, lead, items, shown, tail = "", t }: { icon: "bicycle" | "storefront"; lead: string; items: string[]; shown: number; tail?: string; t: { text: string; accent: string; muted: string; accentSoft?: string } }) {
+  const [open, setOpen] = useState(false);
+  const more = items.length - shown;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: space.sm }}>
+      <Ionicons name={icon} size={17} color={t.accent} style={{ marginTop: 1 }} />
+      <View style={{ flex: 1, gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+          <T color={t.text} size={14} style={{ flexShrink: 1 }}>
+            {lead}
+            {(open ? items : items.slice(0, shown)).join(icon === "storefront" && open ? " · " : ", ")}
+            {tail}
+          </T>
+          {more > 0 && (
+            <Pressable
+              onPress={() => {
+                tap();
+                setOpen(!open);
+              }}
+              hitSlop={6}
+              accessibilityLabel={open ? "Show fewer" : `Show ${more} more`}
+              style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: 1, borderColor: t.accent }}
+            >
+              <T color={t.accent} size={12.5} weight={fonts.bold}>{open ? "Less" : `+${more}`}</T>
+            </Pressable>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function StoreScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const loaded = useAsync(() => loadStore(slug ?? ""), [slug]);
@@ -93,6 +126,15 @@ export default function StoreScreen() {
   if (loaded.loading && !loaded.data) return <Loading />;
   if (loaded.error) return <ErrorView message={loaded.error} onRetry={loaded.reload} />;
   const store = loaded.data;
+  // Where it delivers to the door (states with a home price), and every pickup point it has
+  const homeStates = store ? (store.areas.length ? [...new Set(store.areas.filter((a) => a.homeFee != null).map((a) => a.state))] : store.delivery.homeFrom != null ? store.delivery.states : []) : [];
+  const pickupSpots = store
+    ? store.areas.length
+      ? [...new Set(store.areas.flatMap((a) => (a.pickupPlaces?.length ? a.pickupPlaces.map((pl) => [pl.name, pl.address].filter(Boolean).join(", ")) : a.pickupPoint ? [[a.pickupPoint, a.pickupAddress].filter(Boolean).join(", ")] : [])))]
+      : store.delivery.pickup
+        ? store.delivery.pickup.split(" · ")
+        : []
+    : [];
   if (!store) return <EmptyState illo="store" title="Store not found" message="It may have closed or changed its link." />;
   const q = query.trim().toLowerCase();
   const products = q ? store.products.filter((p) => p.name.toLowerCase().includes(q)) : store.products;
@@ -275,14 +317,34 @@ export default function StoreScreen() {
                 ["shield-checkmark", "Verified by Sotechy"],
                 ["sparkles", `Token: $${store.ticker}`],
                 ...(store.sells.length ? [["pricetags", store.sells.join(" · ")]] : []),
-                ["bicycle", store.delivery.states.length ? `Delivers to ${store.delivery.states.join(", ")}${store.delivery.homeFrom ? `, from ${formatNaira(store.delivery.homeFrom)}` : ""}` : "Delivery areas are being set up"],
-                ...(store.delivery.pickup ? [["storefront", `Pickup at ${store.delivery.pickup}`]] : []),
               ].map(([icon, text]) => (
                 <View key={text} style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
                   <Ionicons name={icon as "location"} size={17} color={t.accent} />
                   <T color={t.text} size={14} style={{ flex: 1 }}>{text}</T>
                 </View>
               ))}
+              {/* Home delivery by state, then pickup points: the first few, the rest behind "+N" */}
+              {homeStates.length > 0 ? (
+                <MoreRow
+                  icon="bicycle"
+                  lead={`Home delivery to ${homeStates.length === 1 ? "" : `${homeStates.length} states: `}`}
+                  items={homeStates}
+                  shown={2}
+                  tail={store.delivery.homeFrom ? `, from ${formatNaira(store.delivery.homeFrom)}` : ""}
+                  t={t}
+                />
+              ) : pickupSpots.length ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+                  <Ionicons name="bicycle" size={17} color={t.accent} />
+                  <T color={t.text} size={14} style={{ flex: 1 }}>Pickup only: no home delivery</T>
+                </View>
+              ) : (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+                  <Ionicons name="bicycle" size={17} color={t.accent} />
+                  <T color={t.text} size={14} style={{ flex: 1 }}>Delivery areas are being set up</T>
+                </View>
+              )}
+              {pickupSpots.length > 0 && <MoreRow icon="storefront" lead="Pickup at " items={pickupSpots} shown={1} t={t} />}
             </View>
           )}
 
