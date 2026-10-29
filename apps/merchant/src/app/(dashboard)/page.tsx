@@ -110,7 +110,8 @@ export default async function HomePage() {
       {active.length > 0 && (
         <Card className="mb-6" title="Orders in progress" actions={<Link href="/orders" className="text-sm font-semibold text-brand-strong hover:underline">All orders</Link>}>
           <ul className="flex flex-col divide-y divide-line">
-            {active.map((o) => (
+            {/* Just the most recent (orders come newest first); the rest are a tap away in All orders */}
+            {active.slice(0, 1).map((o) => (
               <li key={o.id}>
                 <Link href={`/orders/${o.id}`} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                   <ProductThumb src={o.items[0].image} size={44} rounded="rounded-xl" />
