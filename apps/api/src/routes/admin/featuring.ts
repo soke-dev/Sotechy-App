@@ -22,7 +22,19 @@ export const adminFeaturingRoutes = new Hono<AppEnv>()
       featuringSettings(),
       db.select({ id: m.id, name: m.name, slug: m.slug, ticker: m.ticker, logoUrl: m.logoUrl, featuredUntil: m.featuredUntil, proUntil: m.proUntil }).from(m).where(gt(m.featuredUntil, new Date())).orderBy(m.featuredUntil),
       db
-        .select({ id: fp.id, months: fp.months, amount: fp.amount, tier: fp.tier, paidAt: fp.paidAt, until: fp.until, storeName: m.name, storeId: m.id })
+        .select({
+          id: fp.id,
+          months: fp.months,
+          amount: fp.amount,
+          tier: fp.tier,
+          paidAt: fp.paidAt,
+          until: fp.until,
+          storeName: m.name,
+          storeId: m.id,
+          storeSlug: m.slug,
+          // Paid without a picture: Sotechy designs the banner (within 24 hours)
+          needsBanner: sql<boolean>`not exists (select 1 from banners b where b.featured_purchase_id = ${fp.id})`,
+        })
         .from(fp)
         .innerJoin(m, eq(m.id, fp.merchantId))
         .where(eq(fp.status, "paid"))

@@ -134,8 +134,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
   const [months, setMonths] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
-  // The store's banner for this payment: one banner per feature payment
-  const [withBanner, setWithBanner] = useState(true);
+  // The store's banner for this payment: one banner per feature payment. Without a picture, Sotechy designs one.
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [bannerTitle, setBannerTitle] = useState("");
   const [bannerCta, setBannerCta] = useState("Visit store");
@@ -152,7 +151,6 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
     if ("error" in r) setError(r.error);
     else setBannerImage(r.ok[0].url);
   };
-  const needsImage = withBanner && !bannerImage;
   const [now] = useState(() => Date.now());
   const until = data.featuredUntil ? new Date(data.featuredUntil).getTime() : null;
   const active = until !== null && until > now;
@@ -169,7 +167,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
   const pay = () =>
     start(async () => {
       setError(null);
-      const r = await buyFeaturing(months, withBanner && bannerImage ? { imageUrl: bannerImage, title: bannerTitle.trim() || null, ctaLabel: bannerCta.trim() || null } : undefined, tier);
+      const r = await buyFeaturing(months, bannerImage ? { imageUrl: bannerImage, title: bannerTitle.trim() || null, ctaLabel: bannerCta.trim() || null } : undefined, tier);
       if ("error" in r) return setError(r.error);
       window.location.href = r.ok.checkoutUrl;
     });
@@ -241,7 +239,10 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
         })}
       </div>
 
-      <Card title={tier === "pro" ? (proActive ? "Add more Pro time" : "Get Featured Pro") : active ? "Add more time" : "Feature your store"} description={(tier === "pro" ? proActive : active) ? "Extra months start when your current feature ends." : "Starts as soon as your payment is confirmed."}>
+      <Card
+        title={(tier === "pro" ? proActive : active) ? "Add more time" : "Get featured"}
+        description={`${tier === "pro" ? "Featured Pro" : "Featured"} · ${(tier === "pro" ? proActive : active) ? "extra months start when your current feature ends." : "starts as soon as your payment is confirmed."}`}
+      >
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-3 gap-2">
             {[1, 2, 3].map((m) => (
@@ -255,8 +256,8 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
           </div>
           <p className="text-xs text-muted">{tier === "pro" ? "Featured Pro" : "Featured"} until {fmtDate(newUntil)} · includes one Home banner (design it below)</p>
           {error && <p className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
-          {needsImage && <p className="text-xs text-warn">Add your banner picture below, or untick “Add a banner”.</p>}
-          <button disabled={busy || full || atLimit || !approved || needsImage || uploading} onClick={pay} className={btn.primary}>
+          {!bannerImage && <p className="text-xs text-muted">No banner picture? Pay anyway: Sotechy designs your banner for you, and it goes live within 24 hours.</p>}
+          <button disabled={busy || full || atLimit || !approved || uploading} onClick={pay} className={btn.primary}>
             <CreditCard size={16} /> {busy ? "Opening payment…" : `Pay ${formatNaira(total)}`}
           </button>
           {!approved && <p className="text-xs text-warn">You can be featured once Sotechy approves your store.</p>}
@@ -274,14 +275,8 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
       <Card
         className="mt-4"
         title="Your Home banner"
-        description="Included with this payment: one banner, shown at the front of the app's Home slides for the months you pay for, then it switches off. Want another banner? That's another feature payment."
-        actions={
-          <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-            <input type="checkbox" checked={withBanner} onChange={(e) => setWithBanner(e.target.checked)} className="h-4 w-4 accent-[var(--color-brand)]" /> Add a banner
-          </label>
-        }
+        description="Included with this payment: one banner at the front of the app's Home slides for the months you pay for. Upload your own, or leave it to us: without a picture, Sotechy designs one for your store and it goes live within 24 hours."
       >
-        {withBanner ? (
           <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,380px)]">
             <div className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-3">
@@ -309,9 +304,6 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
               <BannerPreview imageUrl={bannerImage} title={bannerTitle.trim()} cta={bannerCta.trim()} />
             </div>
           </div>
-        ) : (
-          <p className="text-sm text-muted">No banner this time. Your store is still featured on Home, in Shop and in Stores.</p>
-        )}
       </Card>
 
       <Card className="mt-4" title="Payments">

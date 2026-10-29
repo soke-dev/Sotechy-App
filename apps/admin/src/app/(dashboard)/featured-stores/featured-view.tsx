@@ -14,7 +14,7 @@ import { featureStore, saveFeaturingSettings } from "./actions";
 export interface AdminFeaturing {
   settings: { pricePerMonth: number; maxStores: number; maxPerStore?: number; proPricePerMonth?: number; maxPro?: number };
   featured: { id: string; name: string; slug: string; ticker: string; logoUrl: string | null; featuredUntil: string; proUntil: string | null }[];
-  purchases: { id: string; months: number; amount: number; tier?: "standard" | "pro"; paidAt: string | null; until: string | null; storeName: string; storeId: string }[];
+  purchases: { id: string; months: number; amount: number; tier?: "standard" | "pro"; paidAt: string | null; until: string | null; storeName: string; storeId: string; storeSlug?: string; needsBanner?: boolean }[];
   revenueThisMonth: number;
 }
 
@@ -171,6 +171,11 @@ export function FeaturedView({ data, stores }: { data: AdminFeaturing; stores: A
                         {p.until ? ` · until ${fmtDate(p.until)}` : ""}
                       </span>
                     </span>
+                    {p.needsBanner && p.until && new Date(p.until).getTime() > now && (
+                      <a href="/banners" title={`Make a banner that opens ${p.storeSlug ?? "their store"}, ending ${fmtDate(p.until)}`}>
+                        <Pill tone="warn">Make their banner</Pill>
+                      </a>
+                    )}
                     <span className="font-display font-bold">{formatNaira(p.amount)}</span>
                     <Pill tone="good">Paid</Pill>
                   </li>
