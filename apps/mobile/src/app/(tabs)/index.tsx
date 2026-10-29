@@ -304,6 +304,9 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
+      {/* The newest from every store, featured or not */}
+      <MarketRail title="Fresh from the stores" subtitle="New from verified shops, each with its own token" items={storeItems.slice(0, ROW_SIZE)} onSeeAll={() => router.push("/stores")} />
+
       {/* Marketplace stores */}
       <View>
         <View style={{ paddingHorizontal: gutter }}>
@@ -375,8 +378,7 @@ export default function HomeScreen() {
 
       <ProductRail title="Top deals" subtitle="Sold by Sotechy" products={deals} dark onSeeAll={() => shop({ featured: "1" })} />
 
-      {/* Sotechy's category rows, with the newest from every store after the first, and each Pro store's own
-          dark row after every other one */}
+      {/* Sotechy's category rows, with each Pro store's own dark row after every other one */}
       {tops.map((c, i) => {
         const pro = i % 2 === 1 ? proStores[(i - 1) / 2] : undefined;
         return (
@@ -388,9 +390,6 @@ export default function HomeScreen() {
               subtitle={i % 3 === 2 ? "Sold by Sotechy, with warranty" : "Sold by Sotechy"}
               onSeeAll={() => shop({ category: c.slug })}
             />
-            {i === 0 && (
-              <MarketRail title="Fresh from the stores" subtitle="New from verified shops, each with its own token" items={storeItems.slice(0, ROW_SIZE)} onSeeAll={() => router.push("/stores")} />
-            )}
             {pro && proRow(pro)}
           </View>
         );
