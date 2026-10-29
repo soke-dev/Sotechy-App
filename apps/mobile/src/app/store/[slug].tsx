@@ -206,6 +206,44 @@ export default function StoreScreen() {
               ))}
             </View>
           ) : null}
+          {/* Bottom right: your balance of the store's token, and the bell for its updates */}
+          <View style={{ position: "absolute", right: gutter, bottom: 10, maxWidth: width / 2 - 44 - gutter - 8, flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Pressable
+              onPress={() => router.push("/wallet")}
+              accessibilityLabel={`Your $${store.ticker}: ${formatTokens(held)}`}
+              style={({ pressed }) => ({ height: 32, borderRadius: 16, backgroundColor: pressed ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.92)", paddingLeft: 3, paddingRight: 10, flexDirection: "row", alignItems: "center", gap: 4 })}
+            >
+              <Illo name="coin" size={26} />
+              <T color="#17120E" size={13} weight={fonts.bold}>{formatTokens(held)}</T>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                tap();
+                subs.toggle(store.slug);
+              }}
+              accessibilityLabel={following ? "Subscribed to updates. Tap to stop" : "Get this store's updates"}
+              accessibilityState={{ selected: following }}
+              hitSlop={4}
+              style={({ pressed }) => ({
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: following ? t.accent : pressed ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.92)",
+                borderWidth: following ? 2 : 0,
+                borderColor: "#FFFFFF",
+                alignItems: "center",
+                justifyContent: "center",
+              })}
+            >
+              <Ionicons name={following ? "notifications" : "notifications-outline"} size={16} color={following ? t.onAccent : "#17120E"} />
+              {/* Subscribed: a tick badge on the bell */}
+              {following && (
+                <View style={{ position: "absolute", right: -3, bottom: -3, width: 14, height: 14, borderRadius: 7, backgroundColor: "#1C8A4C", borderWidth: 1.5, borderColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="checkmark" size={8} color="#FFFFFF" />
+                </View>
+              )}
+            </Pressable>
+          </View>
         </View>
 
         {/* Logo over the cover, then the name */}
@@ -247,28 +285,6 @@ export default function StoreScreen() {
             <T color={t.text} size={14.5} weight={fonts.bold}>{store.rating ?? "New"}</T>
             {store.ratingCount > 0 && <T color={t.muted} size={12.5}>({store.ratingCount.toLocaleString("en-NG")})</T>}
           </Fact>
-        </View>
-
-        {/* Updates and the store's token, side by side */}
-        <View style={{ marginTop: space.md, marginHorizontal: gutter, flexDirection: "row", gap: space.sm }}>
-          <Pressable
-            onPress={() => {
-              tap();
-              subs.toggle(store.slug);
-            }}
-            style={{ flex: 1, height: 44, borderRadius: radius.pill, backgroundColor: following ? "transparent" : t.accent, borderWidth: following ? 1.5 : 0, borderColor: t.accent, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 }}
-          >
-            <Ionicons name={following ? "notifications" : "notifications-outline"} size={17} color={following ? t.accent : t.onAccent} />
-            <T color={following ? t.accent : t.onAccent} weight={fonts.semibold} size={14}>{following ? "Subscribed" : "Get their updates"}</T>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/wallet")}
-            accessibilityLabel={`Earn $${store.ticker} on every order${held > 0 ? `. You have ${formatTokens(held)}` : ""}`}
-            style={{ height: 44, borderRadius: radius.pill, backgroundColor: t.hero, paddingLeft: 6, paddingRight: 14, flexDirection: "row", alignItems: "center", gap: 6 }}
-          >
-            <Illo name="coin" size={30} />
-            <T color={t.onHero} size={13.5} weight={fonts.bold}>{held > 0 ? `${formatTokens(held)} $${store.ticker}` : `Earn $${store.ticker}`}</T>
-          </Pressable>
         </View>
 
         {searching && (
