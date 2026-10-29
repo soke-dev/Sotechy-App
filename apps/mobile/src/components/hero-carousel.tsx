@@ -262,7 +262,8 @@ function fromAdmin(b: AdminBanner): Slide {
   };
 }
 
-const AUTOPLAY_MS = 5000;
+/** Each slide shows this long before the next */
+const AUTOPLAY_MS = 3000;
 
 export function HeroCarousel({ width }: { width: number }) {
   const [index, setIndex] = useState(0);
