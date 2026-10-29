@@ -63,6 +63,7 @@ function ThemedNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="cart" options={{ title: "Cart" }} />
+        <Stack.Screen name="wallet-activity" options={{ title: "Activity" }} />
         <Stack.Screen name="store/[slug]" options={{ headerShown: false }} />
         <Stack.Screen name="item/[store]/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="wallet" options={{ title: "Wallet" }} />

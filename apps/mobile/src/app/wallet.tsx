@@ -2,8 +2,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Linking, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
-import { formatNaira, type WalletActivity } from "@sotechy/shared";
+import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
+import { formatNaira } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { Sheet } from "@/components/shop-filters";
 import { openStore } from "@/components/store-bits";
@@ -13,27 +13,11 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Button, Divider, Txt, ui, type IconName } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
+import { ActivityRows } from "@/components/wallet-activity";
 import { formatTokens, shortAddress, tokenNaira } from "@/lib/marketplace";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { refreshHeldTokens } from "@/lib/held-tokens";
-
-const EVENT: Record<WalletActivity["kind"], { icon: IconName; tone: string; title: (e: WalletActivity) => string }> = {
-  earned: { icon: "arrow-down", tone: colors.success, title: (e) => `Earned at ${e.store}${e.order ? ` · ${e.order}` : ""}` },
-  bonus: { icon: "star", tone: colors.brandPressed, title: (e) => `$SOTECHY bonus${e.order ? ` · ${e.order}` : ""}` },
-  received: { icon: "arrow-down", tone: colors.success, title: (e) => `From @${e.who ?? "someone"}` },
-  review: { icon: "chatbubble-ellipses-outline", tone: colors.brandPressed, title: (e) => `Review bonus${e.order ? ` · ${e.order}` : ""}` },
-  walk_in: { icon: "storefront-outline", tone: colors.success, title: (e) => `Bought in store at ${e.store}` },
-  spent: { icon: "bag-handle-outline", tone: colors.ink2, title: (e) => `Paid at ${e.store}${e.order ? ` · ${e.order}` : ""}` },
-  returned: { icon: "return-up-back-outline", tone: colors.success, title: (e) => `Given back${e.order ? ` · ${e.order} cancelled` : ""}` },
-  sent: { icon: "arrow-up", tone: colors.ink2, title: (e) => `To @${e.who ?? "someone"}` },
-  refunded: { icon: "return-up-back-outline", tone: colors.ink2, title: (e) => `Refunded order${e.order ? ` · ${e.order}` : ""}` },
-};
-
-const ago = (iso: string) => {
-  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
-  return mins < 1 ? "just now" : mins < 60 ? `${mins} min ago` : mins < 60 * 24 ? `${Math.round(mins / 60)}h ago` : `${Math.round(mins / 60 / 24)}d ago`;
-};
 
 function ActionButton({ icon, label, onPress, primary }: { icon: IconName; label: string; onPress: () => void; primary?: boolean }) {
   return (
@@ -172,7 +156,17 @@ export default function WalletScreen() {
 
         {/* Tokens */}
         <View style={{ gap: space.sm }}>
-          <Txt variant="heading">By store</Txt>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Txt variant="heading">Store balance</Txt>
+            <Pressable
+              onPress={() => router.push("/wallet-activity")}
+              hitSlop={6}
+              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 5, height: 34, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line })}
+            >
+              <Ionicons name="time-outline" size={15} color={colors.ink} />
+              <Txt variant="label" style={{ fontSize: 13 }}>Activity</Txt>
+            </Pressable>
+          </View>
           <View style={[ui.card, { paddingVertical: space.xs }]}>
             {wallet.balances.length === 0 && <Txt variant="small" style={{ paddingVertical: space.md }}>No tokens yet. You earn them on every order, once it&apos;s delivered.</Txt>}
             {wallet.balances.map((b, i) => {
@@ -180,7 +174,7 @@ export default function WalletScreen() {
                 <View key={b.ticker}>
                   {i > 0 && <Divider />}
                   <Pressable onPress={() => b.slug && openStore(b.slug)} style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>
-                    {b.logoUrl ? <Image source={{ uri: b.logoUrl }} style={{ width: 38, height: 38, borderRadius: 11 }} /> : <Illo name="coin" size={38} />}
+                    <Illo name="coin" size={38} />
                     <View style={{ flex: 1, gap: 1 }}>
                       <Txt variant="label" numberOfLines={1}>
                         <Text style={{ fontFamily: fonts.bold, color: colors.brandPressed }}>${b.ticker}</Text>
@@ -201,35 +195,18 @@ export default function WalletScreen() {
           </View>
         </View>
 
-        {/* Activity */}
+        {/* The last 10 movements; the rest are under Activity */}
         <View style={{ gap: space.sm }}>
-          <Txt variant="heading">Activity</Txt>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Txt variant="heading">Recent activity</Txt>
+            {wallet.activity.length > 10 && (
+              <Pressable onPress={() => router.push("/wallet-activity")} hitSlop={8}>
+                <Txt variant="label" color={colors.brandPressed}>See all</Txt>
+              </Pressable>
+            )}
+          </View>
           <View style={[ui.card, { paddingVertical: space.xs }]}>
-            {wallet.activity.length === 0 && <Txt variant="small" style={{ paddingVertical: space.md }}>Tokens you earn and send show here.</Txt>}
-            {wallet.activity.map((e, i) => {
-              const k = EVENT[e.kind];
-              return (
-                <View key={e.id}>
-                  {i > 0 && <Divider />}
-                  <Pressable disabled={!e.txUrl} onPress={() => e.txUrl && Linking.openURL(e.txUrl)} style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>
-                    <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
-                      <Ionicons name={k.icon} size={17} color={k.tone} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Txt variant="medium" numberOfLines={1} style={{ fontSize: 14 }}>{k.title(e)}</Txt>
-                      <Txt variant="caption">
-                        {ago(e.at)}
-                        {e.txUrl ? " · on Monad" : " · being recorded"}
-                      </Txt>
-                    </View>
-                    <Txt variant="label" color={k.tone}>
-                      {e.amount > 0 ? "+" : "−"}
-                      {formatTokens(Math.abs(e.amount))} ${e.ticker}
-                    </Txt>
-                  </Pressable>
-                </View>
-              );
-            })}
+            <ActivityRows items={wallet.activity.slice(0, 10)} />
           </View>
           <Pressable disabled={!wallet.addressUrl} onPress={() => wallet.addressUrl && Linking.openURL(wallet.addressUrl)} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: space.sm }}>
             <Ionicons name="open-outline" size={15} color={colors.brandPressed} />
@@ -284,7 +261,7 @@ export default function WalletScreen() {
             onPress={() => setChoosingToken(!choosingToken)}
             style={{ flexDirection: "row", alignItems: "center", gap: space.md, height: 56, borderRadius: radius.lg, borderWidth: 1, borderColor: choosingToken ? colors.ink : colors.line, backgroundColor: colors.surface, paddingHorizontal: space.md }}
           >
-            {chosen?.logoUrl ? <Image source={{ uri: chosen.logoUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} /> : <Illo name="coin" size={32} />}
+            <Illo name="coin" size={32} />
             {chosen ? (
               <View style={{ flex: 1 }}>
                 <Txt variant="label" numberOfLines={1}>
@@ -309,7 +286,7 @@ export default function WalletScreen() {
                   }}
                   style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, paddingHorizontal: space.md, paddingVertical: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.line, backgroundColor: pressed || b.ticker === ticker ? colors.surfaceAlt : colors.surface })}
                 >
-                  {b.logoUrl ? <Image source={{ uri: b.logoUrl }} style={{ width: 28, height: 28, borderRadius: 14 }} /> : <Illo name="coin" size={28} />}
+                  <Illo name="coin" size={28} />
                   <Txt variant="label" numberOfLines={1} style={{ flex: 1 }}>
                     <Text style={{ fontFamily: fonts.bold, color: colors.brandPressed }}>${b.ticker}</Text>
                     <Text style={{ fontFamily: fonts.medium, color: colors.ink2 }}> · {b.ticker === "SOTECHY" ? "Sotechy" : b.store}</Text>
