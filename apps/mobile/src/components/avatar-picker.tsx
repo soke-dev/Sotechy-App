@@ -1,10 +1,13 @@
-// Bottom sheet for choosing an illustrated avatar: auto (generated) or one of six characters.
+// Bottom sheet for choosing an avatar: your own photo, auto (generated), or one of twelve characters.
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Modal, Pressable, ScrollView, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { useState } from "react";
+import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-native";
+import { uploadPhoto } from "@/lib/api";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, space } from "@/lib/theme";
 import { tap, Txt } from "./ui";
-import { AVATAR_PRESETS, UserAvatar } from "./user-avatar";
+import { AVATAR_PRESETS, isPhotoAvatar, UserAvatar } from "./user-avatar";
 
 function Tile({ seed, preset, selected, onPress, label }: { seed: string; preset: string | null; selected: boolean; onPress: () => void; label?: string }) {
   return (
@@ -33,6 +36,24 @@ function Tile({ seed, preset, selected, onPress, label }: { seed: string; preset
 export function AvatarPicker({ visible, seed, current, onSelect, onClose }: { visible: boolean; seed: string; current: string | null | undefined; onSelect: (preset: string | null) => void; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const group = (g: "men" | "women") => AVATAR_PRESETS.filter((p) => p.group === g);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const photo = isPhotoAvatar(current) ? current : null;
+
+  /** A square photo from the library, uploaded and used straight away */
+  async function pickPhoto() {
+    setError(null);
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+    if (picked.canceled || !picked.assets[0]) return;
+    setUploading(true);
+    try {
+      onSelect(await uploadPhoto(picked.assets[0]));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't upload the photo");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -52,6 +73,30 @@ export function AvatarPicker({ visible, seed, current, onSelect, onClose }: { vi
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.lg }}>
+            {/* Their own picture */}
+            <Pressable
+              onPress={() => {
+                tap();
+                void pickPhoto();
+              }}
+              disabled={uploading}
+              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.lg, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: photo ? 2 : 1, borderColor: photo ? colors.brand : colors.line, padding: space.md, opacity: pressed ? 0.85 : 1 })}
+            >
+              <View style={{ width: 86, alignItems: "center" }}>
+                {photo ? (
+                  <UserAvatar seed={seed} preset={photo} size={78} />
+                ) : (
+                  <View style={{ width: 78, height: 78, borderRadius: 39, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center", borderWidth: 2, borderStyle: "dashed", borderColor: colors.brand }}>
+                    {uploading ? <ActivityIndicator color={colors.brandPressed} /> : <Ionicons name="camera" size={28} color={colors.brandPressed} />}
+                  </View>
+                )}
+              </View>
+              <View style={{ flex: 2, gap: 2 }}>
+                <Txt variant="label">{photo ? "Your photo" : "Use your own photo"}</Txt>
+                <Txt variant="small">{uploading ? "Uploading…" : photo ? "Tap to choose a different one." : "Pick one from your phone. It's cropped to a circle."}</Txt>
+                {error ? <Txt variant="small" color={colors.danger}>{error}</Txt> : null}
+              </View>
+            </Pressable>
             <View style={{ flexDirection: "row", alignItems: "center", gap: space.lg, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, padding: space.md }}>
               <Tile seed={seed} preset={null} selected={!current} onPress={() => onSelect(null)} />
               <View style={{ flex: 2, gap: 2 }}>
@@ -62,9 +107,15 @@ export function AvatarPicker({ visible, seed, current, onSelect, onClose }: { vi
             {(["men", "women"] as const).map((g) => (
               <View key={g} style={{ gap: space.sm }}>
                 <Txt variant="overline" style={{ paddingHorizontal: 4 }}>{g === "men" ? "Men" : "Women"}</Txt>
-                <View style={{ flexDirection: "row", backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, paddingVertical: space.md }}>
-                  {group(g).map((p) => (
-                    <Tile key={p.id} seed={seed} preset={p.id} selected={current === p.id} onPress={() => onSelect(p.id)} />
+                <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, paddingVertical: space.md, gap: space.md }}>
+                  {[0, 3].map((from) => (
+                    <View key={from} style={{ flexDirection: "row" }}>
+                      {group(g)
+                        .slice(from, from + 3)
+                        .map((p) => (
+                          <Tile key={p.id} seed={seed} preset={p.id} selected={current === p.id} onPress={() => onSelect(p.id)} />
+                        ))}
+                    </View>
                   ))}
                 </View>
               </View>

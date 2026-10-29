@@ -216,7 +216,13 @@ export const authRoutes = new Hono<AppEnv>()
         username: z.string().max(30).optional(),
         phone: z.string().max(30).nullable().optional(),
         whatsappPhone: z.string().max(30).nullable().optional(),
-        avatarStyle: z.enum(["m1", "m2", "m3", "f1", "f2", "f3"]).nullable().optional(),
+        // A character (m1–m6, f1–f6), or a photo they uploaded to Sotechy (its /media/ address)
+        avatarStyle: z
+          .string()
+          .max(500)
+          .refine((v) => /^[mf][1-6]$/.test(v) || /^https?:\/\/[^/]+\/media\/[0-9a-f-]{36}$/i.test(v), "Choose an avatar, or upload a photo")
+          .nullable()
+          .optional(),
       }),
     ),
     async (c) => {
@@ -234,6 +240,8 @@ export const authRoutes = new Hono<AppEnv>()
       const patch = {
         ...(input.fullName !== undefined && { fullName: input.fullName }),
         ...(input.avatarStyle !== undefined && { avatarStyle: input.avatarStyle }),
+        // An uploaded photo is the account's picture too (a character leaves it as it was)
+        ...(input.avatarStyle?.startsWith("http") && { avatarUrl: input.avatarStyle }),
         ...(input.username !== undefined && { username: await claimUsername(input.username, id, { staff: c.get("user").role !== "customer" }) }),
         ...(input.phone !== undefined && { phone: phoneField(input.phone, "Phone number") }),
         ...(input.whatsappPhone !== undefined && { whatsappPhone: phoneField(input.whatsappPhone, "WhatsApp number") }),

@@ -1,4 +1,5 @@
 // Illustrated profile character, generated from the user's id so each person always gets the same look.
+import { Image } from "expo-image";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Platform } from "react-native";
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path, Rect } from "react-native-svg";
@@ -50,7 +51,7 @@ export function avatarTraits(seed: string): Traits {
   };
 }
 
-/** The six avatars people can pick in their profile: three men and three women. */
+/** The avatars people can pick in their profile: six men and six women. */
 export const AVATAR_PRESETS: { id: string; group: "men" | "women"; traits: Traits }[] = [
   { id: "m1", group: "men", traits: { bg: "#FDB913", skin: "#5A3825", hair: "#1E1714", outfit: "#2F6FDE", wrap: "", style: 0, accessory: 0, mouth: 1, femme: false } },
   { id: "m2", group: "men", traits: { bg: "#5CB8F2", skin: "#8D5524", hair: "#1E1714", outfit: "#1C8A4C", wrap: "", style: 4, accessory: 1, mouth: 0, femme: false } },
@@ -58,15 +59,29 @@ export const AVATAR_PRESETS: { id: string; group: "men" | "women"; traits: Trait
   { id: "f1", group: "women", traits: { bg: "#F59BB0", skin: "#6F4426", hair: "#1E1714", outfit: "#E0533D", wrap: "#7A4FD0", style: 3, accessory: 3, mouth: 1, femme: true } },
   { id: "f2", group: "women", traits: { bg: "#B9A4F5", skin: "#A0663A", hair: "#1E1714", outfit: "#0F766E", wrap: "", style: 1, accessory: 3, mouth: 0, femme: true } },
   { id: "f3", group: "women", traits: { bg: "#FFD27A", skin: "#E0AC69", hair: "#3D2A1E", outfit: "#E0533D", wrap: "", style: 2, accessory: 1, mouth: 2, femme: true } },
+  { id: "m4", group: "men", traits: { bg: "#F7931E", skin: "#6F4426", hair: "#1E1714", outfit: "#3A322C", wrap: "", style: 1, accessory: 2, mouth: 1, femme: false } },
+  { id: "m5", group: "men", traits: { bg: "#7FD1C7", skin: "#A0663A", hair: "#2B1E17", outfit: "#7A4FD0", wrap: "", style: 0, accessory: 1, mouth: 2, femme: false } },
+  { id: "m6", group: "men", traits: { bg: "#B9A4F5", skin: "#5A3825", hair: "#1E1714", outfit: "#E0533D", wrap: "", style: 4, accessory: 0, mouth: 1, femme: false } },
+  { id: "f4", group: "women", traits: { bg: "#8BD3A8", skin: "#5A3825", hair: "#1E1714", outfit: "#F7931E", wrap: "#0F766E", style: 3, accessory: 0, mouth: 0, femme: true } },
+  { id: "f5", group: "women", traits: { bg: "#5CB8F2", skin: "#C68642", hair: "#1E1714", outfit: "#7A4FD0", wrap: "", style: 1, accessory: 1, mouth: 1, femme: true } },
+  { id: "f6", group: "women", traits: { bg: "#FDB913", skin: "#8D5524", hair: "#2B1E17", outfit: "#2F6FDE", wrap: "", style: 2, accessory: 2, mouth: 0, femme: true } },
 ];
+
+/** An avatar that's the user's own photo (its address is kept where a character's id would be) */
+export const isPhotoAvatar = (preset?: string | null): preset is string => !!preset && /^https?:\/\//.test(preset);
 
 const useNative = Platform.OS !== "web";
 
 /**
- * Profile character. `preset` (m1–f3) is the user's chosen avatar; otherwise one is generated from `seed`.
- * `animated` adds a gentle idle bob.
+ * Profile character. `preset` (m1–m6, f1–f6) is the user's chosen avatar, or the address of their own photo;
+ * otherwise one is generated from `seed`. `animated` adds a gentle idle bob.
  */
 export function UserAvatar({ seed, preset, size = 56, animated }: { seed: string; preset?: string | null; size?: number; animated?: boolean }) {
+  if (isPhotoAvatar(preset)) return <Image source={{ uri: preset }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: "#F2EDE6" }} contentFit="cover" transition={150} accessibilityIgnoresInvertColors />;
+  return <Character seed={seed} preset={preset} size={size} animated={animated} />;
+}
+
+function Character({ seed, preset, size = 56, animated }: { seed: string; preset?: string | null; size?: number; animated?: boolean }) {
   const bob = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (!animated) return;
