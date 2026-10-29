@@ -3,6 +3,7 @@ import { and, asc, desc, eq, getTableColumns, gt, ilike, inArray, isNull, lte, o
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
+import type { StoreSocials } from "@sotechy/shared";
 import { db, schema } from "../db/client";
 import { notFound } from "../lib/errors";
 import { getFeatures, requireFeature } from "../services/features";
@@ -284,6 +285,9 @@ export const storeRoutes = new Hono()
         ratingCount: sql<number>`(select count(*)::int from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
         ...storeDelivery,
         pickupPoints: sql<string[]>`(select coalesce(array_agg(distinct z.pickup_point), '{}') from delivery_zones z where ${liveZone} and z.pickup_point is not null)`,
+        // Its social pages and website, as given in its setup (shown on its page)
+        socials: sql<StoreSocials | null>`${m.application} -> 'socials'`,
+        website: sql<string | null>`nullif(${m.application} ->> 'website', '')`,
       })
       .from(m)
       .leftJoin(branches, eq(branches.merchantId, m.id))

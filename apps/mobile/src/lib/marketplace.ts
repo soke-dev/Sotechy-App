@@ -1,7 +1,7 @@
 // Marketplace stores for the customer app: Sotechy's own store and the stores Sotechy has approved,
 // loaded from the API and drawn in each store's own theme (set in the merchant dashboard).
 import { useCallback, useEffect, useState } from "react";
-import type { CatalogProduct, MarketStore as ApiStore, MarketStoreDetail, StoreDeliveryArea } from "@sotechy/shared";
+import type { CatalogProduct, MarketStore as ApiStore, MarketStoreDetail, StoreDeliveryArea, StoreSocials } from "@sotechy/shared";
 import { api } from "./api";
 
 /** A bundled image (require) or one from the API */
@@ -77,6 +77,25 @@ export interface MarketStore {
   branchId?: string | null;
   /** Filled on the store's own page; empty in lists */
   products: StoreProduct[];
+  /** Its social pages and website, on its own page */
+  socials?: { kind: "instagram" | "x" | "facebook" | "tiktok" | "website"; url: string }[];
+}
+
+/** A handle ("@shop", "shop") or a link, made into the page's address */
+function socialLinks(s?: StoreSocials | null, website?: string | null): NonNullable<MarketStore["socials"]> {
+  const out: NonNullable<MarketStore["socials"]> = [];
+  const link = (v: string, base: string) => (/^https?:\/\//i.test(v) ? v : /^[\w.-]+\.[a-z]{2,}\//i.test(v) ? `https://${v}` : `${base}${v.replace(/^@/, "")}`);
+  const add = (kind: NonNullable<MarketStore["socials"]>[number]["kind"], v: string | null | undefined, base: string) => {
+    const t = v?.trim();
+    if (t) out.push({ kind, url: link(t, base) });
+  };
+  add("instagram", s?.instagram, "https://instagram.com/");
+  add("x", s?.x, "https://x.com/");
+  add("facebook", s?.facebook, "https://facebook.com/");
+  add("tiktok", s?.tiktok, "https://www.tiktok.com/@");
+  const w = website?.trim();
+  if (w) out.push({ kind: "website", url: /^https?:\/\//i.test(w) ? w : `https://${w}` });
+  return out;
 }
 
 /** Sotechy's own store, which sells from the main catalogue */
@@ -116,7 +135,7 @@ export const toStoreProduct = (p: CatalogProduct): StoreProduct => ({
 });
 
 /** An API store in the app's shape */
-export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "branchId" | "products" | "pickupPoints" | "deliveryAreas">>): MarketStore {
+export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "branchId" | "products" | "pickupPoints" | "deliveryAreas" | "socials" | "website">>): MarketStore {
   const look = s.storefront;
   const base = THEMES[look?.themeId ?? ""] ?? THEMES.sotechy;
   const withAccent = look?.accent ? { ...base, accent: look.accent, onAccent: onColour(look.accent) } : base;
@@ -142,6 +161,7 @@ export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "bra
     productCount: s.productCount ?? s.products?.length ?? 0,
     branchId: s.branchId,
     products: (s.products ?? []).map(toStoreProduct),
+    socials: socialLinks(s.socials, s.website),
   };
 }
 

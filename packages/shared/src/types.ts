@@ -707,8 +707,18 @@ export interface StoreDeliveryArea {
   freeOver: number | null;
 }
 
+/** A store's social pages: a handle or a link each */
+export interface StoreSocials {
+  instagram?: string | null;
+  x?: string | null;
+  facebook?: string | null;
+  tiktok?: string | null;
+}
+
 export interface MarketStoreDetail extends MarketStore {
   branchId: string | null;
+  socials?: StoreSocials | null;
+  website?: string | null;
   /** Where customers can collect pickup orders */
   pickupPoints: string[];
   deliveryAreas: StoreDeliveryArea[];

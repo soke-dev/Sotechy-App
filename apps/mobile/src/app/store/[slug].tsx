@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Linking, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
@@ -77,6 +77,8 @@ function Fact({ label, children, color, muted, divider }: { label: string; child
   );
 }
 
+const SOCIAL_ICON = { instagram: "logo-instagram", x: "logo-x", facebook: "logo-facebook", tiktok: "logo-tiktok", website: "globe-outline" } as const;
+
 export default function StoreScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const loaded = useAsync(() => loadStore(slug ?? ""), [slug]);
@@ -143,6 +145,25 @@ export default function StoreScreen() {
             />
             <CartButton />
           </View>
+          {/* Its socials at the bottom left (wrapping upwards before they reach the logo) */}
+          {store.socials?.length ? (
+            <View style={{ position: "absolute", left: gutter, bottom: 10, maxWidth: width / 2 - 44 - gutter - 8, flexDirection: "row", flexWrap: "wrap-reverse", gap: 6 }}>
+              {store.socials.map((sc) => (
+                <Pressable
+                  key={sc.kind}
+                  onPress={() => {
+                    tap();
+                    void Linking.openURL(sc.url);
+                  }}
+                  accessibilityLabel={sc.kind === "website" ? "Website" : sc.kind === "x" ? "X" : sc.kind[0].toUpperCase() + sc.kind.slice(1)}
+                  hitSlop={4}
+                  style={({ pressed }) => ({ width: 32, height: 32, borderRadius: 16, backgroundColor: pressed ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.92)", alignItems: "center", justifyContent: "center" })}
+                >
+                  <Ionicons name={SOCIAL_ICON[sc.kind]} size={16} color="#17120E" />
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         {/* Logo over the cover, then the name */}
