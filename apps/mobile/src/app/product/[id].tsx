@@ -56,6 +56,43 @@ function InfoRow({ illo, title, subtitle }: { illo: IlloName; title: string; sub
   );
 }
 
+/** "Lead first +3": the first item, with a +N that opens the whole list (pickup points, delivery states) */
+function ListRow({ illo, lead, items, subtitle }: { illo: IlloName; lead: string; items: string[]; subtitle?: string }) {
+  const [open, setOpen] = useState(false);
+  const more = items.length - 1;
+  return (
+    <View style={{ flexDirection: "row", gap: space.md, alignItems: "flex-start", paddingVertical: space.sm }}>
+      <Illo name={illo} size={32} />
+      <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+          <Txt variant="label" style={{ flexShrink: 1 }}>{lead}{items[0]}</Txt>
+          {more > 0 && (
+            <Pressable
+              onPress={() => {
+                tap();
+                setOpen(!open);
+              }}
+              hitSlop={6}
+              accessibilityLabel={open ? "Show fewer" : `Show ${more} more`}
+              style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, borderWidth: 1, borderColor: colors.brandPressed }}
+            >
+              <Txt variant="caption" color={colors.brandPressed} style={{ fontFamily: fonts.bold }}>{open ? "Less" : `+${more}`}</Txt>
+            </Pressable>
+          )}
+        </View>
+        {open &&
+          items.slice(1).map((it) => (
+            <View key={it} style={{ flexDirection: "row", gap: 6 }}>
+              <Txt variant="small" color={colors.brandPressed}>•</Txt>
+              <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>{it}</Txt>
+            </View>
+          ))}
+        {subtitle ? <Txt variant="small">{subtitle}</Txt> : null}
+      </View>
+    </View>
+  );
+}
+
 function timeAgo(iso: string) {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
   if (days < 1) return "Today";
@@ -138,7 +175,9 @@ function OverviewTab({
   // A store's approved delivery areas and pickup locations (ones awaiting approval aren't offered yet)
   const storeInfo = useAsync(async () => (store ? loadStore(store.slug) : null), [store?.slug]);
   const areas = storeInfo.data?.areas ?? [];
-  const points = areas.filter((a) => a.pickupPoint);
+  // Every pickup point in the store's areas (each area can have several), and the states it delivers to
+  const points = [...new Set(areas.flatMap((a) => (a.pickupPlaces?.length ? a.pickupPlaces.map((pl) => [pl.name, pl.address].filter(Boolean).join(", ")) : a.pickupPoint ? [[a.pickupPoint, a.pickupAddress].filter(Boolean).join(", ")] : [])))];
+  const states = [...new Set(areas.map((a) => a.state))];
   const known = !store || !!storeInfo.data;
   return (
     <View style={{ gap: space.lg }}>
@@ -210,23 +249,28 @@ function OverviewTab({
         {product.allowPickup &&
           (store ? (
             known && (
-              <InfoRow
-                illo="pin"
-                title={points.length ? `Pick up at ${points[0].pickupPoint}${points.length > 1 ? ` +${points.length - 1} more` : ""}` : "Pickup location"}
-                subtitle={points.length ? "Choose where at checkout" : "Not available yet"}
-              />
+              points.length ? (
+                <ListRow illo="pin" lead="Pick up at " items={points} subtitle="Choose where at checkout" />
+              ) : (
+                <InfoRow illo="pin" title="Pickup location" subtitle="Not available yet" />
+              )
             )
           ) : (
             <InfoRow illo="pin" title={pickupBranch ? `Pick up at ${pickupBranch}` : "Pickup location"} subtitle={pickupBranch ? "Usually ready the same day" : "Currently unavailable"} />
           ))}
         {product.allowDelivery &&
           (store ? (
-            known && <InfoRow illo="bike" title={`Home delivery by ${store.name}`} subtitle={areas.length ? "Fee and timing shown at checkout" : "Not available yet"} />
+            known &&
+            (states.length ? (
+              <ListRow illo="bike" lead="Home delivery to " items={states} subtitle={`By ${store.name} · fee and timing shown at checkout`} />
+            ) : (
+              <InfoRow illo="bike" title={`Home delivery by ${store.name}`} subtitle="Not available yet" />
+            ))
           ) : (
             <InfoRow illo="bike" title="Home delivery in Benin City" subtitle="Fee and timing shown at checkout" />
           ))}
         <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "Warranty details on request"} subtitle={product.returnPolicy ?? undefined} />
-        <InfoRow illo="wallet" title="Pay your way" subtitle="Stablecoin through Money Moves, and your tokens" />
+        <InfoRow illo="wallet" title="Pay your way" subtitle="Bank transfer or stablecoin, and your tokens" />
       </View>
 
     </View>
