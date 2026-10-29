@@ -5,7 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { formatNaira } from "@sotechy/shared";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { formatTokens, isFeatured, tileColor, type MarketStore, type StoreProduct } from "@/lib/marketplace";
+import { isFeatured, tileColor, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { useHeldTokens } from "@/lib/held-tokens";
 import { Illo } from "./illustrations";
 import { BrandMark, ProductArt, StoreCover } from "./store-brand";
@@ -103,7 +103,6 @@ export function FeaturedStoreCard({ store, width }: { store: MarketStore; width:
 
 /** One store in the Stores tab */
 export function StoreRow({ store }: { store: MarketStore }) {
-  const held = useHeldTokens(store.ticker);
   return (
     <Pressable
       onPress={() => openStore(store.slug)}
@@ -124,7 +123,8 @@ export function StoreRow({ store }: { store: MarketStore }) {
         <Txt variant="small" numberOfLines={1}>{store.tagline}</Txt>
         <Rating store={store} />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
-          <TokenChip store={store} label={held > 0 ? `${formatTokens(held)} $${store.ticker}` : undefined} />
+          {/* "Earn $TICKER" for everyone: no token balance on store cards */}
+          <TokenChip store={store} />
           {store.delivery.states.length > 0 && (
             <Txt variant="caption" numberOfLines={1} style={{ flexShrink: 1 }}>
               Delivers to {store.delivery.states.slice(0, 2).join(", ")}
