@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
-import { Linking, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
@@ -14,6 +14,7 @@ import { useHeldTokens } from "@/lib/held-tokens";
 import { EmptyState, ErrorView, IconButton, Loading, tap } from "@/components/ui";
 import { formatTokens, loadStore, tileColor, type MarketStore, type StoreProduct } from "@/lib/marketplace";
 import { ProductArt, StoreCover } from "@/components/store-brand";
+import { useExternalLink } from "@/components/external-link";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
@@ -115,6 +116,8 @@ function MoreRow({ icon, lead, items, shown, tail = "", t }: { icon: "bicycle" |
 export default function StoreScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const loaded = useAsync(() => loadStore(slug ?? ""), [slug]);
+  // A store's socials are outside websites: ask before leaving the app
+  const external = useExternalLink();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>("products");
@@ -193,10 +196,7 @@ export default function StoreScreen() {
               {store.socials.map((sc) => (
                 <Pressable
                   key={sc.kind}
-                  onPress={() => {
-                    tap();
-                    void Linking.openURL(sc.url);
-                  }}
+                  onPress={() => external.open(sc.url)}
                   accessibilityLabel={sc.kind === "website" ? "Website" : sc.kind === "x" ? "X" : sc.kind[0].toUpperCase() + sc.kind.slice(1)}
                   hitSlop={4}
                   style={({ pressed }) => ({ width: 32, height: 32, borderRadius: 16, backgroundColor: pressed ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.92)", alignItems: "center", justifyContent: "center" })}
@@ -350,6 +350,7 @@ export default function StoreScreen() {
 
         </View>
       </ScrollView>
+      {external.sheet}
     </View>
   );
 }
