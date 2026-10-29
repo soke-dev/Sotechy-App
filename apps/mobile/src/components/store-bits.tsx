@@ -145,27 +145,26 @@ export function MarketProductCard({ store, product, width = 150, onDark }: { sto
       <View style={{ aspectRatio: 1, borderRadius: radius.lg, backgroundColor: tileColor(store.theme), alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         <View style={{ position: "absolute", width: "66%", height: "66%", borderRadius: 999, backgroundColor: "rgba(255,255,255,0.55)" }} />
         <ProductArt product={product} store={store} />
-        {off > 0 ? (
-          <View style={{ position: "absolute", top: 8, left: 8, backgroundColor: colors.inverse, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
-            <Text style={{ fontFamily: fonts.bold, fontSize: 11, color: colors.onInverse }}>-{off}%</Text>
-          </View>
-        ) : null}
+        {/* Top left: a star for a featured store, then any discount */}
+        <View style={{ position: "absolute", top: 8, left: 8, flexDirection: "row", alignItems: "center", gap: 5 }}>
+          {isFeatured(store) && <Ionicons name="star" size={13} color={colors.brandYellow} accessibilityLabel="Featured store" />}
+          {off > 0 ? (
+            <View style={{ backgroundColor: colors.inverse, borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
+              <Text style={{ fontFamily: fonts.bold, fontSize: 11, color: colors.onInverse }}>-{off}%</Text>
+            </View>
+          ) : null}
+        </View>
         {/* Open to offers: a price-tag badge in the corner */}
         {product.negotiable ? (
           <View accessibilityLabel="Open to offers" style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: 13, backgroundColor: store.theme.hero, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="pricetag" size={13} color={store.theme.onHero} />
           </View>
         ) : null}
-        {/* Bottom of the picture: a star for a featured store on the left, who sells it on the right */}
-        <View style={{ position: "absolute", left: 8, right: 8, bottom: 8, flexDirection: "row", alignItems: "center", gap: 6 }}>
-          {isFeatured(store) && (
-            <Ionicons name="star" size={13} color={colors.brandYellow} accessibilityLabel="Featured store" />
-          )}
-          <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "100%", paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.92)" }}>
-              <Ionicons name="storefront" size={10} color={colors.brandPressed} />
-              <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.semibold, fontSize: 10.5, color: "#17120E" }}>{store.name}</Text>
-            </View>
+        {/* Who sells it, bottom right */}
+        <View style={{ position: "absolute", left: 8, right: 8, bottom: 8, flexDirection: "row", justifyContent: "flex-end" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "100%", paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.92)" }}>
+            <Ionicons name="storefront" size={10} color={colors.brandPressed} />
+            <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.semibold, fontSize: 10.5, color: "#17120E" }}>{store.name}</Text>
           </View>
         </View>
       </View>
