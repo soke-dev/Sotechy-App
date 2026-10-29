@@ -1,5 +1,6 @@
 // Paid featuring: a store pays through Money Moves to be shown first (Home, Shop and Stores) for a few
-// months. Payment is confirmed from Money Moves before any time is added.
+// months, with its own Home banner. Pro costs more and adds the store's own dark row of products on Home,
+// for two stores at a time. Payment is confirmed from Money Moves before any time is added.
 import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { db, schema } from "../db/client";
 import { env } from "../env";
@@ -9,14 +10,19 @@ import { badRequest, conflict } from "../lib/errors";
 import { createCheckout, type MMPayment } from "./moneymoves";
 import { getSetting } from "./settings";
 
+export type FeatureTier = "standard" | "pro";
+
 export interface FeaturingSettings {
   pricePerMonth: number;
   /** Most stores featured at once, so being featured still means something */
   maxStores: number;
   /** Most features one store can hold at a time (running or waiting to start) */
   maxPerStore: number;
+  /** Pro: a month's price, and how many stores can have it at once (each gets a row on Home) */
+  proPricePerMonth: number;
+  maxPro: number;
 }
-const DEFAULTS: FeaturingSettings = { pricePerMonth: 2_000, maxStores: 10, maxPerStore: 2 };
+const DEFAULTS: FeaturingSettings = { pricePerMonth: 2_000, maxStores: 120, maxPerStore: 2, proPricePerMonth: 10_000, maxPro: 2 };
 const MONTH_MS = 30 * 86_400_000;
 export const FEATURE_REF = "feat-";
 
@@ -31,9 +37,15 @@ export async function storeFeatureCount(merchantId: string) {
   return row?.n ?? 0;
 }
 
-/** How many stores are featured right now */
+/** How many stores are featured right now (Pro ones included) */
 export async function featuredCount() {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.merchants).where(gt(schema.merchants.featuredUntil, new Date()));
+  return row?.n ?? 0;
+}
+
+/** How many stores have Pro right now */
+export async function proCount() {
+  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.merchants).where(gt(schema.merchants.proUntil, new Date()));
   return row?.n ?? 0;
 }
 
@@ -45,15 +57,18 @@ export interface StoreBannerInput {
 
 /** Starts a payment for months of featuring and returns the Money Moves checkout page. A banner designed
  *  with it is saved switched off, and goes live for the feature's months once the payment arrives. */
-export async function buyFeaturing(store: typeof schema.merchants.$inferSelect, months: number, buyer: { email: string; name: string | null }, banner?: StoreBannerInput) {
+export async function buyFeaturing(store: typeof schema.merchants.$inferSelect, months: number, buyer: { email: string; name: string | null }, banner?: StoreBannerInput, tier: FeatureTier = "standard") {
   if (store.status !== "approved") throw badRequest("Your store can be featured once Sotechy approves it");
   const settings = await featuringSettings();
-  const already = !!store.featuredUntil && store.featuredUntil > new Date();
+  const now = new Date();
+  const already = !!store.featuredUntil && store.featuredUntil > now;
   if (!already && (await featuredCount()) >= settings.maxStores) throw conflict("All featured spots are taken right now. Try again in a few days.");
+  const alreadyPro = !!store.proUntil && store.proUntil > now;
+  if (tier === "pro" && !alreadyPro && (await proCount()) >= settings.maxPro) throw conflict(`Both Pro spots are taken right now. Featured is still open, or try Pro again when one ends.`);
   if ((await storeFeatureCount(store.id)) >= settings.maxPerStore)
     throw conflict(`A store can have ${settings.maxPerStore} features at a time. You can buy another when one ends.`);
-  const amount = settings.pricePerMonth * months;
-  const [purchase] = await db.insert(schema.featuredPurchases).values({ merchantId: store.id, months, amount }).returning();
+  const amount = (tier === "pro" ? settings.proPricePerMonth : settings.pricePerMonth) * months;
+  const [purchase] = await db.insert(schema.featuredPurchases).values({ merchantId: store.id, months, amount, tier }).returning();
   if (banner) {
     await db.insert(schema.banners).values({
       layout: "image",
@@ -72,7 +87,7 @@ export async function buyFeaturing(store: typeof schema.merchants.$inferSelect, 
     reference: `${FEATURE_REF}${purchase.id}`,
     idempotencyKey: `${FEATURE_REF}${purchase.id}`,
     amount,
-    description: `Featuring ${store.name} on Sotechy for ${months} month${months === 1 ? "" : "s"}`,
+    description: `${tier === "pro" ? "Featured Pro" : "Featuring"} for ${store.name} on Sotechy, ${months} month${months === 1 ? "" : "s"}`,
     customer: buyer,
     redirectUrl: `${env.MERCHANT_APP_URL.replace(/\/$/, "")}/featured?paid=1`,
     expiresAt: new Date(Date.now() + 30 * 60_000),
@@ -92,7 +107,10 @@ export async function settleFeaturing(purchaseId: string, p: MMPayment) {
     if (!store) return null;
     const from = store.featuredUntil && store.featuredUntil > new Date() ? store.featuredUntil : new Date();
     const until = new Date(from.getTime() + purchase.months * MONTH_MS);
-    await tx.update(schema.merchants).set({ featuredUntil: until }).where(eq(schema.merchants.id, store.id));
+    // Pro runs its own months too (and is always featured while it runs)
+    const proFrom = store.proUntil && store.proUntil > new Date() ? store.proUntil : new Date();
+    const proUntil = purchase.tier === "pro" ? new Date(proFrom.getTime() + purchase.months * MONTH_MS) : store.proUntil;
+    await tx.update(schema.merchants).set({ featuredUntil: proUntil && proUntil > until ? proUntil : until, proUntil }).where(eq(schema.merchants.id, store.id));
     await tx.update(schema.featuredPurchases).set({ status: "paid", paidAt: new Date(), until }).where(eq(schema.featuredPurchases.id, purchase.id));
     // Its banner shows for exactly these months, then switches off (an admin can switch it on again)
     await tx.update(schema.banners).set({ isActive: true, startsAt: from, endsAt: until }).where(eq(schema.banners.featuredPurchaseId, purchase.id));

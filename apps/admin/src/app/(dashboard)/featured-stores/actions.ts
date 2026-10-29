@@ -16,11 +16,11 @@ async function attempt(fn: () => Promise<unknown>): Promise<Result> {
   }
 }
 
-export async function saveFeaturingSettings(settings: { pricePerMonth: number; maxStores: number; maxPerStore: number }, password: string): Promise<Result> {
+export async function saveFeaturingSettings(settings: { pricePerMonth: number; maxStores: number; maxPerStore: number; proPricePerMonth: number; maxPro: number }, password: string): Promise<Result> {
   return attempt(() => withPassword("PUT", "/admin/featuring-settings", settings, password));
 }
 
-/** Features a store for some days without payment; 0 days ends it */
-export async function featureStore(storeId: string, days: number, password: string): Promise<Result> {
-  return attempt(() => withPassword("POST", `/admin/merchants/${storeId}/feature`, { days }, password));
+/** Features a store (or gives it Pro) for some days without payment; 0 days ends it */
+export async function featureStore(storeId: string, days: number, password: string, tier: "standard" | "pro" = "standard"): Promise<Result> {
+  return attempt(() => withPassword("POST", `/admin/merchants/${storeId}/feature`, { days, tier }, password));
 }

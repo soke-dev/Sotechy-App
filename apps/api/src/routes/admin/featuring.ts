@@ -20,9 +20,9 @@ export const adminFeaturingRoutes = new Hono<AppEnv>()
     monthStart.setHours(0, 0, 0, 0);
     const [settings, featured, purchases, [revenue]] = await Promise.all([
       featuringSettings(),
-      db.select({ id: m.id, name: m.name, slug: m.slug, ticker: m.ticker, logoUrl: m.logoUrl, featuredUntil: m.featuredUntil }).from(m).where(gt(m.featuredUntil, new Date())).orderBy(m.featuredUntil),
+      db.select({ id: m.id, name: m.name, slug: m.slug, ticker: m.ticker, logoUrl: m.logoUrl, featuredUntil: m.featuredUntil, proUntil: m.proUntil }).from(m).where(gt(m.featuredUntil, new Date())).orderBy(m.featuredUntil),
       db
-        .select({ id: fp.id, months: fp.months, amount: fp.amount, paidAt: fp.paidAt, until: fp.until, storeName: m.name, storeId: m.id })
+        .select({ id: fp.id, months: fp.months, amount: fp.amount, tier: fp.tier, paidAt: fp.paidAt, until: fp.until, storeName: m.name, storeId: m.id })
         .from(fp)
         .innerJoin(m, eq(m.id, fp.merchantId))
         .where(eq(fp.status, "paid"))
@@ -32,22 +32,49 @@ export const adminFeaturingRoutes = new Hono<AppEnv>()
     ]);
     return c.json({ settings, featured, purchases, revenueThisMonth: revenue?.total ?? 0 });
   })
-  .put("/featuring-settings", ADMIN, requirePassword, zValidator("json", z.object({ pricePerMonth: z.number().int().min(0).max(1_000_000), maxStores: z.number().int().min(1).max(50), maxPerStore: z.number().int().min(1).max(12).default(2) })), async (c) => {
+  .put(
+    "/featuring-settings",
+    ADMIN,
+    requirePassword,
+    zValidator(
+      "json",
+      z.object({
+        pricePerMonth: z.number().int().min(0).max(1_000_000),
+        maxStores: z.number().int().min(1).max(1000),
+        maxPerStore: z.number().int().min(1).max(12).default(2),
+        proPricePerMonth: z.number().int().min(0).max(5_000_000).default(10_000),
+        // Each Pro store gets a row on Home, so only a few
+        maxPro: z.number().int().min(0).max(6).default(2),
+      }),
+    ),
+    async (c) => {
     const value = c.req.valid("json");
     await db.transaction(async (tx) => {
       await tx.insert(schema.appSettings).values({ key: "featuring", value }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value } });
       await audit(tx, { actorId: c.get("user").id, action: "settings.featuring", entityType: "setting", details: value });
     });
     return c.json(value);
-  })
-  /** Features a store for some days without payment (or ends it with days: 0) */
-  .post("/merchants/:id/feature", ADMIN, requirePassword, zValidator("json", z.object({ days: z.number().int().min(0).max(365) })), async (c) => {
-    const { days } = c.req.valid("json");
+    },
+  )
+  /** Features a store (or gives it Pro) for some days without payment; days: 0 ends it (ending featuring ends Pro too) */
+  .post("/merchants/:id/feature", ADMIN, requirePassword, zValidator("json", z.object({ days: z.number().int().min(0).max(365), tier: z.enum(["standard", "pro"]).default("standard") })), async (c) => {
+    const { days, tier } = c.req.valid("json");
     const [store] = await db.select().from(m).where(eq(m.id, c.req.param("id")));
     if (!store) throw notFound("Store not found");
-    const from = store.featuredUntil && store.featuredUntil > new Date() ? store.featuredUntil : new Date();
-    const until = days === 0 ? null : new Date(from.getTime() + days * 86_400_000);
-    await db.update(m).set({ featuredUntil: until }).where(eq(m.id, store.id));
-    await audit(db, { actorId: c.get("user").id, action: days === 0 ? "merchant.unfeature" : "merchant.feature", entityType: "merchant", entityId: store.id, details: { days } });
-    return c.json({ featuredUntil: until });
+    const now = new Date();
+    const add = (d: Date | null) => new Date((d && d > now ? d : now).getTime() + days * 86_400_000);
+    const set =
+      days === 0
+        ? tier === "pro"
+          ? { proUntil: null }
+          : { featuredUntil: null, proUntil: null }
+        : tier === "pro"
+          ? (() => {
+              const proUntil = add(store.proUntil);
+              return { proUntil, featuredUntil: store.featuredUntil && store.featuredUntil > proUntil ? store.featuredUntil : proUntil };
+            })()
+          : { featuredUntil: add(store.featuredUntil) };
+    await db.update(m).set(set).where(eq(m.id, store.id));
+    await audit(db, { actorId: c.get("user").id, action: days === 0 ? `merchant.unfeature_${tier}` : `merchant.feature_${tier}`, entityType: "merchant", entityId: store.id, details: { days } });
+    return c.json(set);
   });

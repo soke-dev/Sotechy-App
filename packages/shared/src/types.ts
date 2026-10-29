@@ -435,6 +435,8 @@ export interface MerchantStore {
   reviewNote?: string | null;
   reviewNoteAt?: string | null;
   featuredUntil?: string | null;
+  /** Featured Pro: its own dark row of products on Home */
+  proUntil?: string | null;
   /** Where payouts go, checked with the bank */
   payoutBankCode?: string | null;
   payoutBankName?: string | null;
@@ -661,6 +663,8 @@ export interface MarketStore {
   storefront: StorefrontSettings | null;
   sells: string[];
   featuredUntil: string | null;
+  /** Featured Pro: its own dark row of products on Home */
+  proUntil?: string | null;
   productCount?: number;
   ratingAverage?: number | null;
   /** How many reviews the rating is from */

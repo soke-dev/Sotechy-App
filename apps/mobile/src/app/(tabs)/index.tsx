@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, type Href } from "expo-router";
+import { useMemo } from "react";
 import { Linking, Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { directionsUrl, formatNaira, type Category } from "@sotechy/shared";
@@ -20,7 +21,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { ArtButton, Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { byFeatured, SOTECHY_STORE, tileColor, toStoreProduct, useStores, type Img as MarketImg } from "@/lib/marketplace";
+import { byFeatured, isFeatured, isPro, SOTECHY_STORE, tileColor, toStoreProduct, useStores, type Img as MarketImg } from "@/lib/marketplace";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
@@ -116,6 +117,16 @@ const topOf = (cats: Category[], id: string | null) => {
 /** Products in each scrolling row of store products */
 const ROW_SIZE = 10;
 
+/** A shuffled copy */
+function shuffled<T>(list: T[]) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -130,14 +141,23 @@ export default function HomeScreen() {
     const [config, categories, products] = await Promise.all([api.storeConfig(), api.categories(), api.products({ sort: "newest" })]);
     return { config, categories, products };
   });
-  // Each store row on Home gets the store's own newest products (up to 10), not just those in the catalogue's newest
-  // (the first 12: Home has a row for each top category, and never that many)
-  const rowSlugs = byFeatured(stores ?? []).slice(0, 12).map((st) => st.slug).join(",");
+  // Featured stores share one row of 10: one store shows 10, two show 5 each, ten or more show one each from
+  // ten picked at random. Pro stores (featured too) also get their own dark row. Picked once per visit.
+  const featuredKey = (stores ?? []).filter(isFeatured).map((st) => st.slug).join(",");
+  const proKey = (stores ?? []).filter(isPro).map((st) => st.slug).join(",");
+  const featuredPick = useMemo(() => shuffled(featuredKey ? featuredKey.split(",") : []).slice(0, ROW_SIZE), [featuredKey]);
+  const proPick = useMemo(() => (proKey ? proKey.split(",") : []).slice(0, 6), [proKey]);
+  // Each of those stores' own newest products (up to 10), not just the ones in the catalogue's newest
+  const rowSlugs = [...new Set([...featuredPick, ...proPick])].join(",");
   const storeRows = useAsync(async () => {
     const slugs = rowSlugs ? rowSlugs.split(",") : [];
     const lists = await Promise.all(slugs.map((slug) => api.products({ store: slug, sort: "newest" }).catch(() => [])));
     return new Map(slugs.map((slug, i) => [slug, lists[i].slice(0, ROW_SIZE)]));
   }, [rowSlugs]);
+  const featuredMix = useMemo(() => {
+    const per = Math.max(1, Math.floor(ROW_SIZE / Math.max(1, featuredPick.length)));
+    return featuredPick.flatMap((slug) => shuffled(storeRows.data?.get(slug) ?? []).slice(0, per));
+  }, [featuredPick, storeRows.data]);
 
   if (loading && !data) return <Loading />;
   if (error && !data) return <ErrorView message={error} onRetry={reload} />;
@@ -148,6 +168,18 @@ export default function HomeScreen() {
   // The catalogue holds Sotechy's products and every approved store's
   const marketStores = byFeatured(stores ?? []);
   const storeOf = new Map(marketStores.map((st) => [st.slug, st]));
+  const proStores = proPick.flatMap((slug) => storeOf.get(slug) ?? []);
+  /** A Pro store's own dark row of its products */
+  const proRow = (st: (typeof marketStores)[number]) => (
+    <MarketRail
+      key={`pro-${st.slug}`}
+      title={`From ${st.name}`}
+      subtitle={`Earn $${st.ticker} on every order`}
+      items={(storeRows.data?.get(st.slug) ?? products.filter((p) => p.storeSlug === st.slug)).slice(0, ROW_SIZE).map((p) => ({ store: st, product: toStoreProduct(p) }))}
+      dark
+      onSeeAll={() => openStore(st.slug)}
+    />
+  );
   const own = products.filter((p) => !p.storeSlug);
   const storeItems = products.flatMap((p) => {
     const store = p.storeSlug ? storeOf.get(p.storeSlug) : undefined;
@@ -329,13 +361,22 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
-      <MarketRail title="Fresh from the stores" subtitle="Verified shops, each with its own token" items={storeItems.slice(0, ROW_SIZE)} onSeeAll={() => router.push("/stores")} />
+      <MarketRail
+        title="Featured stores"
+        subtitle="From stores featured on Sotechy"
+        items={featuredMix.flatMap((p) => {
+          const store = p.storeSlug ? storeOf.get(p.storeSlug) : undefined;
+          return store ? [{ store, product: toStoreProduct(p) }] : [];
+        })}
+        onSeeAll={() => router.push("/stores")}
+      />
 
       <ProductRail title="Top deals" subtitle="Sold by Sotechy" products={deals} dark onSeeAll={() => shop({ featured: "1" })} />
 
-      {/* Sotechy's category rows take turns with a row from each marketplace store */}
+      {/* Sotechy's category rows, with the newest from every store after the first, and each Pro store's own
+          dark row after every other one */}
       {tops.map((c, i) => {
-        const st = marketStores[i];
+        const pro = i % 2 === 1 ? proStores[(i - 1) / 2] : undefined;
         return (
           <View key={c.id} style={{ gap: space.xxl }}>
             <ProductRail
@@ -345,18 +386,15 @@ export default function HomeScreen() {
               subtitle={i % 3 === 2 ? "Sold by Sotechy, with warranty" : "Sold by Sotechy"}
               onSeeAll={() => shop({ category: c.slug })}
             />
-            {st ? (
-              <MarketRail
-                title={`From ${st.name}`}
-                subtitle={`Earn $${st.ticker} on every order`}
-                items={(storeRows.data?.get(st.slug) ?? products.filter((p) => p.storeSlug === st.slug)).slice(0, ROW_SIZE).map((p) => ({ store: st, product: toStoreProduct(p) }))}
-                dark={i % 3 === 1}
-                onSeeAll={() => openStore(st.slug)}
-              />
-            ) : null}
+            {i === 0 && (
+              <MarketRail title="Fresh from the stores" subtitle="New from verified shops, each with its own token" items={storeItems.slice(0, ROW_SIZE)} onSeeAll={() => router.push("/stores")} />
+            )}
+            {pro && proRow(pro)}
           </View>
         );
       })}
+      {/* Pro stores that didn't get a place between the category rows */}
+      {proStores.slice(Math.floor(tops.length / 2)).map(proRow)}
 
       {/* Can't find it */}
       <Pressable

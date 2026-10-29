@@ -246,6 +246,13 @@
       "when": 1793260785369,
       "tag": "0034_product_deleted_at",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793261549283,
+      "tag": "0035_featured_pro",
+      "breakpoints": true
     }
   ]
 }

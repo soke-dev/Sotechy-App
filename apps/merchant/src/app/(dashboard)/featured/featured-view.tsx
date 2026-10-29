@@ -1,8 +1,9 @@
 "use client";
 
-// Paying to have the store featured: shown first on the Sotechy app's Home, in Shop and in Stores.
-// The monthly price and how many stores can be featured at once are set by Sotechy.
-import { ArrowRight, Check, CreditCard, ImagePlus, Trash2 } from "lucide-react";
+// Paying to have the store featured: shown first on the Sotechy app's Home, in Shop and in Stores, with a
+// Home banner. Pro costs more and adds the store's own dark row of products on Home (two stores at a time).
+// Prices and how many stores can have each at once are set by Sotechy.
+import { ArrowRight, Check, CreditCard, Crown, ImagePlus, Sparkles, Star, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useAccount } from "@/components/account-context";
 import { BANNER_SPEC, ImageCropper } from "@/components/image-cropper";
@@ -11,9 +12,16 @@ import { Sheet } from "@/components/zone-form";
 import { buyFeaturing, uploadFiles } from "@/lib/market-actions";
 import { formatNaira } from "@/lib/money";
 
+type Tier = "standard" | "pro";
+
 export interface Featuring {
   pricePerMonth: number;
   maxStores: number;
+  /** Pro: price, how many stores can have it at once, and how many spots are open */
+  proPricePerMonth: number;
+  maxPro: number;
+  proSpotsLeft: number;
+  proUntil: string | null;
   /** Features one store can hold at a time, and how many this store holds */
   maxPerStore: number;
   activeFeatures: number;
@@ -23,6 +31,7 @@ export interface Featuring {
     id: string;
     months: number;
     amount: number;
+    tier?: Tier;
     paidAt: string | null;
     until: string | null;
     banner: { imageUrl: string | null; title: string | null; ctaLabel: string | null; state: "live" | "scheduled" | "ended" | "off" } | null;
@@ -65,15 +74,63 @@ function BannerPreview({ imageUrl, title, cta }: { imageUrl: string | null; titl
 const DAY = 86_400_000;
 const BENEFITS: { title: string; text: string }[] = [
   { title: "Your own Home banner", text: "At the front of the app's Home slides. Tapping it opens your store." },
-  { title: "First on Home", text: "You lead the “Stores on Sotechy” row." },
-  { title: "First in Shop", text: "Your products come before other stores'." },
-  { title: "Top of Stores", text: "Listed first in the Stores tab." },
-  { title: "★ Featured label", text: "On your store and products everywhere." },
+  { title: "In “Featured stores” on Home", text: "Your products in the row shared by featured stores." },
+  { title: "First on Home, in Shop and in Stores", text: "You lead the stores row, Shop and the Stores tab." },
+  { title: "★ on your products", text: "On your store and products everywhere." },
 ];
+const PRO_EXTRA = { title: "Your own row on Home", text: "A dark row of up to 10 of your products, with your name on it. Only two stores have one at a time." };
+
+/** A small phone showing where a feature puts the store on Home; the parts it gets are lit up in orange */
+function HomeMock({ pro, name }: { pro: boolean; name: string }) {
+  const lit = "ring-2 ring-brand ring-offset-1 ring-offset-[#FAF7F3]";
+  const tile = (on: boolean, i: number) => <span key={i} className={`h-9 w-9 shrink-0 rounded-lg ${on ? "bg-brand/80" : "bg-[#E9E1D7]"}`} />;
+  const label = (text: string) => (
+    <span className="absolute -right-1 -top-2 z-10 rounded-full bg-brand px-1.5 py-px text-[8px] font-bold text-white shadow">{text}</span>
+  );
+  return (
+    <div className="mx-auto w-[170px] rounded-[26px] border-[5px] border-[#17120E] bg-[#FAF7F3] p-2 shadow-[0_12px_30px_rgba(23,18,14,0.18)]" aria-hidden>
+      <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-[#17120E]/80" />
+      {/* Banner slides */}
+      <div className={`relative mb-2 h-[52px] overflow-hidden rounded-xl bg-[#17120E] ${lit}`}>
+        {label("Banner")}
+        <span className="absolute -right-3 top-2 h-12 w-12 rounded-full bg-brand" />
+        <span className="absolute left-2 top-2 h-1.5 w-14 rounded bg-white/80" />
+        <span className="absolute left-2 top-5 h-1 w-10 rounded bg-white/40" />
+        <span className="absolute bottom-2 left-2 h-2.5 w-9 rounded-full bg-white" />
+      </div>
+      {/* Stores row: yours first */}
+      <p className="mb-1 text-[7px] font-bold text-[#17120E]">Stores on Sotechy</p>
+      <div className="mb-2 flex gap-1.5">
+        <span className={`relative flex h-10 w-16 shrink-0 items-end rounded-lg bg-white p-1 ${lit}`}>
+          <Star size={8} className="absolute left-1 top-1 fill-[#FDB913] text-[#FDB913]" />
+          <span className="truncate text-[6px] font-bold text-[#17120E]">{name}</span>
+        </span>
+        <span className="h-10 w-16 shrink-0 rounded-lg bg-white" />
+      </div>
+      {/* Featured stores row */}
+      <p className="mb-1 text-[7px] font-bold text-[#17120E]">Featured stores</p>
+      <div className="relative mb-2 flex gap-1 overflow-hidden">{[1, 0, 1, 0].map((on, i) => tile(!!on, i))}</div>
+      {/* Pro: the store's own dark row */}
+      {pro ? (
+        <div className={`relative rounded-xl bg-[#17120E] p-1.5 ${lit}`}>
+          {label("Your row")}
+          <p className="mb-1 truncate text-[7px] font-bold text-white">From {name}</p>
+          <div className="flex gap-1 overflow-hidden">{[0, 1, 2, 3].map((i) => <span key={i} className="h-8 w-8 shrink-0 rounded-md bg-brand/80" />)}</div>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-[#D9CFC4] p-1.5">
+          <p className="mb-1 text-[7px] font-bold text-[#B5A99C]">A Pro store&apos;s own row</p>
+          <div className="flex gap-1 overflow-hidden">{[0, 1, 2, 3].map((i) => <span key={i} className="h-8 w-8 shrink-0 rounded-md bg-[#EFE8E0]" />)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
 const fmtDate = (d: string | number) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(d));
 
 export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: boolean }) {
   const { store } = useAccount();
+  const [tier, setTier] = useState<Tier>("standard");
   const [months, setMonths] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
@@ -100,16 +157,19 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
   const until = data.featuredUntil ? new Date(data.featuredUntil).getTime() : null;
   const active = until !== null && until > now;
   const daysLeft = active ? Math.ceil((until! - now) / DAY) : 0;
-  const total = data.pricePerMonth * months;
-  const newUntil = (active ? until! : now) + months * 30 * DAY;
-  const full = !active && data.spotsLeft === 0;
+  const proUntil = data.proUntil ? new Date(data.proUntil).getTime() : null;
+  const proActive = proUntil !== null && proUntil > now;
+  const price = tier === "pro" ? data.proPricePerMonth : data.pricePerMonth;
+  const total = price * months;
+  const newUntil = ((tier === "pro" ? (proActive ? proUntil : null) : active ? until : null) ?? now) + months * 30 * DAY;
+  const full = (!active && data.spotsLeft === 0) || (tier === "pro" && !proActive && data.proSpotsLeft === 0);
   const atLimit = data.activeFeatures >= data.maxPerStore;
   const approved = store.status === "approved";
 
   const pay = () =>
     start(async () => {
       setError(null);
-      const r = await buyFeaturing(months, withBanner && bannerImage ? { imageUrl: bannerImage, title: bannerTitle.trim() || null, ctaLabel: bannerCta.trim() || null } : undefined);
+      const r = await buyFeaturing(months, withBanner && bannerImage ? { imageUrl: bannerImage, title: bannerTitle.trim() || null, ctaLabel: bannerCta.trim() || null } : undefined, tier);
       if ("error" in r) return setError(r.error);
       window.location.href = r.ok.checkoutUrl;
     });
@@ -123,68 +183,90 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
         </p>
       )}
 
-      {/* Where you stand, in one strip */}
-      <div className="mb-4 grid grid-cols-3 divide-x divide-line rounded-2xl border border-line bg-surface text-sm">
-        <div className="min-w-0 px-3 py-3 sm:px-4">
-          <p className="text-xs text-muted">Status</p>
-          <p className={`font-display font-bold ${active ? "text-good" : ""}`}>{active ? "Featured" : "Not featured"}</p>
-          <p className="truncate text-xs text-muted">{active ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "Normal order"}</p>
-        </div>
-        <div className="min-w-0 px-3 py-3 sm:px-4">
-          <p className="text-xs text-muted">Price</p>
-          <p className="font-display font-bold">{formatNaira(data.pricePerMonth)}</p>
-          <p className="text-xs text-muted">a month</p>
-        </div>
-        <div className="min-w-0 px-3 py-3 sm:px-4">
-          <p className="text-xs text-muted">Spots</p>
-          <p className="font-display font-bold">
-            {data.spotsLeft} of {data.maxStores}
-          </p>
-          <p className="truncate text-xs text-muted">left right now</p>
-        </div>
+      {/* Where you stand */}
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-sm">
+        <span className={`font-display font-bold ${active ? "text-good" : ""}`}>{proActive ? "Featured Pro" : active ? "Featured" : "Not featured"}</span>
+        <span className="text-muted">{active ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left${proActive ? ` · Pro until ${fmtDate(proUntil!)}` : ""}` : "Your store shows in its normal place"}</span>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr]">
-        <Card title={active ? "Add more time" : "Feature your store"} description={active ? "Extra months start when your current feature ends." : "Starts as soon as your payment is confirmed."}>
-          <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3].map((m) => (
-                <button key={m} type="button" onClick={() => setMonths(m)} className={`rounded-xl border px-3 py-2 text-left transition ${months === m ? "border-ink ring-1 ring-ink" : "border-line hover:border-faint"}`}>
-                  <span className="block text-sm font-semibold">
-                    {m} month{m === 1 ? "" : "s"}
+      {/* The two kinds of feature, each with where it puts you on Home */}
+      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        {(["standard", "pro"] as const).map((t) => {
+          const pro = t === "pro";
+          const on = tier === t;
+          const left = pro ? data.proSpotsLeft : data.spotsLeft;
+          const max = pro ? data.maxPro : data.maxStores;
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTier(t)}
+              aria-pressed={on}
+              className={`flex flex-col gap-4 rounded-3xl border p-5 text-left transition ${pro ? "bg-[#17120E] text-white" : "bg-surface"} ${on ? "border-brand ring-2 ring-brand" : pro ? "border-[#17120E]" : "border-line hover:border-faint"}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <span className="flex items-center gap-1.5 font-display text-xl font-bold">
+                    {pro ? <Crown size={18} className="text-[#FDB913]" /> : <Sparkles size={18} className="text-brand" />} {pro ? "Featured Pro" : "Featured"}
                   </span>
-                  <span className="block text-xs text-muted">{formatNaira(data.pricePerMonth * m)}</span>
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-muted">Featured until {fmtDate(newUntil)} · includes one Home banner (design it below)</p>
-            {error && <p className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
-            {needsImage && <p className="text-xs text-warn">Add your banner picture below, or untick “Add a banner”.</p>}
-            <button disabled={busy || full || atLimit || !approved || needsImage || uploading} onClick={pay} className={btn.primary}>
-              <CreditCard size={16} /> {busy ? "Opening payment…" : `Pay ${formatNaira(total)}`}
+                  <span className={`text-sm ${pro ? "text-white/70" : "text-muted"}`}>
+                    <b className={pro ? "text-white" : "text-ink"}>{formatNaira(pro ? data.proPricePerMonth : data.pricePerMonth)}</b> a month
+                  </span>
+                </div>
+                <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 ${on ? "border-brand bg-brand text-white" : pro ? "border-white/40" : "border-line"}`}>{on && <Check size={14} strokeWidth={3} />}</span>
+              </div>
+              <div className="grid grid-cols-[auto_1fr] items-start gap-4">
+                <HomeMock pro={pro} name={store.name} />
+                <ul className="flex flex-col gap-2 text-[13px]">
+                  {pro && (
+                    <li className="flex gap-1.5">
+                      <Check size={15} className="mt-0.5 shrink-0 text-[#FDB913]" />
+                      <span><b>{PRO_EXTRA.title}.</b> <span className="text-white/70">{PRO_EXTRA.text}</span></span>
+                    </li>
+                  )}
+                  {pro && <li className="text-xs font-semibold text-white/60">Plus everything in Featured:</li>}
+                  {BENEFITS.map((x) => (
+                    <li key={x.title} className="flex gap-1.5">
+                      <Check size={15} className={`mt-0.5 shrink-0 ${pro ? "text-[#FDB913]" : "text-good"}`} />
+                      <span><b>{x.title}.</b> <span className={pro ? "text-white/70" : "text-muted"}>{x.text}</span></span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <span className={`self-start rounded-full px-3 py-1 text-xs font-bold ${left === 0 ? "bg-bad-soft text-bad" : pro ? "bg-white/10 text-white" : "bg-brand-soft text-brand-strong"}`}>
+                {left === 0 ? `All ${max} spots taken` : `${left} of ${max} spot${max === 1 ? "" : "s"} left`}
+              </span>
             </button>
-            {!approved && <p className="text-xs text-warn">You can be featured once Sotechy approves your store.</p>}
-            {full && <p className="text-xs text-warn">All {data.maxStores} featured spots are taken. One opens when another store&apos;s feature ends.</p>}
-            {atLimit && <p className="text-xs text-warn">You have {data.activeFeatures} features already, the most a store can hold at a time. Buy another when one ends.</p>}
-            <p className="text-xs text-muted">
-              Up to {data.maxStores} stores are featured at once, and a store can hold {data.maxPerStore} features at a time. Paid through Money Moves; not refundable once it starts.
-            </p>
-          </div>
-        </Card>
-
-        <Card title="What you get">
-          <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1">
-            {BENEFITS.map((b) => (
-              <li key={b.title} className="flex gap-2">
-                <Check size={16} className="mt-0.5 shrink-0 text-good" />
-                <span className="text-sm">
-                  <span className="font-semibold">{b.title}.</span> <span className="text-muted">{b.text}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+          );
+        })}
       </div>
+
+      <Card title={tier === "pro" ? (proActive ? "Add more Pro time" : "Get Featured Pro") : active ? "Add more time" : "Feature your store"} description={(tier === "pro" ? proActive : active) ? "Extra months start when your current feature ends." : "Starts as soon as your payment is confirmed."}>
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-3 gap-2">
+            {[1, 2, 3].map((m) => (
+              <button key={m} type="button" onClick={() => setMonths(m)} className={`rounded-xl border px-3 py-2 text-left transition ${months === m ? "border-ink ring-1 ring-ink" : "border-line hover:border-faint"}`}>
+                <span className="block text-sm font-semibold">
+                  {m} month{m === 1 ? "" : "s"}
+                </span>
+                <span className="block text-xs text-muted">{formatNaira(price * m)}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted">{tier === "pro" ? "Featured Pro" : "Featured"} until {fmtDate(newUntil)} · includes one Home banner (design it below)</p>
+          {error && <p className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">{error}</p>}
+          {needsImage && <p className="text-xs text-warn">Add your banner picture below, or untick “Add a banner”.</p>}
+          <button disabled={busy || full || atLimit || !approved || needsImage || uploading} onClick={pay} className={btn.primary}>
+            <CreditCard size={16} /> {busy ? "Opening payment…" : `Pay ${formatNaira(total)}`}
+          </button>
+          {!approved && <p className="text-xs text-warn">You can be featured once Sotechy approves your store.</p>}
+          {full && <p className="text-xs text-warn">{tier === "pro" ? `Both Pro spots are taken. One opens when another store's Pro ends; Featured is still open.` : `All ${data.maxStores} featured spots are taken. One opens when another store's feature ends.`}</p>}
+          {atLimit && <p className="text-xs text-warn">You have {data.activeFeatures} features already, the most a store can hold at a time. Buy another when one ends.</p>}
+          <p className="text-xs text-muted">
+            Up to {data.maxStores} stores are featured at once, {data.maxPro} of them Pro, and a store can hold {data.maxPerStore} features at a time. Paid through Money Moves; not refundable once it starts.
+          </p>
+        </div>
+      </Card>
 
       <Sheet open={cropping !== null} onClose={() => setCropping(null)} title="Your banner picture">
         {cropping && <ImageCropper file={cropping} spec={BANNER_SPEC} onDone={upload} onCancel={() => setCropping(null)} />}
@@ -239,7 +321,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
               <li key={h.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold">
-                    {h.months} month{h.months === 1 ? "" : "s"} featured
+                    {h.months} month{h.months === 1 ? "" : "s"} {h.tier === "pro" ? "Featured Pro" : "featured"}
                   </span>
                   <span className="text-sm text-muted">
                     Paid {h.paidAt ? fmtDate(h.paidAt) : ""}

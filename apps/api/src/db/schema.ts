@@ -254,6 +254,8 @@ export const merchants = pgTable("merchants", {
   reviewNoteAt: timestamp({ withTimezone: true }),
   /** Shown first on the app's home and in search until then */
   featuredUntil: timestamp({ withTimezone: true }),
+  /** Featured Pro until then: everything featured gives, plus its own dark store row on Home (two stores at a time) */
+  proUntil: timestamp({ withTimezone: true }),
   /** Owner's ID + liveness check through Didit; admin still approves the store itself */
   kycStatus: kycStatusEnum().notNull().default("not_started"),
   kycSessionId: text().unique(),
@@ -1059,6 +1061,8 @@ export const featuredPurchases = pgTable(
       .references(() => merchants.id, { onDelete: "cascade" }),
     months: integer().notNull(),
     amount: money().notNull(),
+    /** "standard" (featured) or "pro" (featured, plus the store's own row on Home) */
+    tier: text().$type<"standard" | "pro">().notNull().default("standard"),
     /** "pending", "paid" or "expired" */
     status: text().notNull().default("pending"),
     checkoutId: text(),

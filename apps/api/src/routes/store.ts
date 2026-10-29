@@ -252,6 +252,7 @@ export const storeRoutes = new Hono()
         storefront: m.storefront,
         sells: m.sells,
         featuredUntil: m.featuredUntil,
+        proUntil: m.proUntil,
         productCount: sql<number>`(select count(*)::int from products p where p.merchant_id = "merchants"."id" and p.is_published)`,
         ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
         ratingCount: sql<number>`(select count(*)::int from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
@@ -276,6 +277,7 @@ export const storeRoutes = new Hono()
         storefront: m.storefront,
         sells: m.sells,
         featuredUntil: m.featuredUntil,
+        proUntil: m.proUntil,
         branchId: branches.id,
         // The store's rating: every published review of its products
         ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
