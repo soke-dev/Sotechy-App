@@ -159,7 +159,7 @@ export function MarketProductCard({ store, product, width = 150, onDark }: { sto
         {/* Bottom of the picture: a star for a featured store on the left, who sells it on the right */}
         <View style={{ position: "absolute", left: 8, right: 8, bottom: 8, flexDirection: "row", alignItems: "center", gap: 6 }}>
           {isFeatured(store) && (
-            <Ionicons name="star" size={13} color={colors.brandYellow} accessibilityLabel="Featured store" style={{ textShadowColor: "rgba(0,0,0,0.45)", textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } }} />
+            <Ionicons name="star" size={13} color={colors.brandYellow} accessibilityLabel="Featured store" />
           )}
           <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "100%", paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.92)" }}>
