@@ -64,9 +64,8 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
             <ProductImage uri={product.imageUrl} name={product.name} style={{ flex: 1 }} padding={14} dimmed={soldOut} />
             {/* Who sells it, on the photo (Sotechy's own products have no store name) */}
             <View style={{ position: "absolute", left: 8, bottom: 8, right: 8, flexDirection: "row", justifyContent: "flex-end" }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "100%", paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.92)" }}>
-                <Ionicons name="storefront" size={10} color={colors.brandPressed} />
-                <Txt numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.semibold, fontSize: 10.5, color: lightPalette.ink }}>{product.storeName ?? "Sotechy"}</Txt>
+              <View style={{ maxWidth: "100%", paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.92)" }}>
+                <Txt numberOfLines={1} style={{ fontFamily: fonts.semibold, fontSize: 10.5, color: lightPalette.ink }}>{product.storeName ?? "Sotechy"}</Txt>
               </View>
             </View>
             {soldOut && (

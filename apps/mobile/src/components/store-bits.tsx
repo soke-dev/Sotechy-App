@@ -156,11 +156,17 @@ export function MarketProductCard({ store, product, width = 150, onDark }: { sto
             <Ionicons name="pricetag" size={13} color={store.theme.onHero} />
           </View>
         ) : null}
-        {/* Who sells it, as on Shop; a featured store gets a star instead of the shop icon */}
-        <View style={{ position: "absolute", left: 8, right: 8, bottom: 8, flexDirection: "row", justifyContent: "flex-end" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "100%", paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.92)" }}>
-            <Ionicons name={isFeatured(store) ? "star" : "storefront"} size={10} color={isFeatured(store) ? colors.brandYellow : colors.brandPressed} />
-            <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.semibold, fontSize: 10.5, color: "#17120E" }}>{store.name}</Text>
+        {/* Bottom of the picture: a star for a featured store on the left, who sells it on the right */}
+        <View style={{ position: "absolute", left: 8, right: 8, bottom: 8, flexDirection: "row", alignItems: "center", gap: 6 }}>
+          {isFeatured(store) && (
+            <View accessibilityLabel="Featured store" style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(23,18,14,0.82)", alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="star" size={12} color={colors.brandYellow} />
+            </View>
+          )}
+          <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end" }}>
+            <View style={{ maxWidth: "100%", paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.92)" }}>
+              <Text numberOfLines={1} style={{ fontFamily: fonts.semibold, fontSize: 10.5, color: "#17120E" }}>{store.name}</Text>
+            </View>
           </View>
         </View>
       </View>
