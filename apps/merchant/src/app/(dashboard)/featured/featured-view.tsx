@@ -182,14 +182,18 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
       <PageHeader illo="sparkle" title="Get featured" description="Be the first store customers see in the Sotechy app, with your own banner on Home." />
       {justPaid && (
         <p className="mb-4 flex items-center gap-2 rounded-2xl bg-good-soft px-4 py-3 text-sm font-semibold text-good">
-          <Check size={16} /> Thanks! Your feature starts as soon as Money Moves confirms the payment, usually within a minute.
+          <Check size={16} /> Thanks! Your feature starts as soon as your payment is confirmed, usually within a minute or two.
         </p>
       )}
 
       {/* Where you stand */}
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-sm">
         <span className={`font-display font-bold ${active ? "text-good" : ""}`}>{proActive ? "Featured Pro" : active ? "Featured" : "Not featured"}</span>
-        <span className="text-muted">{active ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left${proActive ? ` · Pro until ${fmtDate(proUntil!)}` : ""}` : "Your store shows in its normal place"}</span>
+        <span className="text-muted">{active
+            ? proActive && until! > proUntil! + DAY
+              ? `Pro until ${fmtDate(proUntil!)}, then Featured until ${fmtDate(until!)} (${daysLeft} days in all)`
+              : `${daysLeft} day${daysLeft === 1 ? "" : "s"} left${proActive ? ` · Pro until ${fmtDate(proUntil!)}` : ` · until ${fmtDate(until!)}`}`
+            : "Your store shows in its normal place"}</span>
       </div>
 
       {/* The two kinds of feature, each with where it puts you on Home */}
@@ -281,7 +285,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
         <div className="flex flex-col gap-3">
           {[
             { id: "bank" as const, on: ways.bank, icon: Landmark, title: "Bank transfer", text: "Send the exact amount from any Nigerian bank app" },
-            { id: "stablecoin" as const, on: ways.stablecoin, icon: Wallet, title: "Money Moves", text: "Pay with USDT or USDC" },
+            { id: "stablecoin" as const, on: ways.stablecoin, icon: Wallet, title: "Pay with stablecoin", text: "USDT or USDC, through Money Moves" },
           ].map((w) => (
             <button
               key={w.id}
