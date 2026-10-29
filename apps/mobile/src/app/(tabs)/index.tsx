@@ -277,6 +277,33 @@ export default function HomeScreen() {
 
       <HeroCarousel width={contentWidth} />
 
+      {/* Categories */}
+      <View>
+        <View style={{ paddingHorizontal: gutter }}>
+          <SectionHeader title="Shop by category" action="See all" onAction={() => router.push("/shop")} />
+        </View>
+        {/* Sotechy's own categories, then every kind of store on the marketplace, in two rows that scroll */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter }}>
+          <View style={{ gap: space.md }}>
+            {[0, 1].map((row) => {
+              const all = [
+                ...tops.map((c) => ({ key: c.id, label: c.name, image: c.imageUrl, icon: productIcon(c.name), onPress: () => shop({ category: c.slug }) })),
+                ...STORE_KINDS.map((k) => ({ key: k.kind, label: k.label, image: null, icon: k.icon, onPress: () => router.push({ pathname: "/stores", params: { kind: k.kind } }) })),
+                // Last: everything else, in Shop
+                { key: "more", label: "Much more", image: null, icon: "apps-outline" as IconName, onPress: () => shop({}) },
+              ];
+              return (
+                <View key={row} style={{ flexDirection: "row", gap: space.sm }}>
+                  {all.filter((_, i) => i % 2 === row).map((c) => (
+                    <CategoryTile key={c.key} label={c.label} image={c.image} icon={c.icon} onPress={c.onPress} />
+                  ))}
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+      </View>
+
       {/* Marketplace stores */}
       <View>
         <View style={{ paddingHorizontal: gutter }}>
@@ -335,33 +362,6 @@ export default function HomeScreen() {
           </View>
         </View>
       )}
-
-      {/* Categories */}
-      <View>
-        <View style={{ paddingHorizontal: gutter }}>
-          <SectionHeader title="Shop by category" action="See all" onAction={() => router.push("/shop")} />
-        </View>
-        {/* Sotechy's own categories, then every kind of store on the marketplace, in two rows that scroll */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter }}>
-          <View style={{ gap: space.md }}>
-            {[0, 1].map((row) => {
-              const all = [
-                ...tops.map((c) => ({ key: c.id, label: c.name, image: c.imageUrl, icon: productIcon(c.name), onPress: () => shop({ category: c.slug }) })),
-                ...STORE_KINDS.map((k) => ({ key: k.kind, label: k.label, image: null, icon: k.icon, onPress: () => router.push({ pathname: "/stores", params: { kind: k.kind } }) })),
-                // Last: everything else, in Shop
-                { key: "more", label: "Much more", image: null, icon: "apps-outline" as IconName, onPress: () => shop({}) },
-              ];
-              return (
-                <View key={row} style={{ flexDirection: "row", gap: space.sm }}>
-                  {all.filter((_, i) => i % 2 === row).map((c) => (
-                    <CategoryTile key={c.key} label={c.label} image={c.image} icon={c.icon} onPress={c.onPress} />
-                  ))}
-                </View>
-              );
-            })}
-          </View>
-        </ScrollView>
-      </View>
 
       <MarketRail
         title="Featured stores"
