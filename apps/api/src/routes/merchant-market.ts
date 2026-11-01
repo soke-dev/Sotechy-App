@@ -658,6 +658,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
         tin: z.string().trim().max(30).nullable().optional(),
         businessAddress: z.string().trim().max(200).nullable().optional(),
         businessMapUrl: z.string().trim().max(500).refine(isMapLink, "Paste a Google Maps link").nullable().optional(),
+        businessPhotoUrl: z.string().url().max(500).nullable().optional(),
         documents: z.record(z.string().max(60), z.string().max(200)).default({}),
         people: z.array(z.object({ name: z.string().trim().min(1).max(120), role: z.string().max(60), share: z.number().min(0).max(100) })).max(20).default([]),
         bank: z.object({ bankName: z.string().min(2).max(60), accountNumber: z.string().regex(/^\d{10}$/, "Account numbers have 10 digits") }).nullable().optional(),
@@ -703,7 +704,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
             ? `Describe your business in at least ${MIN_BUSINESS_DESCRIPTION} characters`
             : !tickerChosen
               ? "Choose your token's ticker"
-              : sellerKind === "registered" && (!application.structure || !application.registeredName || !application.registrationNumber || !application.businessAddress)
+              : sellerKind === "registered" && (!application.structure || !application.registeredName || !application.registrationNumber)
                 ? "Fill in your business details"
                 : missingDoc
                   ? `Upload your ${missingDoc.name}`

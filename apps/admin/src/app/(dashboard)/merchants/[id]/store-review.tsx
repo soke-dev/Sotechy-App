@@ -199,6 +199,14 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
               <Row label="Registered on">{app?.registeredOn}</Row>
               <Row label="TIN">{app?.tin}</Row>
               <Row label="Address">{app?.businessAddress}{app?.businessMapUrl ? <> · <a href={app.businessMapUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-strong hover:underline">Map</a></> : null}</Row>
+              {app?.businessPhotoUrl && (
+                <Row label="Shop photo">
+                  <a href={app.businessPhotoUrl} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={app.businessPhotoUrl} alt="The store's shop" className="h-24 w-36 rounded-xl border border-line object-cover" />
+                  </a>
+                </Row>
+              )}
               <div className="mt-4 flex flex-col gap-2">
                 <p className="text-sm font-semibold">Documents</p>
                 {docs.length ? (
@@ -282,6 +290,14 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
               <Row label="Business address">
                 {store.application?.businessAddress}
                 {store.application?.businessMapUrl ? <> · <a href={store.application.businessMapUrl} target="_blank" rel="noreferrer" className="font-semibold text-brand-strong hover:underline">Map</a></> : null}
+              </Row>
+            )}
+            {store.sellerKind === "individual" && store.application?.businessPhotoUrl && (
+              <Row label="Shop photo">
+                <a href={store.application.businessPhotoUrl} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={store.application.businessPhotoUrl} alt="The store's shop" className="h-24 w-36 rounded-xl border border-line object-cover" />
+                </a>
               </Row>
             )}
             <Row label="Website">{store.application?.website ? <a href={/^https?:/.test(store.application.website) ? store.application.website : `https://${store.application.website}`} target="_blank" rel="noopener noreferrer" className="text-brand-strong hover:underline">{store.application.website}</a> : null}</Row>

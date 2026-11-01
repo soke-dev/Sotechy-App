@@ -883,6 +883,8 @@ export interface MerchantApplicationInput {
   businessAddress?: string | null;
   /** Google Maps link to the business (optional) */
   businessMapUrl?: string | null;
+  /** A photo of the shop or office, if there is one (optional) */
+  businessPhotoUrl?: string | null;
   documents?: Record<string, string>;
   people?: { name: string; role: string; share: number }[];
   bank?: { bankName: string; accountNumber: string } | null;

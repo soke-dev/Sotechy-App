@@ -86,11 +86,12 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
     registrationNumber: app?.registrationNumber ?? "",
     registeredOn: app?.registeredOn ?? "",
     tin: app?.tin ?? "",
-    businessAddress: app?.businessAddress ?? "",
   });
   const [description, setDescription] = useState(app?.description ?? "");
-  // Freelancers can give a business address too; registered businesses give theirs under Business details
+  // Where the business is, for everyone and all optional: the address, a map link and a photo of the shop
   const [ownAddress, setOwnAddress] = useState(app?.businessAddress ?? "");
+  const [shopPhoto, setShopPhoto] = useState<string | null>(app?.businessPhotoUrl ?? null);
+  const [uploadingShop, setUploadingShop] = useState(false);
   // Optional: a Google Maps link to the business, for the exact spot
   const [mapUrl, setMapUrl] = useState(app?.businessMapUrl ?? "");
   const badMapUrl = !!mapUrl.trim() && !isMapLink(mapUrl);
@@ -159,9 +160,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
       ? "Add the registered name"
       : !business.registrationNumber.trim()
         ? "Add the registration number"
-        : !business.businessAddress.trim()
-          ? "Add the business address"
-          : null,
+        : null,
     documents: (() => {
       const left = docs.filter((d) => !d.optional && !uploaded[d.name]);
       return left.length ? `Upload ${left.map((d) => d.name).join(", ")}` : null;
@@ -191,8 +190,10 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
     sellerKind: kind,
     sells,
     structure: kind === "registered" ? structure : null,
-    ...(kind === "registered" ? { ...business, registrationNumber: cleanRegNo(business.registrationNumber) || "" } : { registeredName: null, registrationNumber: null, registeredOn: null, tin: null, businessAddress: ownAddress.trim() || null }),
+    ...(kind === "registered" ? { ...business, registrationNumber: cleanRegNo(business.registrationNumber) || "" } : { registeredName: null, registrationNumber: null, registeredOn: null, tin: null }),
+    businessAddress: ownAddress.trim() || null,
     businessMapUrl: mapUrl.trim() && !badMapUrl ? mapUrl.trim() : null,
+    businessPhotoUrl: shopPhoto,
     website: website.trim() || null,
     socials: Object.values(socials).some((v) => v.trim()) ? { instagram: socials.instagram.trim() || null, x: socials.x.trim() || null, facebook: socials.facebook.trim() || null, tiktok: socials.tiktok.trim() || null } : null,
     documents: uploaded,
@@ -225,6 +226,19 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
     setUploadingDoc(null);
     if ("error" in r) setError(r.error);
     else setUploaded((u) => ({ ...u, [name]: r.ok[0].url }));
+  };
+
+  const uploadShop = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) return setError("Photos can be up to 10 MB");
+    const form = new FormData();
+    form.append("kind", "image");
+    form.append("file", file);
+    setUploadingShop(true);
+    setError(null);
+    const r = await uploadFiles(form);
+    setUploadingShop(false);
+    if ("error" in r) setError(r.error);
+    else setShopPhoto(r.ok[0].url);
   };
 
   if (start.review?.declined) return <Declined store={start.storeName} note={start.review.note} />;
@@ -378,12 +392,6 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                   <input value={business.registeredOn} onChange={(e) => setBusiness({ ...business, registeredOn: e.target.value })} type="date" className={inputClass} />
                 </Field>
                 <div className="sm:col-span-2">
-                  <Field label="Business address" required>
-                    <AddressInput value={business.businessAddress} onChange={(businessAddress) => setBusiness({ ...business, businessAddress })} placeholder="Start typing your street" />
-                  </Field>
-                </div>
-                <div className="sm:col-span-2">{mapField}</div>
-                <div className="sm:col-span-2">
                   <Field label="Tax ID (TIN)" hint="Optional.">
                     <input value={business.tin} onChange={(e) => setBusiness({ ...business, tin: e.target.value })} inputMode="numeric" className={inputClass} />
                   </Field>
@@ -488,12 +496,32 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                     {description.trim().length < MIN_BUSINESS_DESCRIPTION ? `${MIN_BUSINESS_DESCRIPTION - description.trim().length} more characters needed` : "Good"} · {description.length}/1000
                   </p>
                 </Section>
-                {kind === "individual" && (
-                  <Section label="Business address">
+                <Section label="Business location">
+                  <p className="mb-3 text-sm text-muted">All optional. If you have a shop or office, it helps customers trust you.</p>
+                  <Field label="Address" hint="Optional.">
                     <AddressInput value={ownAddress} onChange={setOwnAddress} placeholder="Where you work from, if you have a shop or office" />
-                    <div className="mt-3">{mapField}</div>
-                  </Section>
-                )}
+                  </Field>
+                  <div className="mt-3">{mapField}</div>
+                  <div className="mt-3">
+                    <Field label="Photo of your shop or office" hint="Optional. The front of the shop, or inside it.">
+                      <div className="flex flex-wrap items-center gap-3">
+                        {shopPhoto && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={shopPhoto} alt="Your shop" className="h-20 w-28 rounded-xl border border-line object-cover" />
+                        )}
+                        <label className={`${btn.outline} cursor-pointer`}>
+                          {uploadingShop ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} {shopPhoto ? "Change photo" : uploadingShop ? "Uploading…" : "Add a photo"}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingShop} onChange={(e) => e.target.files?.[0] && void uploadShop(e.target.files[0])} />
+                        </label>
+                        {shopPhoto && (
+                          <button type="button" onClick={() => setShopPhoto(null)} className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-bad">
+                            <Trash2 size={14} /> Remove
+                          </button>
+                        )}
+                      </div>
+                    </Field>
+                  </div>
+                </Section>
                 <Section label="Token ticker" required help={<TokenHelp />}>
                   {start.tokenApproved ? (
                     <p className="rounded-xl bg-surface-alt px-4 py-3 text-sm">
