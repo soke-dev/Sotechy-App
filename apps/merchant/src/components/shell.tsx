@@ -84,7 +84,7 @@ const INSIDE = STOREFRONT_TABS.map((t) => t.href);
 const isActive = (href: string, path: string) =>
   href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`) || (INSIDE.includes(href) && INSIDE.some((p) => path === p || path.startsWith(`${p}/`)));
 
-/** The store at the top of the menu: logo, name with its badge, where it stands, and its token. Opens Storefront. */
+/** The store at the top of the menu: logo, name with its badge, and where it stands. Opens Storefront. */
 function StoreCard({ store, onNavigate }: { store: ShellStore; onNavigate?: () => void }) {
   const status = store.verified
     ? { label: "Live", dot: "bg-green-400", pill: "bg-green-400/15 text-green-300" }
@@ -96,7 +96,7 @@ function StoreCard({ store, onNavigate }: { store: ShellStore; onNavigate?: () =
           ? { label: "Changes requested", dot: "bg-amber-400", pill: "bg-amber-400/15 text-amber-300" }
           : { label: "Awaiting verification", dot: "bg-amber-400", pill: "bg-amber-400/15 text-amber-300" };
   return (
-    <Link href="/storefront" onClick={onNavigate} className="group relative block overflow-hidden rounded-3xl bg-panel p-4 text-white shadow-[0_10px_28px_rgba(23,18,14,0.22)] transition hover:shadow-[0_14px_34px_rgba(23,18,14,0.3)]">
+    <Link href="/storefront" onClick={onNavigate} className="group relative block overflow-hidden rounded-3xl bg-panel px-4 py-3.5 text-white shadow-[0_10px_28px_rgba(23,18,14,0.22)] transition hover:shadow-[0_14px_34px_rgba(23,18,14,0.3)]">
       {/* A warm glow and two rings in the corner */}
       <span className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-brand/35 blur-2xl" />
       <span className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full border border-white/10" />
@@ -116,21 +116,17 @@ function StoreCard({ store, onNavigate }: { store: ShellStore; onNavigate?: () =
             {/* Orange tick for a registered business, blue for a freelancer, once Sotechy has verified it */}
             {store.verified && <BadgeCheck size={16} className={`shrink-0 text-panel ${store.official ? "fill-[#F7931E]" : "fill-[#2F6FB3]"}`} />}
           </p>
-          <span className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.pill}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
-            {status.label}
+          {/* Where it stands, and what kind of store it is, on one row */}
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.pill}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+              {status.label}
+            </span>
+            {store.verified && <span className="text-[11px] text-white/55">{store.official ? "Official store" : "Verified seller"}</span>}
           </span>
         </div>
         <ChevronRight size={16} className="shrink-0 text-white/40 transition group-hover:translate-x-0.5 group-hover:text-white/70" />
       </div>
-      {store.ticker && (
-        <div className="relative mt-3 flex items-center justify-between border-t border-white/10 pt-3 text-xs">
-          <span className="inline-flex items-center gap-1.5 font-semibold">
-            <Illo name="coin" size={18} /> ${store.ticker}
-          </span>
-          <span className="text-white/50">{store.official ? "Official store" : "Verified seller"}</span>
-        </div>
-      )}
     </Link>
   )
 }
