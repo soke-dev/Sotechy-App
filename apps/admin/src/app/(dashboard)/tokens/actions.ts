@@ -33,3 +33,14 @@ export async function retryStuck(): Promise<{ retried: number } | { error: strin
     return { error: errorMessage(err) };
   }
 }
+
+/** Makes Monad or Base the main chain */
+export async function setPrimaryChain(chain: "monad" | "base", password: string): Promise<{ primary: string } | { error: string }> {
+  try {
+    const result = await withPassword<{ primary: string }>("PUT", "/admin/chain/primary", { chain }, password);
+    revalidatePath("/tokens");
+    return result;
+  } catch (err) {
+    return { error: errorMessage(err) };
+  }
+}

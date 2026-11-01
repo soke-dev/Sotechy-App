@@ -174,7 +174,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
                       <>
                         {" · "}
                         <a href={a.txUrl} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
-                          on Monad
+                          on chain
                         </a>
                       </>
                     )}

@@ -288,6 +288,13 @@
       "when": 1793527030420,
       "tag": "0040_product_pause",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793527870373,
+      "tag": "0041_base_tries",
+      "breakpoints": true
     }
   ]
 }

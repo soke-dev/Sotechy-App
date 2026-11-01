@@ -15,6 +15,7 @@ import { sendEmailLater } from "../lib/email";
 import { orderNotReceivedEmail } from "../emails/templates";
 import { sendPushLater } from "../services/push";
 import { getSetting } from "../services/settings";
+import { orderTokensTx } from "../services/tokens";
 
 const { orders, orderItems, payments, orderStatusHistory } = schema;
 
@@ -96,9 +97,12 @@ export async function loadOrderDetail(orderId: string) {
   // The store's token can pay towards its orders (with $SOTECHY)
   const [seller] = order.merchantId ? await db.select({ ticker: schema.merchants.ticker }).from(schema.merchants).where(eq(schema.merchants.id, order.merchantId)) : [];
   const reviewed = order.customerId ? await reviewedBy(order.customerId) : new Set<string>();
+  // The tokens put towards it, on chain (once written)
+  const tokensTxUrl = order.tokensValue > 0 ? await orderTokensTx(order.id).catch(() => null) : null;
   const { idempotencyKey: _k, pickupChangePoint: _p, pickupChangeStatus: _ps, pickupChangeAt: _pa, ...publicOrder } = order;
   return { ...publicOrder, items, payments: paymentRows.map(({ raw: _raw, ...p }) => p),
     // The order's refunds with how they were sent (staff ids left out)
+    tokensTxUrl,
     refunds: refundRows.map(({ requestedBy: _r, processedBy: _pb, paymentId: _pi, orderId: _o, ...r }) => r), history, branch: branch[0] ?? null, paymentInstructions, pickupLocation, pickupMapUrl, storeTicker: seller?.ticker ?? null,
     // Products in it the customer has already reviewed (one review each)
     reviewedProductIds: items.map((i) => i.productId).filter((id): id is string => !!id && reviewed.has(id)) };

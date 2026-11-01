@@ -105,7 +105,7 @@ function WalletRow({ w }: { w: SystemWallet }) {
         </button>
         {w.url && (
           <a href={w.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand-strong hover:underline">
-            On Monad <ExternalLink size={12} />
+            On chain <ExternalLink size={12} />
           </a>
         )}
       </div>
@@ -172,7 +172,7 @@ export function TokensView({
       <PageHeader
         illo="coin"
         title="Tokens & reserve"
-        description="Every store's $TICKER token and every receipt, written on Monad, and the reserve that backs the tokens."
+        description="Every store's $TICKER token and every receipt, written on the blockchain (Monad or Base), and the reserve that backs the tokens."
       />
       <Tabs
         className="mb-5"
@@ -223,7 +223,7 @@ export function TokensView({
 
       {tab === "tokens" && (
       <div className="mb-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <Card title="Tokens" description="One per store, created on Monad when you approve the store. $SOTECHY is Sotechy's own." padded={false}>
+        <Card title="Tokens" description="One per store, created on the blockchain when you approve the store. $SOTECHY is Sotechy's own." padded={false}>
           <div className="px-5 pb-5">
             <DataTable
               rows={tokens}
@@ -300,7 +300,7 @@ export function TokensView({
                       <>
                         {" · "}
                         <a href={e.txUrl} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
-                          on Monad
+                          on chain
                         </a>
                       </>
                     )}

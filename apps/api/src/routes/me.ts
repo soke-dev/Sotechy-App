@@ -10,7 +10,8 @@ import { requireFeature } from "../services/features";
 import { noRecipient, receiptFor, recipientFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
 import { chatById, chatFor, chatsFor, postChatMessage, startNewChat } from "../services/support-chat";
 import { customerPulse } from "../services/pulse";
-import { CHAINS, currentContract } from "../services/chain";
+import { currentContract } from "../services/chain";
+import { chainView } from "../services/chain-primary";
 import { catalogQuery } from "./store";
 import { compressImage } from "../lib/images";
 
@@ -55,8 +56,8 @@ export const meRoutes = new Hono<AppEnv>()
   /** Token balances (held and on the way), activity, and the wallet's address on Monad */
   .get("/wallet", async (c) => {
     const wallet = await walletFor(c.get("user").id);
-    const explorer = CHAINS.monad.explorer;
-    const tokens = currentContract("tokens", "monad");
+    const { explorer, chain } = await chainView();
+    const tokens = currentContract("tokens", chain);
     return c.json({
       ...wallet,
       addressUrl: `${explorer}/address/${wallet.address}`,
@@ -87,8 +88,8 @@ export const meRoutes = new Hono<AppEnv>()
   .get("/orders/:id/receipt", async (c) => {
     const r = await receiptFor(c.get("user").id, c.req.param("id"));
     if (!r) throw notFound("No receipt yet: it's issued when the order is delivered");
-    const contract = currentContract("receipts", "monad");
-    const explorer = CHAINS.monad.explorer;
+    const { explorer, chain } = await chainView();
+    const contract = currentContract("receipts", chain);
     return c.json({
       ...r,
       txUrl: r.tx ? `${explorer}/tx/${r.tx}` : null,

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { isMapLink } from "@sotechy/shared";
 import { db, schema } from "../../db/client";
 import { ensureStoreTokens, SOTECHY_TOKEN, walletFor } from "../../services/tokens";
-import { CHAINS } from "../../services/chain";
+import { chainView } from "../../services/chain-primary";
 import { audit } from "../../lib/audit";
 import { hashPassword, MANAGERS, requireRole, type AppEnv, requirePassword } from "../../lib/auth";
 import { badRequest, notFound } from "../../lib/errors";
@@ -112,7 +112,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
         .limit(100),
     ]);
     const paid = orderRows.filter((x) => ["paid", "processing", "ready_for_pickup", "dispatched", "delivered"].includes(x.status));
-    const explorer = CHAINS.monad.explorer;
+    const { explorer } = await chainView();
     return c.json({
       user: { ...publicUser(user), isActive: user.isActive, referredBy: referrer ? (referrer.username ? `@${referrer.username}` : referrer.email) : null },
       stats: {

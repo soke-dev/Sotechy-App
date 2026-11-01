@@ -35,7 +35,7 @@ function Row({ label, value, tone, strong }: { label: string; value: string; ton
 /** A torn-paper style dashed rule between receipt parts */
 const Dashes = () => <View style={{ borderTopWidth: 1.5, borderStyle: "dashed", borderColor: colors.line, marginVertical: space.xs }} />;
 
-/** The full receipt for a delivered order, with its Monad record at the bottom */
+/** The full receipt for a delivered order, with its blockchain record at the bottom */
 export function ReceiptSheet({ visible, onClose, receipt, order }: { visible: boolean; onClose: () => void; receipt: OrderReceipt; order: OrderDetail }) {
   const toast = useToast();
   const c = receipt.content as Content;
@@ -133,7 +133,7 @@ export function ReceiptSheet({ visible, onClose, receipt, order }: { visible: bo
             <Ionicons name="copy-outline" size={16} color={colors.muted} />
           </Pressable>
         ) : null}
-        {link && <Button title="View on Monad" icon="open-outline" variant="outline" size="sm" onPress={() => Linking.openURL(link)} />}
+        {link && <Button title="View on the blockchain" icon="open-outline" variant="outline" size="sm" onPress={() => Linking.openURL(link)} />}
       </View>
     </Sheet>
   );

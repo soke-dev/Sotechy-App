@@ -22,7 +22,7 @@ export default function WalletActivityScreen() {
       {wallet.addressUrl ? (
         <Pressable onPress={() => Linking.openURL(wallet.addressUrl!)} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: space.sm }}>
           <Ionicons name="open-outline" size={15} color={colors.brandPressed} />
-          <Txt variant="label" color={colors.brandPressed}>See every transaction on Monad</Txt>
+          <Txt variant="label" color={colors.brandPressed}>See every transaction on the blockchain</Txt>
         </Pressable>
       ) : null}
     </ScrollView>

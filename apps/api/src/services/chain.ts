@@ -1,6 +1,7 @@
-// Copies the ledger onto the chains. Monad is the main record: whatever's queued goes out every few
-// seconds. Base is a mirror that only gets a batch when an admin sends one. Each queued change keeps
-// its transaction per chain, so nothing is written twice and a failed write is simply tried again.
+// Copies the ledger onto the chains. The main chain (Monad, or Base once an admin switches) gets whatever's
+// queued every few seconds. While Monad is the main one, Base is a mirror that only gets a batch when an admin
+// sends one. Each queued change keeps its transaction per chain, so nothing is written twice and a failed
+// write is simply tried again.
 import { deployments, sotechyReceiptsAbi, sotechyTokensAbi, type ContractName } from "@sotechy/contracts";
 import { and, asc, eq, inArray, isNotNull, isNull, like, lt, lte, not, or, sql } from "drizzle-orm";
 import { createPublicClient, createWalletClient, http, type Address, type Chain, type Hex } from "viem";
@@ -10,13 +11,14 @@ import { db, schema } from "../db/client";
 import { env } from "../env";
 import { getSetting } from "./settings";
 import { ensureStoreTokens, walletAddress } from "./tokens";
+import { colsOf, EXPLORER, primaryChain, type ChainName } from "./chain-primary";
 
 const ops = schema.chainOps;
-export type ChainName = "monad" | "base";
+export type { ChainName };
 
 export const CHAINS: Record<ChainName, { chain: Chain; explorer: string; rpc?: string }> = {
-  monad: { chain: monad, explorer: "https://monadvision.com", rpc: env.MONAD_RPC_URL },
-  base: { chain: base, explorer: "https://basescan.org", rpc: env.BASE_RPC_URL },
+  monad: { chain: monad, explorer: EXPLORER.monad, rpc: env.MONAD_RPC_URL },
+  base: { chain: base, explorer: EXPLORER.base, rpc: env.BASE_RPC_URL },
 };
 
 /** After this many failed tries a change waits for an admin to try it again */
@@ -56,8 +58,7 @@ async function write(chain: ChainName, call: Call): Promise<Hex> {
   return hash;
 }
 
-const col = (chain: ChainName) =>
-  chain === "monad" ? { tx: ops.monadTx, at: ops.monadAt, error: ops.monadError } : { tx: ops.baseTx, at: ops.baseAt, error: ops.baseError };
+const col = colsOf;
 
 async function markDone(chain: ChainName, list: Op[], hash: Hex) {
   const ids = list.map((o) => o.id);
@@ -69,7 +70,7 @@ async function markFailed(chain: ChainName, op: Op, err: unknown) {
   const e = err as { shortMessage?: string; message?: string };
   const message = (e.shortMessage ?? e.message ?? String(err)).slice(0, 500);
   if (chain === "monad") await db.update(ops).set({ monadError: message, monadTries: sql`${ops.monadTries} + 1` }).where(eq(ops.id, op.id));
-  else await db.update(ops).set({ baseError: message }).where(eq(ops.id, op.id));
+  else await db.update(ops).set({ baseError: message, baseTries: sql`${ops.baseTries} + 1` }).where(eq(ops.id, op.id));
   console.error(`Chain write failed on ${chain} (op ${op.id})`, message);
 }
 
@@ -106,10 +107,14 @@ const receiptOp = (o: Op) => ({
   fingerprint: o.data.fingerprint as Hex,
 });
 
-/** What's waiting on a chain, oldest first. Monad skips changes that have failed too often; Base only copies what Monad has. */
+/**
+ * What's waiting on a chain, oldest first. The main chain skips changes that have failed too often; the mirror
+ * only copies what the main chain already has.
+ */
 async function waiting(chain: ChainName, contract: ContractName, kinds: string[], limit: number) {
   const c = col(chain);
-  const extra = chain === "monad" ? lt(ops.monadTries, MAX_TRIES) : isNotNull(ops.monadAt);
+  const primary = await primaryChain();
+  const extra = chain === primary ? lt(c.tries, MAX_TRIES) : isNotNull(col(primary).at);
   return db
     .select()
     .from(ops)
@@ -256,16 +261,18 @@ async function pass(chain: ChainName, limit: number) {
   return done;
 }
 
-let monadBusy = false;
-async function monadTick() {
-  if (monadBusy) return;
-  monadBusy = true;
+let mainBusy = false;
+/** One round on the main chain (whichever an admin chose) */
+async function mainTick() {
+  if (mainBusy) return;
+  mainBusy = true;
+  const chain = await primaryChain().catch(() => "monad" as const);
   try {
-    await pass("monad", BATCH);
+    await pass(chain, BATCH);
   } catch (err) {
-    console.error("Monad round failed", err);
+    console.error(`${chain} round failed`, err);
   } finally {
-    monadBusy = false;
+    mainBusy = false;
   }
 }
 
@@ -276,14 +283,15 @@ export function startChainWorker() {
     console.log("Chain writes are off: token changes and receipts wait in the queue");
     return;
   }
-  console.log(`Writing to Monad as ${privateKeyToAccount(env.CHAIN_OPERATOR_KEY as Hex).address}`);
-  setInterval(() => void monadTick(), 8_000);
+  console.log(`Writing to the main chain as ${privateKeyToAccount(env.CHAIN_OPERATOR_KEY as Hex).address}`);
+  setInterval(() => void mainTick(), 8_000);
 }
 
 let baseBusy = false;
 /** An admin's batch to Base: everything Monad has that Base doesn't, in as few transactions as it takes */
 export async function sendBaseBatch() {
   if (!chainWritesOn()) throw new Error("Chain writes are off on this server");
+  if ((await primaryChain()) === "base") throw new Error("Base is the main chain now: everything is written there as it happens");
   if (!currentContract("tokens", "base") && !currentContract("receipts", "base")) throw new Error("Nothing is deployed on Base yet");
   if (baseBusy) throw new Error("A Base batch is already going out");
   baseBusy = true;
@@ -308,23 +316,32 @@ export async function queueStats() {
       monadWaiting: sql<number>`count(*) filter (where ${ops.monadAt} is null and ${ops.monadTries} < ${MAX_TRIES})::int`,
       monadStuck: sql<number>`count(*) filter (where ${ops.monadAt} is null and ${ops.monadTries} >= ${MAX_TRIES})::int`,
       monadDone: sql<number>`count(*) filter (where ${ops.monadAt} is not null)::int`,
-      baseWaiting: sql<number>`count(*) filter (where ${ops.monadAt} is not null and ${ops.baseAt} is null)::int`,
+      baseWaiting: sql<number>`count(*) filter (where ${ops.baseAt} is null and ${ops.baseTries} < ${MAX_TRIES})::int`,
+      baseStuck: sql<number>`count(*) filter (where ${ops.baseAt} is null and ${ops.baseTries} >= ${MAX_TRIES})::int`,
       baseDone: sql<number>`count(*) filter (where ${ops.baseAt} is not null)::int`,
       lastMonad: sql<string | null>`max(${ops.monadAt})`,
       lastBase: sql<string | null>`max(${ops.baseAt})`,
     })
     .from(ops);
+  // The main chain's oldest failure
+  const primary = await primaryChain();
+  const c = col(primary);
   const [lastError] = await db
-    .select({ error: ops.monadError, kind: ops.kind })
+    .select({ error: c.error, kind: ops.kind })
     .from(ops)
-    .where(and(isNull(ops.monadAt), isNotNull(ops.monadError)))
+    .where(and(isNull(c.at), isNotNull(c.error)))
     .orderBy(asc(ops.id))
     .limit(1);
-  return { ...row, lastError: lastError ? `${lastError.kind}: ${lastError.error}` : null, writesOn: chainWritesOn() };
+  return { ...row, primary, lastError: lastError ? `${lastError.kind}: ${lastError.error}` : null, writesOn: chainWritesOn() };
 }
 
 /** Lets changes that failed too often go again */
 export async function retryStuck() {
-  const rows = await db.update(ops).set({ monadTries: 0, monadError: null }).where(and(isNull(ops.monadAt), sql`${ops.monadTries} >= ${MAX_TRIES}`)).returning({ id: ops.id });
+  // Changes that failed too often on either chain go again
+  const rows = await db
+    .update(ops)
+    .set({ monadTries: 0, monadError: null, baseTries: 0, baseError: null })
+    .where(or(and(isNull(ops.monadAt), sql`${ops.monadTries} >= ${MAX_TRIES}`), and(isNull(ops.baseAt), sql`${ops.baseTries} >= ${MAX_TRIES}`)))
+    .returning({ id: ops.id });
   return rows.length;
 }

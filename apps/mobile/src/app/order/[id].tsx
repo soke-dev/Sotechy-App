@@ -566,7 +566,27 @@ export default function OrderScreen() {
           <SummaryRow label="Subtotal" value={formatNaira(order.subtotal)} />
           {order.discountTotal > 0 && <SummaryRow label="Discount" value={`-${formatNaira(order.discountTotal)}`} tone={colors.success} />}
           <SummaryRow label="Delivery" value={order.deliveryFee ? formatNaira(order.deliveryFee) : "Free"} />
-          {order.tokensValue > 0 && <SummaryRow label="Paid with tokens" value={`-${formatNaira(order.tokensValue)}`} tone={colors.success} />}
+          {order.tokensValue > 0 && (
+            <View style={[ui.row, { gap: space.sm }]}>
+              <Txt variant="small" color={colors.ink2}>Paid with tokens</Txt>
+              {/* The token payment on the blockchain, once it's written */}
+              {order.tokensTxUrl ? (
+                <Pressable
+                  onPress={() => {
+                    tap();
+                    void Linking.openURL(order.tokensTxUrl!);
+                  }}
+                  hitSlop={8}
+                  accessibilityLabel="See the token payment on the blockchain"
+                  style={{ flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: colors.brandSoft }}
+                >
+                  <Txt variant="caption" color={colors.brandPressed} style={{ fontFamily: fonts.semibold }}>On chain</Txt>
+                  <Ionicons name="open-outline" size={11} color={colors.brandPressed} />
+                </Pressable>
+              ) : null}
+              <Txt variant="label" color={colors.success} style={{ marginLeft: "auto" }}>-{formatNaira(order.tokensValue)}</Txt>
+            </View>
+          )}
           <Divider style={{ marginVertical: space.sm }} />
           <SummaryRow label={order.tokensValue > 0 ? "Paid in money" : "Total"} value={formatNaira(order.total)} strong />
           <SummaryRow label="Paid with" value={`${PAYMENT_METHOD_LABELS[order.paymentMethod]}${order.cryptoAsset ? ` (${order.cryptoAsset})` : ""}`} />

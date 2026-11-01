@@ -1,4 +1,4 @@
-import { BadgeCheck, ExternalLink, PauseCircle } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ExternalLink, PauseCircle } from "lucide-react";
 import Link from "next/link";
 import { formatNaira, type BranchStock, type Category, type Product, type ProductVariant } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
@@ -87,6 +87,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     const specs = Object.entries(product.specifications ?? {});
     return (
       <>
+        <Link href="/products" className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-ink">
+          <ArrowLeft size={15} /> Products
+        </Link>
         <PageHeader title={product.name} description={`${store.name}'s product · ${product.storeCategory ?? "No category"}`} />
         <div className="flex flex-col gap-4">
           {controls}
@@ -134,6 +137,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
   return (
     <>
+      <Link href="/products" className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-ink">
+        <ArrowLeft size={15} /> Products
+      </Link>
       <PageHeader title={product.name} description={product.isDemo ? "Demo product — replace with real inventory" : undefined} />
       <div className="flex flex-col gap-4">
         {controls}

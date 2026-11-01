@@ -19,7 +19,8 @@ import { addPayoutAccount, makeDefault, payoutAccountsOf, removePayoutAccount } 
 import { findCustomer, startWalkIn, walkInsOf } from "../services/walk-in";
 import { feePayMethods } from "../services/fee-checkout";
 import { storeTokenStats } from "../services/tokens";
-import { CHAINS, currentContract } from "../services/chain";
+import { currentContract } from "../services/chain";
+import { chainView } from "../services/chain-primary";
 import { answerOffer, storeOffers } from "../services/offers";
 import { sendPushLater } from "../services/push";
 import { claimPayback, payoutSettings, payoutsFor, toPayoutRow } from "../services/payouts";
@@ -443,8 +444,9 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
   // --- The store's token, and walk-in sales that earn it ---
   .get("/token", async (c) => {
     const stats = await storeTokenStats(c.get("store").id);
-    const contract = currentContract("tokens", "monad");
-    return c.json(stats ? { ...stats, contractUrl: contract ? `${CHAINS.monad.explorer}/address/${contract.address}` : null } : null);
+    const { chain, explorer } = await chainView();
+    const contract = currentContract("tokens", chain);
+    return c.json(stats ? { ...stats, contractUrl: contract ? `${explorer}/address/${contract.address}` : null } : null);
   })
   .get("/walk-in/customer", async (c) => c.json(await findCustomer(c.req.query("q") ?? "")))
   .get("/walk-in", async (c) => c.json(await walkInsOf(c.get("store").id)))

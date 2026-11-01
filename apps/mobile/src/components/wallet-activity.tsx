@@ -41,7 +41,7 @@ export function ActivityRows({ items, empty = "Tokens you earn and send show her
                 <Txt variant="medium" numberOfLines={1} style={{ fontSize: 14 }}>{k.title(e)}</Txt>
                 <Txt variant="caption">
                   {ago(e.at)}
-                  {e.txUrl ? " · on Monad" : " · being recorded"}
+                  {e.txUrl ? " · on chain" : " · being recorded"}
                 </Txt>
               </View>
               <Txt variant="label" color={k.tone}>

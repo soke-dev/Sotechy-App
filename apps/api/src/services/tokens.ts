@@ -14,6 +14,7 @@ import { TOKEN_RULES, tokensToNaira, type OrderStatus } from "@sotechy/shared";
 import { db, schema, type Tx } from "../db/client";
 import { badRequest, notFound } from "../lib/errors";
 import { sendPushLater } from "./push";
+import { chainView } from "./chain-primary";
 
 const { tokenEntries: entries, chainOps, receipts, merchants, orders, users, reserveEntries } = schema;
 
@@ -363,7 +364,8 @@ export function fingerprintOf(content: Record<string, unknown>): Hex {
 export async function receiptFor(userId: string, orderId: string) {
   const [r] = await db.select().from(receipts).where(and(eq(receipts.orderId, orderId), eq(receipts.userId, userId)));
   if (!r) return null;
-  const [op] = await db.select({ tx: chainOps.monadTx, at: chainOps.monadAt }).from(chainOps).where(and(eq(chainOps.contract, "receipts"), eq(chainOps.sourceId, String(r.id))));
+  const { cols } = await chainView();
+  const [op] = await db.select({ tx: cols.tx, at: cols.at }).from(chainOps).where(and(eq(chainOps.contract, "receipts"), eq(chainOps.sourceId, String(r.id))));
   return { id: r.id, content: r.content, fingerprint: r.fingerprint, tx: op?.at && isTxHash(op.tx) ? op.tx : null };
 }
 
@@ -460,7 +462,8 @@ export async function activityFor(userId: string, limit = 50) {
   const names = others.length ? await db.select({ id: users.id, username: users.username }).from(users).where(inArray(users.id, others)) : [];
   const orderIds = [...new Set(rows.map((r) => r.orderId).filter((x): x is string => !!x))];
   const numbers = orderIds.length ? await db.select({ id: orders.id, number: orders.orderNumber }).from(orders).where(inArray(orders.id, orderIds)) : [];
-  const ops = rows.length ? await db.select({ sourceId: chainOps.sourceId, tx: chainOps.monadTx, at: chainOps.monadAt }).from(chainOps).where(and(eq(chainOps.contract, "tokens"), inArray(chainOps.sourceId, rows.map((r) => r.id)))) : [];
+  const { cols } = await chainView();
+  const ops = rows.length ? await db.select({ sourceId: chainOps.sourceId, tx: cols.tx, at: cols.at }).from(chainOps).where(and(eq(chainOps.contract, "tokens"), inArray(chainOps.sourceId, rows.map((r) => r.id)))) : [];
   return rows.map((r) => {
     const incoming = r.toUserId === userId;
     const other = r.kind === "move" ? (incoming ? r.fromUserId : r.toUserId) : null;
@@ -567,7 +570,8 @@ async function holdersOf(tokenId: number, limit?: number) {
 /** Each token's supply and holders, for the admin */
 export async function tokenRegistry() {
   const rows = await supplyByToken();
-  const registered = await db.select({ data: chainOps.data, at: chainOps.monadAt, tx: chainOps.monadTx }).from(chainOps).where(and(eq(chainOps.contract, "tokens"), eq(chainOps.kind, "register")));
+  const { cols } = await chainView();
+  const registered = await db.select({ data: chainOps.data, at: cols.at, tx: cols.tx }).from(chainOps).where(and(eq(chainOps.contract, "tokens"), eq(chainOps.kind, "register")));
   const ids = [...new Set(registered.map((r) => Number(r.data.tokenId)))];
   // On chain when created on the current contract (a token copied to a new contract counts once that's written)
   const live = new Set(registered.filter((r) => r.at && !r.tx?.startsWith("moved:")).map((r) => Number(r.data.tokenId)));
@@ -695,7 +699,8 @@ export async function latestActivity(limit = 20) {
     const u = names.find((n) => n.id === id);
     return u ? (u.username ? `@${u.username}` : u.email) : null;
   };
-  const ops = rows.length ? await db.select({ sourceId: chainOps.sourceId, tx: chainOps.monadTx, at: chainOps.monadAt }).from(chainOps).where(and(eq(chainOps.contract, "tokens"), inArray(chainOps.sourceId, rows.map((r) => r.id)))) : [];
+  const { cols } = await chainView();
+  const ops = rows.length ? await db.select({ sourceId: chainOps.sourceId, tx: cols.tx, at: cols.at }).from(chainOps).where(and(eq(chainOps.contract, "tokens"), inArray(chainOps.sourceId, rows.map((r) => r.id)))) : [];
   return rows.map((r) => {
     const op = ops.find((o) => o.sourceId === r.id);
     return {
@@ -709,4 +714,17 @@ export async function latestActivity(limit = 20) {
       tx: op?.at && isTxHash(op.tx) ? op.tx : null,
     };
   });
+}
+
+/** The main chain's transaction for the tokens put towards an order (when it's written), for the order screen */
+export async function orderTokensTx(orderId: string) {
+  const spent = await db.select({ id: entries.id }).from(entries).where(and(eq(entries.orderId, orderId), eq(entries.reason, "spent")));
+  if (!spent.length) return null;
+  const { cols, explorer } = await chainView();
+  const [op] = await db
+    .select({ tx: cols.tx, at: cols.at })
+    .from(chainOps)
+    .where(and(eq(chainOps.contract, "tokens"), inArray(chainOps.sourceId, spent.map((x) => x.id)), isNotNull(cols.at)))
+    .limit(1);
+  return op && isTxHash(op.tx) ? `${explorer}/tx/${op.tx}` : null;
 }

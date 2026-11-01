@@ -1,5 +1,6 @@
 // The contracts on chain, for the admin: where they are, whether they're running, the operator's gas,
 // what's waiting to be written, and the button that sends a batch to Base.
+import { chainView, forgetPrimary, primaryChain } from "../../services/chain-primary";
 import { deployments, sotechyReceiptsAbi, sotechyTokensAbi, type ContractName } from "@sotechy/contracts";
 import { Hono } from "hono";
 import { formatEther } from "viem";
@@ -10,7 +11,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { CHAINS, copyToNewContract, currentContract, needsCopy, publicClient, queueStats, retryStuck, sendBaseBatch, type ChainName } from "../../services/chain";
 import { CROSS_BONUS, latestActivity, reserveSummary, tokenRegistry } from "../../services/tokens";
-import { db } from "../../db/client";
+import { db, schema } from "../../db/client";
 
 const ADMIN = requireRole("admin");
 
@@ -65,7 +66,7 @@ async function chainStatus(chain: ChainName) {
   return {
     chain,
     chainName: c.name,
-    primary: chain === "monad",
+    primary: chain === (await primaryChain()),
     symbol: c.nativeCurrency.symbol,
     operator: { ...operator, low: operator.balance !== null && operator.balance < LOW_GAS[chain] },
     owner,
@@ -77,10 +78,11 @@ async function chainStatus(chain: ChainName) {
 export const adminChainRoutes = new Hono<AppEnv>()
   .get("/chain", async (c) => {
     const [chains, queue, tokens, activity, reserve] = await Promise.all([Promise.all((["monad", "base"] as const).map(chainStatus)), queueStats(), tokenRegistry(), latestActivity(), reserveSummary()]);
-    const tokensContract = currentContract("tokens", "monad");
-    const explorer = CHAINS.monad.explorer;
+    const { chain: primary, explorer } = await chainView();
+    const tokensContract = currentContract("tokens", primary);
     return c.json({
       chains: chains.filter((x) => x !== null),
+      primary,
       queue,
       tokens,
       tokensUrl: tokensContract ? `${explorer}/address/${tokensContract.address}` : null,
@@ -123,6 +125,17 @@ export const adminChainRoutes = new Hono<AppEnv>()
     } catch (err) {
       throw new HttpError(400, err instanceof Error ? err.message : "The copy failed");
     }
+  })
+  /** Makes Monad or Base the main chain: new changes are written there and every link points at it. Switching to
+   *  Base writes everything Monad already has onto Base too. */
+  .put("/chain/primary", ADMIN, requirePassword, zValidator("json", z.object({ chain: z.enum(["monad", "base"]) })), async (c) => {
+    const { chain } = c.req.valid("json");
+    if (!currentContract("tokens", chain) || !currentContract("receipts", chain)) throw new HttpError(400, `The contracts aren't deployed on ${chain === "base" ? "Base" : "Monad"} yet`);
+    const value = { primary: chain };
+    await db.insert(schema.appSettings).values({ key: "chain", value }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value } });
+    forgetPrimary();
+    await audit(db, { actorId: c.get("user").id, action: "chain.primary", entityType: "chain", details: value });
+    return c.json(value);
   })
   /** Lets changes that failed too often on Monad go again */
   .post("/chain/retry", ADMIN, async (c) => {

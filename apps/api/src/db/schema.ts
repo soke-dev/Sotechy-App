@@ -1234,6 +1234,7 @@ export const chainOps = pgTable(
     baseTx: text(),
     baseAt: timestamp({ withTimezone: true }),
     baseError: text(),
+    baseTries: integer().notNull().default(0),
     createdAt: createdAt(),
   },
   (t) => [unique().on(t.contract, t.kind, t.sourceId), index().on(t.monadAt), index().on(t.baseAt)],

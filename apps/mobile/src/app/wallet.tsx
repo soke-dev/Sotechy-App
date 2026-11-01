@@ -210,11 +210,11 @@ export default function WalletScreen() {
           </View>
           <Pressable disabled={!wallet.addressUrl} onPress={() => wallet.addressUrl && Linking.openURL(wallet.addressUrl)} style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: space.sm }}>
             <Ionicons name="open-outline" size={15} color={colors.brandPressed} />
-            <Txt variant="label" color={colors.brandPressed}>See every transaction on Monad</Txt>
+            <Txt variant="label" color={colors.brandPressed}>See every transaction on the blockchain</Txt>
           </Pressable>
         </View>
         <Txt variant="caption" style={{ textAlign: "center" }}>
-          You earn 1 token per ₦1 at each store when your order is delivered, plus 10% in $SOTECHY at other stores and a bonus for reviews. Spend them at checkout. Every token and receipt is recorded on Monad.
+          You earn 1 token per ₦1 at each store when your order is delivered, plus 10% in $SOTECHY at other stores and a bonus for reviews. Spend them at checkout. Every token and receipt is recorded on the blockchain.
         </Txt>
       </ScrollView>
 
@@ -360,7 +360,7 @@ export default function WalletScreen() {
               <Text style={{ fontFamily: fonts.semibold }}>In the future, </Text>a store may choose to make its token tradeable. It&apos;s each store&apos;s decision, so some may and others may not. We&apos;ll tell you before anything changes.
             </Txt>
           </View>
-          <Txt variant="caption">About ₦{(Math.round(tokenNaira(1000) * 100) / 100).toFixed(2)} of spending per 1,000 tokens. Your tokens live in your Sotechy wallet on the Monad network, so every movement can be checked.</Txt>
+          <Txt variant="caption">About ₦{(Math.round(tokenNaira(1000) * 100) / 100).toFixed(2)} of spending per 1,000 tokens. Your tokens live in your Sotechy wallet on the blockchain, so every movement can be checked.</Txt>
         </View>
       </Sheet>
 
@@ -380,7 +380,7 @@ export default function WalletScreen() {
           ) : (
             <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 30, color: colors.ink }}>Your wallet</Text>
           )}
-          <Txt variant="small" style={{ textAlign: "center" }}>Other Sotechy users send you tokens with your username. This is your wallet&apos;s address on Monad, where your tokens are recorded.</Txt>
+          <Txt variant="small" style={{ textAlign: "center" }}>Other Sotechy users send you tokens with your username. This is your wallet&apos;s address on the blockchain, where your tokens are recorded.</Txt>
           <Pressable onPress={copy} style={{ flexDirection: "row", alignItems: "center", gap: space.sm, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt }}>
             <Txt variant="caption" color={colors.ink2} style={{ fontFamily: fonts.medium }}>{wallet.address ?? ""}</Txt>
             <Ionicons name="copy-outline" size={16} color={colors.ink2} />

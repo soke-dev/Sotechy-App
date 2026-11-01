@@ -352,6 +352,8 @@ export interface OrderDetail extends Order {
   items: OrderItem[];
   payments: Payment[];
   refunds?: OrderRefund[];
+  /** The tokens put towards it, on the blockchain (once written) */
+  tokensTxUrl?: string | null;
   history: OrderStatusChange[];
   branch: Branch | null;
   paymentInstructions: PaymentInstructions | null;

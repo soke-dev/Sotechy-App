@@ -1,0 +1,1 @@
+ALTER TABLE "chain_ops" ADD COLUMN "base_tries" integer DEFAULT 0 NOT NULL;
