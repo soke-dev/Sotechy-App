@@ -41,7 +41,7 @@ export interface ReserveSummary {
 
 export interface TokenActivity {
   id: string;
-  kind: "earned" | "bonus" | "sent" | "spent" | "refunded";
+  kind: "earned" | "bonus" | "sent" | "spent" | "refunded" | "returned" | "review" | "walk_in";
   ticker: string;
   amount: number;
   from: string | null;
@@ -56,7 +56,12 @@ const ACTIVITY: Record<TokenActivity["kind"], { label: string; tone: "good" | "i
   sent: { label: "Sent", tone: "neutral" },
   spent: { label: "Spent", tone: "warn" },
   refunded: { label: "Taken back", tone: "bad" },
+  returned: { label: "Given back", tone: "info" },
+  review: { label: "Review bonus", tone: "good" },
+  walk_in: { label: "Walk-in sale", tone: "good" },
 };
+/** A kind this page doesn't know yet still shows, instead of breaking the page */
+const activityLook = (kind: string) => ACTIVITY[kind as TokenActivity["kind"]] ?? { label: kind.replace(/_/g, " "), tone: "neutral" as const };
 
 const WALLET_COPY: Record<SystemWallet["key"], { name: string; about: string }> = {
   reserve: { name: "Reserve wallet", about: "Tokens customers spend at checkout land here. The store is still paid in full; the naira those tokens stand for comes out of the reserve." },
@@ -301,7 +306,7 @@ export function TokensView({
                     )}
                   </span>
                 </span>
-                <Pill tone={ACTIVITY[e.kind].tone}>{ACTIVITY[e.kind].label}</Pill>
+                <Pill tone={activityLook(e.kind).tone}>{activityLook(e.kind).label}</Pill>
               </li>
             ))}
           </ul>
