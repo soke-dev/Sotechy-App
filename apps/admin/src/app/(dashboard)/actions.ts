@@ -484,6 +484,17 @@ export async function deleteBanner(_: Prev, f: FormData) {
   return run(() => api.delete(`/admin/banners/${str(f, "id")}`), ["/banners"], "Banner deleted");
 }
 
+// --- A product: pause (the store is told why), resume, delete ---
+export async function pauseProduct(id: string, note?: string): Promise<ActionResult> {
+  return run(() => api.post(`/admin/products/${id}/pause`, { note }), ["/products", `/products/${id}`], "Paused");
+}
+export async function resumeProduct(id: string): Promise<ActionResult> {
+  return run(() => api.post(`/admin/products/${id}/resume`), ["/products", `/products/${id}`], "Back on sale");
+}
+export async function deleteProduct(id: string): Promise<ActionResult> {
+  return run(() => api.delete(`/admin/products/${id}`), ["/products"], "Deleted");
+}
+
 // --- App pop-ups ---
 export async function savePopup(_: Prev, f: FormData) {
   const id = str(f, "id");

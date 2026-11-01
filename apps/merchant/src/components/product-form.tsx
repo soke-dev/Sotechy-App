@@ -14,6 +14,7 @@ import { hintsFor } from "@/lib/category-hints";
 import { saveProduct, uploadFiles } from "@/lib/market-actions";
 import { OFFER_HOURS, zoneLabel, type DeliveryZone, type OfferHours, type Product } from "@/lib/mock";
 import { useAccount } from "@/components/account-context";
+import { PausedNotice } from "./paused-notice";
 
 interface Option {
   name: string;
@@ -83,7 +84,9 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
   const [confirming, setConfirming] = useState(false);
   const [features, setFeatures] = useState<string[]>(product?.highlights.length ? product.highlights : ["", ""]);
   const [specs, setSpecs] = useState<[string, string][]>(product && Object.keys(product.specifications).length ? Object.entries(product.specifications) : [["", ""]]);
-  const [status, setStatus] = useState<Product["status"]>(product?.status ?? "live");
+  // Paused by Sotechy: editable, but it saves as hidden and stays off sale until Sotechy resumes it
+  const paused = product?.status === "paused";
+  const [status, setStatus] = useState<Exclude<Product["status"], "paused">>(product && product.status !== "paused" ? product.status : paused ? "hidden" : "live");
   // Delivery: tick saved areas (all of them by default) or add a new one here
   const usable = initialZones.filter((z) => z.active && z.review !== "declined");
   const [zones, setZones] = useState<DeliveryZone[]>(usable);
@@ -181,6 +184,11 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
       </Link>
       <h1 className="text-3xl font-extrabold">{product ? "Edit product" : "Add a product"}</h1>
       <p className="mb-6 mt-1 text-sm text-muted">Fields marked <Req /> are required. Everything else is optional but helps you sell.</p>
+      {paused && product && (
+        <div className="mb-6">
+          <PausedNotice product={product.name} note={product.pauseNote} store={store.name} />
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="flex flex-col gap-6">
@@ -525,6 +533,9 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
 
           <Card title="Selling">
             <div className="flex flex-col gap-3 text-sm">
+              {paused ? (
+                <p className="rounded-2xl bg-bad-soft px-3 py-2 text-xs text-bad">Sotechy paused this product, so it stays off sale until they resume it.</p>
+              ) : (
               <div className="flex rounded-full bg-surface-alt p-1">
                 {(["live", "draft", "hidden"] as const).map((s) => (
                   <button key={s} type="button" onClick={() => setStatus(s)} className={`flex-1 rounded-full py-2 text-sm font-semibold capitalize ${status === s ? "bg-surface shadow-sm" : "text-muted"}`}>
@@ -532,7 +543,8 @@ export function ProductForm({ product, zones: initialZones, ownCategories }: { p
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-muted">{status === "live" ? "Visible on your storefront and in Sotechy Shop." : status === "draft" ? "Only you can see it." : "Taken off sale but kept."}</p>
+              )}
+              <p className="text-xs text-muted">{paused ? "" : status === "live" ? "Visible on your storefront and in Sotechy Shop." : status === "draft" ? "Only you can see it." : "Taken off sale but kept."}</p>
             </div>
           </Card>
 

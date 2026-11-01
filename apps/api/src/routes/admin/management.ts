@@ -88,7 +88,8 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     const [user] = await db.select().from(users).where(eq(users.id, c.req.param("id")));
     if (!user) throw notFound("Customer not found");
     const o = schema.orders;
-    const [orderRows, addresses, [reviews], [tickets], wallet, [referrer]] = await Promise.all([
+    const w = schema.walkInSales;
+    const [orderRows, addresses, [reviews], [tickets], wallet, [referrer], walkIns] = await Promise.all([
       db
         .select({ id: o.id, number: o.orderNumber, status: o.status, total: o.total, tokensValue: o.tokensValue, channel: o.channel, createdAt: o.createdAt, store: schema.merchants.name })
         .from(o)
@@ -101,12 +102,29 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       db.select({ n: sql<number>`count(*)::int` }).from(schema.supportTickets).where(eq(schema.supportTickets.customerId, user.id)),
       walletFor(user.id),
       user.referredById ? db.select({ username: users.username, email: users.email }).from(users).where(eq(users.id, user.referredById)) : Promise.resolve([undefined]),
+      // Bought in a store's own shop (walk-in sales)
+      db
+        .select({ id: w.id, amount: w.amount, status: w.status, note: w.note, createdAt: w.createdAt, store: schema.merchants.name, storeId: schema.merchants.id })
+        .from(w)
+        .innerJoin(schema.merchants, eq(schema.merchants.id, w.merchantId))
+        .where(eq(w.customerId, user.id))
+        .orderBy(desc(w.createdAt))
+        .limit(100),
     ]);
     const paid = orderRows.filter((x) => ["paid", "processing", "ready_for_pickup", "dispatched", "delivered"].includes(x.status));
     const explorer = CHAINS.monad.explorer;
     return c.json({
       user: { ...publicUser(user), isActive: user.isActive, referredBy: referrer ? (referrer.username ? `@${referrer.username}` : referrer.email) : null },
-      stats: { orders: orderRows.length, delivered: orderRows.filter((x) => x.status === "delivered").length, spent: paid.reduce((n, x) => n + x.total, 0), reviews: reviews?.n ?? 0, tickets: tickets?.n ?? 0 },
+      stats: {
+        orders: orderRows.length,
+        delivered: orderRows.filter((x) => x.status === "delivered").length,
+        // Paid orders in the app, plus what they spent in stores' own shops
+        spent: paid.reduce((n, x) => n + x.total, 0) + walkIns.filter((x) => x.status === "paid").reduce((n, x) => n + x.amount, 0),
+        walkIns: walkIns.length,
+        reviews: reviews?.n ?? 0,
+        tickets: tickets?.n ?? 0,
+      },
+      walkIns,
       orders: orderRows.map((x) => ({ ...x, store: x.store ?? "Sotechy" })),
       addresses,
       wallet: {

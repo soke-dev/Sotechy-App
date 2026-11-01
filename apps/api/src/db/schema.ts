@@ -381,6 +381,9 @@ export const products = pgTable(
     isHidden: boolean().notNull().default(false),
     /** A store deleted it after it had sold: kept for past orders, gone from the store and its dashboard */
     deletedAt: timestamp({ withTimezone: true }),
+    /** Paused by Sotechy: off sale, and the store can't put it back until Sotechy resumes it (the note says why) */
+    pausedAt: timestamp({ withTimezone: true }),
+    pauseNote: text(),
     /** A marketplace store's own category name (from its list or typed under "Other") */
     storeCategory: text(),
     /** Customers can make an offer; `offerFloor` is the lowest the store will consider (only it sees this) */

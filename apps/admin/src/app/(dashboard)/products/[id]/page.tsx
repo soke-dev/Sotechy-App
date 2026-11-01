@@ -1,11 +1,32 @@
+import { BadgeCheck, ExternalLink, PauseCircle } from "lucide-react";
+import Link from "next/link";
 import { formatNaira, type BranchStock, type Category, type Product, type ProductVariant } from "@sotechy/shared";
 import { ActionForm } from "@/components/action-form";
 import { ProductFields } from "@/components/product-fields";
-import { Card, DataTable, ErrorNote, Field, inputClass, PageHeader } from "@/components/ui";
+import { Card, DataTable, ErrorNote, Field, inputClass, PageHeader, Pill } from "@/components/ui";
+import { ProductControls } from "./product-controls";
 import { load } from "@/lib/api";
 import { addVariant, updateProduct, updateVariant } from "../../actions";
 
-type AdminProduct = Product & { variants: (ProductVariant & { costPrice: number | null })[]; stock: BranchStock[] };
+type AdminProduct = Product & {
+  variants: (ProductVariant & { costPrice: number | null })[];
+  stock: BranchStock[];
+  pausedAt?: string | null;
+  pauseNote?: string | null;
+  isHidden?: boolean;
+  storeCategory?: string | null;
+  highlights?: string[];
+  specifications?: Record<string, string>;
+  /** The store selling it; null for Sotechy's own */
+  store: { id: string; name: string; slug: string; logoUrl: string | null; sellerKind: "registered" | "individual"; status: string; contactPhone: string | null } | null;
+};
+
+/** Where the product stands, in a word or two */
+function status(p: AdminProduct) {
+  if (p.pausedAt) return { label: "Paused by Sotechy", tone: "bad" as const };
+  if (p.isPublished) return { label: "On sale", tone: "good" as const };
+  return { label: p.isHidden ? "Hidden by the store" : "Draft", tone: "neutral" as const };
+}
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,11 +35,108 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     load<Category[]>("/admin/categories"),
   ]);
   if (!product) return <ErrorNote error={error ?? "Product not found"} />;
+  const st = status(product);
+  const store = product.store;
+  const stockLeft = product.stock.reduce((n, s) => n + Math.max(0, s.quantity - s.reserved), 0);
+
+  const controls = (
+    <Card title={store ? "Sold by" : "Sotechy's product"}>
+      <div className="flex flex-col gap-4">
+        {store && (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-brand text-white">
+              {store.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={store.logoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="font-display font-bold">{store.name.slice(0, 2).toUpperCase()}</span>
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-1.5 font-semibold">
+                {store.name}
+                <BadgeCheck size={16} className={`text-white ${store.sellerKind === "registered" ? "fill-[#F7931E]" : "fill-[#2F6FB3]"}`} />
+              </p>
+              <p className="text-xs text-muted">
+                {store.sellerKind === "registered" ? "Official store (registered business)" : "Freelancer"} · store {store.status}
+                {store.contactPhone ? ` · ${store.contactPhone}` : ""}
+              </p>
+            </div>
+            <Link href={`/merchants/${store.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-strong hover:underline">
+              Store details <ExternalLink size={13} />
+            </Link>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Pill tone={st.tone}>{st.label}</Pill>
+          {product.pausedAt && product.pauseNote && <span className="text-muted">“{product.pauseNote}”</span>}
+        </div>
+        {product.pausedAt && (
+          <p className="flex items-start gap-2 rounded-2xl bg-bad-soft px-3 py-2 text-xs text-bad">
+            <PauseCircle size={15} className="mt-px shrink-0" />
+            {store ? `${store.name} sees this as paused by Sotechy and can't put it back on sale until you resume it.` : "Off sale until you resume it."}
+          </p>
+        )}
+        <ProductControls id={product.id} name={product.name} paused={!!product.pausedAt} storeName={store?.name ?? null} />
+      </div>
+    </Card>
+  );
+
+  // A store's product: what the store listed, to check (the store edits it in its own dashboard)
+  if (store) {
+    const specs = Object.entries(product.specifications ?? {});
+    return (
+      <>
+        <PageHeader title={product.name} description={`${store.name}'s product · ${product.storeCategory ?? "No category"}`} />
+        <div className="flex flex-col gap-4">
+          {controls}
+          <Card title="What the store listed">
+            <div className="flex flex-col gap-5 text-sm">
+              {product.images.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto">
+                  {product.images.map((src) => (
+                    <a key={src} href={src} target="_blank" rel="noreferrer" className="shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt="" className="h-28 w-28 rounded-2xl border border-line object-cover" />
+                    </a>
+                  ))}
+                </div>
+              )}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div><p className="text-xs text-muted">Price</p><p className="font-display text-xl font-bold">{formatNaira(product.variants[0]?.price ?? 0)}</p></div>
+                <div><p className="text-xs text-muted">In stock</p><p className="font-display text-xl font-bold">{stockLeft}</p></div>
+                <div><p className="text-xs text-muted">Brand</p><p className="font-semibold">{product.brand ?? "—"}</p></div>
+              </div>
+              {product.variants.length > 1 && <p><span className="text-muted">Options:</span> {product.variants.map((v) => v.name).join(", ")}</p>}
+              {product.description && <p className="whitespace-pre-line text-ink-2">{product.description}</p>}
+              {(product.highlights ?? []).length > 0 && (
+                <div>
+                  <p className="mb-1 font-semibold">Key features</p>
+                  <ul className="list-disc pl-5 text-ink-2">{product.highlights!.map((h) => <li key={h}>{h}</li>)}</ul>
+                </div>
+              )}
+              {specs.length > 0 && (
+                <div>
+                  <p className="mb-1 font-semibold">Specifications</p>
+                  <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[180px_1fr]">
+                    {specs.map(([k, v]) => (
+                      <div key={k} className="contents"><dt className="text-muted">{k}</dt><dd>{v}</dd></div>
+                    ))}
+                  </dl>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader title={product.name} description={product.isDemo ? "Demo product — replace with real inventory" : undefined} />
       <div className="flex flex-col gap-4">
+        {controls}
         <Card title="Details">
           <ActionForm action={updateProduct} className="flex flex-col gap-4">
             <input type="hidden" name="id" value={product.id} />

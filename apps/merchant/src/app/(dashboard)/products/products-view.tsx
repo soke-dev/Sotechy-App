@@ -15,6 +15,7 @@ const FILTERS: { id: string; label: string; match: (p: Product) => boolean }[] =
   { id: "live", label: "Live", match: (p) => p.status === "live" },
   { id: "draft", label: "Drafts", match: (p) => p.status === "draft" },
   { id: "hidden", label: "Hidden", match: (p) => p.status === "hidden" },
+  { id: "paused", label: "Paused by Sotechy", match: (p) => p.status === "paused" },
   { id: "low", label: "Low stock", match: (p) => p.stock <= 3 },
 ];
 
@@ -109,7 +110,7 @@ function CardMenu({ p, onAct, onDuplicate, onDelete }: { p: Product; onAct: (a: 
           <button onClick={run(onDuplicate)} className={item}>
             <Copy size={15} /> Duplicate
           </button>
-          {p.status !== "live" && (
+          {p.status !== "live" && p.status !== "paused" && (
             <button onClick={run(() => onAct("live"))} className={item}>
               <Eye size={15} /> Make active
             </button>
@@ -261,7 +262,7 @@ export function ProductsView({ products }: { products: Product[] }) {
                   <div className="relative">
                     <ProductThumb src={p.image} size="fluid" rounded="rounded-none" />
                     <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
-                      {p.status !== "live" && <Pill tone="dark">{p.status === "draft" ? "Draft" : "Hidden"}</Pill>}
+                      {p.status === "paused" ? <Pill tone="bad">Paused by Sotechy</Pill> : p.status !== "live" && <Pill tone="dark">{p.status === "draft" ? "Draft" : "Hidden"}</Pill>}
                       {p.stock === 0 ? <Pill tone="bad">Sold out</Pill> : p.stock <= 3 ? <Pill tone="warn">{p.stock} left</Pill> : null}
                     </div>
                   </div>

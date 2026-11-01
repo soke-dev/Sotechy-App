@@ -1,11 +1,12 @@
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "../../db/client";
 import { audit } from "../../lib/audit";
 import { MANAGERS, requireRole, type AppEnv } from "../../lib/auth";
 import { notFound } from "../../lib/errors";
+import { sendPushLater } from "../../services/push";
 import { catalogQuery } from "../store";
 
 const { products, productVariants, categories, inventory, branches } = schema;
@@ -60,7 +61,11 @@ const categoryFields = z.object({
 export const adminCatalogRoutes = new Hono<AppEnv>()
   // --- Products (all staff can view; managers edit) ---
   .get("/products", async (c) => {
-    return c.json(await catalogQuery(undefined).orderBy(desc(products.createdAt)).limit(500));
+    // Every store's products and Sotechy's, except ones a store deleted after they sold
+    const rows = await catalogQuery(isNull(products.deletedAt)).orderBy(desc(products.createdAt)).limit(1000);
+    const paused = await db.select({ id: products.id, pausedAt: products.pausedAt, storeCategory: products.storeCategory }).from(products).where(isNull(products.deletedAt));
+    const byId = new Map(paused.map((p) => [p.id, p]));
+    return c.json(rows.map((r) => ({ ...r, pausedAt: byId.get(r.id)?.pausedAt ?? null, storeCategory: byId.get(r.id)?.storeCategory ?? null })));
   })
   .get("/products/:id", async (c) => {
     const [product] = await db.select().from(products).where(eq(products.id, c.req.param("id")));
@@ -72,7 +77,53 @@ export const adminCatalogRoutes = new Hono<AppEnv>()
       .innerJoin(branches, eq(branches.id, inventory.branchId))
       .innerJoin(productVariants, eq(productVariants.id, inventory.variantId))
       .where(eq(productVariants.productId, product.id));
-    return c.json({ ...product, variants, stock });
+    // A store's product: who sells it, for the "Sold by" card
+    const [store] = product.merchantId
+      ? await db
+          .select({ id: schema.merchants.id, name: schema.merchants.name, slug: schema.merchants.slug, logoUrl: schema.merchants.logoUrl, sellerKind: schema.merchants.sellerKind, status: schema.merchants.status, contactPhone: schema.merchants.contactPhone })
+          .from(schema.merchants)
+          .where(eq(schema.merchants.id, product.merchantId))
+      : [];
+    return c.json({ ...product, variants, stock, store: store ?? null });
+  })
+  /** Takes a product off sale; a store's product stays off until Sotechy resumes it, and the store is told why */
+  .post("/products/:id/pause", requireRole(...MANAGERS), zValidator("json", z.object({ note: z.string().trim().max(300).optional() })), async (c) => {
+    const note = c.req.valid("json").note || null;
+    const [row] = await db.update(products).set({ pausedAt: new Date(), pauseNote: note, isPublished: false }).where(eq(products.id, c.req.param("id"))).returning();
+    if (!row) throw notFound("Product not found");
+    await audit(db, { actorId: c.get("user").id, action: "product.pause", entityType: "product", entityId: row.id, details: { note } });
+    if (row.merchantId) {
+      const [store] = await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, row.merchantId));
+      if (store?.ownerId)
+        sendPushLater([store.ownerId], { audience: "store", kind: "store", title: `${row.name} was paused by Sotechy`, body: note ? `${note} Contact support to sort it out.` : "Contact support to find out why and get it back on sale." });
+    }
+    return c.json({ ok: true });
+  })
+  /** Puts a paused product back on sale */
+  .post("/products/:id/resume", requireRole(...MANAGERS), async (c) => {
+    const [row] = await db.update(products).set({ pausedAt: null, pauseNote: null, isPublished: true, isHidden: false }).where(eq(products.id, c.req.param("id"))).returning();
+    if (!row) throw notFound("Product not found");
+    await audit(db, { actorId: c.get("user").id, action: "product.resume", entityType: "product", entityId: row.id });
+    if (row.merchantId) {
+      const [store] = await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, row.merchantId));
+      if (store?.ownerId) sendPushLater([store.ownerId], { audience: "store", kind: "store", title: `${row.name} is back on sale`, body: "Sotechy resumed it. Customers can see and buy it again." });
+    }
+    return c.json({ ok: true });
+  })
+  /** Deletes a product; one that has sold is kept for its orders (off sale and out of every list) */
+  .delete("/products/:id", requireRole(...MANAGERS), async (c) => {
+    const id = c.req.param("id");
+    const [row] = await db.select({ id: products.id, name: products.name }).from(products).where(eq(products.id, id));
+    if (!row) throw notFound("Product not found");
+    let archived = false;
+    try {
+      await db.transaction((tx) => tx.delete(products).where(eq(products.id, id)));
+    } catch {
+      await db.update(products).set({ deletedAt: new Date(), isPublished: false, isHidden: true }).where(eq(products.id, id));
+      archived = true;
+    }
+    await audit(db, { actorId: c.get("user").id, action: "product.delete", entityType: "product", entityId: id, details: { name: row.name, archived } });
+    return c.json({ deleted: true, archived });
   })
   .post(
     "/products",

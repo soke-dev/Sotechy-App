@@ -6,17 +6,20 @@ import { Card, ErrorNote, PageHeader, Pill, primaryButtonClass } from "@/compone
 import { UrlSearch, UrlSelect } from "@/components/url-controls";
 import { load } from "@/lib/api";
 
-type Params = { q?: string; category?: string; show?: string; sort?: string };
+type Params = { q?: string; category?: string; show?: string; sort?: string; store?: string };
+/** Admin's list: every store's products and Sotechy's own, with when Sotechy paused one */
+type Row = CatalogProduct & { pausedAt?: string | null; storeCategory?: string | null };
 
-const SHOW: Record<string, (p: CatalogProduct) => boolean> = {
+const SHOW: Record<string, (p: Row) => boolean> = {
   published: (p) => p.isPublished,
   hidden: (p) => !p.isPublished,
+  paused: (p) => !!p.pausedAt,
   featured: (p) => p.isFeatured,
   low: (p) => p.totalAvailable <= 3,
   demo: (p) => p.isDemo,
 };
 
-const SORTS: Record<string, (a: CatalogProduct, b: CatalogProduct) => number> = {
+const SORTS: Record<string, (a: Row, b: Row) => number> = {
   newest: (a, b) => b.createdAt.localeCompare(a.createdAt),
   name: (a, b) => a.name.localeCompare(b.name),
   "price-high": (a, b) => b.minPrice - a.minPrice,
@@ -24,7 +27,7 @@ const SORTS: Record<string, (a: CatalogProduct, b: CatalogProduct) => number> = 
   "stock-low": (a, b) => a.totalAvailable - b.totalAvailable,
 };
 
-function Thumb({ p, size }: { p: CatalogProduct; size: number }) {
+function Thumb({ p, size }: { p: Row; size: number }) {
   return (
     <span className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-brand" style={{ width: size, height: size }}>
       {p.imageUrl ? (
@@ -37,10 +40,10 @@ function Thumb({ p, size }: { p: CatalogProduct; size: number }) {
   );
 }
 
-function Flags({ p }: { p: CatalogProduct }) {
+function Flags({ p }: { p: Row }) {
   return (
     <>
-      {!p.isPublished && <Pill tone="neutral">Hidden</Pill>}
+      {p.pausedAt ? <Pill tone="bad">Paused</Pill> : !p.isPublished && <Pill tone="neutral">Hidden</Pill>}
       {p.isFeatured && <Pill tone="brand">Featured</Pill>}
       {p.isDemo && <Pill tone="info" dot={false}>Demo</Pill>}
     </>
@@ -50,14 +53,18 @@ function Flags({ p }: { p: CatalogProduct }) {
 const stockTone = (n: number) => (n === 0 ? "text-bad" : n <= 3 ? "text-warn" : "text-ink");
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<Params> }) {
-  const { q, category = "", show = "", sort = "newest" } = await searchParams;
-  const { data, error } = await load<CatalogProduct[]>("/admin/products");
+  const { q, category = "", show = "", sort = "newest", store = "" } = await searchParams;
+  const { data, error } = await load<Row[]>("/admin/products");
   const all = data ?? [];
-  const categories = [...new Set(all.map((p) => p.categoryName).filter(Boolean) as string[])].sort();
+  const categoryOf = (p: Row) => p.categoryName ?? p.storeCategory ?? null;
+  const categories = [...new Set(all.map(categoryOf).filter(Boolean) as string[])].sort();
+  // Each store with products, by name; "sotechy" = Sotechy's own catalogue
+  const stores = [...new Map(all.filter((p) => p.storeSlug).map((p) => [p.storeSlug!, p.storeName ?? p.storeSlug!])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
   const term = q?.toLowerCase();
   const rows = all
     .filter((p) => !term || `${p.name} ${p.brand ?? ""} ${p.model ?? ""}`.toLowerCase().includes(term))
-    .filter((p) => !category || p.categoryName === category)
+    .filter((p) => !category || categoryOf(p) === category)
+    .filter((p) => !store || (store === "sotechy" ? !p.storeSlug : p.storeSlug === store))
     .filter((p) => !show || (SHOW[show]?.(p) ?? true))
     .sort(SORTS[sort] ?? SORTS.newest);
 
@@ -66,7 +73,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       <PageHeader
         icon={Package}
         title="Products"
-        description="Sotechy's catalogue, shared by the app, the website and the shops."
+        description="Every store's products and Sotechy's own. Open one to see who sells it, pause it or delete it."
         actions={
           <>
             <Suspense>
@@ -81,6 +88,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
 
       <div className="no-scrollbar -mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap">
         <Suspense>
+          <UrlSelect param="store" label="Store" options={[{ value: "", label: "All" }, { value: "sotechy", label: "Sotechy" }, ...stores.map(([slug, name]) => ({ value: slug, label: name }))]} />
           <UrlSelect param="category" label="Category" options={[{ value: "", label: "All" }, ...categories.map((c) => ({ value: c, label: c }))]} />
           <UrlSelect
             param="show"
@@ -89,6 +97,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               { value: "", label: "Everything" },
               { value: "published", label: "On sale" },
               { value: "hidden", label: "Hidden" },
+              { value: "paused", label: "Paused by Sotechy" },
               { value: "featured", label: "Featured" },
               { value: "low", label: "Low stock" },
               { value: "demo", label: "Demo items" },
@@ -121,7 +130,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="text-xs font-semibold uppercase tracking-wide text-muted">
-                    {["Product", "Category", "From", "Available", "", ""].map((h, i) => (
+                    {["Product", "Store", "Category", "From", "Available", "", ""].map((h, i) => (
                       <th key={i} className="whitespace-nowrap bg-surface-alt px-3 py-2.5 first:rounded-l-xl last:rounded-r-xl">{h}</th>
                     ))}
                   </tr>
@@ -138,7 +147,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                           </span>
                         </Link>
                       </td>
-                      <td className="px-3 py-3 text-ink-2">{p.categoryName ?? "—"}</td>
+                      <td className="px-3 py-3 text-ink-2">{p.storeName ?? "Sotechy"}</td>
+                      <td className="px-3 py-3 text-ink-2">{categoryOf(p) ?? "—"}</td>
                       <td className="whitespace-nowrap px-3 py-3 font-semibold">{formatNaira(p.minPrice)}</td>
                       <td className={`px-3 py-3 font-semibold ${stockTone(p.totalAvailable)}`}>{p.totalAvailable}</td>
                       <td className="px-3 py-3">
@@ -165,7 +175,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         <span className="font-display shrink-0 font-bold">{formatNaira(p.minPrice)}</span>
                       </span>
                       <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted">
-                        <span className="truncate">{p.categoryName ?? "No category"}</span>·
+                        <span className="truncate">{p.storeName ?? "Sotechy"} · {categoryOf(p) ?? "No category"}</span>·
                         <span className={`shrink-0 font-semibold ${stockTone(p.totalAvailable)}`}>{p.totalAvailable} left</span>
                         <span className="ml-auto flex shrink-0 gap-1">
                           <Flags p={p} />

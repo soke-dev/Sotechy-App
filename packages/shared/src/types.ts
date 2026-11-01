@@ -767,7 +767,9 @@ export interface MerchantProduct {
   compareAt: number | null;
   stock: number;
   options: { name: string; stock: number }[];
-  status: "live" | "draft" | "hidden";
+  /** paused: Sotechy took it off sale; the store can't put it back (pauseNote says why) */
+  status: "live" | "draft" | "hidden" | "paused";
+  pauseNote?: string | null;
   sold: number;
   negotiable: { floor: number | null; hours: OfferHours } | null;
   deliveryZoneIds: string[];

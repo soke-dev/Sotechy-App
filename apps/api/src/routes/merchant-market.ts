@@ -134,7 +134,9 @@ async function productsForDashboard(storeId: string, ids?: string[]) {
       compareAt: first?.compareAtPrice ?? null,
       stock: vs.reduce((n, x) => n + Math.max((x.quantity ?? 0) - (x.reserved ?? 0), 0), 0),
       options: optionVariants.map((x) => ({ name: x.v.name, stock: Math.max((x.quantity ?? 0) - (x.reserved ?? 0), 0) })),
-      status: p.isPublished ? ("live" as const) : p.isHidden ? ("hidden" as const) : ("draft" as const),
+      // Paused by Sotechy wins: the store sees it and can't put it back on sale
+      status: p.pausedAt ? ("paused" as const) : p.isPublished ? ("live" as const) : p.isHidden ? ("hidden" as const) : ("draft" as const),
+      pauseNote: p.pauseNote,
       sold: sold.find((s) => s.productId === p.id)?.qty ?? 0,
       negotiable: p.negotiable ? { floor: p.offerFloor, hours: (p.offerHours ?? 12) as (typeof OFFER_HOURS)[number] } : null,
       deliveryZoneIds: p.deliveryZoneIds,
@@ -755,11 +757,12 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     assertVerified(store);
     const input = c.req.valid("json");
     const id = c.req.param("id");
-    const [own] = await db.select({ id: products.id }).from(products).where(and(eq(products.id, id), eq(products.merchantId, store.id), isNull(products.deletedAt)));
+    const [own] = await db.select({ id: products.id, pausedAt: products.pausedAt }).from(products).where(and(eq(products.id, id), eq(products.merchantId, store.id), isNull(products.deletedAt)));
     if (!own) throw notFound("Product not found");
     await checkZones(store.id, input.deliveryZoneIds);
     await db.transaction(async (tx) => {
-      await tx.update(products).set(productValues(input)).where(eq(products.id, id));
+      // A product Sotechy paused can be edited, but stays off sale until Sotechy resumes it
+      await tx.update(products).set({ ...productValues(input), ...(own.pausedAt && { isPublished: false }) }).where(eq(products.id, id));
       await syncVariants(tx, store, id, input);
     });
     const [p] = await productsForDashboard(store.id, [id]);
@@ -806,7 +809,8 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       let deleted = 0;
       let archived = 0;
       if (action === "live" || action === "hidden") {
-        await db.update(products).set({ isPublished: action === "live", isHidden: action === "hidden" }).where(inArray(products.id, own));
+        // Products Sotechy paused stay off sale
+        await db.update(products).set({ isPublished: action === "live", isHidden: action === "hidden" }).where(and(inArray(products.id, own), isNull(products.pausedAt)));
       } else if (action === "out_of_stock") {
         // Nothing left to sell; stock held for unpaid orders stays held
         const branch = await storeBranch(db, store);

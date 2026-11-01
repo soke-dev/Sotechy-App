@@ -11,7 +11,9 @@ import { setCustomerActive } from "../../actions";
 
 interface CustomerDetail {
   user: User & { isActive: boolean; referredBy: string | null };
-  stats: { orders: number; delivered: number; spent: number; reviews: number; tickets: number };
+  stats: { orders: number; delivered: number; spent: number; walkIns?: number; reviews: number; tickets: number };
+  /** Bought in a store's own shop */
+  walkIns?: { id: string; amount: number; status: string; note: string | null; createdAt: string; store: string; storeId: string }[];
   orders: { id: string; number: string; status: OrderStatus; total: number; tokensValue: number; channel: string; createdAt: string; store: string }[];
   addresses: { id: string; label: string | null; recipientName: string; phone: string; line1: string; line2: string | null; city: string; state: string; isDefault: boolean }[];
   wallet: WalletView;
@@ -56,8 +58,8 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
       />
 
       <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard illo="cart" label="Orders" value={stats.orders} hint={`${stats.delivered} delivered`} />
-        <StatCard illo="wallet" label="Spent" value={formatNaira(stats.spent)} hint="Paid orders" />
+        <StatCard illo="cart" label="Orders" value={stats.orders} hint={`${stats.delivered} delivered${stats.walkIns ? ` · ${stats.walkIns} in-store` : ""}`} />
+        <StatCard illo="wallet" label="Spent" value={formatNaira(stats.spent)} hint="Paid orders and in-store buys" />
         <StatCard illo="coin" tone="brand" label="Tokens held" value={tokens(held)} hint={`≈ ${formatNaira(Math.round(held * TOKEN_VALUE))} to spend`} />
         <StatCard illo="heart" label="Reviews" value={stats.reviews} hint={`${stats.tickets} support request${stats.tickets === 1 ? "" : "s"}`} />
       </div>
@@ -88,6 +90,23 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
         </Card>
 
         <div className="flex flex-col gap-6">
+          {/* Bought in stores' own shops (walk-in sales that earned them tokens) */}
+          {(data.walkIns ?? []).length > 0 && (
+            <Card title="In-store purchases" padded={false}>
+              <ul className="divide-y divide-line">
+                {data.walkIns!.map((w) => (
+                  <li key={w.id}>
+                    <Link href={`/merchants/${w.storeId}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 hover:bg-surface-alt">
+                      <span className="font-semibold">{w.store}</span>
+                      <StatusBadge status={w.status === "paid" ? "paid" : "pending_payment"} />
+                      <span className="text-sm text-muted">{formatDate(w.createdAt)}{w.note ? ` · ${w.note}` : ""}</span>
+                      <span className="ml-auto font-semibold">{formatNaira(w.amount)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
           <Card title="Tokens">
             {wallet.balances.length === 0 ? (
               <p className="text-sm text-muted">No tokens yet.</p>
