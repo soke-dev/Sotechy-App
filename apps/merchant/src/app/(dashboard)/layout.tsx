@@ -13,7 +13,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const balance = payouts.filter((p) => ["scheduled", "sending", "held", "failed"].includes(p.status)).reduce((n, p) => n + p.amount, 0);
   return (
     <MerchantShell
-      store={{ name: store.name, ticker: store.tokenApprovedAt ? store.ticker : null, logo: store.logoUrl ?? null, verified: store.status === "approved", paused: store.status === "suspended", review: store.reviewNote ? { note: store.reviewNote, declined: store.status === "declined" } : null, newOrders: waiting, offersWaiting, storefrontWaiting: (reviewsToReply ?? 0) + (store.profileChangeStatus ? 1 : 0), balance, access: role }}
+      store={{ name: store.name, ticker: store.tokenApprovedAt ? store.ticker : null, logo: store.logoUrl ?? null, verified: store.status === "approved", official: store.sellerKind === "registered", paused: store.status === "suspended", review: store.reviewNote ? { note: store.reviewNote, declined: store.status === "declined" } : null, newOrders: waiting, offersWaiting, storefrontWaiting: (reviewsToReply ?? 0) + (store.profileChangeStatus ? 1 : 0), balance, access: role }}
       user={{ name: user.fullName || (user.username ? `@${user.username}` : user.email), role: user.username ? `@${user.username} · ${ROLE_LABEL[role]}` : ROLE_LABEL[role], avatar: user.avatarUrl ?? null }}
     >
       <AccountProvider value={{ user, store, role }}>
