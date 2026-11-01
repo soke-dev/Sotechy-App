@@ -161,7 +161,7 @@ export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () =
         }}
       >
         <Animated.Text style={{ fontFamily: fonts.displayHeavy, fontSize: 38, letterSpacing: -0.8, color: colors.white }}>Sotechy</Animated.Text>
-        <Animated.Text style={{ fontFamily: fonts.semibold, fontSize: 15, color: "rgba(23,18,14,0.75)", textAlign: "center" }}>Verified stores. Tokens on every order.</Animated.Text>
+        <Animated.Text style={{ fontFamily: fonts.semibold, fontSize: 15, color: "rgba(23,18,14,0.75)", textAlign: "center" }}>Shop and earn.</Animated.Text>
       </Animated.View>
 
       {/* Loading bar */}
