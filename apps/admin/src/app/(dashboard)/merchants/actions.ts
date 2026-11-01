@@ -22,6 +22,11 @@ export async function setStoreStatus(id: string, status: "pending" | "approved" 
   return attempt(() => withPassword("PATCH", `/admin/merchants/${id}/status`, { status, note }, password), id);
 }
 
+/** Makes the store Sotechy's own: no token of its own, it uses $SOTECHY */
+export async function makeSotechyStore(id: string, password: string): Promise<Result> {
+  return attempt(() => withPassword("POST", `/admin/merchants/${id}/sotechy-store`, {}, password), id);
+}
+
 /** Send a waiting store back for changes, or decline it, with a note the owner sees */
 export async function reviewStore(id: string, outcome: "changes" | "declined", note: string): Promise<Result> {
   return attempt(() => api.post(`/admin/merchants/${id}/review`, { outcome, note }), id);

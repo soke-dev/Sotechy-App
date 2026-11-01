@@ -30,6 +30,8 @@ export interface AdminStore {
   application: (Omit<MerchantApplicationInput, "sellerKind" | "sells" | "submit"> & { tickerChosen?: boolean }) | null;
   /** When the store's token was approved (its ticker is fixed from then on) */
   tokenApprovedAt: string | null;
+  /** 1 = $SOTECHY: this is Sotechy's own store */
+  tokenId?: number | null;
   submittedAt: string | null;
   /** Sotechy's note when it asked for changes or declined the store */
   reviewNote?: string | null;

@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { isMapLink } from "@sotechy/shared";
 import { db, schema } from "../../db/client";
-import { ensureStoreTokens, walletFor } from "../../services/tokens";
+import { ensureStoreTokens, SOTECHY_TOKEN, walletFor } from "../../services/tokens";
 import { CHAINS } from "../../services/chain";
 import { audit } from "../../lib/audit";
 import { hashPassword, MANAGERS, requireRole, type AppEnv, requirePassword } from "../../lib/auth";
@@ -552,6 +552,26 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       return c.json(store);
     },
   )
+  /**
+   * Makes a store Sotechy's own: it gets no token of its own. Its token is $SOTECHY (token 1), so customers earn
+   * $SOTECHY there (no 10% bonus on top, it already is $SOTECHY) and can spend it there. Only one store can be it.
+   */
+  .post("/merchants/:id/sotechy-store", ADMIN, requirePassword, async (c) => {
+    const [store] = await db.select().from(schema.merchants).where(eq(schema.merchants.id, c.req.param("id")));
+    if (!store) throw notFound("Store not found");
+    if (store.tokenId === SOTECHY_TOKEN.id) return c.json({ ok: true });
+    if (store.tokenId) throw badRequest(`${store.name} already has its own token ($${store.ticker}), so it can't become Sotechy's store`);
+    const [taken] = await db.select({ name: schema.merchants.name }).from(schema.merchants).where(eq(schema.merchants.tokenId, SOTECHY_TOKEN.id));
+    if (taken) throw badRequest(`${taken.name} is already Sotechy's own store`);
+    const [ticker] = await db.select({ id: schema.merchants.id }).from(schema.merchants).where(eq(schema.merchants.ticker, SOTECHY_TOKEN.ticker));
+    if (ticker && ticker.id !== store.id) throw badRequest("Another store has the SOTECHY ticker");
+    await db
+      .update(schema.merchants)
+      .set({ tokenId: SOTECHY_TOKEN.id, ticker: SOTECHY_TOKEN.ticker, tokenApprovedAt: store.tokenApprovedAt ?? new Date(), application: { ...(store.application ?? {}), tickerChosen: true } as typeof store.application })
+      .where(eq(schema.merchants.id, store.id));
+    await audit(db, { actorId: c.get("user").id, action: "merchant.sotechy_store", entityType: "merchant", entityId: store.id });
+    return c.json({ ok: true });
+  })
   /** Approve (go live), suspend or send a store back to review. Approving emails the owner. */
   .patch(
     "/merchants/:id/status",

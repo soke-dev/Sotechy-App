@@ -8,7 +8,7 @@ import { formatNaira } from "@sotechy/shared";
 import { CheckIcon } from "@/components/merchant-bits";
 import { RelTime } from "@/components/rel-time";
 import { Card, dangerButtonClass, inputClass, Pill, primaryButtonClass, secondaryButtonClass, Sheet } from "@/components/ui";
-import { reviewStore, reviewZone, setStoreStatus } from "../actions";
+import { makeSotechyStore, reviewStore, reviewZone, setStoreStatus } from "../actions";
 import { StoreAvatar } from "../merchants-list";
 import { KYC, STAGE, stageOf, type AdminStoreDetail, type AdminZone } from "../store-types";
 import { usePasswordPrompt } from "@/components/password-prompt";
@@ -283,6 +283,28 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
             <Row label="WhatsApp alerts">{store.contactWhatsapp ?? store.contactPhone}</Row>
           </Card>
           <Card title="Store">
+            {/* Sotechy's own store: no token of its own, $SOTECHY instead */}
+            {store.tokenId === 1 ? (
+              <p className="mb-2 rounded-2xl bg-brand-soft px-3 py-2 text-sm text-brand-strong">This is Sotechy&apos;s own store. Its token is $SOTECHY: customers earn and spend $SOTECHY here.</p>
+            ) : (
+              !store.tokenId && (
+                <div className="mb-2 flex flex-wrap items-center gap-3 rounded-2xl border border-line px-3 py-2 text-sm">
+                  <span className="min-w-0 flex-1 text-muted">Sotechy&apos;s own store gets no token of its own; it uses $SOTECHY.</span>
+                  <button
+                    disabled={busy}
+                    onClick={() =>
+                      run(async () => {
+                        const password = await ask(`Make ${store.name} Sotechy's own store?`, "It won't get a token of its own. Customers earn $SOTECHY here (no 10% bonus on top) and can spend it here. Only one store can be Sotechy's.");
+                        return password ? makeSotechyStore(store.id, password) : { error: "" };
+                      })
+                    }
+                    className={secondaryButtonClass}
+                  >
+                    Make this Sotechy&apos;s own store
+                  </button>
+                </div>
+              )
+            )}
             <Row label="Badge in the app">{store.sellerKind === "registered" ? "Orange tick · Official store (registered business)" : "Blue tick · Verified (freelancer)"}</Row>
             <Row label="Token ticker">{`$${store.ticker}`}{!store.tokenApprovedAt && <span className="block text-xs font-normal text-muted">{store.application?.tickerChosen ? "Chosen by the store · fixed when you approve" : "Not chosen yet"}</span>}</Row>
             <Row label="Sells">{store.sells.length ? store.sells.join(", ") : null}</Row>
