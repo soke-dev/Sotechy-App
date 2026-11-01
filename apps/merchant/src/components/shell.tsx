@@ -159,9 +159,11 @@ function Sidebar({ store, user, onNavigate }: { store: ShellStore; user: ShellUs
           href={`https://wa.me/${SOTECHY_WHATSAPP}?text=${encodeURIComponent(`Hi Sotechy, I need help with my store, ${store.name}.`)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-surface-alt px-3 py-1.5 text-xs font-semibold text-ink-2 hover:bg-line hover:text-ink"
+          aria-label="Support on WhatsApp"
+          title="Support"
+          className="ml-auto grid h-9 w-9 place-items-center rounded-full bg-surface-alt text-ink-2 hover:bg-line hover:text-ink"
         >
-          <Headset size={14} /> Support
+          <Headset size={18} />
         </a>
       </div>
       <div className="px-4 pb-4">
