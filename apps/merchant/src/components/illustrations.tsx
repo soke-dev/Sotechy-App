@@ -117,6 +117,19 @@ const Chat = ({ size }: P) => (
   </S>
 );
 
+/** A headset: Sotechy support */
+const Headset = ({ size }: P) => (
+  <S size={size}>
+    <path d="M9 27 V23 a15 15 0 0 1 30 0 V27" stroke={C.orange} strokeWidth={4} strokeLinecap="round" fill="none" />
+    <rect x={5} y={23} width={10} height={14} rx={4} fill={C.yellow} />
+    <rect x={33} y={23} width={10} height={14} rx={4} fill={C.yellow} />
+    <rect x={8} y={26} width={4} height={8} rx={2} fill={C.orangeDark} />
+    <rect x={36} y={26} width={4} height={8} rx={2} fill={C.orangeDark} />
+    <path d="M38 36 C38 41 33 43 27 43" stroke={C.ink} strokeWidth={2.6} strokeLinecap="round" fill="none" />
+    <rect x={21} y={40} width={8} height={5.5} rx={2.75} fill={C.ink} />
+  </S>
+);
+
 const Pin = ({ size }: P) => (
   <S size={size}>
     <path d="M14 42 a10 3 0 0 0 20 0 a10 3 0 0 0 -20 0 Z" fill={C.cream} />
@@ -227,6 +240,7 @@ export const ILLUSTRATIONS = {
   heart: Heart,
   receipt: Receipt,
   chat: Chat,
+  headset: Headset,
   pin: Pin,
   card: Card,
   bank: Bank,

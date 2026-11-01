@@ -3,7 +3,7 @@
 import type { StoreRole } from "@sotechy/shared";
 import { roleSees } from "@/lib/roles";
 import { STOREFRONT_TABS } from "./storefront-tabs";
-import { ExternalLink, Headset, LogOut, X } from "lucide-react";
+import { ExternalLink, LogOut, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -161,9 +161,9 @@ function Sidebar({ store, user, onNavigate }: { store: ShellStore; user: ShellUs
           rel="noopener noreferrer"
           aria-label="Support on WhatsApp"
           title="Support"
-          className="ml-auto grid h-9 w-9 place-items-center rounded-full bg-surface-alt text-ink-2 hover:bg-line hover:text-ink"
+          className="ml-auto grid h-9 w-9 place-items-center rounded-full bg-surface-alt transition hover:bg-line"
         >
-          <Headset size={18} />
+          <Illo name="headset" size={26} />
         </a>
       </div>
       <div className="px-4 pb-4">
