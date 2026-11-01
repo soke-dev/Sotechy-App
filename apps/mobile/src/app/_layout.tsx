@@ -7,8 +7,9 @@ import { DMSans_700Bold } from "@expo-google-fonts/dm-sans/700Bold";
 import { useFonts } from "expo-font";
 import { router, Stack, usePathname, type Href } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { AnimatedSplash } from "@/components/animated-splash";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { CartFeedbackProvider } from "@/components/cart-feedback";
@@ -95,6 +96,8 @@ export default function RootLayout() {
     DMSans_700Bold,
   });
   const ready = fontsLoaded || !!fontError;
+  // The animated opening plays over the app while it loads underneath, then fades away
+  const [intro, setIntro] = useState(true);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
@@ -117,6 +120,7 @@ export default function RootLayout() {
                         <StoreNotificationsProvider>
                             <AccountExtrasProvider>
                               <ThemedNavigator />
+                              {intro && <AnimatedSplash ready onDone={() => setIntro(false)} />}
                             </AccountExtrasProvider>
                         </StoreNotificationsProvider>
                       </MenuProvider>

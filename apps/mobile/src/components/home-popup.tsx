@@ -75,11 +75,11 @@ export function HomePopup() {
         const closed: string[] = raw ? JSON.parse(raw) : [];
         const next = popups.find((p) => !p.showOnce || !closed.includes(p.id));
         if (cancelled || !next || shownThisOpen) return;
-        // A moment after Home appears, so it doesn't land on a half-drawn screen
+        // After the app's opening has played, so it doesn't land on top of it
         t = setTimeout(() => {
           shownThisOpen = true;
           setPopup(next);
-        }, 1200);
+        }, 2600);
       });
     return () => {
       cancelled = true;
