@@ -8,7 +8,7 @@ const src = (...p) => path.join(root, "brand-assets", ...p);
 const dest = (...p) => path.join(root, "apps", ...p);
 
 const targets = {
-  logo: [dest("web/public/brand"), dest("admin/public/brand"), dest("mobile/assets/brand")],
+  logo: [dest("web/public/brand"), dest("admin/public/brand"), dest("merchant/public/brand"), dest("mobile/assets/brand")],
   "app-icon": [dest("mobile/assets")],
   images: [dest("web/public/images"), dest("mobile/assets/images")],
 };
