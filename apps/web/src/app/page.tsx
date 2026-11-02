@@ -231,16 +231,16 @@ export default function Home() {
               <a
                 key={c.name}
                 href={shopLink(c.name)}
-                className="group flex flex-col items-start gap-4 rounded-3xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_18px_40px_-26px_rgba(23,18,14,0.4)] sm:p-5"
+                className="group flex items-center gap-2.5 rounded-2xl border border-line bg-white p-2.5 transition sm:rounded-3xl hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_18px_40px_-26px_rgba(23,18,14,0.4)] sm:gap-4 sm:p-4"
               >
-                <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-foreground" style={{ background: c.tint }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-foreground sm:h-14 sm:w-14 sm:rounded-2xl" style={{ background: c.tint }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6 sm:h-7 sm:w-7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     {ICONS[c.icon]}
                   </svg>
                 </span>
-                <span className="flex w-full items-center justify-between gap-2 font-display font-bold group-hover:text-brand-strong sm:text-lg">
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 font-display text-[14px] font-bold leading-tight group-hover:text-brand-strong sm:text-base">
                   {c.name}
-                  <span className="text-muted transition group-hover:translate-x-0.5 group-hover:text-brand-strong">→</span>
+                  <span className="hidden text-muted transition group-hover:translate-x-0.5 group-hover:text-brand-strong sm:inline">→</span>
                 </span>
               </a>
             ))}
