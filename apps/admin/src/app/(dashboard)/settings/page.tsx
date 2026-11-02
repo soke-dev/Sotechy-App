@@ -5,6 +5,7 @@ import { SwitchField } from "@/components/switch";
 import { Card, ErrorNote, Field, inputClass, PageHeader } from "@/components/ui";
 import { load } from "@/lib/api";
 import { saveFx, saveSetting, updatePaymentMethod } from "../actions";
+import { ResetMarketplace, type ResetPreview } from "./reset-marketplace";
 
 interface MoneyMovesStatus {
   configured: boolean;
@@ -35,7 +36,7 @@ interface SettingsResponse {
 }
 
 export default async function SettingsPage() {
-  const [{ data, error }, mm] = await Promise.all([load<SettingsResponse>("/admin/settings"), load<MoneyMovesStatus>("/admin/integrations/moneymoves")]);
+  const [{ data, error }, mm, reset] = await Promise.all([load<SettingsResponse>("/admin/settings"), load<MoneyMovesStatus>("/admin/integrations/moneymoves"), load<ResetPreview>("/admin/reset/preview")]);
   if (!data) return <ErrorNote error={error} />;
   const s = data.settings;
   const m = mm.data;
@@ -176,6 +177,9 @@ export default async function SettingsPage() {
             <Field label="WhatsApp"><input name="whatsapp" defaultValue={s.support?.whatsapp ?? ""} className={inputClass} /></Field>
           </ActionForm>
         </Card>
+
+        {/* Admins only: the API refuses everyone else, so the card isn't shown to them */}
+        {reset.data && <ResetMarketplace preview={reset.data} />}
       </div>
     </>
   );

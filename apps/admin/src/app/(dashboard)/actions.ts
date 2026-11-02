@@ -555,3 +555,14 @@ export async function setCustomerActive(id: string, isActive: boolean): Promise<
   revalidatePath("/customers");
   return {};
 }
+
+/** Deletes every store and everything tied to stores (Settings → Danger zone) */
+export async function resetMarketplace(confirm: string): Promise<{ deleted: Record<string, number> } | { error: string }> {
+  try {
+    const result = await api.post<{ deleted: Record<string, number> }>("/admin/reset/marketplace", { confirm });
+    revalidatePath("/", "layout");
+    return result;
+  } catch (err) {
+    return { error: errorMessage(err) };
+  }
+}

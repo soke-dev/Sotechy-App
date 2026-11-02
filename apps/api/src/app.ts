@@ -8,6 +8,7 @@ import { requireAuth, requireRole, STAFF, type AppEnv } from "./lib/auth";
 import { HttpError } from "./lib/errors";
 import { adminCatalogRoutes } from "./routes/admin/catalog";
 import { adminChainRoutes } from "./routes/admin/chain";
+import { adminResetRoutes } from "./routes/admin/reset";
 import { adminContentRoutes } from "./routes/admin/content";
 import { adminManagementRoutes } from "./routes/admin/management";
 import { adminOperationsRoutes } from "./routes/admin/operations";
@@ -36,6 +37,7 @@ const admin = new Hono<AppEnv>()
   .route("/", adminPayoutRoutes)
   .route("/", adminFeaturingRoutes)
   .route("/", adminChainRoutes)
+  .route("/", adminResetRoutes)
   .route("/", adminContentRoutes);
 
 export const app = new Hono()
