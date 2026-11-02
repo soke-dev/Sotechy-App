@@ -14,10 +14,12 @@ export interface GoogleButtonProps {
   onTest?: () => void;
 }
 
+// OAuth client IDs aren't secrets (they ship inside the app). The .env values win; these defaults
+// cover cloud builds, which don't get the .env file.
 export const GOOGLE_CLIENT_IDS = {
-  ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-  web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "135476780081-q8bh6nni2gmi5hpm9jbqeulc9143dtmr.apps.googleusercontent.com",
+  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "135476780081-47j42h2ef78rjcorlkfhfdut6svakp4l.apps.googleusercontent.com",
+  web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "135476780081-itrqdn08npnranseuh73v5l1cnmq3jip.apps.googleusercontent.com",
 };
 
 // Expo Go can't do Google sign-in: Google only sends people back to the real app (its own link scheme)
