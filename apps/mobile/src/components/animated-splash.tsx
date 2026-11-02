@@ -41,7 +41,7 @@ function Floater({ illo, x, y, size, delay }: { illo: IlloName; x: number; y: nu
         width: size + 20,
         height: size + 20,
         borderRadius: (size + 20) / 2,
-        backgroundColor: "rgba(255,255,255,0.92)",
+        backgroundColor: colors.white,
         alignItems: "center",
         justifyContent: "center",
         opacity: show,
