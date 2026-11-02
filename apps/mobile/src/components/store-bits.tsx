@@ -62,7 +62,7 @@ function Rating({ store, color }: { store: MarketStore; color?: string }) {
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
       <Ionicons name="star" size={12} color={colors.brandYellow} />
       <Txt variant="caption" color={color ?? colors.ink2}>
-        {store.isSotechy ? "Official store · Benin City" : `${isOfficialStore(store) ? "Official store · " : ""}${store.rating ?? "New"} · ${store.productCount} product${store.productCount === 1 ? "" : "s"}`}
+        {`${isOfficialStore(store) ? "Official store · " : ""}${store.rating ?? "New"} · ${store.productCount} product${store.productCount === 1 ? "" : "s"}`}
       </Txt>
     </View>
   );

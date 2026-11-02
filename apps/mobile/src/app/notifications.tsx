@@ -7,7 +7,7 @@ import { Pressable, ScrollView, Switch, View } from "react-native";
 import { Illo } from "@/components/illustrations";
 import { openStore, StoreLogo } from "@/components/store-bits";
 import { Chip, Divider, EmptyState, Txt, ui, type IconName } from "@/components/ui";
-import { ago, SOTECHY_STORE, storeBySlug, useStores } from "@/lib/marketplace";
+import { ago, storeBySlug, useStores } from "@/lib/marketplace";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { colors, gutter, radius, space } from "@/lib/theme";
 
@@ -135,7 +135,7 @@ export default function NotificationsScreen() {
           <Txt variant="heading">Store updates</Txt>
           <Txt variant="small">Only stores you subscribe to can send you messages.</Txt>
           <View style={[ui.card, { paddingVertical: space.xs }]}>
-            {[SOTECHY_STORE, ...(stores ?? [])].map((s, i) => (
+            {(stores ?? []).map((s, i) => (
               <View key={s.slug}>
                 {i > 0 && <Divider />}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>

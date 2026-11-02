@@ -21,7 +21,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { ArtButton, Button, discountPercent, ErrorView, IconButton, Loading, productIcon, SectionHeader, Txt, ui, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { byFeatured, isFeatured, isPro, SOTECHY_STORE, tileColor, toStoreProduct, useStores, type Img as MarketImg } from "@/lib/marketplace";
+import { byFeatured, isFeatured, isPro, tileColor, toStoreProduct, useStores, type Img as MarketImg } from "@/lib/marketplace";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
@@ -353,7 +353,7 @@ export default function HomeScreen() {
           <SectionHeader title="Stores on Sotechy" action="All stores" onAction={() => router.push("/stores")} />
         </View>
         <ScrollRow snapToInterval={Math.min(contentWidth * 0.7, 260) + space.md} decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
-          {byFeatured([SOTECHY_STORE, ...marketStores]).map((s) => (
+          {byFeatured(marketStores).map((s) => (
             <FeaturedStoreCard key={s.slug} store={s} width={Math.min(contentWidth * 0.7, 260)} />
           ))}
         </ScrollRow>

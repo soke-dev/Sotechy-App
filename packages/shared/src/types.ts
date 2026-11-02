@@ -693,6 +693,8 @@ export interface MarketStore {
   proUntil?: string | null;
   /** A registered business: "Official store" with the orange tick (freelancers get the blue one) */
   isOfficial?: boolean;
+  /** Sotechy's own store (sells with $SOTECHY) */
+  isSotechy?: boolean;
   productCount?: number;
   ratingAverage?: number | null;
   /** How many reviews the rating is from */

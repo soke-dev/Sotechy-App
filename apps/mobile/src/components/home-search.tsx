@@ -7,7 +7,7 @@ import { ProductImage } from "@/components/product-image";
 import { openStore, StoreLogo } from "@/components/store-bits";
 import { Txt } from "@/components/ui";
 import { api } from "@/lib/api";
-import { SOTECHY_STORE, useStores, type MarketStore } from "@/lib/marketplace";
+import { useStores, type MarketStore } from "@/lib/marketplace";
 import { RecentSearches, useRecentSearches } from "@/lib/recent-searches";
 import { colors, fonts, radius, space } from "@/lib/theme";
 
@@ -42,7 +42,7 @@ export function HomeSearch() {
 
   const needle = term.toLowerCase();
   const matchStore = (s: MarketStore) => [s.name, s.tagline, s.ticker, ...s.sells].some((x) => x?.toLowerCase().includes(needle));
-  const storeHits = term.length < 2 ? [] : [SOTECHY_STORE, ...(stores ?? [])].filter(matchStore).slice(0, 4);
+  const storeHits = term.length < 2 ? [] : (stores ?? []).filter(matchStore).slice(0, 4);
   const brands = [...new Set((products ?? []).map((p) => p.brand).filter((b): b is string => !!b && b.toLowerCase().includes(needle)))].slice(0, 6);
   const shopFor = (query: string) => {
     recent.add(query);

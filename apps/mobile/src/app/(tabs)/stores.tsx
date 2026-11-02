@@ -8,7 +8,7 @@ import { Illo } from "@/components/illustrations";
 import { StoreRow } from "@/components/store-bits";
 import { useTabBarInset } from "@/components/tab-bar";
 import { Chip, EmptyState, ErrorView, Input, Loading, ScreenHeader, Txt, ui } from "@/components/ui";
-import { byFeatured, SOTECHY_STORE, useStores } from "@/lib/marketplace";
+import { byFeatured, useStores } from "@/lib/marketplace";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { ScrollRow } from "@/components/scroll-row";
 import { useContentWidth, useIsDesktop } from "@/lib/layout";
@@ -54,7 +54,7 @@ export default function StoresScreen() {
   if (loading) return <Loading />;
   if (error || !stores) return <ErrorView message={error ?? "Could not load stores"} onRetry={reload} />;
 
-  const all = [SOTECHY_STORE, ...byFeatured(stores)];
+  const all = byFeatured(stores);
   // Store types that have stores, most common first
   const counts = new Map<string, number>();
   for (const s of stores) for (const k of s.sells) counts.set(k, (counts.get(k) ?? 0) + 1);

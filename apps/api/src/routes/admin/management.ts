@@ -556,6 +556,41 @@ export const adminManagementRoutes = new Hono<AppEnv>()
    * Makes a store Sotechy's own: it gets no token of its own. Its token is $SOTECHY (token 1), so customers earn
    * $SOTECHY there (no 10% bonus on top, it already is $SOTECHY) and can spend it there. Only one store can be it.
    */
+  /** Sotechy's own store, set up in one step for the account that will run it: named Sotechy, at
+   *  /store/sotechy, selling with $SOTECHY, an official store and live straight away. The account is
+   *  made when the email has none (they set a password with "Forgot password", or use Google). */
+  .post("/merchants/sotechy-store/setup", ADMIN, requirePassword, zValidator("json", z.object({ email: z.email().max(200) })), async (c) => {
+    const email = c.req.valid("json").email.trim().toLowerCase();
+    const [existing] = await db.select({ name: schema.merchants.name }).from(schema.merchants).where(eq(schema.merchants.tokenId, SOTECHY_TOKEN.id));
+    if (existing) throw badRequest(`${existing.name} is already Sotechy's own store`);
+    const [slugTaken] = await db.select({ name: schema.merchants.name }).from(schema.merchants).where(or(eq(schema.merchants.slug, "sotechy"), eq(schema.merchants.ticker, SOTECHY_TOKEN.ticker)));
+    if (slugTaken) throw badRequest(`${slugTaken.name} has the sotechy address or the SOTECHY ticker`);
+
+    let [owner] = await db.select().from(schema.users).where(eq(schema.users.email, email));
+    const newAccount = !owner;
+    if (!owner) [owner] = await db.insert(schema.users).values({ email, fullName: "Sotechy" }).returning();
+    const [runs] = await db.select({ name: schema.merchants.name }).from(schema.merchants).where(eq(schema.merchants.ownerId, owner.id));
+    if (runs) throw badRequest(`${email} already runs ${runs.name}. Use another email.`);
+
+    const [store] = await db
+      .insert(schema.merchants)
+      .values({
+        name: "Sotechy",
+        slug: "sotechy",
+        ticker: SOTECHY_TOKEN.ticker,
+        tokenId: SOTECHY_TOKEN.id,
+        tokenApprovedAt: new Date(),
+        ownerId: owner.id,
+        sellerKind: "registered",
+        status: "approved",
+        kycStatus: "approved",
+        contactEmail: email,
+        application: { tickerChosen: true } as NonNullable<typeof schema.merchants.$inferInsert.application>,
+      })
+      .returning();
+    await audit(db, { actorId: c.get("user").id, action: "merchant.sotechy_store_setup", entityType: "merchant", entityId: store.id, details: { email, newAccount } });
+    return c.json({ store: { id: store.id, name: store.name, slug: store.slug }, email, newAccount }, 201);
+  })
   .post("/merchants/:id/sotechy-store", ADMIN, requirePassword, async (c) => {
     const [store] = await db.select().from(schema.merchants).where(eq(schema.merchants.id, c.req.param("id")));
     if (!store) throw notFound("Store not found");

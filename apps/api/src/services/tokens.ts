@@ -376,7 +376,8 @@ export async function receiptFor(userId: string, orderId: string) {
 async function tokenStores(ids: number[]) {
   const map = new Map<number, { tokenId: number; ticker: string; store: string; slug: string | null; logoUrl: string | null }>();
   map.set(SOTECHY_TOKEN.id, { tokenId: SOTECHY_TOKEN.id, ticker: SOTECHY_TOKEN.ticker, store: SOTECHY_TOKEN.name, slug: null, logoUrl: null });
-  const storeIds = ids.filter((id) => id !== SOTECHY_TOKEN.id);
+  // $SOTECHY too: Sotechy's own store, when there is one, gives it a page and a logo
+  const storeIds = ids.includes(SOTECHY_TOKEN.id) ? ids : [...ids, SOTECHY_TOKEN.id];
   if (storeIds.length) {
     const rows = await db.select({ tokenId: merchants.tokenId, ticker: merchants.ticker, store: merchants.name, slug: merchants.slug, logoUrl: merchants.logoUrl }).from(merchants).where(inArray(merchants.tokenId, storeIds));
     for (const r of rows) map.set(r.tokenId!, { ...r, tokenId: r.tokenId! });

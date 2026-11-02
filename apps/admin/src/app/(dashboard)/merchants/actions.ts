@@ -35,3 +35,14 @@ export async function reviewStore(id: string, outcome: "changes" | "declined", n
 export async function reviewZone(storeId: string, zoneId: string, review: "approved" | "declined", note?: string): Promise<Result> {
   return attempt(() => api.patch(`/admin/delivery-zones/${zoneId}`, { review, note: note ?? null }), storeId);
 }
+
+/** Sotechy's own store, made in one step for the account (email) that will run it */
+export async function setupSotechyStore(email: string, password: string): Promise<{ ok: true; newAccount: boolean } | { error: string }> {
+  try {
+    const r = await withPassword<{ newAccount: boolean }>("POST", "/admin/merchants/sotechy-store/setup", { email }, password);
+    revalidatePath("/merchants");
+    return { ok: true, newAccount: r.newAccount };
+  } catch (err) {
+    return { error: errorMessage(err) };
+  }
+}

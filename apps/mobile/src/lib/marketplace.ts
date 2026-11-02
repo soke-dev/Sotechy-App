@@ -101,23 +101,6 @@ function socialLinks(s?: StoreSocials | null, website?: string | null): NonNulla
 }
 
 /** Sotechy's own store, which sells from the main catalogue */
-export const SOTECHY_STORE: MarketStore = {
-  slug: "sotechy",
-  name: "Sotechy",
-  ticker: "SOTECHY",
-  tagline: "Phones, power and home, from Benin City",
-  about: "Sotechy's own store. Genuine products with warranty, pickup at Etete Road and delivery across Edo, Delta, Lagos and Abuja.",
-  rating: null,
-  ratingCount: 0,
-  sells: [],
-  logo: require("../../assets/brand/sotechy-icon-512.png"),
-  theme: THEMES.sotechy,
-  delivery: { states: ["Edo", "Delta", "Lagos", "FCT Abuja"], homeFrom: null, pickup: "No. 20 Etete Road, Benin City" },
-  isSotechy: true,
-  areas: [],
-  productCount: 0,
-  products: [],
-};
 
 /** Readable text colour on an accent */
 function onColour(hex: string) {
@@ -151,7 +134,8 @@ export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "bra
     rating: s.ratingAverage ?? null,
     ratingCount: s.ratingCount ?? 0,
     sells: s.sells,
-    logo: s.logoUrl ? { uri: s.logoUrl } : undefined,
+    // Sotechy's own store shows the Sotechy logo until it uploads one
+    logo: s.logoUrl ? { uri: s.logoUrl } : s.isSotechy ? require("../../assets/brand/sotechy-icon-512.png") : undefined,
     // A store that chose the colour band in its storefront settings shows no photo
     cover: s.coverUrl && look?.header !== "band" ? { uri: s.coverUrl } : undefined,
     theme,
@@ -161,6 +145,7 @@ export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "bra
     featuredUntil: s.featuredUntil ?? undefined,
     proUntil: s.proUntil ?? undefined,
     isOfficial: !!s.isOfficial,
+    isSotechy: !!s.isSotechy,
     productCount: s.productCount ?? s.products?.length ?? 0,
     branchId: s.branchId,
     products: (s.products ?? []).map(toStoreProduct),
@@ -169,11 +154,11 @@ export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "bra
 }
 
 // Stores seen so far, so screens that only have a slug or ticker (offers, wallet) can show them
-const known = new Map<string, MarketStore>([[SOTECHY_STORE.slug, SOTECHY_STORE]]);
+const known = new Map<string, MarketStore>();
 const remember = (list: MarketStore[]) => list.forEach((s) => known.set(s.slug, { ...known.get(s.slug), ...s }));
 
 let listCache: { at: number; promise: Promise<MarketStore[]> } | null = null;
-/** Approved stores (Sotechy's own not included), shared by every screen for a minute */
+/** Approved stores (Sotechy's own first), shared by every screen for a minute */
 export function loadStores(fresh = false): Promise<MarketStore[]> {
   if (!fresh && listCache && Date.now() - listCache.at < 60_000) return listCache.promise;
   const promise = api.stores().then((rows) => {
@@ -200,10 +185,6 @@ export function useStores() {
 
 /** One store with its products; null when there's no such store */
 export async function loadStore(slug: string): Promise<MarketStore | null> {
-  if (slug === SOTECHY_STORE.slug) {
-    const items = await api.products({ store: "sotechy", sort: "newest" });
-    return { ...SOTECHY_STORE, productCount: items.length, products: items.map(toStoreProduct) };
-  }
   try {
     const store = toMarketStore(await api.store(slug));
     remember([store]);
@@ -223,8 +204,12 @@ export const isFeatured = (s: MarketStore) => !!s.featuredUntil && new Date(s.fe
 /** Sotechy's own store, or a registered business: the orange tick and "Official store" */
 export const isOfficialStore = (s: Pick<MarketStore, "isSotechy" | "isOfficial">) => !!s.isSotechy || !!s.isOfficial;
 export const isPro = (s: MarketStore) => !!s.proUntil && new Date(s.proUntil).getTime() > Date.now();
-/** Featured stores first, keeping the order otherwise */
-export const byFeatured = <T extends MarketStore>(list: T[]) => [...list.filter(isFeatured), ...list.filter((s) => !isFeatured(s))];
+/** Sotechy's own store first, then featured stores, keeping the order otherwise */
+export const byFeatured = <T extends MarketStore>(list: T[]) => [
+  ...list.filter((s) => s.isSotechy),
+  ...list.filter((s) => !s.isSotechy && isFeatured(s)),
+  ...list.filter((s) => !s.isSotechy && !isFeatured(s)),
+];
 
 /** "11h 40m left" */
 export const timeLeft = (iso: string) => {

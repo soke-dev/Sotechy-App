@@ -177,7 +177,7 @@ export default function StoreScreen() {
           <View style={{ paddingTop: (store.announcement ? 0 : insets.top) + space.sm, paddingHorizontal: gutter, flexDirection: "row", alignItems: "center", gap: space.sm }}>
             <IconButton icon="arrow-back" tone="glass" onPress={() => (router.canGoBack() ? router.back() : router.replace("/stores"))} />
             <View style={{ flex: 1 }} />
-            {!store.isSotechy && (
+            {(
               <Pressable
                 onPress={() => {
                   tap();

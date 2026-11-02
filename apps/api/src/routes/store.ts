@@ -102,7 +102,8 @@ const fromLiveSeller = sql`(${products.merchantId} is null or ${products.merchan
  */
 function baseFilters({ q, category, store }: { q?: string; category?: string; store?: string }) {
   const filters: (SQL | undefined)[] = [eq(products.isPublished, true), fromLiveSeller];
-  if (store === "sotechy") filters.push(isNull(products.merchantId));
+  // "sotechy": Sotechy's own store (the one selling with $SOTECHY), and any older catalogue products
+  if (store === "sotechy") filters.push(sql`(${products.merchantId} is null or ${products.merchantId} = (select m.id from merchants m where m.token_id = 1))`);
   else if (store) filters.push(sql`${products.merchantId} = (select m.id from merchants m where m.slug = ${store})`);
   if (q) {
     const term = `%${q}%`;
@@ -255,7 +256,9 @@ export const storeRoutes = new Hono()
         featuredUntil: m.featuredUntil,
         proUntil: m.proUntil,
         // A registered business (its documents checked by Sotechy) is an official store; freelancers aren't
-        isOfficial: sql<boolean>`${m.sellerKind} = 'registered'`,
+        isOfficial: sql<boolean>`(${m.sellerKind} = 'registered' or ${m.tokenId} = 1)`,
+        // Sotechy's own store: the one selling with $SOTECHY
+        isSotechy: sql<boolean>`coalesce(${m.tokenId} = 1, false)`,
         productCount: sql<number>`(select count(*)::int from products p where p.merchant_id = "merchants"."id" and p.is_published)`,
         ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
         ratingCount: sql<number>`(select count(*)::int from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
@@ -263,7 +266,8 @@ export const storeRoutes = new Hono()
       })
       .from(m)
       .where(eq(m.status, "approved"))
-      .orderBy(sql`(${m.featuredUntil} > now()) desc nulls last`, asc(m.name));
+      // Sotechy's own store first, then featured ones
+      .orderBy(sql`(${m.tokenId} = 1) desc nulls last`, sql`(${m.featuredUntil} > now()) desc nulls last`, asc(m.name));
     return c.json(rows);
   })
   .get("/stores/:slug", async (c) => {
@@ -282,7 +286,9 @@ export const storeRoutes = new Hono()
         featuredUntil: m.featuredUntil,
         proUntil: m.proUntil,
         // A registered business (its documents checked by Sotechy) is an official store; freelancers aren't
-        isOfficial: sql<boolean>`${m.sellerKind} = 'registered'`,
+        isOfficial: sql<boolean>`(${m.sellerKind} = 'registered' or ${m.tokenId} = 1)`,
+        // Sotechy's own store: the one selling with $SOTECHY
+        isSotechy: sql<boolean>`coalesce(${m.tokenId} = 1, false)`,
         branchId: branches.id,
         // The store's rating: every published review of its products
         ratingAverage: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from product_reviews r join products p on p.id = r.product_id where p.merchant_id = "merchants"."id" and r.is_published)`,
