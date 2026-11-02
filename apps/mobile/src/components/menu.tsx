@@ -1,13 +1,11 @@
-// Slide-out menu: quick links, categories that open into sub-menus, and the head office pinned at the bottom.
+// Slide-out menu: just the categories, each opening into its sections and kinds.
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "expo-image";
 import { router, type Href } from "expo-router";
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Easing,
   LayoutAnimation,
-  Linking,
   Modal,
   Platform,
   Pressable,
@@ -17,14 +15,12 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { anyCategory, directionsUrl, MARKET_DEPARTMENTS, type Category } from "@sotechy/shared";
+import { anyCategory, MARKET_DEPARTMENTS, type Category } from "@sotechy/shared";
 import { api } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 import { colors, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { MenuIcon } from "./tab-icons";
-import { ArtButton, Button, Divider, IconButton, productIcon, Txt, ui, type IconName } from "./ui";
-import { Illo, type IlloName } from "./illustrations";
+import { ArtButton, Divider, IconButton, productIcon, Txt, ui, type IconName } from "./ui";
 
 const MenuContext = createContext<{ open: () => void; close: () => void }>({ open: () => {}, close: () => {} });
 export const useMenu = () => useContext(MenuContext);
@@ -58,18 +54,6 @@ export function MenuButton() {
     <ArtButton label="Menu" onPress={open}>
       <MenuIcon size={28} />
     </ArtButton>
-  );
-}
-
-function QuickLink({ illo, label, onPress }: { illo: IlloName; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({ width: "48%", flexDirection: "row", alignItems: "center", gap: 10, padding: space.md, borderRadius: radius.md, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line })}
-    >
-      <Illo name={illo} size={26} />
-      <Txt variant="label">{label}</Txt>
-    </Pressable>
   );
 }
 
@@ -112,14 +96,10 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const panelWidth = Math.min(width * 0.88, 380);
-  const { user } = useAuth();
   const categories = useAsync(() => api.categories());
-  const config = useAsync(() => api.storeConfig());
   const [path, setPath] = useState<MenuNode[]>([]);
   const roots = categoryTree(categories.data ?? []);
   const here = path[path.length - 1];
-  const support = config.data?.support;
-  const headOffice = config.data?.branches[0];
 
   const go = (href: Href) => {
     onClose();
@@ -132,7 +112,6 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
   };
   const open = (n: MenuNode) => step([...path, n]);
   const back = () => step(path.slice(0, -1));
-
 
   return (
     <View style={{ flex: 1 }}>
@@ -157,37 +136,12 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
         <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top + space.md, paddingBottom: space.xl, paddingHorizontal: space.lg, gap: space.xl }}>
           {/* Header */}
           <View style={ui.between}>
-            <Image source={require("../../assets/brand/light-logo-small.png")} style={{ width: 104, height: 44 }} contentFit="contain" contentPosition="left" />
+            <Txt variant="title">All categories</Txt>
             <IconButton icon="close" onPress={onClose} />
           </View>
 
-          {/* Quick links */}
-          <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: space.sm }}>
-            <QuickLink illo="tag" label="Deals" onPress={() => go({ pathname: "/shop", params: { featured: "1" } })} />
-            <QuickLink illo="sparkle" label="New in" onPress={() => go({ pathname: "/shop", params: { sort: "newest" } })} />
-            <QuickLink illo="receipt" label="Track order" onPress={() => go("/orders")} />
-            <QuickLink illo="heart" label="Saved" onPress={() => go("/wishlist")} />
-            <QuickLink illo="store" label="Stores" onPress={() => go("/stores")} />
-            <QuickLink illo="coin" label="Wallet" onPress={() => go("/wallet")} />
-            <QuickLink illo="chat" label="Store news" onPress={() => go("/notifications")} />
-            <QuickLink illo="tag" label="My offers" onPress={() => go("/offers")} />
-          </View>
-
-          {/* Guests only: sign-in prompt */}
-          {!user && (
-            <Pressable onPress={() => go("/sign-in")} style={{ backgroundColor: colors.panel, borderRadius: radius.lg, padding: space.lg, flexDirection: "row", alignItems: "center", gap: space.md }}>
-              <Illo name="user" size={36} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <Txt variant="label" color={colors.white}>Sign in or create account</Txt>
-                <Txt variant="caption" color="#BDB3A8">Track orders and check out faster</Txt>
-              </View>
-              <Ionicons name="arrow-forward" size={18} color={colors.brandYellow} />
-            </Pressable>
-          )}
-
           {/* Categories: department → section → category, each opening the next */}
           <View style={{ gap: space.sm }}>
-            <Txt variant="overline" style={{ paddingHorizontal: 4 }}>All categories</Txt>
             <View style={[ui.card, { padding: 0, overflow: "hidden" }]}>
               {here && (
                 <>
@@ -227,40 +181,8 @@ function MenuDrawer({ anim, onClose }: { anim: Animated.Value; onClose: () => vo
             </View>
           </View>
 
-          <Pressable onPress={() => go("/support")} style={[ui.row, { justifyContent: "center" }]}>
-            <Ionicons name="help-circle-outline" size={16} color={colors.muted} />
-            <Txt variant="caption">Help, delivery & returns</Txt>
-          </Pressable>
         </ScrollView>
 
-        {/* Sotechy head office: stays in view while the categories scroll */}
-        <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: insets.bottom + space.md, gap: space.sm }}>
-          {headOffice && (
-            <Pressable
-              onPress={() => Linking.openURL(directionsUrl(`SoTechy, ${headOffice.address}, ${headOffice.city}, Nigeria`, headOffice.mapUrl))}
-              style={[ui.row, { gap: space.md }]}
-            >
-              <Image source={require("../../assets/brand/sotechy-office.jpg")} style={{ width: 44, height: 44, borderRadius: 12 }} contentFit="cover" contentPosition="top" />
-              <View style={{ flex: 1 }}>
-                <Txt variant="label">Sotechy head office</Txt>
-                <Txt variant="caption" numberOfLines={1}>{headOffice.address}, {headOffice.city}{headOffice.openingHours ? ` · ${headOffice.openingHours}` : ""}</Txt>
-              </View>
-              <Ionicons name="navigate-outline" size={16} color={colors.brandPressed} />
-            </Pressable>
-          )}
-          <View style={[ui.row, { gap: space.sm }]}>
-            <Button title="Live chat" icon="chatbubbles-outline" variant="outline" size="sm" style={{ flex: 1 }} onPress={() => go("/support?chat=1")} />
-            <Button
-              title="WhatsApp"
-              icon="logo-whatsapp"
-              variant="outline"
-              size="sm"
-              style={{ flex: 1 }}
-              disabled={!support?.whatsapp}
-              onPress={() => Linking.openURL(`https://wa.me/${support?.whatsapp?.replace(/[^\d]/g, "")}`)}
-            />
-          </View>
-        </View>
       </Animated.View>
     </View>
   );
