@@ -3,7 +3,10 @@
     "name": "Sotechy Shop",
     "slug": "sotechy-shop",
     "owner": "moversdigital",
-    "scheme": ["sotechy", "shop.sotechy.app"],
+    "scheme": [
+      "sotechy",
+      "shop.sotechy.app"
+    ],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,7 +22,10 @@
       "bundleIdentifier": "shop.sotechy.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": [
+        "applinks:app.sotechy.shop"
+      ]
     },
     "android": {
       "package": "shop.sotechy.app",
@@ -30,7 +36,29 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.sotechy.shop",
+              "pathPrefix": "/store"
+            },
+            {
+              "scheme": "https",
+              "host": "app.sotechy.shop",
+              "pathPrefix": "/product"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",

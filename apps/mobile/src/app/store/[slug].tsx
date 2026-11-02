@@ -20,6 +20,8 @@ import { useStoreNotifications } from "@/lib/store-notifications";
 import { fonts, gutter, radius, space } from "@/lib/theme";
 import { useGrid, useScreenWidth } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
+import { shareStore } from "@/lib/share";
+import { useToast } from "@/components/toast";
 
 type Tab = "products" | "about";
 
@@ -120,6 +122,7 @@ export default function StoreScreen() {
   const loaded = useAsync(() => loadStore(slug ?? ""), [slug]);
   // A store's socials are outside websites: ask before leaving the app
   const external = useExternalLink();
+  const toast = useToast();
   const [badgeOpen, setBadgeOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const width = useScreenWidth();
@@ -147,6 +150,10 @@ export default function StoreScreen() {
   const products = q ? store.products.filter((p) => p.name.toLowerCase().includes(q)) : store.products;
 
   const t = store.theme;
+  const share = async () => {
+    tap();
+    if ((await shareStore(store)) === "copied") toast("Store link copied");
+  };
   const following = subs.isSubscribed(store.slug);
   const favourite = subs.isFavourite(store.slug);
   const time = fastest(store);
@@ -191,6 +198,7 @@ export default function StoreScreen() {
                 setTab("products");
               }}
             />
+            <IconButton icon="share-social-outline" tone="glass" onPress={share} />
             <CartButton />
           </View>
           {/* Its socials at the bottom left (wrapping upwards before they reach the logo) */}

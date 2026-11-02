@@ -37,10 +37,29 @@ function send(res, file, status = 200) {
   createReadStream(file).pipe(res);
 }
 
+// Links like app.sotechy.shop/store/… open the installed app instead of the browser once Android and
+// iOS can check these. ANDROID_CERT_SHA256: the app's signing fingerprint(s), comma separated (Expo →
+// Credentials, and Play Console → App signing). APPLE_TEAM_ID: the Apple developer team ID.
+const APP_ID = "shop.sotechy.app";
+const LINK_PATHS = ["/store/*", "/product/*"];
+const sha256 = (process.env.ANDROID_CERT_SHA256 ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+const teamId = (process.env.APPLE_TEAM_ID ?? "").trim();
+const WELL_KNOWN = {
+  "/.well-known/assetlinks.json": sha256.length
+    ? [{ relation: ["delegate_permission/common.handle_all_urls"], target: { namespace: "android_app", package_name: APP_ID, sha256_cert_fingerprints: sha256 } }]
+    : null,
+  "/.well-known/apple-app-site-association": teamId ? { applinks: { details: [{ appIDs: [`${teamId}.${APP_ID}`], components: LINK_PATHS.map((p) => ({ "/": p })) }] } } : null,
+};
+
 createServer((req, res) => {
   if (req.url === "/health") {
     res.writeHead(200, { "Content-Type": "text/plain" });
     return res.end("ok");
+  }
+  const wellKnown = WELL_KNOWN[(req.url ?? "").split("?")[0]];
+  if (wellKnown !== undefined) {
+    res.writeHead(wellKnown ? 200 : 404, { "Content-Type": "application/json" });
+    return res.end(wellKnown ? JSON.stringify(wellKnown) : "{}");
   }
   const path = decodeURIComponent((req.url ?? "/").split("?")[0]);
   const file = normalize(join(root, path));

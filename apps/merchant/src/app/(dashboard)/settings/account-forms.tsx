@@ -27,7 +27,7 @@ export function StoreDetailsForm() {
         <Field label="Store name" required>
           <input name="name" required minLength={2} maxLength={60} defaultValue={store.name} className={inputClass} />
         </Field>
-        <Field label="Store username" hint={`Customers find your store at sotechy.shop/${store.slug}. Email support@sotechy.shop to change it.`}>
+        <Field label="Store username" hint={`Your store's link is app.sotechy.shop/store/${store.slug} (share it from Storefront). Email support@sotechy.shop to change it.`}>
           <div className="flex min-h-12 items-center rounded-2xl border border-line bg-surface-alt px-4 text-[15px] text-muted">
             @<span className="text-ink">{store.slug}</span>
           </div>
