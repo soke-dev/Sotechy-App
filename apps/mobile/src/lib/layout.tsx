@@ -33,11 +33,11 @@ export function useContentWidth() {
   return column ?? Math.min(width, 720);
 }
 
-/** Product grids: 2 across on phones, 3 to 5 on desktop, cards about 230 wide */
+/** Product grids: 2 across on phones, 3 to 6 on desktop, cards about 220 wide */
 export function useGrid(gap: number = space.md, padding: number = gutter) {
   const column = useContext(ColumnContext);
   const w = useContentWidth() - padding * 2;
-  const columns = column ? Math.min(5, Math.max(3, Math.floor((w + gap) / (230 + gap)))) : 2;
+  const columns = column ? Math.min(6, Math.max(3, Math.floor((w + gap) / (220 + gap)))) : 2;
   return { columns, cardWidth: (w - gap * (columns - 1)) / columns };
 }
 

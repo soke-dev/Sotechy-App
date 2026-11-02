@@ -13,6 +13,7 @@ import { api } from "@/lib/api";
 import { useCart } from "@/lib/cart";
 import { orderSteps, statusCopy } from "@/lib/orders";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { useOpenCart } from "@/components/cart-drawer";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { Illo, type IlloName } from "@/components/illustrations";
@@ -184,6 +185,7 @@ export default function OrderScreen() {
   const toast = useToast();
   const dialog = useDialog();
   const cart = useCart();
+  const openCart = useOpenCart();
 
   if (loading && !order) return <Loading />;
   if (error || !order) return <ErrorView message={error ?? "Order not found"} onRetry={reload} />;
@@ -308,7 +310,7 @@ export default function OrderScreen() {
     for (const i of order!.items) {
       cart.add({ variantId: i.variantId, productId: i.productId ?? i.variantId, productName: i.productName, variantName: i.variantName, unitPrice: i.unitPrice, imageUrl: i.imageUrl ?? null }, i.quantity);
     }
-    toast("Added to cart again", { action: { label: "View", onPress: () => router.push("/cart") } });
+    toast("Added to cart again", { action: { label: "View", onPress: openCart } });
   }
 
   return (

@@ -9,6 +9,11 @@ import { colors, gutter, radius, space } from "@/lib/theme";
 import { ProductImage } from "@/components/product-image";
 
 export default function CartScreen() {
+  return <CartView />;
+}
+
+/** The cart; `inDrawer` when it's in the desktop side panel (no screen title, shorter empty state) */
+export function CartView({ inDrawer = false }: { inDrawer?: boolean }) {
   const cart = useCart();
   const { user } = useAuth();
 
@@ -31,7 +36,7 @@ export default function CartScreen() {
   return (
     <View style={ui.screen}>
       {/* Cart opens from the header buttons now that Stores has its tab */}
-      <Stack.Screen options={{ title: `Cart (${cart.count})` }} />
+      {!inDrawer && <Stack.Screen options={{ title: `Cart (${cart.count})` }} />}
       <ScrollView contentContainerStyle={{ paddingHorizontal: gutter, paddingTop: space.sm, paddingBottom: several ? space.xxl : 120, gap: space.lg }}>
         {several && (
           <View style={{ flexDirection: "row", gap: space.sm, alignItems: "center", padding: space.md, borderRadius: radius.lg, backgroundColor: colors.brandSoft }}>

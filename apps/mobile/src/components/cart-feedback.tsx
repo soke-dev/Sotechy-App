@@ -1,12 +1,12 @@
 // "Added to cart" confirmation: a small sheet with the product, quantity and quick actions.
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Modal, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira } from "@sotechy/shared";
 import { useCart } from "@/lib/cart";
 import { colors, radius, space } from "@/lib/theme";
+import { useOpenCart } from "./cart-drawer";
 import { useSheetFrame } from "@/lib/layout";
 import { ProductImage } from "./product-image";
 import { Button, tap, Txt } from "./ui";
@@ -58,6 +58,7 @@ export function CartFeedbackProvider({ children }: { children: ReactNode }) {
 function AddedSheet({ item, onClose }: { item: AddedItem; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const { count, subtotal } = useCart();
+  const openCart = useOpenCart();
   const frame = useSheetFrame(460);
   return (
     <View style={[{ flex: 1, justifyContent: "flex-end" }, frame?.outer]}>
@@ -97,7 +98,7 @@ function AddedSheet({ item, onClose }: { item: AddedItem; onClose: () => void })
             variant="dark"
             onPress={() => {
               onClose();
-              router.push("/cart");
+              openCart();
             }}
             style={{ flex: 1 }}
           />

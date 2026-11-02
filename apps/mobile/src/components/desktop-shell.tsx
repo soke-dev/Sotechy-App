@@ -11,6 +11,7 @@ import { ColumnProvider, SIDEBAR_WIDTH, useIsDesktop } from "@/lib/layout";
 import { openPolicy } from "@/lib/policies";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import { useThemeMode } from "@/lib/theme-mode";
+import { useOpenCart } from "./cart-drawer";
 import { useMenu } from "./menu";
 import { AccountIcon, HomeIcon, MenuIcon, OrdersIcon, ShopIcon, StoresIcon } from "./tab-icons";
 import { Txt, type IconName } from "./ui";
@@ -18,7 +19,7 @@ import { UserAvatar } from "./user-avatar";
 
 /** Pages that read best narrower (forms, lists); the rest get the wide column */
 const NARROW = [/^\/(cart|checkout|sign-in|welcome|profile|security|addresses|support|wallet|wallet-activity|notifications|offers|account)$/, /^\/(order|offer|address)\//];
-const WIDE_MAX = 1200;
+const WIDE_MAX = 1680;
 const NARROW_MAX = 820;
 
 const TABS: { href: Href; label: string; Icon: ComponentType<{ active: boolean; size?: number }>; match: (p: string) => boolean }[] = [
@@ -63,6 +64,7 @@ function Sidebar() {
   const { user } = useAuth();
   const { count } = useCart();
   const menu = useMenu();
+  const openCart = useOpenCart();
   const { resolved, setTheme } = useThemeMode();
   const dark = resolved === "dark";
   const go = (href: Href) => router.push(href);
@@ -104,7 +106,7 @@ function Sidebar() {
             const active = pathname === y.path;
             const badge = y.path === "/cart" ? count : 0;
             return (
-              <NavRow key={y.label} label={y.label} active={active} onPress={() => go(y.href)}>
+              <NavRow key={y.label} label={y.label} active={active} onPress={() => (y.path === "/cart" ? openCart() : go(y.href))}>
                 <View style={{ width: 30, alignItems: "center" }}>
                   <Ionicons name={y.icon} size={20} color={active ? colors.brandPressed : colors.ink2} />
                 </View>

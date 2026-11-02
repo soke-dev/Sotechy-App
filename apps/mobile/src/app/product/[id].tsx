@@ -39,6 +39,7 @@ import { openPolicy } from "@/lib/policies";
 import { useCart } from "@/lib/cart";
 import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
+import { useOpenCart } from "@/components/cart-drawer";
 import { useIsDesktop, useScreenWidth } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
 import { loadStore } from "@/lib/marketplace";
@@ -464,6 +465,7 @@ export default function ProductScreen() {
   const [chatOpen, setChatOpen] = useState(false);
   const galleryRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const cart = useCart();
+  const openCart = useOpenCart();
   const addToCart = useAddToCart();
   const features = useFeatures();
   const showAdded = useCartFeedback();
@@ -611,7 +613,7 @@ export default function ProductScreen() {
             <IconButton icon="chevron-back" tone="glass" onPress={() => router.back()} />
             <View style={ui.row}>
               <IconButton icon={saved ? "heart" : "heart-outline"} color={saved ? colors.danger : colors.ink} tone="glass" onPress={toggleSaved} />
-              <IconButton icon="bag-handle-outline" tone="glass" badge={cart.count} onPress={() => router.push("/cart")} />
+              <IconButton icon="bag-handle-outline" tone="glass" badge={cart.count} onPress={openCart} />
             </View>
           </View>
         </View>

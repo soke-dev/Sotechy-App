@@ -3,6 +3,7 @@
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import { GOOGLE_CLIENT_IDS, GoogleButtonView, type GoogleButtonProps } from "./google-button";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -12,6 +13,7 @@ export function GoogleAuthButton({ onIdToken, onError, busy }: GoogleButtonProps
     iosClientId: GOOGLE_CLIENT_IDS.ios,
     androidClientId: GOOGLE_CLIENT_IDS.android,
     webClientId: GOOGLE_CLIENT_IDS.web,
+    ...(Platform.OS === "web" && typeof window !== "undefined" ? { redirectUri: `${window.location.origin}/sign-in` } : null),
     selectAccount: true,
   });
 

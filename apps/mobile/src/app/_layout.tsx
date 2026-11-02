@@ -9,6 +9,7 @@ import { router, Stack, usePathname, type Href } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { AnimatedSplash } from "@/components/animated-splash";
 import { DesktopShell } from "@/components/desktop-shell";
+import { CartDrawerProvider } from "@/components/cart-drawer";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
@@ -117,6 +118,7 @@ export default function RootLayout() {
             <AuthProvider>
               <PulseProvider>
               <CartProvider>
+              <CartDrawerProvider>
                 <ToastProvider>
                   <CartFeedbackProvider>
                     <DialogProvider>
@@ -132,6 +134,7 @@ export default function RootLayout() {
                     </DialogProvider>
                   </CartFeedbackProvider>
                 </ToastProvider>
+              </CartDrawerProvider>
               </CartProvider>
               </PulseProvider>
             </AuthProvider>

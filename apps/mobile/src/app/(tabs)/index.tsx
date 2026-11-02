@@ -139,6 +139,7 @@ export default function HomeScreen() {
   const contentWidth = width - gutter * 2;
   // Desktop: the sidebar has the menu and logo, and banners sit two across
   const desktop = useIsDesktop();
+  const banners = contentWidth >= 1400 ? 3 : 2;
 
   const { data, error, loading, reload } = useAsync(async () => {
     const [config, categories, products] = await Promise.all([api.storeConfig(), api.categories(), api.products({ sort: "newest" })]);
@@ -247,6 +248,42 @@ export default function HomeScreen() {
           </View>
         ) : null}
         <HomeSearch />
+        {desktop ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
+            {(
+              [
+                { icon: "storefront", label: "Explore stores", onPress: () => router.push("/stores"), dark: true },
+                { icon: "bag-handle", label: "Shop all", onPress: () => shop({}) },
+                { icon: "pricetag", label: "Deals", onPress: () => shop({ featured: "1" }) },
+                { icon: "sparkles", label: "New in", onPress: () => shop({ sort: "newest" }) },
+                { icon: "cube", label: "Track order", onPress: () => router.push("/orders") },
+                { icon: "wallet", label: "Wallet", onPress: () => router.push("/wallet") },
+                { icon: "chatbubbles", label: "My offers", onPress: () => router.push("/offers") },
+                { icon: "heart", label: "Saved", onPress: () => router.push("/wishlist") },
+                { icon: "help-buoy", label: "Help", onPress: () => router.push("/support") },
+              ] as { icon: IconName; label: string; onPress: () => void; dark?: boolean }[]
+            ).map((b) => (
+              <Pressable
+                key={b.label}
+                onPress={b.onPress}
+                style={({ pressed }) => ({
+                  height: 44,
+                  paddingHorizontal: 16,
+                  borderRadius: radius.pill,
+                  backgroundColor: b.dark ? (pressed ? colors.panelPressed : colors.panel) : pressed ? colors.surfaceAlt : colors.surface,
+                  borderWidth: b.dark ? 0 : 1,
+                  borderColor: colors.line,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 7,
+                })}
+              >
+                <Ionicons name={b.icon} size={16} color={b.dark ? colors.brand : colors.brandPressed} />
+                <Txt variant="label" color={b.dark ? colors.white : colors.ink} style={{ fontSize: 13.5 }}>{b.label}</Txt>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : (
         <View style={[ui.row, { gap: space.sm }]}>
           <Pressable
               onPress={() => router.push("/stores")}
@@ -280,9 +317,10 @@ export default function HomeScreen() {
             </Pressable>
           ))}
         </View>
+        )}
       </View>
 
-      <HeroCarousel width={desktop ? (contentWidth - space.md) / 2 : contentWidth} />
+      <HeroCarousel width={desktop ? (contentWidth - space.md * (banners - 1)) / banners : contentWidth} />
 
       {/* Categories */}
       <View>

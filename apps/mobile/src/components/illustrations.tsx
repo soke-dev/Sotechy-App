@@ -1,5 +1,6 @@
 // Illustrated icon set in the same style as the tab bar: soft two-tone fills in Sotechy colours.
 // Use for feature spots (menus, lists, empty states). Keep plain line icons for small UI glyphs.
+import { Platform, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { AccountIcon, CartIcon, HomeIcon, OrdersIcon, ShopIcon } from "./tab-icons";
 
@@ -232,5 +233,6 @@ export type IlloName = keyof typeof ILLUSTRATIONS;
 
 export function Illo({ name, size = 40 }: { name: IlloName; size?: number }) {
   const Art = ILLUSTRATIONS[name];
+  if (Platform.OS === "web") return <View><Art size={size} /></View>;
   return <Art size={size} />;
 }

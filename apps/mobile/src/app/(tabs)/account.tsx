@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { useAuth } from "@/lib/auth";
 import { openPolicy } from "@/lib/policies";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { useOpenCart } from "@/components/cart-drawer";
 import { useThemeMode } from "@/lib/theme-mode";
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
@@ -74,6 +75,7 @@ function DarkModeRow() {
 }
 
 export default function AccountScreen() {
+  const openCart = useOpenCart();
   const { user, signOut } = useAuth();
   const tabInset = useTabBarInset();
   const dialog = useDialog();
@@ -129,7 +131,7 @@ export default function AccountScreen() {
           <Divider style={{ marginLeft: 62 }} />
           <ListRow illo="heart" title="Saved items" onPress={() => router.push("/wishlist")} />
           <Divider style={{ marginLeft: 62 }} />
-          <ListRow illo="cart" title="Cart" onPress={() => router.push("/cart")} />
+          <ListRow illo="cart" title="Cart" onPress={openCart} />
         </Group>
 
         <Group title="Stores and tokens">

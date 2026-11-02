@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { orderSteps } from "@/lib/orders";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { useOpenCart } from "@/components/cart-drawer";
 import { useAsync } from "@/lib/use-async";
 import { ProductImage } from "@/components/product-image";
 
@@ -53,6 +54,7 @@ function MiniProgress({ order }: { order: OrderSummary }) {
 
 function OrderCard({ order }: { order: OrderSummary }) {
   const cart = useCart();
+  const openCart = useOpenCart();
   const toast = useToast();
   const open = () => router.push({ pathname: "/order/[id]", params: { id: order.id } });
   const toPay = order.status === "pending_payment";
@@ -65,7 +67,7 @@ function OrderCard({ order }: { order: OrderSummary }) {
     for (const i of order.items) {
       cart.add({ variantId: i.variantId, productId: i.productId ?? i.variantId, productName: i.productName, variantName: i.variantName, unitPrice: i.unitPrice, imageUrl: i.imageUrl ?? null }, i.quantity);
     }
-    toast("Added to cart again", { action: { label: "View", onPress: () => router.push("/cart") } });
+    toast("Added to cart again", { action: { label: "View", onPress: openCart } });
   };
 
   return (

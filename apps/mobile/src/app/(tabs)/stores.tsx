@@ -9,11 +9,14 @@ import { useTabBarInset } from "@/components/tab-bar";
 import { Chip, EmptyState, ErrorView, Input, Loading, ScreenHeader, Txt, ui } from "@/components/ui";
 import { byFeatured, SOTECHY_STORE, useStores } from "@/lib/marketplace";
 import { colors, gutter, radius, space } from "@/lib/theme";
+import { useContentWidth, useIsDesktop } from "@/lib/layout";
 
 // Sotechy sells gadgets and appliances, so it shows under these store types
 const SOTECHY_KINDS = /phone|computer|gadget|tv|gaming|power|appliance|kitchen/i;
 
 export default function StoresScreen() {
+  const desktop = useIsDesktop();
+  const contentWidth = useContentWidth();
   const tabInset = useTabBarInset();
   const [q, setQ] = useState("");
   const params = useLocalSearchParams<{ kind?: string }>();
@@ -69,9 +72,14 @@ export default function StoresScreen() {
             <Txt variant="overline">
               {shown.length} store{shown.length === 1 ? "" : "s"}
             </Txt>
-            {shown.map((s) => (
-              <StoreRow key={s.slug} store={s} />
-            ))}
+            {/* Two across on desktop */}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.md }}>
+              {shown.map((s) => (
+                <View key={s.slug} style={{ width: desktop ? (contentWidth - gutter * 2 - space.md) / 2 : "100%" }}>
+                  <StoreRow store={s} />
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
