@@ -82,7 +82,17 @@ export async function duplicateProduct(id: string): Promise<Result<MerchantProdu
 }
 
 export async function productActions(ids: string[], action: "live" | "hidden" | "out_of_stock" | "delete"): Promise<Result<{ done: number; deleted: number; archived: number }>> {
-  return attempt(() => api.productActions(ids, action), ["/products", "/"]);
+  // The API takes up to 200 at a time, so a bigger selection goes in batches
+  return attempt(async () => {
+    const total = { done: 0, deleted: 0, archived: 0 };
+    for (let i = 0; i < ids.length; i += 200) {
+      const r = await api.productActions(ids.slice(i, i + 200), action);
+      total.done += r.done;
+      total.deleted += r.deleted;
+      total.archived += r.archived;
+    }
+    return total;
+  }, ["/products", "/"]);
 }
 
 export async function saveZone(id: string | null, input: DeliveryZoneInput): Promise<Result<DeliveryZone>> {

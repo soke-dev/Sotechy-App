@@ -51,6 +51,25 @@ export class ApiError extends Error {
   }
 }
 
+/** The readable message in an error reply: a plain string, or the first problems of a validation error */
+function errorText(body: { error?: unknown } | null): string | undefined {
+  const e = body?.error;
+  if (typeof e === "string") return e;
+  if (!e || typeof e !== "object") return undefined;
+  const fromIssues = (issues: unknown) =>
+    Array.isArray(issues) && issues.length ? issues.map((i: { message?: string; path?: unknown[] }) => i?.message ?? "").filter(Boolean).slice(0, 3).join(", ") : undefined;
+  const err = e as { issues?: unknown; message?: unknown };
+  if (err.issues) return fromIssues(err.issues);
+  if (typeof err.message === "string") {
+    try {
+      return fromIssues(JSON.parse(err.message)) ?? err.message;
+    } catch {
+      return err.message;
+    }
+  }
+  return "Something in that request isn't right";
+}
+
 export interface ApiClientOptions {
   baseUrl: string;
   getToken?: () => string | null | undefined | Promise<string | null | undefined>;
@@ -83,7 +102,7 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     }
     const body = res.status === 204 ? null : await res.json().catch(() => null);
     if (!res.ok) {
-      throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`, body?.details);
+      throw new ApiError(res.status, errorText(body) ?? `Request failed (${res.status})`, body?.details);
     }
     return body as T;
   }
