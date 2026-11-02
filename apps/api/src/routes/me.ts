@@ -293,23 +293,27 @@ export const meRoutes = new Hono<AppEnv>()
     const [inviter] = me?.referredById
       ? await db.select({ id: u.id, username: u.username, fullName: u.fullName, avatarStyle: u.avatarStyle }).from(u).where(eq(u.id, me.referredById))
       : [];
-    const o = schema.orders;
     const people = await db
-      .select({
-        id: u.id,
-        username: u.username,
-        fullName: u.fullName,
-        avatarStyle: u.avatarStyle,
-        joinedAt: u.createdAt,
-        hasShopped: sql<boolean>`exists (select 1 from ${o} where ${o.customerId} = ${u.id} and ${o.status} in ('paid','processing','ready_for_pickup','dispatched','delivered'))`,
-        hasStore: sql<boolean>`exists (select 1 from ${schema.merchants} where ${schema.merchants.ownerId} = ${u.id})`,
-      })
+      .select({ id: u.id, username: u.username, fullName: u.fullName, avatarStyle: u.avatarStyle, joinedAt: u.createdAt })
       .from(u)
       .where(eq(u.referredById, c.get("user").id))
       .orderBy(desc(u.createdAt))
       .limit(200);
+    const ids = people.map((p) => p.id);
+    const o = schema.orders;
+    const [shoppers, owners] = ids.length
+      ? await Promise.all([
+          db
+            .selectDistinct({ id: o.customerId })
+            .from(o)
+            .where(and(inArray(o.customerId, ids), inArray(o.status, ["paid", "processing", "ready_for_pickup", "dispatched", "delivered"]))),
+          db.select({ id: schema.merchants.ownerId }).from(schema.merchants).where(inArray(schema.merchants.ownerId, ids)),
+        ])
+      : [[], []];
+    const shopped = new Set(shoppers.map((r) => r.id));
+    const hasStore = new Set(owners.map((r) => r.id));
     // First names only: the people you invited see your @username, you see theirs
-    const shown = people.map((p) => ({ ...p, fullName: p.fullName?.trim().split(/\s+/)[0] ?? null }));
+    const shown = people.map((p) => ({ ...p, fullName: p.fullName?.trim().split(/\s+/)[0] ?? null, hasShopped: shopped.has(p.id), hasStore: hasStore.has(p.id) }));
     return c.json({
       code: me?.username ?? null,
       invitedBy: inviter ? { ...inviter, fullName: inviter.fullName?.trim().split(/\s+/)[0] ?? null } : null,

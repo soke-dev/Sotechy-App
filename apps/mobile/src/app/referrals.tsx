@@ -159,7 +159,7 @@ export default function ReferralsScreen() {
               >
                 <View style={{ flex: 1 }}>
                   <Txt variant="caption" color="#BDB3A8">Your referral code</Txt>
-                  <Txt numberOfLines={1} style={{ fontFamily: fonts.display, fontSize: 24, color: colors.white }}>@{code}</Txt>
+                  <Txt numberOfLines={1} style={{ fontFamily: fonts.display, fontSize: 24, lineHeight: 31, marginTop: 2, color: colors.white }}>@{code}</Txt>
                 </View>
                 <Ionicons name="copy-outline" size={20} color={colors.white} />
               </Pressable>

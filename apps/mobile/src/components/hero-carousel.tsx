@@ -43,7 +43,7 @@ interface Slide {
   /** An image-only banner: the picture fills it, with optional words and button over it */
   cover?: ImageSource;
   /** Drawn by its own design instead of the shared layout */
-  design?: "earn" | "pay" | "delivery";
+  design?: "earn" | "pay" | "delivery" | "stores";
   /** Small chips above the button (drawn designs) */
   chips?: string[];
 }
@@ -149,6 +149,68 @@ const shopSlides: Slide[] = [
   },
 ];
 
+/** A star with five points, centred on x,y */
+const star = (x: number, y: number, r: number) =>
+  Array.from({ length: 10 }, (_, i) => {
+    const a = (Math.PI / 5) * i - Math.PI / 2;
+    const d = i % 2 ? r * 0.45 : r;
+    return `${i ? "L" : "M"}${x + Math.cos(a) * d} ${y + Math.sin(a) * d}`;
+  }).join(" ") + " Z";
+
+/** A storefront under a striped awning, with Sotechy's verified badge and a five-star rating */
+function StoresArt({ cx, cy, u }: { cx: number; cy: number; u: number }) {
+  const left = cx - 30 * u;
+  const w = 52 * u;
+  const top = cy - 14 * u;
+  const stripes = 6;
+  const sw = w / stripes;
+  const bx = cx + 22 * u;
+  const by = cy + 20 * u;
+  const shield = (k: number) =>
+    `M${bx} ${by - 15 * k * u} L${bx + 13 * k * u} ${by - 10 * k * u} L${bx + 13 * k * u} ${by + 1 * k * u} C${bx + 13 * k * u} ${by + 9.5 * k * u} ${bx + 7 * k * u} ${by + 14 * k * u} ${bx} ${by + 17 * k * u} C${bx - 7 * k * u} ${by + 14 * k * u} ${bx - 13 * k * u} ${by + 9.5 * k * u} ${bx - 13 * k * u} ${by + 1 * k * u} L${bx - 13 * k * u} ${by - 10 * k * u} Z`;
+  return (
+    <>
+      <Circle cx={cx} cy={cy} r={47 * u} fill={colors.brand} opacity={0.16} />
+      <Circle cx={cx} cy={cy} r={35 * u} fill={colors.brand} opacity={0.14} />
+      {/* rating above the shop */}
+      {[-2, -1, 0, 1, 2].map((i) => (
+        <Path key={i} d={star(cx - 4 * u + i * 9 * u, cy - 37 * u + Math.abs(i) * 1.6 * u, 4.2 * u)} fill={colors.brandYellow} />
+      ))}
+      {/* shadow, then the building */}
+      <Rect x={left + 3 * u} y={top + 3 * u} width={w} height={44 * u} rx={4 * u} fill="#000" opacity={0.25} />
+      <Rect x={left} y={top} width={w} height={44 * u} rx={4 * u} fill="#FFF6E8" />
+      {/* window with products on a shelf */}
+      <Rect x={left + 5 * u} y={top + 14 * u} width={22 * u} height={17 * u} rx={2.5 * u} fill="#5CB8F2" />
+      <Rect x={left + 5 * u} y={top + 26 * u} width={22 * u} height={2 * u} fill="#3A8CC4" />
+      <Rect x={left + 8 * u} y={top + 18 * u} width={6 * u} height={8 * u} rx={1.2 * u} fill={colors.brand} />
+      <Rect x={left + 16 * u} y={top + 20.5 * u} width={8 * u} height={5.5 * u} rx={1.2 * u} fill={colors.brandYellow} />
+      {/* door */}
+      <Rect x={left + 32 * u} y={top + 14 * u} width={15 * u} height={30 * u} rx={2.5 * u} fill={colors.brand} />
+      <Rect x={left + 34.5 * u} y={top + 17 * u} width={10 * u} height={11 * u} rx={1.5 * u} fill="#FFE3B3" opacity={0.85} />
+      <Circle cx={left + 44 * u} cy={top + 32 * u} r={1.3 * u} fill="#FFF6E8" />
+      {/* awning: stripes with a scalloped edge */}
+      <Rect x={left - 3 * u} y={top - 9 * u} width={w + 6 * u} height={5 * u} rx={2 * u} fill={colors.ink} />
+      {Array.from({ length: stripes }, (_, i) => {
+        const x = left + i * sw;
+        const fill = i % 2 ? colors.white : colors.brand;
+        return (
+          <G key={i}>
+            <Rect x={x} y={top - 5 * u} width={sw} height={9 * u} fill={fill} />
+            <Path d={`M${x} ${top + 4 * u} A${sw / 2} ${sw / 2.4} 0 0 0 ${x + sw} ${top + 4 * u} Z`} fill={fill} />
+          </G>
+        );
+      })}
+      {/* verified badge */}
+      <Circle cx={bx} cy={by + 1 * u} r={19 * u} fill={colors.brand} opacity={0.25} />
+      <Path d={shield(1.12)} fill="#17120E" />
+      <Path d={shield(1)} fill={colors.success} />
+      <Path d={`M${bx - 6 * u} ${by + 1 * u} L${bx - 1.5 * u} ${by + 5.5 * u} L${bx + 6.5 * u} ${by - 4 * u}`} stroke={colors.white} strokeWidth={3.4 * u} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <Path d={sparkle(cx - 42 * u, cy + 4 * u, 3.6 * u)} fill={colors.brandYellow} />
+      <Path d={sparkle(cx + 38 * u, cy - 18 * u, 2.8 * u)} fill={colors.white} opacity={0.75} />
+    </>
+  );
+}
+
 /** A phone paying in naira, a bank card, a stablecoin and a token */
 function PayArt({ cx, cy, u }: { cx: number; cy: number; u: number }) {
   return (
@@ -219,9 +281,11 @@ function DrawnBanner({ s, width, height }: { s: Slide; width: number; height: nu
   const dark = s.fg === colors.white;
   return (
     <View style={{ flex: 1, backgroundColor: s.bg }}>
+      {s.design === "stores" && <LinearGradient colors={["rgba(247,147,30,0)", "rgba(247,147,30,0.26)"]} start={{ x: 0.3, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />}
       {s.design === "delivery" && <LinearGradient colors={["rgba(247,147,30,0)", "rgba(247,147,30,0.22)"]} start={{ x: 0.2, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />}
       <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }} pointerEvents="none">
         {s.design === "pay" && <PayArt cx={cx} cy={cy} u={u} />}
+        {s.design === "stores" && <StoresArt cx={cx} cy={cy} u={u} />}
         {s.design === "delivery" && <DeliveryArt cx={cx} cy={cy} u={u} />}
       </Svg>
       <View style={{ flex: 1, width: "60%", paddingHorizontal: space.xl, paddingVertical: space.lg, justifyContent: "space-between" }}>
@@ -362,7 +426,10 @@ function fromAdmin(b: AdminBanner): Slide {
     action,
     ...(b.layout === "image" && b.imageUrl
       ? { cover: { uri: b.imageUrl }, outlined: false }
-      : { art: b.imageUrl ? [{ source: { uri: b.imageUrl }, w: 0.5, h: 0.7, right: 0.02, bottom: 0.1 }] : undefined }),
+      : !b.imageUrl && b.linkType === "stores"
+        ? // No picture: the stores banner draws a verified shop instead of an empty circle
+          { design: "stores" as const, chips: ["Genuine products", "Real reviews"] }
+        : { art: b.imageUrl ? [{ source: { uri: b.imageUrl }, w: 0.5, h: 0.7, right: 0.02, bottom: 0.1 }] : undefined }),
   };
 }
 
