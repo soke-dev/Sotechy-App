@@ -135,8 +135,16 @@ export default function WalletScreen() {
         }}
       />
       <ScrollView contentContainerStyle={{ padding: gutter, paddingBottom: space.xxl * 2, gap: space.lg }} refreshControl={<RefreshControl refreshing={loading && !!data} onRefresh={reload} />}>
-        {!data && loading && <ActivityIndicator color={colors.ink} style={{ marginTop: space.xl }} />}
-        {error && <Txt variant="small" color={colors.danger}>{error}</Txt>}
+        {/* Nothing but the spinner until the wallet has loaded, so it never flashes a 0 balance */}
+        {!data && !error && <ActivityIndicator color={colors.ink} style={{ marginTop: space.xxl }} />}
+        {!data && error && (
+          <View style={{ alignItems: "center", gap: space.md, marginTop: space.xxl }}>
+            <Txt variant="small" color={colors.danger} style={{ textAlign: "center" }}>{error}</Txt>
+            <Button title="Try again" variant="outline" size="sm" onPress={reload} />
+          </View>
+        )}
+        {data && (
+        <>
         {/* Balance */}
         <View style={{ gap: 2, paddingTop: space.sm }}>
           <Txt variant="small">Your tokens</Txt>
@@ -224,6 +232,8 @@ export default function WalletScreen() {
         <Txt variant="caption" style={{ textAlign: "center" }}>
           You earn 1 token per ₦1 at each store when your order is delivered, plus 10% in $SOTECHY at other stores and a bonus for reviews. Spend them at checkout. Every token and receipt is recorded on the blockchain.
         </Txt>
+        </>
+        )}
       </ScrollView>
 
       <Sheet
