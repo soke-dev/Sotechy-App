@@ -2,8 +2,7 @@ import { useStoreNotifications } from "@/lib/store-notifications";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as WebBrowser from "expo-web-browser";
-import { Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { CartButton } from "@/components/cart-button";
 import { Illo } from "@/components/illustrations";
 import { StoreRow } from "@/components/store-bits";
@@ -15,7 +14,8 @@ import { useContentWidth, useIsDesktop } from "@/lib/layout";
 
 /** Where stores sign up and run their shop */
 const MERCHANT_SITE = "https://merchant.sotechy.shop";
-const openMerchantSite = () => WebBrowser.openBrowserAsync(MERCHANT_SITE, { controlsColor: colors.brand }).catch(() => null);
+// In the phone's own browser (a new tab on the web), outside the app
+const openMerchantSite = () => Linking.openURL(MERCHANT_SITE).catch(() => null);
 
 /** "Sell on Sotechy" at the top of Stores, so it's there however many stores there are */
 function SellButton() {
