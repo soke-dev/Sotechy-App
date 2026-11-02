@@ -111,9 +111,10 @@ export default function ReferralsScreen() {
       </View>
     );
   }
-  if (data.loading && !data.data) return <Loading />;
   if (data.error && !data.data) return <ErrorView message={data.error} onRetry={data.reload} />;
-  const r = data.data!;
+  // Also while the account is still loading (opened straight from a link), before its first fetch
+  if (!data.data) return <Loading />;
+  const r = data.data;
   const code = r.code;
 
   async function copy(value: string, what: string) {
@@ -139,15 +140,15 @@ export default function ReferralsScreen() {
       >
         {/* Your code and link */}
         <View style={{ backgroundColor: colors.panel, borderRadius: radius.xl, padding: space.xl, gap: space.md, overflow: "hidden" }}>
-          <View style={{ position: "absolute", right: -18, top: -14, opacity: 0.9 }}>
+          <View style={{ position: "absolute", right: space.md, top: space.md }}>
             <View style={{ position: "absolute" }}>
-              <Burst size={130} />
+              <Burst size={92} />
             </View>
-            <View style={{ width: 130, height: 130, alignItems: "center", justifyContent: "center" }}>
-              <Illo name="gift" size={64} />
+            <View style={{ width: 92, height: 92, alignItems: "center", justifyContent: "center" }}>
+              <Illo name="gift" size={50} />
             </View>
           </View>
-          <View style={{ gap: 4, marginRight: 96 }}>
+          <View style={{ gap: 4, marginRight: 100 }}>
             <Txt variant="title" color={colors.white}>Invite friends</Txt>
             <Txt variant="small" color="#BDB3A8">Share your code. Friends who sign up with it show here, and you can see who has started shopping.</Txt>
           </View>
@@ -164,7 +165,7 @@ export default function ReferralsScreen() {
                 <Ionicons name="copy-outline" size={20} color={colors.white} />
               </Pressable>
               <View style={{ flexDirection: "row", gap: space.sm }}>
-                <Button title="Share invite" icon="share-social-outline" onPress={share} style={{ flex: 1 }} />
+                <Button title="Share" icon="share-social-outline" onPress={share} style={{ flex: 1 }} />
                 <Button title="Copy link" icon="link-outline" variant="outline" onPress={() => copy(inviteLink(code), "Invite link")} style={{ flex: 1, backgroundColor: colors.white }} />
               </View>
             </>
