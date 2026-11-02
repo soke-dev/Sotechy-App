@@ -43,7 +43,7 @@ interface Slide {
   /** An image-only banner: the picture fills it, with optional words and button over it */
   cover?: ImageSource;
   /** Drawn by its own design instead of the shared layout */
-  design?: "earn" | "trust" | "pay" | "delivery";
+  design?: "earn" | "pay" | "delivery";
   /** Small chips above the button (drawn designs) */
   chips?: string[];
 }
@@ -120,20 +120,8 @@ function EarnBanner({ s, width, height }: { s: Slide; width: number; height: num
   );
 }
 
-// Always shown after Sotechy's banners: what shopping on Sotechy is like, drawn (no photos needed)
+// Always shown with Sotechy's banners (Pay your way second): what shopping on Sotechy is like, drawn (no photos needed)
 const shopSlides: Slide[] = [
-  {
-    bg: colors.brand,
-    fg: colors.ink,
-    accent: colors.ink,
-    overline: "Verified stores",
-    title: "Shop you\ncan trust",
-    subtitle: "Genuine products from stores Sotechy has checked.",
-    cta: "Browse stores",
-    circle: colors.white,
-    action: "/stores",
-    design: "trust",
-  },
   {
     bg: colors.brandSoft,
     fg: colors.ink,
@@ -160,29 +148,6 @@ const shopSlides: Slide[] = [
     design: "delivery",
   },
 ];
-
-/** A shield with a tick, sparkles and three stars: verified, genuine */
-function TrustArt({ cx, cy, u }: { cx: number; cy: number; u: number }) {
-  const shield = (k: number) =>
-    `M${cx} ${cy - 27 * u * k} L${cx + 23 * u * k} ${cy - 18 * u * k} L${cx + 23 * u * k} ${cy + 2 * u * k} C${cx + 23 * u * k} ${cy + 17 * u * k} ${cx + 12 * u * k} ${cy + 25 * u * k} ${cx} ${cy + 30 * u * k} C${cx - 12 * u * k} ${cy + 25 * u * k} ${cx - 23 * u * k} ${cy + 17 * u * k} ${cx - 23 * u * k} ${cy + 2 * u * k} L${cx - 23 * u * k} ${cy - 18 * u * k} Z`;
-  return (
-    <>
-      <Circle cx={cx} cy={cy} r={46 * u} fill={colors.white} opacity={0.16} />
-      <Circle cx={cx} cy={cy} r={34 * u} fill={colors.white} opacity={0.18} />
-      <G transform={`translate(${3 * u} ${4 * u})`}>
-        <Path d={shield(1)} fill="#C96A05" opacity={0.45} />
-      </G>
-      <Path d={shield(1)} fill={colors.white} />
-      <Path d={shield(0.78)} fill="#FFE9C7" />
-      <Path d={`M${cx - 10 * u} ${cy + 1 * u} L${cx - 2.5 * u} ${cy + 8.5 * u} L${cx + 11 * u} ${cy - 7 * u}`} stroke={colors.brand} strokeWidth={5.2 * u} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      {[-1, 0, 1].map((i) => (
-        <Path key={i} d={sparkle(cx + i * 11 * u, cy - 39 * u + Math.abs(i) * 4 * u, (i ? 3.4 : 4.4) * u)} fill={colors.ink} opacity={0.85} />
-      ))}
-      <Path d={sparkle(cx + 33 * u, cy + 18 * u, 4 * u)} fill={colors.white} />
-      <Path d={sparkle(cx - 34 * u, cy - 12 * u, 3 * u)} fill={colors.white} opacity={0.8} />
-    </>
-  );
-}
 
 /** A phone paying in naira, a bank card, a stablecoin and a token */
 function PayArt({ cx, cy, u }: { cx: number; cy: number; u: number }) {
@@ -254,10 +219,8 @@ function DrawnBanner({ s, width, height }: { s: Slide; width: number; height: nu
   const dark = s.fg === colors.white;
   return (
     <View style={{ flex: 1, backgroundColor: s.bg }}>
-      {s.design === "trust" && <LinearGradient colors={["#F7931E", "#E2741A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />}
       {s.design === "delivery" && <LinearGradient colors={["rgba(247,147,30,0)", "rgba(247,147,30,0.22)"]} start={{ x: 0.2, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />}
       <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }} pointerEvents="none">
-        {s.design === "trust" && <TrustArt cx={cx} cy={cy} u={u} />}
         {s.design === "pay" && <PayArt cx={cx} cy={cy} u={u} />}
         {s.design === "delivery" && <DeliveryArt cx={cx} cy={cy} u={u} />}
       </Svg>
@@ -415,7 +378,10 @@ export function HeroCarousel({ width }: { width: number }) {
   const adminBanners = useStoreConfig().config?.banners;
   const { earnBanner } = useFeatures();
   // Earn first (while it's switched on), then Sotechy's banners from admin, then the drawn shop slides
-  const slides = [...(earnBanner ? [earnSlide] : []), ...(adminBanners ?? []).map(fromAdmin), ...shopSlides];
+  // "Pay your way" always comes second, after the first banner
+  const [pay, ...rest] = shopSlides;
+  const lead = [...(earnBanner ? [earnSlide] : []), ...(adminBanners ?? []).map(fromAdmin), ...rest];
+  const slides = [...lead.slice(0, 1), pay, ...lead.slice(1)];
 
   // Auto-advance; pauses for a while after the user swipes.
   useEffect(() => {
