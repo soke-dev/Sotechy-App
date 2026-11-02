@@ -78,12 +78,6 @@ function ActivitySheet({ item, visible, onClose }: { item: WalletActivity | null
               {formatTokens(Math.abs(e.amount))} <Text style={{ fontSize: 20 }}>${e.ticker}</Text>
             </Text>
             <Txt variant="label" style={{ textAlign: "center" }}>{k.title(e)}</Txt>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: e.txUrl ? colors.successSoft : colors.surfaceAlt }}>
-              <Ionicons name={e.txUrl ? "checkmark-circle" : "time-outline"} size={14} color={e.txUrl ? colors.success : colors.ink2} />
-              <Txt variant="caption" color={e.txUrl ? colors.success : colors.ink2} style={{ fontFamily: fonts.semibold }}>
-                {e.txUrl ? "Recorded on the blockchain" : "Being recorded, usually within minutes"}
-              </Txt>
-            </View>
           </View>
           <View style={{ borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: space.md, paddingVertical: space.xs }}>
             <Row label="What" value={k.what} />

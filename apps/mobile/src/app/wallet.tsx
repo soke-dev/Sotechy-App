@@ -415,9 +415,6 @@ export default function WalletScreen() {
                 ) : null}
               </View>
             </View>
-            <Txt variant="caption">
-              ${token.ticker} is recorded on the blockchain, so anyone can check how many exist and who holds them. It&apos;s store credit: it can&apos;t be withdrawn or traded.
-            </Txt>
           </>
         )}
       </Sheet>
