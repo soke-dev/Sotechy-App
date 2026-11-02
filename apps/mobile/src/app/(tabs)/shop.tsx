@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { anyCategory, MARKET_DEPARTMENTS } from "@sotechy/shared";
 import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { CartButton } from "@/components/cart-button";
-import { MenuButton } from "@/components/menu";
+import { useMenu } from "@/components/menu";
 import { ProductCard } from "@/components/product-card";
 import { RecentSearches, useRecentSearches } from "@/lib/recent-searches";
 import { brandLabel, countFilters, FilterSheet, NO_FILTERS, priceLabel, SORTS, SortSheet, toQuery, type ShopFilters } from "@/components/shop-filters";
@@ -38,6 +38,7 @@ function FiltersButton({ count, onPress }: { count: number; onPress: () => void 
 }
 
 export default function ShopScreen() {
+  const menu = useMenu();
   const params = useLocalSearchParams<{ q?: string; category?: string; label?: string; sort?: string; focus?: string; featured?: string; seller?: string }>();
   const { columns, cardWidth } = useGrid();
   const tabInset = useTabBarInset();
@@ -124,7 +125,7 @@ export default function ShopScreen() {
 
   return (
     <View style={ui.screen}>
-      <ScreenHeader title={group?.name ?? (category && category === params.category && params.label ? params.label : filters.deals ? "Deals" : "Shop")} right={<View style={{ flexDirection: "row", gap: space.sm }}><CartButton /><MenuButton /></View>} />
+      <ScreenHeader title={group?.name ?? (category && category === params.category && params.label ? params.label : filters.deals ? "Deals" : "Shop")} right={<CartButton />} />
       <View style={{ paddingHorizontal: gutter, paddingBottom: space.md }}>
         <Input
           icon="search"
@@ -164,6 +165,8 @@ export default function ShopScreen() {
         {/* Categories as on Home: a round icon, then the name */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.sm }}>
           <CategoryTile label="All" icon="apps-outline" active={!category} onPress={() => setCategory("")} />
+          {/* Every department and its sections, in the menu that slides in from the left */}
+          <CategoryTile label="All categories" icon="grid-outline" onPress={menu.open} />
           {groups.map((g) => (
             <CategoryTile key={g.key} label={g.name} icon={g.icon} image={g.image} active={group?.key === g.key} onPress={() => setCategory(g.value)} />
           ))}
