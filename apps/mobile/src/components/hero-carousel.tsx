@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Linking, Pressable, ScrollView, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Banner as AdminBanner } from "@sotechy/shared";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, G, Path, Rect, Text as SvgText } from "react-native-svg";
 import { useFeatures, useStoreConfig } from "@/lib/store-config";
 import { colors as theme, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
 
@@ -43,7 +43,9 @@ interface Slide {
   /** An image-only banner: the picture fills it, with optional words and button over it */
   cover?: ImageSource;
   /** Drawn by its own design instead of the shared layout */
-  design?: "earn";
+  design?: "earn" | "trust" | "pay" | "delivery";
+  /** Small chips above the button (drawn designs) */
+  chips?: string[];
 }
 
 /** "Earn while you shop": always the first slide while it's switched on (Admin → App switches) */
@@ -118,34 +120,172 @@ function EarnBanner({ s, width, height }: { s: Slide; width: number; height: num
   );
 }
 
-// Shown only while there are no banners at all in Admin → Home banners (they're added there as real banners)
-const builtInSlides: Slide[] = [
+// Always shown after Sotechy's banners: what shopping on Sotechy is like, drawn (no photos needed)
+const shopSlides: Slide[] = [
   {
-    bg: colors.ink,
-    fg: colors.white,
-    accent: colors.brandYellow,
+    bg: colors.brand,
+    fg: colors.ink,
+    accent: colors.ink,
     overline: "Verified stores",
-    title: "Shop stores\nyou can trust",
-    subtitle: "Every store is checked by Sotechy",
+    title: "Shop you\ncan trust",
+    subtitle: "Genuine products from stores Sotechy has checked.",
     cta: "Browse stores",
-    circle: colors.brand,
+    circle: colors.white,
     action: "/stores",
-    photo: require("../../assets/brand/sotechy-icon-512.png"),
+    design: "trust",
   },
   {
     bg: colors.brandSoft,
     fg: colors.ink,
     accent: colors.brandPressed,
-    overline: "Store tokens",
-    title: "Earn on every\norder",
-    subtitle: "1 token per ₦1, spend it like cash",
-    cta: "See your wallet",
-    circle: colors.brandYellow,
-    action: "/wallet",
-    badge: "$",
+    overline: "Easy payments",
+    title: "Pay your\nway",
+    subtitle: "Bank transfer, stablecoin or your tokens.",
+    cta: "Start shopping",
+    circle: colors.brand,
+    action: "/shop",
+    design: "pay",
     outlined: true,
   },
+  {
+    bg: "#2A1A0F",
+    fg: colors.white,
+    accent: colors.brandYellow,
+    overline: "Delivery & pickup",
+    title: "Delivered to\nyour door",
+    subtitle: "Home delivery or pickup, wherever you are.",
+    cta: "Shop now",
+    circle: colors.brand,
+    action: "/shop",
+    design: "delivery",
+  },
 ];
+
+/** A shield with a tick, sparkles and three stars: verified, genuine */
+function TrustArt({ cx, cy, u }: { cx: number; cy: number; u: number }) {
+  const shield = (k: number) =>
+    `M${cx} ${cy - 27 * u * k} L${cx + 23 * u * k} ${cy - 18 * u * k} L${cx + 23 * u * k} ${cy + 2 * u * k} C${cx + 23 * u * k} ${cy + 17 * u * k} ${cx + 12 * u * k} ${cy + 25 * u * k} ${cx} ${cy + 30 * u * k} C${cx - 12 * u * k} ${cy + 25 * u * k} ${cx - 23 * u * k} ${cy + 17 * u * k} ${cx - 23 * u * k} ${cy + 2 * u * k} L${cx - 23 * u * k} ${cy - 18 * u * k} Z`;
+  return (
+    <>
+      <Circle cx={cx} cy={cy} r={46 * u} fill={colors.white} opacity={0.16} />
+      <Circle cx={cx} cy={cy} r={34 * u} fill={colors.white} opacity={0.18} />
+      <G transform={`translate(${3 * u} ${4 * u})`}>
+        <Path d={shield(1)} fill="#C96A05" opacity={0.45} />
+      </G>
+      <Path d={shield(1)} fill={colors.white} />
+      <Path d={shield(0.78)} fill="#FFE9C7" />
+      <Path d={`M${cx - 10 * u} ${cy + 1 * u} L${cx - 2.5 * u} ${cy + 8.5 * u} L${cx + 11 * u} ${cy - 7 * u}`} stroke={colors.brand} strokeWidth={5.2 * u} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {[-1, 0, 1].map((i) => (
+        <Path key={i} d={sparkle(cx + i * 11 * u, cy - 39 * u + Math.abs(i) * 4 * u, (i ? 3.4 : 4.4) * u)} fill={colors.ink} opacity={0.85} />
+      ))}
+      <Path d={sparkle(cx + 33 * u, cy + 18 * u, 4 * u)} fill={colors.white} />
+      <Path d={sparkle(cx - 34 * u, cy - 12 * u, 3 * u)} fill={colors.white} opacity={0.8} />
+    </>
+  );
+}
+
+/** A phone paying in naira, a bank card, a stablecoin and a token */
+function PayArt({ cx, cy, u }: { cx: number; cy: number; u: number }) {
+  return (
+    <>
+      <Circle cx={cx} cy={cy} r={46 * u} fill={colors.brand} opacity={0.14} />
+      {/* bank card, tilted behind */}
+      <G transform={`rotate(-14 ${cx - 16 * u} ${cy + 6 * u})`}>
+        <Rect x={cx - 40 * u} y={cy - 6 * u} width={44 * u} height={28 * u} rx={4.5 * u} fill={colors.ink} />
+        <Rect x={cx - 40 * u} y={cy + 1 * u} width={44 * u} height={5 * u} fill="#3A2D23" />
+        <Rect x={cx - 35 * u} y={cy + 11 * u} width={9 * u} height={6.5 * u} rx={1.5 * u} fill={colors.brandYellow} />
+      </G>
+      {/* phone */}
+      <Rect x={cx - 11 * u} y={cy - 31 * u} width={30 * u} height={58 * u} rx={6 * u} fill={colors.ink} />
+      <Rect x={cx - 8.5 * u} y={cy - 27 * u} width={25 * u} height={50 * u} rx={4 * u} fill={colors.brand} />
+      <Circle cx={cx + 4 * u} cy={cy - 6 * u} r={9 * u} fill={colors.white} />
+      <SvgText x={cx + 4 * u} y={cy - 2 * u} fontSize={11 * u} fontFamily={fonts.displayHeavy} fill={colors.brand} textAnchor="middle">₦</SvgText>
+      <Rect x={cx - 3 * u} y={cy + 8 * u} width={14 * u} height={3.4 * u} rx={1.7 * u} fill={colors.white} opacity={0.9} />
+      <Rect x={cx - 1 * u} y={cy + 14 * u} width={10 * u} height={3 * u} rx={1.5 * u} fill={colors.white} opacity={0.6} />
+      {/* stablecoin */}
+      <Circle cx={cx + 29 * u} cy={cy + 19 * u} r={12 * u} fill="#1E8C6E" />
+      <Circle cx={cx + 29 * u} cy={cy + 17 * u} r={12 * u} fill="#26A17B" />
+      <SvgText x={cx + 29 * u} y={cy + 21.5 * u} fontSize={12 * u} fontFamily={fonts.displayHeavy} fill={colors.white} textAnchor="middle">$</SvgText>
+      {/* a store token */}
+      <Coin cx={cx + 27 * u} cy={cy - 21 * u} r={8.5 * u} />
+      <Path d={sparkle(cx - 30 * u, cy - 26 * u, 3.6 * u)} fill={colors.brand} />
+    </>
+  );
+}
+
+/** A delivery scooter with a Sotechy box, its route and the pin it's heading for */
+function DeliveryArt({ cx, cy, u }: { cx: number; cy: number; u: number }) {
+  return (
+    <>
+      <Circle cx={cx} cy={cy} r={46 * u} fill={colors.brand} opacity={0.18} />
+      {/* the route to the pin */}
+      <Path d={`M${cx - 44 * u} ${cy + 34 * u} C${cx - 20 * u} ${cy + 20 * u} ${cx + 14 * u} ${cy + 38 * u} ${cx + 30 * u} ${cy - 14 * u}`} stroke={colors.brandYellow} strokeWidth={2.4 * u} strokeDasharray={`${3 * u} ${4 * u}`} fill="none" opacity={0.75} />
+      {/* pin */}
+      <Path d={`M${cx + 30 * u} ${cy - 13 * u} C${cx + 30 * u} ${cy - 13 * u} ${cx + 19 * u} ${cy - 24 * u} ${cx + 19 * u} ${cy - 31 * u} A${11 * u} ${11 * u} 0 0 1 ${cx + 41 * u} ${cy - 31 * u} C${cx + 41 * u} ${cy - 24 * u} ${cx + 30 * u} ${cy - 13 * u} ${cx + 30 * u} ${cy - 13 * u} Z`} fill={colors.brandYellow} />
+      <Circle cx={cx + 30 * u} cy={cy - 31 * u} r={4.2 * u} fill="#2A1A0F" />
+      {/* box on the back */}
+      <Rect x={cx - 27 * u} y={cy - 12 * u} width={22 * u} height={20 * u} rx={2.5 * u} fill={colors.brand} />
+      <Rect x={cx - 17.5 * u} y={cy - 12 * u} width={3 * u} height={20 * u} fill="#E07F0C" />
+      <SvgText x={cx - 16 * u} y={cy + 5 * u} fontSize={7 * u} fontFamily={fonts.displayHeavy} fill={colors.white} textAnchor="middle">S</SvgText>
+      {/* scooter body */}
+      <Path d={`M${cx - 30 * u} ${cy + 12 * u} L${cx + 6 * u} ${cy + 12 * u} C${cx + 12 * u} ${cy + 12 * u} ${cx + 14 * u} ${cy + 4 * u} ${cx + 13 * u} ${cy - 6 * u} L${cx + 18 * u} ${cy - 6 * u} L${cx + 23 * u} ${cy + 14 * u} L${cx - 30 * u} ${cy + 18 * u} Z`} fill={colors.white} />
+      <Path d={`M${cx + 13 * u} ${cy - 6 * u} L${cx + 11 * u} ${cy - 18 * u} L${cx + 17 * u} ${cy - 18 * u}`} stroke={colors.white} strokeWidth={3 * u} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <Rect x={cx - 8 * u} y={cy + 6 * u} width={12 * u} height={4 * u} rx={2 * u} fill={colors.brandYellow} />
+      {/* wheels */}
+      {[cx - 22 * u, cx + 20 * u].map((x) => (
+        <G key={x}>
+          <Circle cx={x} cy={cy + 21 * u} r={8.5 * u} fill="#17120E" stroke={colors.white} strokeWidth={2.6 * u} />
+          <Circle cx={x} cy={cy + 21 * u} r={2.6 * u} fill={colors.white} />
+        </G>
+      ))}
+      {/* speed lines */}
+      {[0, 1, 2].map((i) => (
+        <Path key={i} d={`M${cx - 46 * u + i * 3 * u} ${cy - 2 * u + i * 7 * u} L${cx - 36 * u + i * 3 * u} ${cy - 2 * u + i * 7 * u}`} stroke={colors.white} strokeWidth={2.2 * u} strokeLinecap="round" opacity={0.55} />
+      ))}
+    </>
+  );
+}
+
+/** The drawn shop slides: words on the left, the drawing on the right, chips above the button */
+function DrawnBanner({ s, width, height }: { s: Slide; width: number; height: number }) {
+  const u = height / 100;
+  const cx = width * 0.77;
+  const cy = height * 0.5;
+  const dark = s.fg === colors.white;
+  return (
+    <View style={{ flex: 1, backgroundColor: s.bg }}>
+      {s.design === "trust" && <LinearGradient colors={["#F7931E", "#E2741A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />}
+      {s.design === "delivery" && <LinearGradient colors={["rgba(247,147,30,0)", "rgba(247,147,30,0.22)"]} start={{ x: 0.2, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }} />}
+      <Svg width={width} height={height} style={{ position: "absolute", top: 0, left: 0 }} pointerEvents="none">
+        {s.design === "trust" && <TrustArt cx={cx} cy={cy} u={u} />}
+        {s.design === "pay" && <PayArt cx={cx} cy={cy} u={u} />}
+        {s.design === "delivery" && <DeliveryArt cx={cx} cy={cy} u={u} />}
+      </Svg>
+      <View style={{ flex: 1, width: "60%", paddingHorizontal: space.xl, paddingVertical: space.lg, justifyContent: "space-between" }}>
+        <View style={{ gap: 4 }}>
+          <Txt variant="caption" color={s.accent} style={{ fontFamily: fonts.bold, letterSpacing: 0.6, textTransform: "uppercase", fontSize: 11 }}>{s.overline}</Txt>
+          <Txt color={s.fg} style={{ fontFamily: fonts.displayHeavy, fontSize: 24, lineHeight: 26 }}>{s.title}</Txt>
+          <Txt variant="caption" color={dark ? "rgba(255,255,255,0.75)" : "rgba(23,18,14,0.72)"} numberOfLines={2} style={{ fontSize: 11.5, lineHeight: 15 }}>{s.subtitle}</Txt>
+        </View>
+        <View style={{ gap: 8 }}>
+          {s.chips?.length ? (
+            <View style={{ flexDirection: "row", gap: 5 }}>
+              {s.chips.map((t) => (
+                <View key={t} style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: dark ? "rgba(255,255,255,0.12)" : "rgba(23,18,14,0.08)" }}>
+                  <Txt color={s.fg} numberOfLines={1} style={{ fontFamily: fonts.semibold, fontSize: 10 }}>{t}</Txt>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: dark ? colors.brand : colors.ink, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 7 }}>
+            <Txt variant="label" color={dark ? colors.ink : colors.white} style={{ fontSize: 13 }}>{s.cta}</Txt>
+            <Ionicons name="arrow-forward" size={14} color={dark ? colors.ink : colors.white} />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 /** A picture that is the whole banner; the title and button sit over a soft shade when there are any */
 function ImageBanner({ s }: { s: Slide }) {
@@ -173,6 +313,7 @@ function ImageBanner({ s }: { s: Slide }) {
 
 function Banner({ s, width, height }: { s: Slide; width: number; height: number }) {
   if (s.design === "earn") return <EarnBanner s={s} width={width} height={height} />;
+  if (s.design) return <DrawnBanner s={s} width={width} height={height} />;
   if (s.cover) return <ImageBanner s={s} />;
   const circle = Math.round(height * 0.88);
   const darkBg = s.bg === colors.ink || s.bg === colors.brand;
@@ -273,7 +414,8 @@ export function HeroCarousel({ width }: { width: number }) {
   const step = width + space.md;
   const adminBanners = useStoreConfig().config?.banners;
   const { earnBanner } = useFeatures();
-  const slides = [...(earnBanner ? [earnSlide] : []), ...(adminBanners?.length ? adminBanners.map(fromAdmin) : builtInSlides.filter((b) => !earnBanner || b.action !== "/wallet"))];
+  // Earn first (while it's switched on), then Sotechy's banners from admin, then the drawn shop slides
+  const slides = [...(earnBanner ? [earnSlide] : []), ...(adminBanners ?? []).map(fromAdmin), ...shopSlides];
 
   // Auto-advance; pauses for a while after the user swipes.
   useEffect(() => {
