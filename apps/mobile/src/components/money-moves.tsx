@@ -5,14 +5,13 @@ import * as WebBrowser from "expo-web-browser";
 import { useCallback, useState, type ReactNode } from "react";
 import { ActivityIndicator, Linking, Modal, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WebView } from "react-native-webview";
 import { formatNaira } from "@sotechy/shared";
 import { api } from "@/lib/api";
 import { useStoreConfig } from "@/lib/store-config";
 import { colors, space } from "@/lib/theme";
 import { Illo, type IlloName } from "./illustrations";
 import { Sheet } from "./shop-filters";
-import { tap, Txt, ui } from "./ui";
+import { Button, tap, Txt, ui } from "./ui";
 
 export type PayMethod = "stablecoin" | "bank";
 
@@ -75,6 +74,9 @@ export async function isPaid(orderId: string) {
   }
 }
 
+// The in-app browser exists on phones only; loading it on the web fails
+const WebView: typeof import("react-native-webview").WebView | null = Platform.OS === "web" ? null : require("react-native-webview").WebView;
+
 /** Android: Money Moves in a window inside the app, so it can close by itself once the payment lands */
 function PayWindow({ url, onDone }: { url: string; onDone: (returned: boolean) => void }) {
   const insets = useSafeAreaInsets();
@@ -88,7 +90,7 @@ function PayWindow({ url, onDone }: { url: string; onDone: (returned: boolean) =
             <Ionicons name="close" size={18} color={colors.ink} />
           </Pressable>
         </View>
-        <WebView
+        {WebView && <WebView
           source={{ uri: url }}
           style={{ flex: 1 }}
           startInLoadingState
@@ -110,8 +112,56 @@ function PayWindow({ url, onDone }: { url: string; onDone: (returned: boolean) =
             }
             return true;
           }}
-        />
+        />}
         <View style={{ height: insets.bottom, backgroundColor: colors.bg }} />
+      </View>
+    </Modal>
+  );
+}
+
+/** Web: Money Moves can't sit inside the page, so it opens in a new tab while this card waits.
+ *  The tab closes by itself once the order is paid. */
+function WebPayWindow({ url, popup, onOpen, onCheck, onDone }: { url: string; popup: boolean; onOpen: () => void; onCheck: () => Promise<boolean>; onDone: (returned: boolean) => void }) {
+  const [checking, setChecking] = useState(false);
+  const [notYet, setNotYet] = useState(false);
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={() => onDone(false)}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: space.xl, backgroundColor: "rgba(23,18,14,0.5)" }}>
+        <View style={{ width: 440, maxWidth: "100%", backgroundColor: colors.bg, borderRadius: 28, padding: space.xl, gap: space.md, alignItems: "center" }}>
+          <Illo name="card" size={56} />
+          <Txt variant="heading" style={{ textAlign: "center" }}>{popup ? "Finish paying in the new tab" : "Open the payment page"}</Txt>
+          <Txt variant="small" style={{ textAlign: "center" }}>
+            {popup
+              ? "Your payment page opened in a new tab. Pay there, then come back: this closes by itself once your payment is confirmed."
+              : "Your browser stopped the payment page from opening. Tap below to open it in a new tab."}
+          </Txt>
+          {popup && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <ActivityIndicator color={colors.brand} />
+              <Txt variant="caption">Waiting for your payment…</Txt>
+            </View>
+          )}
+          <View style={{ alignSelf: "stretch", gap: space.sm, marginTop: space.sm }}>
+            <Button title={popup ? "Open the payment page again" : "Open payment page"} icon="open-outline" variant={popup ? "outline" : "dark"} onPress={onOpen} />
+            {popup && (
+              <Button
+                title="I've paid"
+                icon="checkmark-circle-outline"
+                variant="dark"
+                loading={checking}
+                onPress={async () => {
+                  setChecking(true);
+                  const paid = await onCheck();
+                  setChecking(false);
+                  setNotYet(!paid);
+                }}
+              />
+            )}
+            {notYet && <Txt variant="caption" color={colors.warning} style={{ textAlign: "center" }}>Not confirmed yet. Transfers can take a few minutes; this keeps checking.</Txt>}
+            <Button title="Pay later" variant="ghost" onPress={() => onDone(false)} />
+          </View>
+          <Txt variant="caption" style={{ textAlign: "center" }}>{url.replace(/^https?:\/\//, "").split("/")[0]}</Txt>
+        </View>
       </View>
     </Modal>
   );
@@ -122,12 +172,54 @@ function PayWindow({ url, onDone }: { url: string; onDone: (returned: boolean) =
  * closes the payment window by itself once it's paid (no "Return to Sotechy" tap needed). Resolves true when paid.
  */
 export function useMoneyMoves() {
-  const [win, setWin] = useState<{ url: string; finish: (returned: boolean) => void } | null>(null);
+  const [win, setWin] = useState<{ url: string; finish: (returned: boolean) => void; web?: { popup: boolean; open: () => void; check: () => Promise<boolean> } } | null>(null);
 
   const pay = useCallback(async (order: Pending["order"], method: PayMethod = "stablecoin") => {
     const { checkoutUrl } = await api.startOnlinePayment(order.id, method);
     let paid = false;
     let open = true;
+
+    if (Platform.OS === "web") {
+      // A new tab; the card waits and checks, and closes the tab once the order is paid
+      let tab: Window | null = null;
+      const openTab = () => {
+        tab = window.open(checkoutUrl, "_blank");
+        return !!tab;
+      };
+      const opened = openTab();
+      return new Promise<boolean>((resolve) => {
+        let settled = false;
+        const finish = async () => {
+          if (settled) return;
+          settled = true;
+          open = false;
+          try {
+            tab?.close();
+          } catch {}
+          setWin(null);
+          resolve(paid || (await isPaid(order.id)));
+        };
+        const check = async () => {
+          if (await isPaid(order.id)) {
+            paid = true;
+            void finish();
+            return true;
+          }
+          return false;
+        };
+        const reopen = () => {
+          openTab();
+          setWin((w) => (w?.web ? { ...w, web: { ...w.web, popup: true } } : w));
+        };
+        setWin({ url: checkoutUrl, finish: () => void finish(), web: { popup: opened, open: reopen, check } });
+        void (async () => {
+          while (open) {
+            await new Promise((r) => setTimeout(r, CHECK_EVERY_MS));
+            if (open && (await check())) return;
+          }
+        })();
+      });
+    }
 
     if (Platform.OS === "ios") {
       // Checks while the payment sheet is up, and closes it the moment the order is paid
@@ -174,5 +266,12 @@ export function useMoneyMoves() {
     });
   }, []);
 
-  return { pay, sheet: win ? <PayWindow url={win.url} onDone={win.finish} /> : null };
+  return {
+    pay,
+    sheet: !win ? null : win.web ? (
+      <WebPayWindow url={win.url} popup={win.web.popup} onOpen={win.web.open} onCheck={win.web.check} onDone={win.finish} />
+    ) : (
+      <PayWindow url={win.url} onDone={win.finish} />
+    ),
+  };
 }
