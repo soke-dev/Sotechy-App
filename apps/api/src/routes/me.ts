@@ -8,7 +8,7 @@ import { badRequest, conflict, notFound } from "../lib/errors";
 import { publicApiUrl } from "../env";
 import { requireFeature } from "../services/features";
 import { noRecipient, receiptFor, recipientFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
-import { chatById, chatFor, chatsFor, postChatMessage, startNewChat } from "../services/support-chat";
+import { chatById, chatFor, chatsFor, postChatMessage, startNewChat, tellAdmins } from "../services/support-chat";
 import { customerPulse } from "../services/pulse";
 import { currentContract } from "../services/chain";
 import { chainView } from "../services/chain-primary";
@@ -315,6 +315,8 @@ export const meRoutes = new Hono<AppEnv>()
         .insert(schema.supportTickets)
         .values({ ...c.req.valid("json"), customerId: c.get("user").id })
         .returning({ id: schema.supportTickets.id });
+      const { subject, message } = c.req.valid("json");
+      await tellAdmins(c.get("user").id, ticket.id, `${subject}: ${message}`, true, true);
       return c.json(ticket, 201);
     },
   );

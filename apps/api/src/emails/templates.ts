@@ -371,14 +371,14 @@ export function payoutApprovalEmail(to: string, d: { name: string | null; store:
   });
 }
 
-export function supportChatEmail(to: string, d: { name: string | null; customer: string; message: string; ticketId: string; isNew: boolean }) {
-  return build(to, `${d.isNew ? "New chat" : "New message"} from ${d.customer}`, {
+export function supportChatEmail(to: string, d: { name: string | null; customer: string; message: string; ticketId: string; isNew: boolean; form?: boolean }) {
+  return build(to, `${d.form ? "New support message" : d.isNew ? "New chat" : "New message"} from ${d.customer}`, {
     preheader: d.message.slice(0, 110),
     hero: "store-notice",
-    eyebrow: "Sotechy admin · Live chat",
-    heading: d.isNew ? "A customer started a chat" : "A customer is waiting for a reply",
+    eyebrow: `Sotechy admin · ${d.form ? "Help & support" : "Live chat"}`,
+    heading: d.form ? "A customer sent a message" : d.isNew ? "A customer started a chat" : "A customer is waiting for a reply",
     blocks: [
-      { kind: "text", text: `Hi ${first(d.name)}, **${d.customer}** wrote in the app's live chat:` },
+      { kind: "text", text: `Hi ${first(d.name)}, **${d.customer}** ${d.form ? "sent a message from Help & support in the app" : "wrote in the app's live chat"}:` },
       { kind: "note", tone: "brand", icon: "chat", text: d.message.slice(0, 600) },
       { kind: "button", label: "Reply in admin", url: `https://admin.sotechy.shop/support/${d.ticketId}` },
     ],

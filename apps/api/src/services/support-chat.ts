@@ -43,13 +43,16 @@ export async function postChatMessage(userId: string, body: string, orderId?: st
   await db.insert(messages).values({ ticketId: t.id, authorId: userId, body, imageUrl: imageUrl ?? null });
   // Back to "open": it's the team's turn to answer
   await db.update(tickets).set({ lastMessageAt: new Date(), status: "open" }).where(eq(tickets.id, t.id));
-  if (quiet) {
-    const [me] = await db.select({ username: users.username, fullName: users.fullName, email: users.email }).from(users).where(eq(users.id, userId));
-    const customer = me?.username ? `@${me.username}` : (me?.fullName ?? me?.email ?? "A customer");
-    const admins = await db.select({ email: users.email, name: users.fullName }).from(users).where(eq(users.role, "admin"));
-    for (const a of admins) sendEmailLater(supportChatEmail(a.email, { name: a.name, customer, message: body || "Sent a photo", ticketId: t.id, isNew }));
-  }
+  if (quiet) await tellAdmins(userId, t.id, body || "Sent a photo", isNew);
   return t.id;
+}
+
+/** Emails every admin account about a customer's message */
+export async function tellAdmins(userId: string, ticketId: string, message: string, isNew: boolean, form = false) {
+  const [me] = await db.select({ username: users.username, fullName: users.fullName, email: users.email }).from(users).where(eq(users.id, userId));
+  const customer = me?.username ? `@${me.username}` : (me?.fullName ?? me?.email ?? "A customer");
+  const admins = await db.select({ email: users.email, name: users.fullName }).from(users).where(eq(users.role, "admin"));
+  for (const a of admins) sendEmailLater(supportChatEmail(a.email, { name: a.name, customer, message, ticketId, isNew, form }));
 }
 
 /** The customer's conversations, newest first, with the last message of each */

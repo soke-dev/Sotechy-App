@@ -203,17 +203,18 @@ export function SupportChat({ teaser = false, bottomOffset = 0 }: { teaser?: boo
 }
 
 /** The live chat in its own sheet, for "Need help" buttons anywhere in the app */
-export function SupportChatModal({ visible, onClose, orderId }: { visible: boolean; onClose: () => void; orderId?: string }) {
+export function SupportChatModal({ visible, onClose, orderId, past }: { visible: boolean; onClose: () => void; orderId?: string; past?: SupportChatSummary | null }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <ChatSheet onClose={onClose} orderId={orderId} />
+      <ChatSheet onClose={onClose} orderId={orderId} past={past} />
     </Modal>
   );
 }
 
 const POLL_MS = 3000;
 
-export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?: string }) {
+/** `past` opens on that conversation: the live one if it's still open, or a closed one to read */
+export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => void; orderId?: string; past?: SupportChatSummary | null }) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const { user } = useAuth();
@@ -298,6 +299,12 @@ export function ChatSheet({ onClose, orderId }: { onClose: () => void; orderId?:
     setReading(null);
     setView("chat");
   };
+  useEffect(() => {
+    if (!startOn || startOn.open) return;
+    setView("history");
+    api.supportChatById(startOn.id).then((chat) => setReading({ messages: fromServer(chat) }), () => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const sheetHeight = Math.min(height * 0.78, 640);
   const close = () => {
     Keyboard.dismiss();
