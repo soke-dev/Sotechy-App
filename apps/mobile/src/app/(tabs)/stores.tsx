@@ -1,7 +1,9 @@
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { RefreshControl, ScrollView, View } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import * as WebBrowser from "expo-web-browser";
+import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { CartButton } from "@/components/cart-button";
 import { Illo } from "@/components/illustrations";
 import { StoreRow } from "@/components/store-bits";
@@ -10,6 +12,25 @@ import { Chip, EmptyState, ErrorView, Input, Loading, ScreenHeader, Txt, ui } fr
 import { byFeatured, SOTECHY_STORE, useStores } from "@/lib/marketplace";
 import { colors, gutter, radius, space } from "@/lib/theme";
 import { useContentWidth, useIsDesktop } from "@/lib/layout";
+
+/** Where stores sign up and run their shop */
+const MERCHANT_SITE = "https://merchant.sotechy.shop";
+const openMerchantSite = () => WebBrowser.openBrowserAsync(MERCHANT_SITE, { controlsColor: colors.brand }).catch(() => null);
+
+/** "Sell on Sotechy" at the top of Stores, so it's there however many stores there are */
+function SellButton() {
+  return (
+    <Pressable
+      onPress={openMerchantSite}
+      accessibilityRole="link"
+      accessibilityLabel="Sell on Sotechy"
+      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, height: 40, paddingHorizontal: 14, borderRadius: radius.pill, backgroundColor: pressed ? colors.inversePressed : colors.inverse })}
+    >
+      <Ionicons name="storefront" size={16} color={colors.brand} />
+      <Txt variant="label" color={colors.onInverse} style={{ fontSize: 13.5 }}>Sell</Txt>
+    </Pressable>
+  );
+}
 
 // Sotechy sells gadgets and appliances, so it shows under these store types
 const SOTECHY_KINDS = /phone|computer|gadget|tv|gaming|power|appliance|kitchen/i;
@@ -45,7 +66,7 @@ export default function StoresScreen() {
 
   return (
     <View style={ui.screen}>
-      <ScreenHeader title="Stores" subtitle="Verified shops on Sotechy" right={<CartButton />} />
+      <ScreenHeader title="Stores" subtitle="Verified shops on Sotechy" right={<View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}><SellButton /><CartButton /></View>} />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabInset + space.lg, gap: space.lg }}
         keyboardShouldPersistTaps="handled"
@@ -84,13 +105,21 @@ export default function StoresScreen() {
         )}
 
         {/* Selling on Sotechy */}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, padding: space.lg, borderRadius: radius.xl, backgroundColor: colors.brandSoft }}>
+        <Pressable
+          onPress={openMerchantSite}
+          accessibilityRole="link"
+          style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, padding: space.lg, borderRadius: radius.xl, backgroundColor: colors.brandSoft, opacity: pressed ? 0.85 : 1 })}
+        >
           <Illo name="store" size={44} />
           <View style={{ flex: 1, gap: 2 }}>
             <Txt variant="label">Sell on Sotechy</Txt>
-            <Txt variant="small" color={colors.ink2}>Open your own store with its own token at merchant.sotechy.shop. Businesses and freelancers welcome.</Txt>
+            <Txt variant="small" color={colors.ink2}>Open your own store with its own token. Businesses and freelancers welcome.</Txt>
           </View>
-        </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 14, height: 38, borderRadius: radius.pill, backgroundColor: colors.inverse }}>
+            <Txt variant="label" color={colors.onInverse} style={{ fontSize: 13 }}>Start selling</Txt>
+            <Ionicons name="arrow-forward" size={14} color={colors.onInverse} />
+          </View>
+        </Pressable>
       </ScrollView>
     </View>
   );

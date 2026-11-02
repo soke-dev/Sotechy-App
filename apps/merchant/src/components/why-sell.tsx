@@ -119,6 +119,15 @@ export function WhySell({ tone = "dark", className = "" }: { tone?: "dark" | "li
               </ul>
             </div>
 
+            {/* How the money for each order reaches the store */}
+            <div className="mt-3 rounded-2xl bg-brand-soft p-4">
+              <p className="font-semibold">Half upfront, half after delivery</p>
+              <p className="mt-1 text-sm text-ink-2">
+                By default you get <b>50% as soon as you accept an order</b>, so you can buy and send it, and the other <b>50% once it&apos;s delivered</b>. Need a different split for your
+                business? Talk to our team and we can adjust it.
+              </p>
+            </div>
+
             <p className="mt-4 text-xs text-muted">Tokens are rewards, not money or an investment. Customers can&apos;t cash them out.</p>
             <div className="mt-5 flex gap-2">
               <a href={LEARN_MORE} target="_blank" rel="noopener noreferrer" className={`${btn.outline} flex-1`}>
