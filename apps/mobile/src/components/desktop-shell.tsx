@@ -18,7 +18,7 @@ import { Txt, type IconName } from "./ui";
 import { UserAvatar } from "./user-avatar";
 
 /** Pages that read best narrower (forms, lists); the rest get the wide column */
-const NARROW = [/^\/(cart|checkout|sign-in|welcome|profile|security|addresses|support|wallet|wallet-activity|notifications|offers|account)$/, /^\/(order|offer|address)\//];
+const NARROW = [/^\/(cart|checkout|sign-in|welcome|profile|security|addresses|support|wallet|wallet-activity|notifications|offers|account|referrals)$/, /^\/(order|offer|address)\//];
 const WIDE_MAX = 1680;
 const NARROW_MAX = 820;
 

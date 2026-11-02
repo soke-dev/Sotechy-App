@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,6 +12,7 @@ import { Button, Input, Txt, ui } from "@/components/ui";
 import { API_URL } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { openPolicy } from "@/lib/policies";
+import { clearInviteCode } from "@/lib/referrals";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
 type Mode = "signin" | "signup";
@@ -19,7 +20,9 @@ type Mode = "signin" | "signup";
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const { signIn, signUp, signInWithGoogle } = useAuth();
-  const [chosenMode, setMode] = useState<Mode>("signin");
+  // From an invite link: sign-up, with the inviter's code filled in
+  const params = useLocalSearchParams<{ ref?: string; mode?: Mode }>();
+  const [chosenMode, setMode] = useState<Mode>(params.mode === "signup" || params.ref ? "signup" : "signin");
   const features = useFeatures();
   // With sign-ups switched off in admin, or during maintenance, only signing in is offered.
   const signupsOpen = features.signups && !features.maintenance;
@@ -28,7 +31,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [referral, setReferral] = useState<string | null>(null);
+  const [referral, setReferral] = useState<string | null>(params.ref ?? null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState<"email" | "google" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +63,7 @@ export default function SignInScreen() {
           return;
         }
         await signUp({ email: email.trim(), password, fullName: fullName || undefined, referralCode: referral?.trim() || undefined });
+        if (referral?.trim()) await clearInviteCode();
         welcome();
       }
     } catch (err) {
@@ -214,7 +218,7 @@ export default function SignInScreen() {
                   label="Referral code (optional)"
                   icon="gift-outline"
                   autoCapitalize="none"
-                  autoFocus
+                  autoFocus={!params.ref}
                   value={referral}
                   onChangeText={(t) => setReferral(t.replace(/^@/, ""))}
                   placeholder="The @username of whoever invited you"

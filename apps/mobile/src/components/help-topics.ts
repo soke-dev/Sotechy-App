@@ -267,6 +267,13 @@ export const HELP_TOPICS: HelpTopic[] = [
         links: [{ label: "Edit my profile", href: "/profile" }],
       },
       {
+        id: "referral",
+        q: "Invite friends and my referral code",
+        a: "Your referral code is your @username. Open Account → Invite friends to copy it or share your invite link. Friends who sign up with it show there, with who has started shopping. If someone invited you and you skipped it when you signed up, you can add their @username there once.",
+        keywords: ["referral", "refer", "ref", "ref code", "referral code", "invite", "invite friends", "invited", "who invited", "referred"],
+        links: [{ label: "Invite friends", href: "/referrals" }],
+      },
+      {
         id: "notifications",
         q: "Notifications and security",
         a: "Account → Security & notifications lets you choose which notifications you get and manage how you sign in.",

@@ -51,6 +51,11 @@
               "scheme": "https",
               "host": "app.sotechy.shop",
               "pathPrefix": "/product"
+            },
+            {
+              "scheme": "https",
+              "host": "app.sotechy.shop",
+              "pathPrefix": "/invite"
             }
           ],
           "category": [

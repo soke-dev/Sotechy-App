@@ -1,4 +1,5 @@
 // First time after creating an account: pick an @username (needed for sending and receiving tokens),
+// then who invited them (skipped when they signed up with a code; can be added later in Invite friends),
 // then optionally add numbers for calls and WhatsApp. Numbers can be added later in My profile.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
@@ -11,6 +12,7 @@ import { useToast } from "@/components/toast";
 import { Button, Input, Txt, PhoneInput, ui } from "@/components/ui";
 import { suggestUsername, useAccountExtras, useUsernameCheck } from "@/lib/account-extras";
 import { useAuth } from "@/lib/auth";
+import { addReferrer, clearInviteCode, pendingInviteCode } from "@/lib/referrals";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
 export default function WelcomeScreen() {
@@ -18,7 +20,11 @@ export default function WelcomeScreen() {
   const { user } = useAuth();
   const { extras, save } = useAccountExtras();
   const toast = useToast();
-  const [step, setStep] = useState<"username" | "numbers">(extras.username ? "numbers" : "username");
+  const [step, setStep] = useState<"username" | "invited" | "numbers">(extras.username ? "numbers" : "username");
+  // Asked once, right after the username, unless they already signed up with someone's code
+  const [askInviter] = useState(!user?.referredById && !extras.username);
+  const [inviter, setInviter] = useState("");
+  const [inviterError, setInviterError] = useState<string | null>(null);
   const [username, setUsername] = useState(extras.username || suggestUsername(user?.fullName, user?.email));
   const [call, setCall] = useState(extras.callNumber || user?.phone || "");
   const [whatsapp, setWhatsapp] = useState(extras.whatsappNumber);
@@ -41,6 +47,25 @@ export default function WelcomeScreen() {
   const problem = check.problem;
   const finish = () => router.replace("/");
 
+  // A code from an invite link opened on this phone fills itself in
+  useEffect(() => {
+    pendingInviteCode().then((c) => c && setInviter((v) => v || c));
+  }, []);
+
+  async function saveInviter() {
+    setBusy(true);
+    setInviterError(null);
+    try {
+      await addReferrer(inviter);
+      await clearInviteCode();
+      setStep("numbers");
+    } catch (err) {
+      setInviterError(err instanceof Error ? err.message : "Could not add it");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveNumbers(skip: boolean) {
     setBusy(true);
     try {
@@ -61,7 +86,7 @@ export default function WelcomeScreen() {
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + space.lg, paddingHorizontal: gutter, paddingBottom: space.xl, gap: space.lg }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
         {/* Steps */}
         <View style={{ flexDirection: "row", gap: 6, alignSelf: "center" }}>
-          {["username", "numbers"].map((s) => (
+          {(askInviter ? ["username", "invited", "numbers"] : ["username", "numbers"]).map((s) => (
             <View key={s} style={{ width: step === s ? 26 : 8, height: 8, borderRadius: 4, backgroundColor: step === s ? colors.ink : colors.line }} />
           ))}
         </View>
@@ -71,7 +96,7 @@ export default function WelcomeScreen() {
             <Burst size={120} />
           </View>
           <View style={{ zIndex: 1 }}>
-            <Illo name={step === "username" ? "user" : "phone"} size={72} />
+            <Illo name={step === "username" ? "user" : step === "invited" ? "gift" : "phone"} size={72} />
           </View>
         </View>
 
@@ -112,7 +137,7 @@ export default function WelcomeScreen() {
                 setBusy(true);
                 try {
                   if (clean !== extras.username) await save({ username: clean });
-                  setStep("numbers");
+                  setStep(askInviter ? "invited" : "numbers");
                 } catch (err) {
                   toast(err instanceof Error ? err.message : "Could not save your username", { icon: "alert-circle" });
                 } finally {
@@ -120,6 +145,37 @@ export default function WelcomeScreen() {
                 }
               }}
             />
+          </>
+        ) : step === "invited" ? (
+          <>
+            <View style={{ gap: 6, alignItems: "center" }}>
+              <Txt variant="display" style={{ fontSize: 28, textAlign: "center" }}>Who invited you?</Txt>
+              <Txt variant="small" style={{ textAlign: "center", maxWidth: 320 }}>
+                If a friend told you about Sotechy, type their @username. You can skip this and add it later in Account → Invite friends.
+              </Txt>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", height: 58, borderRadius: radius.lg, borderWidth: 1.5, borderColor: inviterError ? colors.danger : colors.line, backgroundColor: colors.surface, paddingHorizontal: space.lg }}>
+              <Txt variant="title" color={colors.muted} style={{ fontSize: 22 }}>@</Txt>
+              <TextInput
+                autoFocus
+                value={inviter}
+                onChangeText={(t) => {
+                  setInviterError(null);
+                  setInviter(t.replace(/\s/g, "").replace(/^@/, "").toLowerCase());
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={21}
+                placeholder="theirname"
+                placeholderTextColor={colors.faint}
+                returnKeyType="done"
+                onSubmitEditing={() => inviter.length >= 3 && saveInviter()}
+                style={{ flex: 1, marginLeft: 4, fontFamily: fonts.display, fontSize: 22, color: colors.ink }}
+              />
+            </View>
+            {inviterError && <Txt variant="small" color={colors.danger}>{inviterError}</Txt>}
+            <Button title="Continue" icon="arrow-forward" variant="dark" disabled={inviter.length < 3 || busy} loading={busy} onPress={saveInviter} />
+            <Button title="Skip, I'll add it later" variant="ghost" disabled={busy} onPress={() => setStep("numbers")} />
           </>
         ) : (
           <>

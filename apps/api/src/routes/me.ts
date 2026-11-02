@@ -14,6 +14,7 @@ import { currentContract } from "../services/chain";
 import { chainView } from "../services/chain-primary";
 import { catalogQuery } from "./store";
 import { compressImage } from "../lib/images";
+import { referrerFor } from "../lib/identity";
 
 const addressSchema = z.object({
   label: z.string().max(40).nullable().optional(),
@@ -284,6 +285,52 @@ export const meRoutes = new Hono<AppEnv>()
     const n = schema.notifications;
     await db.update(n).set({ readAt: new Date() }).where(and(eq(n.userId, c.get("user").id), sql`${n.readAt} is null`));
     return c.json({ ok: true });
+  })
+  /** Invite friends: your code (your @username), who invited you, and the people who joined with your code */
+  .get("/referrals", async (c) => {
+    const u = schema.users;
+    const [me] = await db.select({ username: u.username, referredById: u.referredById }).from(u).where(eq(u.id, c.get("user").id));
+    const [inviter] = me?.referredById
+      ? await db.select({ id: u.id, username: u.username, fullName: u.fullName, avatarStyle: u.avatarStyle }).from(u).where(eq(u.id, me.referredById))
+      : [];
+    const o = schema.orders;
+    const people = await db
+      .select({
+        id: u.id,
+        username: u.username,
+        fullName: u.fullName,
+        avatarStyle: u.avatarStyle,
+        joinedAt: u.createdAt,
+        hasShopped: sql<boolean>`exists (select 1 from ${o} where ${o.customerId} = ${u.id} and ${o.status} in ('paid','processing','ready_for_pickup','dispatched','delivered'))`,
+        hasStore: sql<boolean>`exists (select 1 from ${schema.merchants} where ${schema.merchants.ownerId} = ${u.id})`,
+      })
+      .from(u)
+      .where(eq(u.referredById, c.get("user").id))
+      .orderBy(desc(u.createdAt))
+      .limit(200);
+    // First names only: the people you invited see your @username, you see theirs
+    const shown = people.map((p) => ({ ...p, fullName: p.fullName?.trim().split(/\s+/)[0] ?? null }));
+    return c.json({
+      code: me?.username ?? null,
+      invitedBy: inviter ? { ...inviter, fullName: inviter.fullName?.trim().split(/\s+/)[0] ?? null } : null,
+      people: shown,
+      counts: { joined: shown.length, shopped: shown.filter((p) => p.hasShopped).length, stores: shown.filter((p) => p.hasStore).length },
+    });
+  })
+  /** Who invited you, added after signing up (Google sign-ups, or skipped at the start). Once set, it stays. */
+  .post("/referrer", zValidator("json", z.object({ code: z.string().trim().min(1).max(30) })), async (c) => {
+    const userId = c.get("user").id;
+    const u = schema.users;
+    const [me] = await db.select({ referredById: u.referredById }).from(u).where(eq(u.id, userId));
+    if (me?.referredById) throw conflict("You've already added who invited you");
+    const referrerId = await referrerFor(c.req.valid("json").code, userId);
+    if (!referrerId) throw badRequest("Enter the @username of whoever invited you");
+    // Two people can't each be the other's inviter
+    const [theirs] = await db.select({ referredById: u.referredById }).from(u).where(eq(u.id, referrerId));
+    if (theirs?.referredById === userId) throw badRequest("You invited them, so they can't be the one who invited you");
+    await db.update(u).set({ referredById: referrerId }).where(eq(u.id, userId));
+    const [inviter] = await db.select({ id: u.id, username: u.username, fullName: u.fullName, avatarStyle: u.avatarStyle }).from(u).where(eq(u.id, referrerId));
+    return c.json({ invitedBy: { ...inviter, fullName: inviter.fullName?.trim().split(/\s+/)[0] ?? null } });
   })
   /** Changes to this customer's orders, offers, chat or tokens, so open screens refresh by themselves */
   .get("/pulse", async (c) => c.json({ v: await customerPulse(c.get("user").id) }))

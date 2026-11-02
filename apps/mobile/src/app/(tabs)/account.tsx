@@ -123,6 +123,8 @@ export default function AccountScreen() {
             <ListRow illo="pin" title="Saved addresses" subtitle="Used automatically at checkout" onPress={() => router.push("/addresses")} />
             <Divider style={{ marginLeft: 66 }} />
             <ListRow illo="shield" title="Security & notifications" subtitle="Password, and which notifications you get" onPress={() => router.push("/security")} />
+            <Divider style={{ marginLeft: 66 }} />
+            <ListRow illo="gift" title="Invite friends" subtitle="Your referral code, and who joined with it" onPress={() => router.push("/referrals")} />
           </Group>
         )}
 

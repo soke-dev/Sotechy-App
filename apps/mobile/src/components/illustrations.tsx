@@ -203,6 +203,17 @@ const Mail = ({ size }: P) => (
   </S>
 );
 
+const Gift = ({ size }: P) => (
+  <S size={size}>
+    <Path d="M24 15 C20 7 12 6.5 12 11.5 C12 15 18 15 24 15 Z" fill={C.coral} />
+    <Path d="M24 15 C28 7 36 6.5 36 11.5 C36 15 30 15 24 15 Z" fill={C.coral} />
+    <Rect x={8} y={22} width={32} height={20} rx={3} fill={C.orange} />
+    <Rect x={6} y={15} width={36} height={9} rx={2.5} fill={C.yellow} />
+    <Rect x={21} y={15} width={6} height={27} fill={C.coral} />
+    <Rect x={8} y={24} width={32} height={2.4} fill={C.orangeDark} />
+  </S>
+);
+
 export const ILLUSTRATIONS = {
   home: ({ size }: P) => <HomeIcon active size={size} />,
   bag: ({ size }: P) => <ShopIcon active size={size} />,
@@ -227,6 +238,7 @@ export const ILLUSTRATIONS = {
   search: Search,
   phone: Phone,
   mail: Mail,
+  gift: Gift,
 };
 
 export type IlloName = keyof typeof ILLUSTRATIONS;

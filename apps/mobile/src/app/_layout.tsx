@@ -81,6 +81,8 @@ function ThemedNavigator() {
         <Stack.Screen name="sign-in" options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="oauthredirect" options={{ headerShown: false, animation: "none" }} />
+        <Stack.Screen name="invite/[code]" options={{ headerShown: false, animation: "none" }} />
+        <Stack.Screen name="referrals" options={{ title: "Invite friends" }} />
         <Stack.Screen name="wishlist" options={{ title: "Saved items" }} />
         <Stack.Screen name="support" options={{ title: "Help & support" }} />
         <Stack.Screen name="profile" options={{ title: "My profile" }} />

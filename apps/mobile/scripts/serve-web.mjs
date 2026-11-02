@@ -41,7 +41,7 @@ function send(res, file, status = 200) {
 // iOS can check these. ANDROID_CERT_SHA256: the app's signing fingerprint(s), comma separated (Expo →
 // Credentials, and Play Console → App signing). APPLE_TEAM_ID: the Apple developer team ID.
 const APP_ID = "shop.sotechy.app";
-const LINK_PATHS = ["/store/*", "/product/*"];
+const LINK_PATHS = ["/store/*", "/product/*", "/invite/*"];
 const sha256 = (process.env.ANDROID_CERT_SHA256 ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 const teamId = (process.env.APPLE_TEAM_ID ?? "").trim();
 const WELL_KNOWN = {
