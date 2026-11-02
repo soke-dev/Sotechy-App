@@ -5,7 +5,7 @@ import { router, type Href } from "expo-router";
 import { useMemo } from "react";
 import { Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { directionsUrl, formatNaira, type Category } from "@sotechy/shared";
+import { anyCategory, directionsUrl, formatNaira, type Category } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { HomePopup } from "@/components/home-popup";
@@ -154,7 +154,10 @@ export default function HomeScreen() {
   if (!data) return null;
 
   const { config, categories, products } = data;
-  const tops = categories.filter((c) => !c.parentId).sort((a, b) => a.sortOrder - b.sortOrder);
+  // TV & audio first, then phones, then the rest (AC & fans goes between them below)
+  const FIRST = ["tv-audio", "phones-accessories"];
+  const rank = (slug: string) => (FIRST.includes(slug) ? FIRST.indexOf(slug) : FIRST.length);
+  const tops = categories.filter((c) => !c.parentId).sort((a, b) => rank(a.slug) - rank(b.slug) || a.sortOrder - b.sortOrder);
   // The catalogue holds Sotechy's products and every approved store's
   const marketStores = byFeatured(stores ?? []);
   const storeOf = new Map(marketStores.map((st) => [st.slug, st]));
@@ -319,10 +322,15 @@ export default function HomeScreen() {
             {[0, 1].map((row) => {
               const all = [
                 ...tops.map((c) => ({ key: c.id, label: c.name, image: c.imageUrl, icon: productIcon(c.name), onPress: () => shop({ category: c.slug }) })),
+              ];
+              // AC & fans, right after TV & audio
+              const tv = all.findIndex((x) => tops.some((c) => c.id === x.key && c.slug === "tv-audio"));
+              all.splice(tv + 1, 0, { key: "ac-fans", label: "AC & fans", image: null, icon: "snow-outline", onPress: () => shop({ category: anyCategory("Air conditioners", "Fans"), label: "AC & fans" }) });
+              all.push(
                 ...STORE_KINDS.map((k) => ({ key: k.kind, label: k.label, image: null, icon: k.icon, onPress: () => router.push({ pathname: "/stores", params: { kind: k.kind } }) })),
                 // Last: everything else, in Shop
                 { key: "more", label: "Much more", image: null, icon: "apps-outline" as IconName, onPress: () => shop({}) },
-              ];
+              );
               return (
                 <View key={row} style={{ flexDirection: "row", gap: space.sm }}>
                   {all.filter((_, i) => i % 2 === row).map((c) => (
