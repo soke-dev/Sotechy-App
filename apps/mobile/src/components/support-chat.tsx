@@ -26,10 +26,19 @@ import type { SupportChatSummary } from "@sotechy/shared";
 import { useAuth } from "@/lib/auth";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import { SupportAgentArt } from "./tab-icons";
+import { answerById, HELP_TOPICS, searchHelp, topicById, wantsPerson } from "./help-topics";
 import { Chip, tap, Txt } from "./ui";
 
-/** "human" sends the conversation to Sotechy's team, who answer right here */
-type Action = { label: string; kind: "human" } | { label: string; kind: "route"; href: Href };
+/** "human" sends the conversation to Sotechy's team, who answer right here. The rest steer the help bot:
+ *  open a topic, show an answer, say whether it helped, or go back to the topics. */
+type Action =
+  | { label: string; kind: "human"; context?: string }
+  | { label: string; kind: "route"; href: Href }
+  | { label: string; kind: "topic"; id: string }
+  | { label: string; kind: "answer"; id: string }
+  | { label: string; kind: "helped"; id: string }
+  | { label: string; kind: "unhelpful"; id: string }
+  | { label: string; kind: "menu" };
 interface Message {
   id: string;
   from: "agent" | "user";
@@ -44,39 +53,13 @@ interface Message {
 }
 
 const HUMAN: Action = { label: "Talk to a person", kind: "human" };
+const person = (context?: string): Action => ({ ...HUMAN, kind: "human", context });
+const TOPIC_CHIPS: Action[] = HELP_TOPICS.map((t) => ({ label: t.label, kind: "topic", id: t.id }));
+const MENU: Action = { label: "Something else", kind: "menu" };
 
-// Quick answers; anything else goes to the team with "Talk to a person"
-const TOPICS: { label: string; reply: Omit<Message, "id" | "from" | "at"> }[] = [
-  {
-    label: "Track my order",
-    reply: { text: "Every order shows each step under Orders: payment, the store accepting it, then on its way or ready at the pickup location.", actions: [{ label: "Open my orders", kind: "route", href: "/orders" }, HUMAN] },
-  },
-  {
-    label: "Paying",
-    reply: {
-      text: "You pay with stablecoin (USDT or USDC) through Money Moves at checkout. Bank transfer is coming soon. You can also use your store tokens to pay part of an order.",
-      actions: [HUMAN],
-    },
-  },
-  {
-    label: "Delivery & pickup",
-    reply: {
-      text: "Stores deliver to your home, or you collect from one of their pickup locations. You'll see the options, prices and times at checkout.",
-      actions: [HUMAN],
-    },
-  },
-  {
-    label: "Tokens",
-    reply: {
-      text: "You earn 1 token per ₦1 from each store when your order arrives, plus 10% in $SOTECHY when you buy from other stores. Use them at checkout to pay part of an order.",
-      actions: [{ label: "Open my wallet", kind: "route", href: "/wallet" }, HUMAN],
-    },
-  },
-  {
-    label: "A problem with an order",
-    reply: { text: "Sorry about that. Tell us what happened, and add a photo if it helps. Someone from our team will reply right here.", actions: [HUMAN] },
-  },
-  { label: "Talk to a person", reply: { text: "", actions: [] } },
+const hello = (fullName?: string | null): Message[] => [
+  { id: "hello", from: "agent", text: `Hi${fullName ? ` ${fullName.split(" ")[0]}` : ""} 👋 Welcome to Sotechy.`, at: 0 },
+  { id: "ask", from: "agent", text: "What can I help you with? Pick a topic, or type your question.", at: 1, actions: TOPIC_CHIPS },
 ];
 
 const useNative = Platform.OS !== "web";
@@ -221,10 +204,7 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    { id: "hello", from: "agent", text: `Hi${user?.fullName ? ` ${user.fullName.split(" ")[0]}` : ""} 👋 Welcome to Sotechy.`, at: 0 },
-    { id: "ask", from: "agent", text: "How can we help you today? Pick a topic or type your question.", at: 1 },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(() => hello(user?.fullName));
   // The saved conversation with the team, checked every few seconds while the chat is open
   const [thread, setThread] = useState<Message[]>([]);
   const fromServer = (chat: { messages: { id: string; fromStaff: boolean; body: string; imageUrl?: string | null; createdAt: string }[] }) =>
@@ -270,14 +250,12 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
     };
   }, [user]);
   const shown = [...messages, ...thread].sort((a, b) => a.at - b.at);
+  const lastAsk = [...shown].reverse().find((m) => m.from === "agent" && m.actions?.length)?.id;
   // Past conversations: the list, and one opened to read
   const [view, setView] = useState<"chat" | "history">("chat");
   const [past, setPast] = useState<SupportChatSummary[] | null>(null);
   const [reading, setReading] = useState<{ messages: Message[] } | null>(null);
-  const greeting = (): Message[] => [
-    { id: "hello", from: "agent", text: `Hi${user?.fullName ? ` ${user.fullName.split(" ")[0]}` : ""} 👋 Welcome to Sotechy.`, at: 0 },
-    { id: "ask", from: "agent", text: "How can we help you today? Pick a topic or type your question.", at: 1 },
-  ];
+  const greeting = () => hello(user?.fullName);
   const openHistory = () => {
     tap();
     setReading(null);
@@ -317,26 +295,68 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
     setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
   };
 
-  const pickTopic = (t: (typeof TOPICS)[number]) => {
-    tap();
-    if (t.label === "Talk to a person") return void talkToPerson();
-    push({ from: "user", text: t.label });
-    setTimeout(() => push({ from: "agent", ...t.reply }), 450);
+  // The help bot: a reply a moment after the customer's tap, like someone typing
+  const reply = (you: string | null, ...m: Omit<Message, "id" | "at">[]) => {
+    if (you) push({ from: "user", text: you });
+    setTimeout(() => push(...m), you ? 450 : 0);
+  };
+  const feedback = (id: string): Action[] => [
+    { label: "👍 That helped", kind: "helped", id },
+    { label: "Not helpful", kind: "unhelpful", id },
+  ];
+  const showAnswer = (id: string, you: string | null) => {
+    const ans = answerById(id);
+    if (!ans) return;
+    reply(you, { from: "agent", text: ans.a, actions: [...(ans.links ?? []).map((l): Action => ({ label: l.label, kind: "route", href: l.href })), ...feedback(id)] });
   };
 
   const runAction = async (a: Action) => {
-    if (a.kind === "route") {
-      close();
-      router.push(a.href);
-    } else await talkToPerson();
+    tap();
+    switch (a.kind) {
+      case "route":
+        close();
+        router.push(a.href);
+        return;
+      case "human":
+        return void talkToPerson(a.context);
+      case "topic": {
+        const t = topicById(a.id);
+        if (!t) return;
+        return reply(a.label, { from: "agent", text: t.intro, actions: [...t.answers.map((x): Action => ({ label: x.q, kind: "answer", id: x.id })), MENU] });
+      }
+      case "answer":
+        return showAnswer(a.id, a.label);
+      case "helped":
+        return reply("That helped", { from: "agent", text: "Great, glad that sorted it! Anything else I can help with?", actions: TOPIC_CHIPS });
+      case "unhelpful":
+        return reply(a.label, {
+          from: "agent",
+          text: "Sorry that didn't answer it. Someone from our team can help. They usually reply within minutes, right here in this chat.",
+          actions: [person(answerById(a.id)?.q), MENU],
+        });
+      case "menu":
+        return reply(a.label, { from: "agent", text: "No problem. Pick a topic, or type your question below in a few words.", actions: TOPIC_CHIPS });
+    }
+  };
+
+  /** A typed question before anyone from the team is in the chat: answered from the help topics if it can be */
+  const answerTyped = (message: string) => {
+    push({ from: "user", text: message });
+    const later = (m: Omit<Message, "id" | "at">) => setTimeout(() => push(m), 450);
+    if (wantsPerson(message)) return later({ from: "agent", text: "Sure, I'll get someone from our team. Tap below and they'll reply right here.", actions: [person(message)] });
+    const found = searchHelp(message);
+    const [best, next] = found;
+    if (best && (found.length === 1 || (best.score >= 2 && best.score > next.score))) return void setTimeout(() => showAnswer(best.answer.id, null), 450);
+    if (found.length) return later({ from: "agent", text: "Is it one of these?", actions: [...found.map((f): Action => ({ label: f.answer.q, kind: "answer", id: f.answer.id })), { label: "None of these", kind: "unhelpful", id: "" }] });
+    later({ from: "agent", text: "I couldn't find an answer to that. Someone from our team can help, or pick a topic.", actions: [person(message), ...TOPIC_CHIPS] });
   };
 
   /** Hands the chat to Sotechy's team: the request is saved like a message, and they reply here */
-  async function talkToPerson() {
+  async function talkToPerson(context?: string) {
     if (!user) return push({ from: "agent", text: "Sign in so our team can reply to you here.", actions: [{ label: "Sign in", kind: "route", href: "/sign-in" }] });
     setSending(true);
     try {
-      const chat = await api.sendSupportChat("I'd like to talk to a person.", orderId);
+      const chat = await api.sendSupportChat(context ? `I'd like to talk to a person about: ${context}` : "I'd like to talk to a person.", orderId);
       setThread(fromServer(chat));
       push({ from: "agent", text: "Done. Someone from our team will reply right here, usually within minutes. Tell us more below while you wait." });
     } catch {
@@ -350,6 +370,8 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
     const message = text.trim();
     if (!message) return;
     setText("");
+    // Until someone from the team is in the chat, the help bot answers first
+    if (thread.length === 0) return answerTyped(message);
     setSending(true);
     try {
       if (user) {
@@ -466,25 +488,32 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
                   <Txt variant="body" color={m.from === "user" ? colors.white : colors.ink} style={{ fontSize: 14.5 }}>{m.text}</Txt>
                 </View>
                 ) : null}
-                {m.actions?.map((a) => (
-                  <Pressable
-                    key={a.label}
-                    onPress={() => runAction(a)}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.inverse }}
-                  >
-                    <Ionicons name={a.kind === "human" ? "person-outline" : "arrow-forward"} size={15} color={a.kind === "human" ? colors.brand : colors.onInverse} />
-                    <Txt variant="label" color={colors.onInverse} style={{ fontSize: 13 }}>{a.label}</Txt>
-                  </Pressable>
-                ))}
+                {/* Only the newest bot message keeps its buttons: links and "Talk to a person" as pills, choices as chips */}
+                {!reading && m.id === lastAsk
+                  ? m.actions
+                      ?.filter((a) => a.kind === "route" || a.kind === "human")
+                      .map((a) => (
+                        <Pressable
+                          key={a.label}
+                          onPress={() => runAction(a)}
+                          style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.inverse }}
+                        >
+                          <Ionicons name={a.kind === "human" ? "person-outline" : "arrow-forward"} size={15} color={a.kind === "human" ? colors.brand : colors.onInverse} />
+                          <Txt variant="label" color={colors.onInverse} style={{ fontSize: 13 }}>{a.label}</Txt>
+                        </Pressable>
+                      ))
+                  : null}
+                {!reading && m.id === lastAsk && m.actions?.some((a) => a.kind !== "route" && a.kind !== "human") ? (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: 2 }}>
+                    {m.actions
+                      .filter((a) => a.kind !== "route" && a.kind !== "human")
+                      .map((a) => (
+                        <Chip key={a.label} label={a.label} icon={a.kind === "topic" ? topicById(a.id)?.icon : undefined} onPress={() => runAction(a)} />
+                      ))}
+                  </View>
+                ) : null}
               </View>
             ))}
-            {!reading && messages.length <= 2 && thread.length === 0 && (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: space.sm }}>
-                {TOPICS.map((t) => (
-                  <Chip key={t.label} label={t.label} onPress={() => pickTopic(t)} />
-                ))}
-              </View>
-            )}
           </ScrollView>
           )}
 
