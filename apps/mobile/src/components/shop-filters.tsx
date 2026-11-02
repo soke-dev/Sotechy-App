@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira, type ProductQuery } from "@sotechy/shared";
 import { api } from "@/lib/api";
 import { colors, gutter, radius, space } from "@/lib/theme";
+import { useSheetFrame } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
 import { Button, Chip, Input, tap, Txt, type IconName } from "./ui";
 
@@ -64,11 +65,13 @@ export const brandLabel = (f: ShopFilters) => (f.brands.length === 0 ? "Brand" :
 /** Bottom sheet used across the app (filters, wallet, notifications) */
 export function Sheet({ visible, title, right, onClose, children, footer }: { visible: boolean; title: string; right?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   const insets = useSafeAreaInsets();
+  // A centred dialog on desktop
+  const frame = useSheetFrame();
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1, justifyContent: "flex-end" }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <Modal visible={visible} transparent animationType={frame ? "fade" : "slide"} onRequestClose={onClose}>
+      <KeyboardAvoidingView style={[{ flex: 1, justifyContent: "flex-end" }, frame?.outer]} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay }} onPress={onClose} accessibilityLabel="Close" />
-        <View style={{ backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: "88%", paddingBottom: insets.bottom + space.md }}>
+        <View style={[{ backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: "88%", paddingBottom: insets.bottom + space.md }, frame?.panel]}>
           <View style={{ alignItems: "center", paddingTop: space.sm }}>
             <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line }} />
           </View>

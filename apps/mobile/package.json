@@ -67,6 +67,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "build:web": "expo export --platform web --output-dir dist-web",
+    "start:web": "node scripts/serve-web.mjs",
     "typecheck": "tsc --noEmit",
     "build:ios:dev": "npx eas-cli@latest build --profile development --platform ios",
     "build:android:dev": "npx eas-cli@latest build --profile development --platform android",

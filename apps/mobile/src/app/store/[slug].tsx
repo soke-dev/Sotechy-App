@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
@@ -18,6 +18,7 @@ import { useExternalLink } from "@/components/external-link";
 import { StoreBadgeSheet } from "@/components/store-badge-sheet";
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { fonts, gutter, radius, space } from "@/lib/theme";
+import { useGrid, useScreenWidth } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
 
 type Tab = "products" | "about";
@@ -121,7 +122,8 @@ export default function StoreScreen() {
   const external = useExternalLink();
   const [badgeOpen, setBadgeOpen] = useState(false);
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const width = useScreenWidth();
+  const { cardWidth: tileWidth } = useGrid();
   const [tab, setTab] = useState<Tab>("products");
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
@@ -148,7 +150,6 @@ export default function StoreScreen() {
   const following = subs.isSubscribed(store.slug);
   const favourite = subs.isFavourite(store.slug);
   const time = fastest(store);
-  const tileWidth = (Math.min(width, 720) - gutter * 2 - space.md) / 2;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>

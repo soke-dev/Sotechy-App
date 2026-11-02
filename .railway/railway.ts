@@ -40,6 +40,7 @@ export default defineRailway(() => {
         "https://merchant.sotechy.shop",
         "https://sotechy.shop",
         "https://www.sotechy.shop",
+        "https://app.sotechy.shop",
       ].join(","),
       JWT_SECRET: preserve(),
       // The first admin (more are added from the admin dashboard). Their sign-in codes go to this inbox.
@@ -119,7 +120,25 @@ export default defineRailway(() => {
     },
   });
 
+  // The app on the web (Expo web export, served as static files): app.sotechy.shop
+  const app = service("app", {
+    replicas: { [REGION]: 1 },
+    build: {
+      builder: "RAILPACK",
+      buildCommand: "pnpm --filter @sotechy/mobile build:web",
+      watchPatterns: ["apps/mobile/**", "packages/shared/**", "pnpm-lock.yaml"],
+    },
+    start: "pnpm --filter @sotechy/mobile start:web",
+    healthcheck: "/health",
+    env: {
+      NODE_ENV: "production",
+      // Read when the web build is made
+      EXPO_PUBLIC_API_URL: "https://api.sotechy.shop",
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: "135476780081-itrqdn08npnranseuh73v5l1cnmq3jip.apps.googleusercontent.com",
+    },
+  });
+
   return project("Sotechy Shop", {
-    resources: [admin, api, merchant, web, Postgres, postgresVolume],
+    resources: [admin, api, app, merchant, web, Postgres, postgresVolume],
   });
 });

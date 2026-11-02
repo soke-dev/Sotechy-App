@@ -6,6 +6,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-nat
 import { uploadPhoto } from "@/lib/api";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, space } from "@/lib/theme";
+import { useSheetFrame } from "@/lib/layout";
 import { tap, Txt } from "./ui";
 import { AVATAR_PRESETS, isPhotoAvatar, UserAvatar } from "./user-avatar";
 
@@ -35,6 +36,8 @@ function Tile({ seed, preset, selected, onPress, label }: { seed: string; preset
 
 export function AvatarPicker({ visible, seed, current, onSelect, onClose }: { visible: boolean; seed: string; current: string | null | undefined; onSelect: (preset: string | null) => void; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  // A centred dialog on desktop
+  const frame = useSheetFrame();
   const group = (g: "men" | "women") => AVATAR_PRESETS.filter((p) => p.group === g);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,10 +59,10 @@ export function AvatarPicker({ visible, seed, current, onSelect, onClose }: { vi
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+    <Modal visible={visible} transparent animationType={frame ? "fade" : "slide"} onRequestClose={onClose}>
+      <View style={[{ flex: 1, justifyContent: "flex-end" }, frame?.outer]}>
         <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay }} onPress={onClose} accessibilityLabel="Close" />
-        <View style={{ backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: insets.bottom + space.lg, maxHeight: "86%" }}>
+        <View style={[{ backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: insets.bottom + space.lg, maxHeight: "86%" }, frame?.panel]}>
           <View style={{ alignItems: "center", paddingTop: space.sm }}>
             <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line }} />
           </View>

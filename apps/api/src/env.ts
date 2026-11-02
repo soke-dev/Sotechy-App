@@ -68,5 +68,7 @@ const schema = z.object({
 });
 
 export const env = schema.parse(process.env);
-export const corsOrigins = env.CORS_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean);
+/** The web version of the app is always allowed, on top of CORS_ORIGINS */
+const ALWAYS_ALLOWED = ["https://app.sotechy.shop"];
+export const corsOrigins = [...new Set([...env.CORS_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean), ...ALWAYS_ALLOWED])];
 export const publicApiUrl = (env.PUBLIC_API_URL || (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : "")).replace(/\/+$/, "");

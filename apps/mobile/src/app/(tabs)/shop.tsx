@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { anyCategory, MARKET_DEPARTMENTS } from "@sotechy/shared";
-import { FlatList, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
+import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { CartButton } from "@/components/cart-button";
 import { MenuButton } from "@/components/menu";
 import { ProductCard } from "@/components/product-card";
@@ -13,6 +13,7 @@ import { useTabBarInset } from "@/components/tab-bar";
 import { Button, Chip, EmptyState, ErrorView, Input, Loading, ScreenHeader, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { useGrid } from "@/lib/layout";
 import { useFeatures } from "@/lib/store-config";
 import { useAsync } from "@/lib/use-async";
 
@@ -37,7 +38,7 @@ function FiltersButton({ count, onPress }: { count: number; onPress: () => void 
 
 export default function ShopScreen() {
   const params = useLocalSearchParams<{ q?: string; category?: string; label?: string; sort?: string; focus?: string; featured?: string; seller?: string }>();
-  const { width } = useWindowDimensions();
+  const { columns, cardWidth } = useGrid();
   const tabInset = useTabBarInset();
   const [query, setQuery] = useState(params.q ?? "");
   const [search, setSearch] = useState(params.q ?? "");
@@ -77,7 +78,6 @@ export default function ShopScreen() {
   const recent = useRecentSearches();
   const [searchFocused, setSearchFocused] = useState(false);
   const products = useAsync(() => api.products({ q: search, category, sort, ...toQuery(filters) }), [search, category, sort, JSON.stringify(filters)]);
-  const cardWidth = (Math.min(width, 720) - gutter * 2 - space.md) / 2;
   const sortShort = SORTS.find((s) => s.value === sort)?.short ?? "Newest";
   const active = countFilters(filters);
   const hasPrice = filters.minPrice !== undefined || filters.maxPrice !== undefined;
@@ -207,8 +207,9 @@ export default function ShopScreen() {
       ) : (
         <FlatList
           data={rows}
+          key={columns}
           keyExtractor={(p) => p.id}
-          numColumns={2}
+          numColumns={columns}
           columnWrapperStyle={{ gap: space.md }}
           contentContainerStyle={{ paddingHorizontal: gutter, paddingBottom: tabInset + space.lg, gap: space.md }}
           renderItem={({ item }) => <ProductCard product={item} width={cardWidth} />}

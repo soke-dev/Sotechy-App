@@ -7,6 +7,7 @@ import { Animated, Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
+import { useIsDesktop } from "@/lib/layout";
 import { colors, fonts } from "@/lib/theme";
 import { AccountIcon, Burst, CartIcon, HomeIcon, OrdersIcon, ShopIcon, StoresIcon } from "./tab-icons";
 import { UserAvatar } from "./user-avatar";
@@ -28,6 +29,8 @@ const PILL_HEIGHT = 78;
 /** Space tab screens must leave at the bottom so content can scroll clear of the floating bar. */
 export function useTabBarInset() {
   const insets = useSafeAreaInsets();
+  const desktop = useIsDesktop();
+  if (desktop) return 32;
   return PILL_HEIGHT + Math.max(insets.bottom, 10) + 14;
 }
 
@@ -107,6 +110,8 @@ function TabItem({
 export function SotechyTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const { count } = useCart();
   const { user } = useAuth();
+  const desktop = useIsDesktop();
+  if (desktop) return null;
   return (
     // Absolutely positioned and transparent so page content keeps showing behind the pill.
     <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 14, paddingBottom: Math.max(insets.bottom, 10) }}>

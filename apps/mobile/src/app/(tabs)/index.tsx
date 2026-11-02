@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, type Href } from "expo-router";
 import { useMemo } from "react";
-import { Linking, Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from "react-native";
+import { Linking, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { directionsUrl, formatNaira, type Category } from "@sotechy/shared";
 import { CartButton } from "@/components/cart-button";
@@ -25,6 +25,7 @@ import { byFeatured, isFeatured, isPro, SOTECHY_STORE, tileColor, toStoreProduct
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { useContentWidth, useIsDesktop } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { Illo } from "@/components/illustrations";
@@ -129,13 +130,15 @@ function shuffled<T>(list: T[]) {
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const width = useContentWidth();
   const { unread } = useStoreNotifications();
   const { stores } = useStores();
   const { user } = useAuth();
   const tabInset = useTabBarInset();
   const features = useFeatures();
-  const contentWidth = Math.min(width, 720) - gutter * 2;
+  const contentWidth = width - gutter * 2;
+  // Desktop: the sidebar has the menu and logo, and banners sit two across
+  const desktop = useIsDesktop();
 
   const { data, error, loading, reload } = useAsync(async () => {
     const [config, categories, products] = await Promise.all([api.storeConfig(), api.categories(), api.products({ sort: "newest" })]);
@@ -218,10 +221,14 @@ export default function HomeScreen() {
       <View style={{ paddingHorizontal: gutter, gap: space.md }}>
         <MaintenanceNotice />
         <View style={ui.between}>
-          <View style={[ui.row, { gap: space.md }]}>
-            <MenuButton />
-            <Image source={require("../../../assets/brand/light-logo-small.png")} style={{ width: 100, height: 42 }} contentFit="contain" contentPosition="left" />
-          </View>
+          {desktop ? (
+            <Txt variant="title">{user?.fullName ? `Hi ${user.fullName.split(" ")[0]}` : "Welcome to Sotechy"}</Txt>
+          ) : (
+            <View style={[ui.row, { gap: space.md }]}>
+              <MenuButton />
+              <Image source={require("../../../assets/brand/light-logo-small.png")} style={{ width: 100, height: 42 }} contentFit="contain" contentPosition="left" />
+            </View>
+          )}
           <View style={ui.row}>
             <ArtButton label={user ? "My account" : "Sign in"} onPress={() => router.push("/account")}>
               {/* Avatar sits inside the ring like the signed-out icon */}
@@ -275,7 +282,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <HeroCarousel width={contentWidth} />
+      <HeroCarousel width={desktop ? (contentWidth - space.md) / 2 : contentWidth} />
 
       {/* Categories */}
       <View>

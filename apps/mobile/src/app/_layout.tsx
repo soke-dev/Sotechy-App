@@ -8,8 +8,10 @@ import { useFonts } from "expo-font";
 import { router, Stack, usePathname, type Href } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { AnimatedSplash } from "@/components/animated-splash";
+import { DesktopShell } from "@/components/desktop-shell";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { CartFeedbackProvider } from "@/components/cart-feedback";
@@ -50,6 +52,7 @@ function ThemedNavigator() {
     <>
       <StatusBar style={resolved === "dark" ? "light" : "dark"} />
       <PushNotifications />
+      <DesktopShell key={resolved}>
       <Stack
         key={resolved}
         screenOptions={{
@@ -82,6 +85,7 @@ function ThemedNavigator() {
         <Stack.Screen name="addresses" options={{ title: "Saved addresses" }} />
         <Stack.Screen name="address/[id]" options={{ title: "Address" }} />
       </Stack>
+      </DesktopShell>
     </>
   );
 }
@@ -120,7 +124,8 @@ export default function RootLayout() {
                         <StoreNotificationsProvider>
                             <AccountExtrasProvider>
                               <ThemedNavigator />
-                              {intro && <AnimatedSplash ready onDone={() => setIntro(false)} />}
+                              {/* Not on the web: a page load should be quick */}
+                              {intro && Platform.OS !== "web" && <AnimatedSplash ready onDone={() => setIntro(false)} />}
                             </AccountExtrasProvider>
                         </StoreNotificationsProvider>
                       </MenuProvider>

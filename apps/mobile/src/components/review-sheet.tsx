@@ -8,6 +8,7 @@ import { TOKEN_RULES } from "@sotechy/shared";
 import { uploadPhoto } from "@/lib/api";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, space } from "@/lib/theme";
+import { useSheetFrame } from "@/lib/layout";
 import { Button, Input, tap, Txt } from "./ui";
 
 const LABELS = ["Poor", "Fair", "Good", "Very good", "Excellent"];
@@ -27,6 +28,8 @@ export function ReviewSheet({
   onSubmit: (input: { rating: number; title: string; body: string; photos: string[] }) => Promise<void>;
 }) {
   const insets = useSafeAreaInsets();
+  // A centred dialog on desktop
+  const frame = useSheetFrame();
   const [rating, setRating] = useState(0);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -72,10 +75,10 @@ export function ReviewSheet({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1, justifyContent: "flex-end" }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <Modal visible={visible} transparent animationType={frame ? "fade" : "slide"} onRequestClose={onClose}>
+      <KeyboardAvoidingView style={[{ flex: 1, justifyContent: "flex-end" }, frame?.outer]} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay }} onPress={onClose} accessibilityLabel="Close" />
-        <View style={{ backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: "90%", paddingBottom: insets.bottom + space.md }}>
+        <View style={[{ backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, maxHeight: "90%", paddingBottom: insets.bottom + space.md }, frame?.panel]}>
           <View style={{ alignItems: "center", paddingTop: space.sm }}>
             <View style={{ width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line }} />
           </View>

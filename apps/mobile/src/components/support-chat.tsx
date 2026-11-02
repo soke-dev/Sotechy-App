@@ -26,6 +26,7 @@ import type { SupportChatSummary } from "@sotechy/shared";
 import { useAuth } from "@/lib/auth";
 import { openPolicy, type PolicySlug } from "@/lib/policies";
 import { colors, fonts, radius, space } from "@/lib/theme";
+import { useIsDesktop } from "@/lib/layout";
 import { SupportAgentArt } from "./tab-icons";
 import { answerById, HELP_TOPICS, searchHelp, topicById, wantsPerson } from "./help-topics";
 import { Chip, tap, Txt } from "./ui";
@@ -190,7 +191,7 @@ export function SupportChat({ teaser = false, bottomOffset = 0 }: { teaser?: boo
 /** The live chat in its own sheet, for "Need help" buttons anywhere in the app */
 export function SupportChatModal({ visible, onClose, orderId, past }: { visible: boolean; onClose: () => void; orderId?: string; past?: SupportChatSummary | null }) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType={Platform.OS === "web" ? "fade" : "slide"} onRequestClose={onClose}>
       <ChatSheet onClose={onClose} orderId={orderId} past={past} />
     </Modal>
   );
@@ -285,7 +286,8 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
     api.supportChatById(startOn.id).then((chat) => setReading({ messages: fromServer(chat) }), () => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const sheetHeight = Math.min(height * 0.78, 640);
+  const desktop = useIsDesktop();
+  const sheetHeight = desktop ? Math.min(height - 48, 680) : Math.min(height * 0.78, 640);
   const close = () => {
     Keyboard.dismiss();
     onClose();
@@ -400,8 +402,8 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, justifyContent: "flex-end" }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(23,18,14,0.45)" }} onPress={close} accessibilityLabel="Close chat" />
+    <KeyboardAvoidingView style={[{ flex: 1, justifyContent: "flex-end" }, desktop && { alignItems: "flex-end", padding: space.xl }]} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: desktop ? "rgba(23,18,14,0.2)" : "rgba(23,18,14,0.45)" }} onPress={close} accessibilityLabel="Close chat" />
       <View
         style={{
           flexBasis: sheetHeight,
@@ -412,6 +414,8 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
           borderTopLeftRadius: radius.xl,
           borderTopRightRadius: radius.xl,
           overflow: "hidden",
+          // On desktop: a chat window in the corner
+          ...(desktop ? { width: 410, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line } : null),
         }}
       >
           {/* Header */}

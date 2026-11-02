@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira } from "@sotechy/shared";
 import { useCart } from "@/lib/cart";
 import { colors, radius, space } from "@/lib/theme";
+import { useSheetFrame } from "@/lib/layout";
 import { ProductImage } from "./product-image";
 import { Button, tap, Txt } from "./ui";
 
@@ -57,10 +58,11 @@ export function CartFeedbackProvider({ children }: { children: ReactNode }) {
 function AddedSheet({ item, onClose }: { item: AddedItem; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const { count, subtotal } = useCart();
+  const frame = useSheetFrame(460);
   return (
-    <View style={{ flex: 1, justifyContent: "flex-end" }}>
+    <View style={[{ flex: 1, justifyContent: "flex-end" }, frame?.outer]}>
       <Pressable style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay }} onPress={onClose} accessibilityLabel="Close" />
-      <View style={{ margin: space.md, marginBottom: insets.bottom + space.md, backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, padding: space.lg, gap: space.lg }}>
+      <View style={{ margin: space.md, marginBottom: insets.bottom + space.md, ...(frame ? { width: 460, maxWidth: "100%" } : null), backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.line, padding: space.lg, gap: space.lg }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
           <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: colors.success, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="checkmark" size={16} color={colors.white} />

@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira, formatUsd, type CatalogProduct, type OfferView, type ProductDetail, type ProductReviews, type Review } from "@sotechy/shared";
 import { useCartFeedback } from "@/components/cart-feedback";
@@ -39,6 +39,7 @@ import { openPolicy } from "@/lib/policies";
 import { useCart } from "@/lib/cart";
 import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
+import { useIsDesktop, useScreenWidth } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
 import { loadStore } from "@/lib/marketplace";
 import { sellerOf, useAddToCart } from "@/components/add-to-cart";
@@ -447,7 +448,10 @@ function ReviewsTab({ data, loading, mine, onWrite }: { data: ProductReviews | u
 export default function ProductScreen() {
   const { id, tab: tabParam } = useLocalSearchParams<{ id: string; tab?: string }>();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const screenWidth = useScreenWidth();
+  // Desktop: photos on the left, details beside them
+  const desktop = useIsDesktop();
+  const width = desktop ? Math.round((screenWidth - gutter * 2 - space.xl) / 2) : screenWidth;
   const { data: product, error, loading, reload } = useAsync(() => api.product(id), [id]);
   const reviews = useAsync(() => api.productReviews(id), [id]);
   const [variantId, setVariantId] = useState<string | null>(null);
@@ -480,7 +484,7 @@ export default function ProductScreen() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  const heroHeight = Math.round(Math.min(width, 720) * 0.95);
+  const heroHeight = desktop ? width : Math.round(Math.min(width, 720) * 0.95);
 
   // Related = other products in the same top-level category.
   const related = useAsync(async () => {
@@ -580,8 +584,9 @@ export default function ProductScreen() {
   return (
     <View style={ui.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
+        <View style={desktop ? { flexDirection: "row", alignItems: "flex-start", gap: space.xl, padding: gutter } : undefined}>
         {/* Photo gallery: swipe, or tap a thumbnail below */}
-        <View style={{ height: heroHeight, backgroundColor: "#F1ECE5" }}>
+        <View style={[{ height: heroHeight, backgroundColor: "#F1ECE5" }, desktop && { width, borderRadius: radius.xl, overflow: "hidden" }]}>
           {product.images.length > 0 ? (
             <ScrollView
               ref={galleryRef}
@@ -612,7 +617,7 @@ export default function ProductScreen() {
         </View>
 
         {/* Details sheet */}
-        <View style={{ marginTop: -radius.xl, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, backgroundColor: colors.bg, paddingHorizontal: gutter, paddingTop: space.xl, gap: space.lg }}>
+        <View style={[{ marginTop: -radius.xl, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, backgroundColor: colors.bg, paddingHorizontal: gutter, paddingTop: space.xl, gap: space.lg }, desktop && { flex: 1, marginTop: 0, paddingHorizontal: 0, paddingTop: 0 }]}>
           {product.images.length > 1 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
               {product.images.map((src, i) => (
@@ -707,6 +712,7 @@ export default function ProductScreen() {
           {shownTab === "overview" && <OverviewTab product={product} variantId={variant?.id} onVariant={setVariantId} pickupBranch={storesWithStock[0]?.branchName} />}
           {shownTab === "about" && <AboutTab product={product} />}
           {shownTab === "reviews" && <ReviewsTab data={reviews.data} loading={reviews.loading} mine={mine} onWrite={openReview} />}
+        </View>
         </View>
 
         {related.data && related.data.items.length > 0 && (

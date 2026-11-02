@@ -6,6 +6,7 @@ import { Animated, Linking, Modal, Platform, Pressable, View } from "react-nativ
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Ellipse, Path } from "react-native-svg";
 import { fonts, lightPalette as colors, radius, space } from "@/lib/theme";
+import { useSheetFrame } from "@/lib/layout";
 import { tap, Txt } from "./ui";
 
 const native = Platform.OS !== "web";
@@ -46,6 +47,8 @@ function LeavingArt() {
 
 function LeavingSheet({ url, onClose }: { url: string; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  // A centred dialog on desktop
+  const frame = useSheetFrame();
   const y = useRef(new Animated.Value(400)).current;
   const fade = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -65,13 +68,14 @@ function LeavingSheet({ url, onClose }: { url: string; onClose: () => void }) {
       <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(12,9,7,0.55)", opacity: fade }}>
         <Pressable style={{ flex: 1 }} onPress={() => leave()} accessibilityLabel="Stay on Sotechy" />
       </Animated.View>
-      <View style={{ flex: 1, justifyContent: "flex-end" }} pointerEvents="box-none">
+      <View style={[{ flex: 1, justifyContent: "flex-end" }, frame?.outer]} pointerEvents="box-none">
         <Animated.View
           style={{
             transform: [{ translateY: y }],
             backgroundColor: colors.white,
             borderTopLeftRadius: 30,
             borderTopRightRadius: 30,
+            ...(frame ? { width: 440, maxWidth: "100%", borderRadius: 30 } : null),
             paddingHorizontal: space.xl,
             paddingTop: space.md,
             paddingBottom: insets.bottom + space.xl,
