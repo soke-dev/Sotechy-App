@@ -1,6 +1,6 @@
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { zValidator } from "@hono/zod-validator";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import { recordNotice } from "../services/push";
@@ -226,6 +226,27 @@ export const authRoutes = new Hono<AppEnv>()
   .get("/me", requireAuth, async (c) => {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, c.get("user").id));
     return c.json(publicUser(user));
+  })
+  /** Deletes the account and its personal data (App Store and Play rules). Its orders are kept without a
+   *  name, as sales records. Not while it runs a store or has an order on its way. */
+  .delete("/me", requireAuth, async (c) => {
+    const id = c.get("user").id;
+    const [user] = await db.select({ role: schema.users.role, email: schema.users.email }).from(schema.users).where(eq(schema.users.id, id));
+    if (!user) throw unauthorized();
+    if (user.role !== "customer") throw forbidden("Staff accounts are closed by a Sotechy admin");
+    const [store] = await db.select({ name: schema.merchants.name }).from(schema.merchants).where(eq(schema.merchants.ownerId, id));
+    if (store) throw conflict(`You run ${store.name}. Contact Sotechy support to close the store before deleting your account.`);
+    const [open] = await db
+      .select({ number: schema.orders.orderNumber })
+      .from(schema.orders)
+      .where(and(eq(schema.orders.customerId, id), inArray(schema.orders.status, ["paid", "processing", "dispatched", "ready_for_pickup"])))
+      .limit(1);
+    if (open) throw conflict(`Order ${open.number} is still on its way. You can delete your account once it's delivered or cancelled.`);
+    // Addresses, saved items, follows, reviews, offers, notifications and sign-in records go with the account;
+    // orders and support chats stay without it
+    await db.delete(schema.users).where(eq(schema.users.id, id));
+    await audit(db, { actorId: null, action: "account.deleted", entityType: "user", entityId: id, details: {} });
+    return c.json({ deleted: true });
   })
   .patch(
     "/me",

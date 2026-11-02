@@ -6,6 +6,7 @@ import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Switch, View } from "react-native";
 import type { User } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
+import { useDialog } from "@/components/dialog";
 import { useToast } from "@/components/toast";
 import { Button, Divider, Input, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -21,7 +22,7 @@ const KINDS: { kind: Kind; title: string; body: string }[] = [
   { kind: "support", title: "Support replies", body: "When Sotechy answers your message" },
 ];
 
-function Card({ illo, title, children }: { illo: "shield" | "chat"; title: string; children: React.ReactNode }) {
+function Card({ illo, title, children }: { illo: "shield" | "chat" | "user"; title: string; children: React.ReactNode }) {
   return (
     <View style={[ui.card, { gap: space.md }]}>
       <View style={[ui.row, { gap: space.md }]}>
@@ -36,8 +37,10 @@ function Card({ illo, title, children }: { illo: "shield" | "chat"; title: strin
 }
 
 export default function SecurityScreen() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, signOut } = useAuth();
   const toast = useToast();
+  const dialog = useDialog();
+  const [deleting, setDeleting] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [again, setAgain] = useState("");
@@ -55,6 +58,29 @@ export default function SecurityScreen() {
   }
   const hasPassword = user.hasPassword !== false;
   const mismatch = !!again && next !== again;
+
+  /** Deletes the account for good (App Store and Play rules), after asking twice */
+  async function deleteAccount() {
+    const sure = await dialog.confirm({
+      title: "Delete your account?",
+      message:
+        "This deletes your account, addresses, saved items, reviews, offers and token balance for good. Your past orders are kept without your name. You can't undo this.",
+      confirmLabel: "Delete my account",
+      tone: "danger",
+    });
+    if (!sure) return;
+    setDeleting(true);
+    try {
+      await api.delete("/auth/me");
+      await signOut();
+      toast("Your account has been deleted");
+      router.replace("/");
+    } catch (err) {
+      await dialog.alert({ title: "Can't delete it yet", message: err instanceof Error ? err.message : "Please try again" });
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function savePassword() {
     setError(null);
@@ -122,6 +148,13 @@ export default function SecurityScreen() {
             <Ionicons name="lock-closed" size={16} color={colors.ink2} />
             <Txt variant="caption" style={{ flex: 1 }}>Security alerts, like a new sign-in or a password change, always come through.</Txt>
           </View>
+        </Card>
+
+        <Card illo="user" title="Delete account">
+          <Txt variant="small" color={colors.ink2}>
+            Deletes your account and personal details for good, including your token balance. Past orders are kept without your name, as sales records.
+          </Txt>
+          <Button title="Delete my account" variant="danger" loading={deleting} onPress={() => void deleteAccount()} />
         </Card>
       </ScrollView>
     </KeyboardAvoidingView>

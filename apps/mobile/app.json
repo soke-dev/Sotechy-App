@@ -18,7 +18,7 @@
       "url": "https://u.expo.dev/a71865dc-48d0-429f-b345-ce310ac8ea7d"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "shop.sotechy.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
