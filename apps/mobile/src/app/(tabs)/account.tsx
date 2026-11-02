@@ -7,6 +7,7 @@ import { useTabBarInset } from "@/components/tab-bar";
 import { Button, Divider, ListRow, ScreenHeader, tap, Txt, ui } from "@/components/ui";
 import { UserAvatar } from "@/components/user-avatar";
 import { useAuth } from "@/lib/auth";
+import { openPolicy } from "@/lib/policies";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useThemeMode } from "@/lib/theme-mode";
 
@@ -147,7 +148,7 @@ export default function AccountScreen() {
         <Group title="Help">
           <ListRow illo="chat" title="Help & support" subtitle="Call, WhatsApp or send a message" onPress={() => router.push("/support")} />
           <Divider style={{ marginLeft: 62 }} />
-          <ListRow illo="doc" title="Delivery, returns & warranty" onPress={() => router.push("/support")} />
+          <ListRow illo="doc" title="Terms & policies" subtitle="Delivery, returns, warranty and privacy" onPress={() => openPolicy()} />
         </Group>
 
         {user && (

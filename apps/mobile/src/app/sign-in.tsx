@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GoogleButton } from "@/components/google-button";
 import { useFeatures } from "@/lib/store-config";
@@ -11,6 +11,7 @@ import { Burst } from "@/components/tab-icons";
 import { Button, Input, Txt, ui } from "@/components/ui";
 import { API_URL } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { openPolicy } from "@/lib/policies";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 
 type Mode = "signin" | "signup";
@@ -253,7 +254,15 @@ export default function SignInScreen() {
           )}
 
           <Txt variant="caption" style={{ textAlign: "center", fontFamily: fonts.medium }}>
-            By continuing you agree to Sotechy&apos;s terms and privacy policy. No crypto wallet needed to shop.
+            By continuing you agree to Sotechy&apos;s{" "}
+            <Text onPress={() => openPolicy("terms")} accessibilityRole="link" style={{ fontFamily: fonts.semibold, color: colors.brandPressed, textDecorationLine: "underline" }}>
+              Terms of service
+            </Text>{" "}
+            and{" "}
+            <Text onPress={() => openPolicy("privacy")} accessibilityRole="link" style={{ fontFamily: fonts.semibold, color: colors.brandPressed, textDecorationLine: "underline" }}>
+              Privacy policy
+            </Text>
+            .
           </Txt>
         </View>
       </ScrollView>

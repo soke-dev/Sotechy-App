@@ -1,6 +1,7 @@
 // What the support chat answers on its own: topics, their questions, and the words that find them
 // when a customer types instead of tapping. Anything it can't answer goes to the team.
 import type { Href } from "expo-router";
+import type { PolicySlug } from "@/lib/policies";
 import type { IconName } from "./ui";
 
 export interface HelpAnswer {
@@ -9,7 +10,8 @@ export interface HelpAnswer {
   a: string;
   /** Lower-case words or phrases that point to this answer; phrases count double */
   keywords: string[];
-  links?: { label: string; href: Href }[];
+  /** In-app screens, or a policy on sotechy.shop */
+  links?: ({ label: string; href: Href } | { label: string; policy: PolicySlug })[];
 }
 
 export interface HelpTopic {
@@ -46,9 +48,9 @@ export const HELP_TOPICS: HelpTopic[] = [
       {
         id: "not-received",
         q: "It says delivered but I don't have it",
-        a: "Open the order and tap Not received. Sotechy then holds the store's payment and checks with them, and we'll contact you. Once it reaches you, tap I've got it now on the same order.",
+        a: "Open the order and tap Not received, within 24 hours of it being marked delivered. Sotechy then holds the store's payment and checks with them, and we'll contact you. Once it reaches you, tap I've got it now on the same order.",
         keywords: ["not received", "didn't receive", "didnt receive", "never got", "says delivered", "marked delivered", "not delivered", "missing"],
-        links: [{ label: "Open my orders", href: ORDERS }],
+        links: [{ label: "Open my orders", href: ORDERS }, { label: "Delivery policy", policy: "delivery" }],
       },
       {
         id: "received",
@@ -62,7 +64,7 @@ export const HELP_TOPICS: HelpTopic[] = [
         q: "How do I cancel an order?",
         a: "You can cancel any order you haven't paid for yet: open it and tap Cancel order. Unpaid orders also cancel on their own after 24 hours. Once an order is paid, the store has started on it, so cancelling goes through our team, who also handle the refund.",
         keywords: ["cancel", "cancellation", "cancel my order", "cancel order", "stop my order", "don't want", "dont want", "changed my mind"],
-        links: [{ label: "Open my orders", href: ORDERS }],
+        links: [{ label: "Open my orders", href: ORDERS }, { label: "Read our terms", policy: "terms" }],
       },
     ],
   },
@@ -77,13 +79,14 @@ export const HELP_TOPICS: HelpTopic[] = [
         q: "How can I pay?",
         a: "At checkout you pick how to pay. Usually that's bank transfer (to a one-time account number just for your order) or stablecoin (USDT or USDC). You can also put your store tokens towards part of the order, with at least ₦100 paid in money.",
         keywords: ["pay", "payment", "how to pay", "bank transfer", "transfer", "card", "stablecoin", "usdt", "usdc", "crypto", "methods"],
+        links: [{ label: "Payments policy", policy: "payments" }],
       },
       {
         id: "paid-unpaid",
         q: "I paid but it still says unpaid",
         a: "Bank transfers usually confirm within a few minutes. Stablecoin can take a little longer while the network confirms it. Open the order to refresh it. If it still says unpaid after 30 minutes, tell our team and have your transfer receipt or transaction hash ready.",
         keywords: ["paid", "unpaid", "paid but", "still unpaid", "not confirmed", "pending payment", "payment pending", "debited", "deducted", "money left", "already paid"],
-        links: [{ label: "Open my orders", href: ORDERS }],
+        links: [{ label: "Open my orders", href: ORDERS }, { label: "Payments policy", policy: "payments" }],
       },
       {
         id: "pay-time",
@@ -96,6 +99,7 @@ export const HELP_TOPICS: HelpTopic[] = [
         q: "Is my money safe?",
         a: "Yes. You pay Sotechy, not the store directly. The store only gets its final payment after your order is delivered, and if something goes wrong, we hold it while we sort it out.",
         keywords: ["safe", "secure", "scam", "trust", "legit", "protected", "fraud"],
+        links: [{ label: "Payments policy", policy: "payments" }],
       },
     ],
   },
@@ -110,18 +114,21 @@ export const HELP_TOPICS: HelpTopic[] = [
         q: "Do you deliver to my area?",
         a: "Each store chooses the states it delivers to. You'll find them on the store's About tab, and checkout only offers what's available for your address. If a store doesn't deliver to you, pick one of its pickup points instead.",
         keywords: ["deliver to", "my area", "my state", "location", "abuja", "lagos", "port harcourt", "benin", "ship to", "nationwide"],
+        links: [{ label: "Delivery policy", policy: "delivery" }],
       },
       {
         id: "fee",
         q: "How much is delivery?",
         a: "Each store sets its own delivery prices. You see the price and the expected time at checkout, before you pay.",
         keywords: ["delivery fee", "delivery cost", "shipping fee", "how much delivery", "shipping cost", "charge for delivery"],
+        links: [{ label: "Delivery policy", policy: "delivery" }],
       },
       {
         id: "pickup",
         q: "How does pickup work?",
         a: "Choose a pickup point at checkout. When your order is ready, it says so and you get a notification. Bring your order number when you collect it.",
         keywords: ["pickup", "pick up", "collect", "collection", "pickup point", "store location"],
+        links: [{ label: "Delivery policy", policy: "delivery" }],
       },
       {
         id: "address",
@@ -134,7 +141,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   },
   {
     id: "refunds",
-    label: "Refunds & returns",
+    label: "Returns & warranty",
     icon: "return-up-back-outline",
     intro: "Sorry something went wrong. Which of these is it?",
     answers: [
@@ -143,7 +150,7 @@ export const HELP_TOPICS: HelpTopic[] = [
         q: "How do refunds work?",
         a: "When a paid order is cancelled or refunded, the refund shows on the order with its reference: the bank transfer reference, or the transaction hash for stablecoin. Any tokens you used come back to your wallet.",
         keywords: ["refund", "refunded", "money back", "get my money", "reversal", "reverse"],
-        links: [{ label: "Open my orders", href: ORDERS }],
+        links: [{ label: "Open my orders", href: ORDERS }, { label: "Returns & refunds policy", policy: "returns" }],
       },
       {
         id: "refund-details",
@@ -157,12 +164,21 @@ export const HELP_TOPICS: HelpTopic[] = [
         q: "My item is damaged or wrong",
         a: "Sorry about that. Take a photo of the item and the packaging, then tell our team which order it is. We'll work it out with the store.",
         keywords: ["damaged", "broken", "wrong item", "faulty", "not working", "defect", "fake", "different", "spoilt", "spoiled"],
+        links: [{ label: "Returns & refunds policy", policy: "returns" }],
+      },
+      {
+        id: "warranty",
+        q: "How do I claim a warranty?",
+        a: "Each product shows its warranty, and your order number is your proof of purchase. Tell our team what's wrong, with a photo or video, and we'll arrange it with the store. Warranties cover manufacturing faults, not drops, water or power surges.",
+        keywords: ["warranty", "guarantee", "repair", "fix", "stopped working", "spoilt after"],
+        links: [{ label: "Warranty policy", policy: "warranty" }],
       },
       {
         id: "return",
         q: "Can I return an item?",
         a: "Returns depend on the store and the item. Tell our team which order it is and what's wrong, and we'll arrange it with the store.",
-        keywords: ["return", "exchange", "swap", "warranty", "guarantee"],
+        keywords: ["return", "exchange", "swap", "send back"],
+        links: [{ label: "Returns & refunds policy", policy: "returns" }],
       },
     ],
   },
@@ -177,7 +193,7 @@ export const HELP_TOPICS: HelpTopic[] = [
         q: "How do I earn tokens?",
         a: "You get 1 token for every ₦1 you spend at a store, once the order is delivered. You also get 10% extra in $SOTECHY when you buy from other stores, 5% more for reviewing what you bought (10% with a photo), and tokens for buying in a store's own shop when you give them your @username.",
         keywords: ["earn", "get tokens", "how tokens", "reward", "rewards", "cashback", "points", "bonus"],
-        links: [{ label: "Open my wallet", href: "/wallet" }],
+        links: [{ label: "Open my wallet", href: "/wallet" }, { label: "Rewards & tokens", policy: "rewards" }],
       },
       {
         id: "spend",
@@ -198,6 +214,7 @@ export const HELP_TOPICS: HelpTopic[] = [
         q: "Can I withdraw or sell tokens?",
         a: "No. Tokens are store credit: you can't withdraw them to a bank or sell them. You can spend them, and send them to other people on Sotechy by their @username.",
         keywords: ["withdraw", "cash out", "sell tokens", "convert", "to naira", "bank", "trade"],
+        links: [{ label: "Rewards & tokens", policy: "rewards" }],
       },
       {
         id: "send",
@@ -255,6 +272,13 @@ export const HELP_TOPICS: HelpTopic[] = [
         a: "Account → Security & notifications lets you choose which notifications you get and manage how you sign in.",
         keywords: ["notification", "notifications", "security", "password", "sign in", "login", "log in", "otp"],
         links: [{ label: "Security & notifications", href: "/security" }],
+      },
+      {
+        id: "policies",
+        q: "Terms and privacy",
+        a: "All our terms are in one place: payments, delivery and pickup, returns and refunds, warranty, tokens, and how we look after your data. Each starts with a short version.",
+        keywords: ["terms", "policy", "policies", "privacy", "my data", "conditions", "rules", "legal"],
+        links: [{ label: "Terms & policies", policy: "terms" }, { label: "Privacy policy", policy: "privacy" }],
       },
       {
         id: "theme",

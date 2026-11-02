@@ -35,6 +35,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { refreshHeldTokens } from "@/lib/held-tokens";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { openPolicy } from "@/lib/policies";
 import { useCart } from "@/lib/cart";
 import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
@@ -269,7 +270,7 @@ function OverviewTab({
           ) : (
             <InfoRow illo="bike" title="Home delivery in Benin City" subtitle="Fee and timing shown at checkout" />
           ))}
-        <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "Warranty details on request"} subtitle={product.returnPolicy ?? undefined} />
+        <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "No warranty listed"} subtitle={product.returnPolicy ?? undefined} />
         <InfoRow illo="wallet" title="Pay your way" subtitle="Bank transfer or stablecoin, and your tokens" />
       </View>
 
@@ -337,8 +338,27 @@ function AboutTab({ product }: { product: ProductDetail }) {
 
       <View style={[ui.card, { gap: space.xs }]}>
         <Txt variant="heading">Warranty & returns</Txt>
-        <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month Sotechy warranty` : "Warranty details on request"} subtitle="Keep your receipt or order number for warranty claims at any branch." />
-        <InfoRow illo="receipt" title="Returns" subtitle={product.returnPolicy ?? "Faulty items can be returned for inspection within 7 days."} />
+        <InfoRow illo="shield" title={product.warrantyMonths ? `${product.warrantyMonths}-month warranty` : "No warranty listed"} subtitle="Your order number is your proof of purchase for claims." />
+        <InfoRow illo="receipt" title="Returns" subtitle={product.returnPolicy ?? "Faulty, damaged or wrong items can be reported within 7 days of delivery."} />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm, paddingTop: space.xs }}>
+          {(
+            [
+              ["returns", "Returns & refunds"],
+              ["warranty", "Warranty"],
+              ["delivery", "Delivery"],
+            ] as const
+          ).map(([slug, label]) => (
+            <Pressable
+              key={slug}
+              onPress={() => openPolicy(slug)}
+              accessibilityRole="link"
+              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: pressed ? colors.surfaceAlt : colors.surface })}
+            >
+              <Txt variant="caption" color={colors.ink} style={{ fontFamily: fonts.semibold }}>{label}</Txt>
+              <Ionicons name="open-outline" size={12} color={colors.muted} />
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       {paragraphs.length === 0 && specs.length === 0 && highlights.length === 0 && <Txt variant="small">More details for this product are coming soon.</Txt>}

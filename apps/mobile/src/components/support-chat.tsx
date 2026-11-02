@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, uploadPhoto } from "@/lib/api";
 import type { SupportChatSummary } from "@sotechy/shared";
 import { useAuth } from "@/lib/auth";
+import { openPolicy, type PolicySlug } from "@/lib/policies";
 import { colors, fonts, radius, space } from "@/lib/theme";
 import { SupportAgentArt } from "./tab-icons";
 import { answerById, HELP_TOPICS, searchHelp, topicById, wantsPerson } from "./help-topics";
@@ -34,6 +35,7 @@ import { Chip, tap, Txt } from "./ui";
 type Action =
   | { label: string; kind: "human"; context?: string }
   | { label: string; kind: "route"; href: Href }
+  | { label: string; kind: "policy"; slug: PolicySlug }
   | { label: string; kind: "topic"; id: string }
   | { label: string; kind: "answer"; id: string }
   | { label: string; kind: "helped"; id: string }
@@ -307,7 +309,7 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
   const showAnswer = (id: string, you: string | null) => {
     const ans = answerById(id);
     if (!ans) return;
-    reply(you, { from: "agent", text: ans.a, actions: [...(ans.links ?? []).map((l): Action => ({ label: l.label, kind: "route", href: l.href })), ...feedback(id)] });
+    reply(you, { from: "agent", text: ans.a, actions: [...(ans.links ?? []).map((l): Action => ("policy" in l ? { label: l.label, kind: "policy", slug: l.policy } : { label: l.label, kind: "route", href: l.href })), ...feedback(id)] });
   };
 
   const runAction = async (a: Action) => {
@@ -317,6 +319,8 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
         close();
         router.push(a.href);
         return;
+      case "policy":
+        return void openPolicy(a.slug);
       case "human":
         return void talkToPerson(a.context);
       case "topic": {
@@ -491,22 +495,22 @@ export function ChatSheet({ onClose, orderId, past: startOn }: { onClose: () => 
                 {/* Only the newest bot message keeps its buttons: links and "Talk to a person" as pills, choices as chips */}
                 {!reading && m.id === lastAsk
                   ? m.actions
-                      ?.filter((a) => a.kind === "route" || a.kind === "human")
+                      ?.filter((a) => a.kind === "route" || a.kind === "policy" || a.kind === "human")
                       .map((a) => (
                         <Pressable
                           key={a.label}
                           onPress={() => runAction(a)}
                           style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: colors.inverse }}
                         >
-                          <Ionicons name={a.kind === "human" ? "person-outline" : "arrow-forward"} size={15} color={a.kind === "human" ? colors.brand : colors.onInverse} />
+                          <Ionicons name={a.kind === "human" ? "person-outline" : a.kind === "policy" ? "document-text-outline" : "arrow-forward"} size={15} color={a.kind === "human" ? colors.brand : colors.onInverse} />
                           <Txt variant="label" color={colors.onInverse} style={{ fontSize: 13 }}>{a.label}</Txt>
                         </Pressable>
                       ))
                   : null}
-                {!reading && m.id === lastAsk && m.actions?.some((a) => a.kind !== "route" && a.kind !== "human") ? (
+                {!reading && m.id === lastAsk && m.actions?.some((a) => a.kind !== "route" && a.kind !== "policy" && a.kind !== "human") ? (
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm, marginTop: 2 }}>
                     {m.actions
-                      .filter((a) => a.kind !== "route" && a.kind !== "human")
+                      .filter((a) => a.kind !== "route" && a.kind !== "policy" && a.kind !== "human")
                       .map((a) => (
                         <Chip key={a.label} label={a.label} icon={a.kind === "topic" ? topicById(a.id)?.icon : undefined} onPress={() => runAction(a)} />
                       ))}
