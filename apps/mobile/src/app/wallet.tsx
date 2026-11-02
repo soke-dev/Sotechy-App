@@ -432,7 +432,7 @@ export default function WalletScreen() {
       <Sheet visible={sheet === "help"} title="What are tokens?" onClose={() => setSheet(null)}>
         <View style={{ gap: space.lg }}>
           <Txt variant="body" color={colors.ink2}>
-            Tokens are store credit you earn when you shop on Sotechy. Each store has its own, like $TOBI from Tobi Gadgets, and Sotechy&apos;s is $SOTECHY.
+            Tokens are store credit you earn when you shop on Sotechy. Each store has its own, like $OVIE from Ovie&apos;s Gadgets, and Sotechy&apos;s is $SOTECHY.
           </Txt>
           {[
             {

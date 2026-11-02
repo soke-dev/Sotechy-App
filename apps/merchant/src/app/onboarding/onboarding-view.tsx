@@ -374,7 +374,7 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
               <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
                 <div className="sm:col-span-2">
                   <Field label="Registered business name" required hint="Exactly as it appears on your CAC certificate.">
-                    <input value={business.registeredName} onChange={(e) => setBusiness({ ...business, registeredName: e.target.value })} className={inputClass} placeholder="e.g. Tobi Gadgets Ltd" />
+                    <input value={business.registeredName} onChange={(e) => setBusiness({ ...business, registeredName: e.target.value })} className={inputClass} placeholder="e.g. Sotechy Shop Ltd" />
                   </Field>
                 </div>
                 <Field label="Registration number" required hint="Include the CAC prefix, e.g. RC123456 for a company, BN123456 for a business name, or IT123456 for incorporated trustees.">
@@ -745,7 +745,7 @@ function TokenHelp() {
   const parts: { title: string; body: ReactNode }[] = [
     {
       title: "What it is",
-      body: <>Your store gets its own reward token on the Monad blockchain, named by this ticker (like $TOBI for Tobi Gadgets). It&apos;s created when Sotechy approves your store.</>,
+      body: <>Your store gets its own reward token on the Monad blockchain, named by this ticker (like $SOTECHY for Sotechy Shop). It&apos;s created when Sotechy approves your store.</>,
     },
     {
       title: "What it's used for",

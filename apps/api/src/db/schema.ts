@@ -234,9 +234,9 @@ export interface StoreProfileChange {
 export const merchants = pgTable("merchants", {
   id: uuid().primaryKey().defaultRandom(),
   name: text().notNull(),
-  /** Store address in the app, lowercase, e.g. "tobi-gadgets" */
+  /** Store address in the app, lowercase, e.g. "sotechy-shop" */
   slug: text().notNull().unique(),
-  /** The store token's symbol without the $, e.g. "TOBI" */
+  /** The store token's symbol without the $, e.g. "SOTECHY" */
   ticker: text().notNull().unique(),
   /** One store per account for now */
   ownerId: uuid().unique().references(() => users.id, { onDelete: "set null" }),

@@ -9,7 +9,7 @@ const inHours = (h: number) => new Date(Date.now() + h * 3_600_000);
 const delivery: T.OrderEmailData = {
   id: "sample-order",
   number: "SOT-1042",
-  store: "Tobi Gadgets",
+  store: "Sotechy Shop",
   fulfilment: "delivery",
   items: [
     { name: "Spark 20 Smartphone", detail: "128GB · Cyber White", quantity: 1, amount: 250_000, image: assetUrl("sample/item-phone.png") },
@@ -31,7 +31,7 @@ const pickup: T.OrderEmailData = {
   deliveryFee: 0,
   total: 18_500,
   address: null,
-  pickup: { place: "Tobi Gadgets, 20 Etete Road, Benin City", hours: "Mon to Sat, 9am to 7pm" },
+  pickup: { place: "Sotechy Shop, 20 Etete Road, Benin City", hours: "Mon to Sat, 9am to 7pm" },
 };
 
 /** name → [who it's for, the email] */
@@ -48,23 +48,23 @@ export const SAMPLES: Record<string, ["Customers" | "Merchants", () => Email | n
   "order-refunded": ["Customers", () => T.orderUpdateEmail(to, "refunded", { name: "Ada Okafor", order: delivery })],
   "offer-accepted": [
     "Customers",
-    () => T.offerAcceptedEmail(to, { name: "Ada Okafor", store: "Tobi Gadgets", product: "Bluetooth Speaker X3", listPrice: 45_000, agreedPrice: 39_000, hours: 12, expiresAt: inHours(12), url: "https://www.sotechy.shop" }),
+    () => T.offerAcceptedEmail(to, { name: "Ada Okafor", store: "Sotechy Shop", product: "Bluetooth Speaker X3", listPrice: 45_000, agreedPrice: 39_000, hours: 12, expiresAt: inHours(12), url: "https://www.sotechy.shop" }),
   ],
   "store-notice": [
     "Customers",
-    () => T.storeNoticeEmail(to, { name: "Ada Okafor", store: "Tobi Gadgets", title: "Weekend sale: 15% off chargers", message: "All chargers and power banks are 15% off until Sunday night. Delivery in Benin City is free on orders over ₦50,000.", url: "https://www.sotechy.shop" }),
+    () => T.storeNoticeEmail(to, { name: "Ada Okafor", store: "Sotechy Shop", title: "Weekend sale: 15% off chargers", message: "All chargers and power banks are 15% off until Sunday night. Delivery in Benin City is free on orders over ₦50,000.", url: "https://www.sotechy.shop" }),
   ],
   "store-opened": ["Merchants", () => T.storeOpenedEmail(to, { name: "Kemi Bello", store: "Kemi Phones" })],
-  "new-order": ["Merchants", () => T.newOrderEmail(to, { store: "Tobi Gadgets", order: delivery, customer: "Chidi O. (@chidi)", respondBy: inHours(24) })],
+  "new-order": ["Merchants", () => T.newOrderEmail(to, { store: "Sotechy Shop", order: delivery, customer: "Chidi O. (@chidi)", respondBy: inHours(24) })],
   "offer-received": [
     "Merchants",
-    () => T.offerReceivedEmail(to, { store: "Tobi Gadgets", customer: "@amaka.n", product: "Bluetooth Speaker X3", listPrice: 45_000, offer: 38_000, message: "I'll pick it up today if you can do 38k.", url: "https://merchant.sotechy.shop/offers" }),
+    () => T.offerReceivedEmail(to, { store: "Sotechy Shop", customer: "@amaka.n", product: "Bluetooth Speaker X3", listPrice: 45_000, offer: 38_000, message: "I'll pick it up today if you can do 38k.", url: "https://merchant.sotechy.shop/offers" }),
   ],
   "payout-sent": [
     "Merchants",
     () =>
       T.payoutSentEmail(to, {
-        store: "Tobi Gadgets",
+        store: "Sotechy Shop",
         amount: 412_300,
         bank: "GTBank",
         account: "••••4821",
@@ -79,5 +79,5 @@ export const SAMPLES: Record<string, ["Customers" | "Merchants", () => Email | n
   "id-check-retry": ["Merchants", () => T.idCheckEmail(to, { name: "Kemi Bello", store: "Kemi Phones", outcome: "resubmit" })],
   "id-check-declined": ["Merchants", () => T.idCheckEmail(to, { name: "Kemi Bello", store: "Kemi Phones", outcome: "declined" })],
   "store-verified": ["Merchants", () => T.storeVerifiedEmail(to, { name: "Kemi Bello", store: "Kemi Phones" })],
-  featured: ["Merchants", () => T.featuredEmail(to, { store: "Tobi Gadgets", until: inHours(24 * 30), price: 2_000 })],
+  featured: ["Merchants", () => T.featuredEmail(to, { store: "Sotechy Shop", until: inHours(24 * 30), price: 2_000 })],
 };

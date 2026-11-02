@@ -15,11 +15,11 @@ type Filter = "all" | "order" | "offer" | "tokens" | "support" | "security" | "s
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "order", label: "Orders" },
+  { key: "store", label: "Store news" },
   { key: "offer", label: "Offers" },
   { key: "tokens", label: "Tokens" },
   { key: "support", label: "Support" },
   { key: "security", label: "Security" },
-  { key: "store", label: "Stores" },
 ];
 const KIND_ICON: Record<string, IconName> = {
   order: "cube-outline",

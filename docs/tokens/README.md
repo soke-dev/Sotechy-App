@@ -18,11 +18,11 @@ Sotechy becomes a multi-merchant marketplace. Every verified merchant has a stor
 
 ## 2. Tokens
 
-- Every merchant has its own token, called by its ticker: **$TOBI**, **$COLLINS**, **$SOTECHY**. The app calls them **tokens** and shows all of a customer's balances together.
+- Every merchant has its own token, called by its ticker: **$OVIE**, **$COLLINS**, **$SOTECHY**. The app calls them **tokens** and shows all of a customer's balances together.
 - **Merchants choose their ticker during onboarding**, with a short explanation of what a store token is (earned by their customers, spent only at their store, not money or an investment). Rules: 3–8 letters/numbers, unique across Sotechy, no reserved or misleading names (SOTECHY, NGN, USD, USDT, MON, …), checked by admin at approval. The token contract can be **renamed** (new name and ticker, same token and balances) with Sotechy admin approval, so a merchant who rebrands keeps their token; the merchant request flow for this comes later.
 - **No fixed supply.** Tokens are minted when orders complete.
 - **Issue rate:** 1 token per ₦1 by default, adjustable per merchant.
-- **Spend only where issued:** TOBI only at Tobi; SOTECHY only at Sotechy stores.
+- **Spend only where issued:** OVIE only at Ovie's Gadgets; SOTECHY at every Sotechy store.
 - **Store value:** each token buys a fixed naira value of goods at its store, set from the reserve (section 6): **₦0.00909 per token** (≈0.91 kobo) at launch. It's a store benefit, not a cash or market price.
 - **Sending:** customers send to another user's **@username** or to their **Sotechy wallet address** (the one Sotechy created for them; each username is bound to one wallet). Every transfer shows its status and a **View on Monad explorer** link.
 - **No outside wallets:** sending to any wallet Sotechy didn't create is impossible. The app checks first, and the token contract itself rejects it (an on-chain allowlist of Sotechy-created wallets and Sotechy contracts), even if someone tries from a block explorer or another app.
@@ -32,7 +32,7 @@ Sotechy becomes a multi-merchant marketplace. Every verified merchant has a stor
 | Order | Tokens released when the order completes |
 |---|---|
 | ₦100M from Sotechy | **100M SOTECHY** |
-| ₦100M from Tobi | **100M TOBI + 10M SOTECHY** (10% cross-store bonus) |
+| ₦100M from Ovie's Gadgets | **100M OVIE + 10M SOTECHY** (10% cross-store bonus) |
 | Review with a photo (delivered items only) | **+10%** of that item's tokens |
 | Review without a photo (delivered items only) | **+5%** of that item's tokens |
 | Walk-in sale at a merchant's POS | That merchant's tokens + **10% SOTECHY**, only after the merchant pays 1% of that sale, all of which goes to the reserve that backs the tokens. The customer needs a Sotechy account; the cashier finds them by @username or phone. |
@@ -69,7 +69,7 @@ sequenceDiagram
 - **Merchant can't ship after taking the first payment:** Sotechy asks the merchant to pay it back and refunds the customer. The customer sees **"Processing"** throughout.
 - **No returns after the customer confirms delivery**, so released tokens are never clawed back.
 
-Worked example, ₦100,000 order from Tobi:
+Worked example, ₦100,000 order from Ovie's Gadgets:
 
 | | ₦ |
 |---|---|
@@ -78,11 +78,11 @@ Worked example, ₦100,000 order from Tobi:
 | Fee (2%): Sotechy revenue | 1,000 |
 | Merchant: on accept | 49,000 |
 | Merchant: on completion | 49,000 |
-| Customer earns | 100,000 TOBI + 10,000 SOTECHY (pending until completion) |
+| Customer earns | 100,000 OVIE + 10,000 SOTECHY (pending until completion) |
 
 ## 4. Paying with tokens (and mixing with naira)
 
-- At checkout the customer can use the store's tokens for part or all of the order and pay the rest in naira: Tobi with TOBI + naira, Sotechy with SOTECHY + naira.
+- At checkout the customer can use the store's tokens for part or all of the order and pay the rest in naira: Ovie's Gadgets with OVIE + naira, Sotechy with SOTECHY + naira.
 - Tokens are held in escrow (on-chain) until the order completes; if it's cancelled they go back to the customer.
 - When the order completes, the redeemed tokens split **50% to the recycling pool** and **50% to Sotechy's reserve wallet**, and Sotechy pays the merchant the naira value from the reserve as part of the normal two payments.
 - **Recycling pool:** existing tokens reused for review bonuses and promotions before anything new is minted.
@@ -128,14 +128,14 @@ store value per token = reserve share ÷ (1 + max review bonus) = 1% ÷ 1.10 = �
 - **Cross-store SOTECHY bonus** (10% on other stores) is funded by Sotechy from its 1% revenue: about 0.1% of each such sale, leaving ≈0.9% net revenue.
 - **Review bonuses come from the recycling pool first.** When the pool pays a bonus, the bonus funding already in the reserve isn't used, so it covers recycled tokens being spent again.
 
-Per ₦100M of Tobi sales:
+Per ₦100M of Ovie's Gadgets sales:
 
 | | Amount |
 |---|---|
 | Reserve (1%) | ₦1,000,000 |
 | Sotechy revenue (1%) | ₦1,000,000, minus ≈₦100,000 to fund 10M SOTECHY bonus |
-| TOBI created (max) | 100M + 10M bonus = 110M, worth ₦1,000,000 at store value |
-| If 60% is spent | 66M TOBI spent → ₦600,000 paid to Tobi from the reserve; 33M to recycling, 33M to Sotechy's wallet |
+| OVIE created (max) | 100M + 10M bonus = 110M, worth ₦1,000,000 at store value |
+| If 60% is spent | 66M OVIE spent → ₦600,000 paid to Ovie's Gadgets from the reserve; 33M to recycling, 33M to Sotechy's wallet |
 
 Sotechy manages the reserve directly (no automatic pausing). Admin dashboards show, per token: reserve balance, outstanding store value of tokens in circulation, and alerts when the outstanding value approaches the reserve.
 
@@ -170,14 +170,14 @@ Sotechy manages the reserve directly (no automatic pausing). Admin dashboards sh
 
 ## 9. Decided
 
-- Called **tokens**, shown by ticker ($TOBI); merchants choose the ticker at onboarding.
+- Called **tokens**, shown by ticker ($OVIE); merchants choose the ticker at onboarding.
 - **2% fee** kept, so store value is **₦0.00909 per token**.
 - **Own wallet contract** (WalletFactory), no wallet provider; Sotechy pays gas.
 - **Automatic payouts** to the merchant's bank account for both payments. Sent through Money Moves (Sotechy's own provider) once it offers a payouts API; a bank-transfer provider such as Flutterwave is the fallback.
 
 ## 10. Questions for a Nigerian lawyer before launch
 
-- **SEC Nigeria:** are transferable merchant tokens "digital assets" or securities under the 2024 rules? Does the ticker naming ($TOBI) or the custodial Sotechy Wallet change that?
+- **SEC Nigeria:** are transferable merchant tokens "digital assets" or securities under the 2024 rules? Does the ticker naming ($OVIE) or the custodial Sotechy Wallet change that?
 - **CBN:** does holding customer payments before paying merchants (escrow), and token-plus-naira checkout, need a licence or a licensed partner?
 - **FCCPC:** consumer terms for token value, expiry, refunds, disputes and the merchant review timers.
 - **NDPA:** storing customer IDs, usernames and merchant KYB documents; wallet data.

@@ -54,7 +54,7 @@ export function StoreStep({ firstName, askReferral, phone, referral }: { firstNa
       <p className="mb-8 mt-1 text-muted">You can change these later in settings.</p>
       <form action={action} className="flex flex-col gap-5">
         <Field label="Store name" required>
-          <input name="storeName" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={60} className={inputClass} placeholder="e.g. Tobi Gadgets" />
+          <input name="storeName" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={60} className={inputClass} placeholder="e.g. Sotechy Shop" />
         </Field>
         <StoreHandleField storeName={name} />
         {askReferral && <ReferralField defaultValue={referral} />}

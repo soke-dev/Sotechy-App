@@ -47,7 +47,7 @@ export function FeaturedTag({ small }: { small?: boolean }) {
   );
 }
 
-/** "Earn $TOBI" in the store's own colours */
+/** "Earn $SOTECHY" in the store's own colours */
 export function TokenChip({ store, label }: { store: MarketStore; label?: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", backgroundColor: store.theme.accent, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 3 }}>
