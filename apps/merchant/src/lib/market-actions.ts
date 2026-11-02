@@ -250,3 +250,19 @@ export async function changeTeamRole(id: string, role: TeamMember["role"]): Prom
 export async function removeTeamMember(id: string): Promise<Result<TeamMember[]>> {
   return attempt(() => api.delete<TeamMember[]>(`/merchant/team/${id}`), ["/team"]);
 }
+
+export interface ImportItem {
+  name: string;
+  brand?: string | null;
+  category: string;
+  price: number;
+  stock: number;
+  highlights: string[];
+  specifications: Record<string, string>;
+  description?: string | null;
+}
+
+/** Adds products from a spreadsheet, as drafts (they need photos before going live) */
+export async function importProducts(items: ImportItem[]): Promise<Result<{ added: number; skipped: string[] }>> {
+  return attempt(() => api.post<{ added: number; skipped: string[] }>("/merchant/products/import", { items }), ["/products", "/"]);
+}

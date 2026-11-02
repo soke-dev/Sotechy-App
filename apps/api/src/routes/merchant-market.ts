@@ -786,6 +786,74 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     const [p] = await productsForDashboard(store.id, [id]);
     return c.json(p, 201);
   })
+  /** Many products at once, from a spreadsheet. They're added as drafts (not on sale): each needs photos
+   *  before it can go live. A name the store already has is skipped. */
+  .post(
+    "/products/import",
+    zValidator(
+      "json",
+      z.object({
+        items: z
+          .array(
+            z.object({
+              name: z.string().trim().min(2).max(140),
+              brand: z.string().trim().max(60).optional().nullable(),
+              category: z.string().trim().min(1).max(60),
+              price: z.number().positive().max(100_000_000),
+              stock: z.number().int().min(0).max(100_000).default(0),
+              highlights: z.array(z.string().trim().min(1).max(140)).max(10).default([]),
+              specifications: z.record(z.string().trim().min(1).max(60), z.string().trim().min(1).max(200)).default({}),
+              description: z.string().trim().max(4000).optional().nullable(),
+            }),
+          )
+          .min(1, "The file has no products")
+          .max(500, "Import up to 500 products at a time"),
+      }),
+    ),
+    async (c) => {
+      const store = c.get("store");
+      assertVerified(store);
+      const { items } = c.req.valid("json");
+      const have = new Set((await db.select({ name: products.name }).from(products).where(eq(products.merchantId, store.id))).map((p) => p.name.trim().toLowerCase()));
+      const skipped: string[] = [];
+      let added = 0;
+      for (const item of items) {
+        const key = item.name.toLowerCase();
+        if (have.has(key)) {
+          skipped.push(item.name);
+          continue;
+        }
+        have.add(key);
+        const input: ProductInput = {
+          ...item,
+          brand: item.brand ?? null,
+          description: item.description ?? null,
+          condition: "new",
+          warrantyMonths: null,
+          inTheBox: [],
+          images: [],
+          compareAt: null,
+          options: [],
+          status: "draft",
+          negotiable: false,
+          offerFloor: null,
+          offerHours: null,
+          deliveryZoneIds: [],
+          pickup: true,
+        };
+        await db.transaction(async (tx) => {
+          const [p] = await tx
+            .insert(products)
+            .values({ ...productValues(input), merchantId: store.id, slug: await uniqueSlug(tx, `${store.slug}-${slugify(input.name)}`.slice(0, 80)) })
+            .returning({ id: products.id });
+          await syncVariants(tx, store, p.id, input);
+        });
+        added++;
+      }
+      await audit(db, { actorId: c.get("user").id, action: "merchant.products_import", entityType: "merchant", entityId: store.id, details: { added, skipped: skipped.length } });
+      return c.json({ added, skipped }, 201);
+    },
+  )
   .put("/products/:id", zValidator("json", productInput), async (c) => {
     const store = c.get("store");
     assertVerified(store);

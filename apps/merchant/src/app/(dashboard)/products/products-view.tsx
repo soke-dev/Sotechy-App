@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { btn, EmptyState, inputClass, PageHeader, Pill, ProductThumb } from "@/components/ui";
 import { duplicateProduct, productActions } from "@/lib/market-actions";
+import { ImportProducts } from "./import-products";
 import { formatNaira } from "@/lib/money";
 import type { Product } from "@/lib/mock";
 
@@ -195,9 +196,12 @@ export function ProductsView({ products }: { products: Product[] }) {
         title="Products"
         description="Everything on your storefront. Live products also appear in Sotechy's Shop and search."
         actions={
-          <Link href="/products/new" className={btn.primary}>
-            <Plus size={17} /> Add product
-          </Link>
+          <div className="flex gap-2">
+            <ImportProducts />
+            <Link href="/products/new" className={btn.primary}>
+              <Plus size={17} /> Add product
+            </Link>
+          </div>
         }
       />
 

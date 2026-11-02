@@ -92,7 +92,7 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     name: "Kitchen",
     icon: "restaurant-outline",
     sections: [
-      { name: "Small appliances", items: ["Blenders", "Microwaves", "Air fryers", "Electric kettles", "Toasters & sandwich makers", "Juicers", "Food processors"] },
+      { name: "Small appliances", items: ["Blenders", "Microwaves", "Ovens", "Air fryers", "Electric kettles", "Toasters & sandwich makers", "Juicers", "Food processors"] },
       { name: "Cooking & dining", items: ["Cookers & gas", "Cookware", "Kitchen utensils", "Dinnerware"] },
     ],
   },
