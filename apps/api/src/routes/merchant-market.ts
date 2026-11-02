@@ -11,7 +11,7 @@ import { audit } from "../lib/audit";
 import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem, isMapLink } from "@sotechy/shared";
-import { slugify } from "../lib/identity";
+import { slugify, storeHandleRule } from "../lib/identity";
 import { railBanks } from "../services/payout-rail";
 import { buyFeaturing, featuredCount, featuringPayMethods, featuringSettings, proCount, purchasesOf, standardUntil, storeFeatureCount } from "../services/featuring";
 import { roleAllows, storeAccess, type StoreRole } from "../services/team";
@@ -571,6 +571,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       "json",
       z.object({
         name: z.string().trim().min(2, "Give your store a name").max(60),
+        slug: z.string().trim().max(40).optional(),
         tagline: z.string().trim().max(90).nullable().optional(),
         sells: z.array(z.string().trim().min(1).max(40)).min(1, "Choose what you sell").max(3),
         socials: z.object({
@@ -586,8 +587,17 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       const store = c.get("store");
       const v = c.req.valid("json");
       const clean = (x: string | null | undefined) => x?.trim() || null;
+      // A new store username: the same rules as when opening a store, and no other store may have it
+      const slug = v.slug ? v.slug.toLowerCase().replace(/^@/, "") : store.slug;
+      if (slug !== store.slug) {
+        const problem = storeHandleRule(slug, { staff: store.tokenId === 1 });
+        if (problem) throw badRequest(`Store username: ${problem}`);
+        const [taken] = await db.select({ id: schema.merchants.id }).from(schema.merchants).where(eq(schema.merchants.slug, slug));
+        if (taken) throw conflict(`@${slug} is taken. Try another store username.`);
+      }
       const change = {
         name: v.name,
+        slug,
         tagline: clean(v.tagline),
         sells: v.sells,
         socials: { instagram: clean(v.socials.instagram), x: clean(v.socials.x), facebook: clean(v.socials.facebook), tiktok: clean(v.socials.tiktok) },
@@ -596,6 +606,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
       const now = store.application?.socials ?? {};
       const same =
         change.name === store.name &&
+        change.slug === store.slug &&
         change.tagline === (store.tagline ?? null) &&
         change.sells.join("|") === store.sells.join("|") &&
         (["instagram", "x", "facebook", "tiktok"] as const).every((k) => change.socials[k] === (now[k] || null)) &&
@@ -607,6 +618,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
           .update(schema.merchants)
           .set({
             name: change.name,
+            slug: change.slug,
             tagline: change.tagline,
             sells: change.sells,
             application: { ...(store.application ?? {}), socials: change.socials, website: change.website } as typeof store.application,

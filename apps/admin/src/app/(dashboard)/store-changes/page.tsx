@@ -40,7 +40,7 @@ export default async function StoreChangesPage() {
   const rows = data ?? [];
   return (
     <>
-      <PageHeader icon={FilePen} title="Store changes" description="Stores asking to change their name, about line, what they sell, socials or website. The app shows their current details until you approve." />
+      <PageHeader icon={FilePen} title="Store changes" description="Stores asking to change their name, username, about line, what they sell or socials. The app shows their current details until you approve." />
       <ErrorNote error={error} />
       <div className="flex flex-col gap-4">
         {rows.map((r) => {
@@ -59,6 +59,7 @@ export default async function StoreChangesPage() {
               </div>
               <div className="flex flex-col gap-1">
                 <Row label="Name" now={r.now.name} next={c.name} />
+                <Row label="Username" now={`@${r.now.slug ?? r.slug}`} next={`@${c.slug ?? r.slug}`} />
                 <Row label="About" now={r.now.tagline ?? ""} next={c.tagline ?? ""} />
                 <Row label="Sells" now={r.now.sells.join(" · ")} next={c.sells.join(" · ")} />
                 <Row label="Socials" now={socialsText(r.now.socials)} next={socialsText(c.socials)} />

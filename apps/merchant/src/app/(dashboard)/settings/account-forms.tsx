@@ -27,7 +27,7 @@ export function StoreDetailsForm() {
         <Field label="Store name" hint="Change it in Storefront → Store details, with your about line and socials.">
           <div className="flex min-h-12 items-center rounded-2xl border border-line bg-surface-alt px-4 text-[15px] text-ink">{store.name}</div>
         </Field>
-        <Field label="Store username" hint={`Your store's link is app.sotechy.shop/store/${store.slug} (share it from Storefront). Email support@sotechy.shop to change it.`}>
+        <Field label="Store username" hint={`Your store's link is app.sotechy.shop/store/${store.slug}. Ask for a new username in Storefront → Store details.`}>
           <div className="flex min-h-12 items-center rounded-2xl border border-line bg-surface-alt px-4 text-[15px] text-muted">
             @<span className="text-ink">{store.slug}</span>
           </div>

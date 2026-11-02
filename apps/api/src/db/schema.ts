@@ -225,6 +225,8 @@ export const passwordResets = pgTable("password_resets", {
 /** A store's asked-for details (see merchants.profileChange) */
 export interface StoreProfileChange {
   name: string;
+  /** A new store username (missing in requests made before it could change) */
+  slug?: string;
   tagline: string | null;
   sells: string[];
   socials: { instagram?: string | null; x?: string | null; facebook?: string | null; tiktok?: string | null };

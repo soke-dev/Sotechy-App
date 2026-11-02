@@ -417,6 +417,8 @@ export interface User {
 /** A store's name, about line, what it sells, socials and website, as asked for */
 export interface StoreProfileChange {
   name: string;
+  /** The store username (its link, app.sotechy.shop/store/<slug>); missing in requests made before it could change */
+  slug?: string;
   tagline: string | null;
   sells: string[];
   socials: StoreSocials;

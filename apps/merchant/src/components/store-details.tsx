@@ -4,13 +4,14 @@
 // app keeps showing the current details until they're approved, and a declined request shows Sotechy's reason.
 import { Clock, Pencil, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import type { StoreProfileChange } from "@sotechy/shared";
 import { useAccount } from "@/components/account-context";
 import { SellsPicker } from "@/components/sells-picker";
 import { btn, Field, inputClass } from "@/components/ui";
 import { Sheet } from "@/components/zone-form";
 import { sendProfileChange, withdrawProfileChange } from "@/lib/market-actions";
+import { checkStoreHandle } from "@/lib/session-actions";
 
 const SOCIALS = [
   { key: "instagram", label: "Instagram", placeholder: "@yourstore" },
@@ -27,6 +28,7 @@ export function StoreDetails() {
   const [busy, start] = useTransition();
   const current: StoreProfileChange = {
     name: store.name,
+    slug: store.slug,
     tagline: store.tagline ?? null,
     sells: store.sells ?? [],
     socials: store.application?.socials ?? {},
@@ -37,7 +39,15 @@ export function StoreDetails() {
   const ownStore = store.tokenId === 1;
   const declined = store.profileChangeStatus === "declined";
   // The form starts from what's waiting (or was declined), so it can be fixed and sent again
-  const [form, setForm] = useState<StoreProfileChange>(store.profileChange ?? current);
+  const [form, setForm] = useState<StoreProfileChange>(store.profileChange ? { slug: store.slug, ...store.profileChange } : current);
+  // Whether a new username is free, checked a moment after typing stops
+  const [handle, setHandle] = useState<{ ok: boolean; reason: string | null } | null>(null);
+  useEffect(() => {
+    const h = (form.slug ?? "").trim().toLowerCase();
+    if (!h || h === store.slug) return setHandle(null);
+    const t = setTimeout(() => checkStoreHandle(h).then((r) => setHandle(r ? { ok: r.available, reason: r.reason } : null)), 400);
+    return () => clearTimeout(t);
+  }, [form.slug, store.slug]);
   const set = (patch: Partial<StoreProfileChange>) => setForm((f) => ({ ...f, ...patch }));
 
   const send = () =>
@@ -61,6 +71,7 @@ export function StoreDetails() {
     <div className="flex flex-col gap-3">
       <dl className="grid gap-1.5 text-sm">
         <div className="flex gap-2"><dt className="w-20 shrink-0 text-muted">Name</dt><dd className="font-semibold">{current.name}</dd></div>
+        <div className="flex gap-2"><dt className="w-20 shrink-0 text-muted">Username</dt><dd>@{store.slug}</dd></div>
         <div className="flex gap-2"><dt className="w-20 shrink-0 text-muted">About</dt><dd>{current.tagline || <span className="text-faint">Not added</span>}</dd></div>
         <div className="flex gap-2"><dt className="w-20 shrink-0 text-muted">Sells</dt><dd>{current.sells.join(" · ") || <span className="text-faint">Not chosen</span>}</dd></div>
         <div className="flex gap-2"><dt className="w-20 shrink-0 text-muted">Socials</dt><dd className="min-w-0 break-words">{socials.length ? socials.join(" · ") : <span className="text-faint">None</span>}</dd></div>
@@ -93,6 +104,18 @@ export function StoreDetails() {
           </p>
           <Field label="Store name">
             <input value={form.name} onChange={(e) => set({ name: e.target.value })} maxLength={60} className={inputClass} />
+          </Field>
+          <Field label="Store username" hint={`Your link: app.sotechy.shop/store/${(form.slug || store.slug).toLowerCase()}. Links shared with the old one stop working once it changes.`}>
+            <div className="flex items-center rounded-2xl border border-line bg-surface focus-within:border-ink">
+              <span className="pl-4 text-muted">@</span>
+              <input
+                value={form.slug ?? ""}
+                onChange={(e) => set({ slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
+                maxLength={30}
+                className="min-h-12 w-full rounded-2xl bg-transparent px-1 pr-4 text-[15px] outline-none"
+              />
+            </div>
+            {handle && <p className={`mt-1 text-xs ${handle.ok ? "text-green-700" : "text-bad"}`}>{handle.ok ? `@${form.slug} is free` : handle.reason}</p>}
           </Field>
           <Field label="About" hint="A line under your store name, and on your About page.">
             <textarea value={form.tagline ?? ""} onChange={(e) => set({ tagline: e.target.value })} maxLength={90} rows={2} placeholder="e.g. Phones and gadgets, delivered across Benin City" className={inputClass} />

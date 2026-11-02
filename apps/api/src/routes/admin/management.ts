@@ -9,7 +9,7 @@ import { ensureStoreTokens, SOTECHY_TOKEN, walletFor } from "../../services/toke
 import { chainView } from "../../services/chain-primary";
 import { audit } from "../../lib/audit";
 import { hashPassword, MANAGERS, requireRole, type AppEnv, requirePassword } from "../../lib/auth";
-import { badRequest, notFound } from "../../lib/errors";
+import { badRequest, conflict, notFound } from "../../lib/errors";
 import { sendEmailLater } from "../../lib/email";
 import { publicUser } from "../../lib/serialize";
 import { storeChangesEmail, storeDeclinedEmail, storeVerifiedEmail } from "../../emails/templates";
@@ -441,7 +441,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     return c.json(
       rows.map(({ application, ...r }) => ({
         ...r,
-        now: { name: r.name, tagline: r.tagline, sells: r.sells, socials: application?.socials ?? {}, website: application?.website ?? null },
+        now: { name: r.name, slug: r.slug, tagline: r.tagline, sells: r.sells, socials: application?.socials ?? {}, website: application?.website ?? null },
       })),
     );
   })
@@ -458,10 +458,15 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       if (decision === "decline" && !note) throw badRequest("Say why, so the store can fix it");
       const ch = store.profileChange;
       if (decision === "approve") {
+        if (ch.slug && ch.slug !== store.slug) {
+          const [taken] = await db.select({ id: m.id }).from(m).where(eq(m.slug, ch.slug));
+          if (taken) throw conflict(`@${ch.slug} has been taken by another store since. Decline and ask for another username.`);
+        }
         await db
           .update(m)
           .set({
             name: ch.name,
+            ...(ch.slug && { slug: ch.slug }),
             tagline: ch.tagline,
             sells: ch.sells,
             application: { ...(store.application ?? {}), socials: ch.socials, website: ch.website } as typeof store.application,
