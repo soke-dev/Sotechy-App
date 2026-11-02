@@ -10,7 +10,8 @@ import { RecentSearches, useRecentSearches } from "@/lib/recent-searches";
 import { brandLabel, countFilters, FilterSheet, NO_FILTERS, priceLabel, SORTS, SortSheet, toQuery, type ShopFilters } from "@/components/shop-filters";
 import { SupportChat } from "@/components/support-chat";
 import { useTabBarInset } from "@/components/tab-bar";
-import { Button, Chip, EmptyState, ErrorView, Input, Loading, ScreenHeader, tap, Txt, ui } from "@/components/ui";
+import { Button, Chip, EmptyState, ErrorView, Input, Loading, productIcon, ScreenHeader, tap, Txt, ui, type IconName } from "@/components/ui";
+import { CategoryTile } from "@/components/category-tile";
 import { api } from "@/lib/api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useGrid } from "@/lib/layout";
@@ -94,6 +95,8 @@ export default function ShopScreen() {
     return {
       key: d.name,
       name: d.name,
+      icon: d.icon as IconName,
+      image: null as string | null,
       value: anyCategory(...d.sections.flatMap((x) => x.items), ...own),
       /** Sotechy's own categories in it (Home's tiles open Shop with one of these) */
       slugs: own,
@@ -106,6 +109,8 @@ export default function ShopScreen() {
     .map((c) => ({
       key: c.id,
       name: c.name,
+      icon: productIcon(c.name),
+      image: c.imageUrl ?? null,
       value: c.slug,
       slugs: [c.slug],
       sections: all.filter((k) => k.parentId === c.id).sort((a, b) => a.sortOrder - b.sortOrder).map((k) => ({ key: k.id, name: k.name, value: k.slug })),
@@ -156,10 +161,11 @@ export default function ShopScreen() {
         )}
       </View>
       <View>
+        {/* Categories as on Home: a round icon, then the name */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.sm }}>
-          <Chip label="All" active={!category} onPress={() => setCategory("")} />
+          <CategoryTile label="All" icon="apps-outline" active={!category} onPress={() => setCategory("")} />
           {groups.map((g) => (
-            <Chip key={g.key} label={g.name} active={group?.key === g.key} onPress={() => setCategory(g.value)} />
+            <CategoryTile key={g.key} label={g.name} icon={g.icon} image={g.image} active={group?.key === g.key} onPress={() => setCategory(g.value)} />
           ))}
         </ScrollView>
       </View>

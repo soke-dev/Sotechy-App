@@ -29,21 +29,7 @@ import { useContentWidth, useIsDesktop } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { Illo } from "@/components/illustrations";
-
-/** A compact category chip: a small round picture or icon, then the name */
-function CategoryTile({ label, onPress, image, icon }: { label: string; onPress: () => void; image?: string | null; icon: IconName }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 5, paddingRight: 14, height: 44, borderRadius: radius.pill, backgroundColor: pressed ? colors.surfaceAlt : colors.surface, borderWidth: 1, borderColor: colors.line })}
-    >
-      <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.brandSoft, overflow: "hidden", alignItems: "center", justifyContent: "center" }}>
-        {image ? <Image source={{ uri: image }} style={{ width: "100%", height: "100%" }} contentFit="cover" /> : <Ionicons name={icon} size={17} color={colors.brandPressed} />}
-      </View>
-      <Txt variant="label" numberOfLines={1} style={{ fontSize: 13.5 }}>{label}</Txt>
-    </Pressable>
-  );
-}
+import { CategoryTile } from "@/components/category-tile";
 
 /** The kinds of stores on the marketplace, beyond Sotechy's gadgets (they open Stores, filtered) */
 const STORE_KINDS: { kind: string; label: string; icon: IconName }[] = [
