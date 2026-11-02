@@ -1,7 +1,7 @@
 "use client";
 
 import { BadgeHint } from "@/components/badge-hint";
-import { ArrowLeft, Building2, Check, ChevronRight, CircleHelp, FileText, Globe, Loader2, Plus, Trash2, Upload, UserRound, X } from "lucide-react";
+import { ArrowLeft, Building2, Check, ChevronRight, CircleHelp, FileText, Loader2, Plus, Trash2, Upload, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
@@ -100,7 +100,8 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
       <input value={mapUrl} onChange={(e) => setMapUrl(e.target.value)} inputMode="url" maxLength={500} className={inputClass} placeholder="https://maps.app.goo.gl/…" />
     </Field>
   );
-  const [website, setWebsite] = useState(app?.website ?? "");
+  // Websites aren't asked for any more; one saved earlier is kept as it was
+  const website = app?.website ?? "";
   const [socials, setSocials] = useState({ instagram: app?.socials?.instagram ?? "", x: app?.socials?.x ?? "", facebook: app?.socials?.facebook ?? "", tiktok: app?.socials?.tiktok ?? "" });
   const [sells, setSells] = useState<string[]>(start.sells);
   // A ticker made from the store name is only a suggestion until the store saves its own
@@ -579,9 +580,8 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
                     </>
                   )}
                 </Section>
-                <Section label="Website and socials">
+                <Section label="Socials">
                   <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
-                    <Handle icon={<Globe size={17} />} label="Website" value={website} onChange={setWebsite} placeholder="yourstore.com" />
                     <Handle icon={<Brand name="instagram" />} label="Instagram" prefix="@" value={socials.instagram} onChange={(instagram) => setSocials({ ...socials, instagram })} placeholder="yourstore" />
                     <Handle icon={<Brand name="x" />} label="X" prefix="@" value={socials.x} onChange={(x) => setSocials({ ...socials, x })} placeholder="yourstore" />
                     <Handle icon={<Brand name="tiktok" />} label="TikTok" prefix="@" value={socials.tiktok} onChange={(tiktok) => setSocials({ ...socials, tiktok })} placeholder="yourstore" />

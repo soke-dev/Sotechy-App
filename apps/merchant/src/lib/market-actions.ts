@@ -107,7 +107,7 @@ export async function orderAction(
   return attempt(() => api.merchantOrderAction(id, action, note, handover), ["/orders", `/orders/${id}`, "/"]);
 }
 
-/** Sends new store details (name, about, what it sells, socials, website) for Sotechy's approval */
+/** Sends new store details (name, about, what it sells, socials) for Sotechy's approval */
 export async function sendProfileChange(input: StoreProfileChange): Promise<Result<true>> {
   return attempt(async () => {
     await api.put("/merchant/profile-change", input);

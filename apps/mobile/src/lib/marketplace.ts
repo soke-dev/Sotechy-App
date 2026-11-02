@@ -79,12 +79,12 @@ export interface MarketStore {
   branchId?: string | null;
   /** Filled on the store's own page; empty in lists */
   products: StoreProduct[];
-  /** Its social pages and website, on its own page */
+  /** Its social pages, on its own page */
   socials?: { kind: "instagram" | "x" | "facebook" | "tiktok" | "website"; url: string }[];
 }
 
 /** A handle ("@shop", "shop") or a link, made into the page's address */
-function socialLinks(s?: StoreSocials | null, website?: string | null): NonNullable<MarketStore["socials"]> {
+function socialLinks(s?: StoreSocials | null): NonNullable<MarketStore["socials"]> {
   const out: NonNullable<MarketStore["socials"]> = [];
   const link = (v: string, base: string) => (/^https?:\/\//i.test(v) ? v : /^[\w.-]+\.[a-z]{2,}\//i.test(v) ? `https://${v}` : `${base}${v.replace(/^@/, "")}`);
   const add = (kind: NonNullable<MarketStore["socials"]>[number]["kind"], v: string | null | undefined, base: string) => {
@@ -95,8 +95,6 @@ function socialLinks(s?: StoreSocials | null, website?: string | null): NonNulla
   add("x", s?.x, "https://x.com/");
   add("facebook", s?.facebook, "https://facebook.com/");
   add("tiktok", s?.tiktok, "https://www.tiktok.com/@");
-  const w = website?.trim();
-  if (w) out.push({ kind: "website", url: /^https?:\/\//i.test(w) ? w : `https://${w}` });
   return out;
 }
 
@@ -149,7 +147,7 @@ export function toMarketStore(s: ApiStore & Partial<Pick<MarketStoreDetail, "bra
     productCount: s.productCount ?? s.products?.length ?? 0,
     branchId: s.branchId,
     products: (s.products ?? []).map(toStoreProduct),
-    socials: socialLinks(s.socials, s.website),
+    socials: socialLinks(s.socials),
   };
 }
 

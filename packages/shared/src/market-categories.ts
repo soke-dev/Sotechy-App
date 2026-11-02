@@ -2,7 +2,7 @@
  * Everything sold on Sotechy, by department → section → category. Stores file products under these
  * category names (or their own under "Other"), and the app's menu browses them.
  * `sotechy`: Sotechy's own catalogue categories (slugs) that belong in the department.
- * The order is the order shoppers see: TV, audio & cameras, then AC & fans, then phones.
+ * The order is the order shoppers see: TV & audio, then AC & fans, then phones.
  */
 export interface MarketDepartment {
   name: string;
@@ -14,15 +14,15 @@ export interface MarketDepartment {
 
 export const MARKET_DEPARTMENTS: MarketDepartment[] = [
   {
-    name: "TV, audio & cameras",
+    name: "TV & audio",
     icon: "tv-outline",
     sotechy: ["tv-audio"],
     sections: [
       { name: "TV & video", items: ["Televisions", "Projectors", "TV boxes & streaming", "Decoders", "TV mounts"] },
       { name: "Audio", items: ["Earbuds", "Headphones", "Bluetooth speakers", "Sound bars", "Home theatre", "Microphones"] },
-      { name: "Cameras", items: ["Cameras", "Drones", "CCTV & security", "Camera accessories"] },
     ],
   },
+
   {
     name: "AC & fans",
     icon: "snow-outline",
@@ -53,7 +53,15 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
       { name: "Storage & networking", items: ["Storage & flash drives", "Routers & MiFi", "Computer parts"] },
       { name: "Software", items: ["Software & antivirus"] },
     ],
+  },  {
+    name: "Cameras & security",
+    icon: "camera-outline",
+    sections: [
+      { name: "Cameras", items: ["Cameras", "Drones", "Camera accessories"] },
+      { name: "Security", items: ["CCTV & security", "Smart doorbells & locks", "Alarms & sensors"] },
+    ],
   },
+
   {
     name: "Wearables & gaming",
     icon: "game-controller-outline",

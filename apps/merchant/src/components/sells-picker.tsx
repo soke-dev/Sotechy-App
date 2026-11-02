@@ -2,7 +2,7 @@
 
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import { STORE_KINDS } from "@/lib/categories";
+import { STORE_KIND_GROUPS } from "@/lib/categories";
 import { inputClass } from "./ui";
 
 const MAX = 3;
@@ -16,7 +16,8 @@ export function SellsPicker({ value, onChange }: { value: string[]; onChange: (v
   const listId = useId();
   const full = value.length >= MAX;
   const q = query.trim().toLowerCase();
-  const shown = STORE_KINDS.filter((k) => !q || k.toLowerCase().includes(q));
+  // Each group with the kinds that match (all of them when the group's own name matches)
+  const shown = STORE_KIND_GROUPS.map((g) => ({ ...g, items: !q || g.group.toLowerCase().includes(q) ? g.items : g.items.filter((k) => k.toLowerCase().includes(q)) })).filter((g) => g.items.length);
 
   useEffect(() => {
     if (!open) return;
@@ -68,27 +69,34 @@ export function SellsPicker({ value, onChange }: { value: string[]; onChange: (v
         <div className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_18px_40px_-18px_rgba(23,18,14,0.35)]">
           <label className="flex items-center gap-2 border-b border-line px-4 py-3">
             <Search size={16} className="text-muted" />
-            <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search, e.g. phones, hair, food" className="w-full bg-transparent text-sm outline-none" />
+            <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search, e.g. phones, electronics, hair, food" className="w-full bg-transparent text-sm outline-none" />
           </label>
-          <ul id={listId} role="listbox" aria-multiselectable className="max-h-64 overflow-y-auto py-1">
-            {shown.map((k) => {
-              const on = value.includes(k);
-              return (
-                <li key={k}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={on}
-                    disabled={!on && full}
-                    onClick={() => toggle(k)}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-surface-alt disabled:opacity-40"
-                  >
-                    <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border ${on ? "border-ink bg-ink text-white" : "border-line"}`}>{on && <Check size={12} strokeWidth={3} />}</span>
-                    {k}
-                  </button>
-                </li>
-              );
-            })}
+          <ul id={listId} role="listbox" aria-multiselectable className="max-h-80 overflow-y-auto pb-1">
+            {shown.map((g) => (
+              <li key={g.group}>
+                <p className="sticky top-0 z-10 bg-surface px-4 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wide text-muted">{g.group}</p>
+                <ul>
+                  {g.items.map((k) => {
+                    const on = value.includes(k);
+                    return (
+                      <li key={k}>
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={on}
+                          disabled={!on && full}
+                          onClick={() => toggle(k)}
+                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-surface-alt disabled:opacity-40"
+                        >
+                          <span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border ${on ? "border-ink bg-ink text-white" : "border-line"}`}>{on && <Check size={12} strokeWidth={3} />}</span>
+                          {k}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
             {!shown.length && <li className="px-4 py-3 text-sm text-muted">Nothing matches &ldquo;{query}&rdquo;. Add it below.</li>}
           </ul>
           <div className="flex items-center gap-2 border-t border-line bg-surface-alt px-3 py-2.5">

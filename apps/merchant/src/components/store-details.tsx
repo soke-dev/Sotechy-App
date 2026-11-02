@@ -1,6 +1,6 @@
 "use client";
 
-// The store's name, about line, what it sells, socials and website. Changes go to Sotechy for approval: the
+// The store's name, about line, what it sells and socials. Changes go to Sotechy for approval: the
 // app keeps showing the current details until they're approved, and a declined request shows Sotechy's reason.
 import { Clock, Pencil, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -61,7 +61,7 @@ export function StoreDetails() {
         <div className="flex gap-2"><dt className="w-20 shrink-0 text-muted">Name</dt><dd className="font-semibold">{current.name}</dd></div>
         <div className="flex gap-2"><dt className="w-20 shrink-0 text-muted">About</dt><dd>{current.tagline || <span className="text-faint">Not added</span>}</dd></div>
         <div className="flex gap-2"><dt className="w-20 shrink-0 text-muted">Sells</dt><dd>{current.sells.join(" · ") || <span className="text-faint">Not chosen</span>}</dd></div>
-        <div className="flex gap-2"><dt className="w-20 shrink-0 text-muted">Socials</dt><dd className="min-w-0 break-words">{socials.length ? socials.join(" · ") : <span className="text-faint">None</span>}{current.website ? ` · ${current.website}` : ""}</dd></div>
+        <div className="flex gap-2"><dt className="w-20 shrink-0 text-muted">Socials</dt><dd className="min-w-0 break-words">{socials.length ? socials.join(" · ") : <span className="text-faint">None</span>}</dd></div>
       </dl>
 
       {waiting && (
@@ -103,9 +103,6 @@ export function StoreDetails() {
               </Field>
             ))}
           </div>
-          <Field label="Website">
-            <input value={form.website ?? ""} onChange={(e) => set({ website: e.target.value })} placeholder="yourstore.com" className={inputClass} />
-          </Field>
           {error && <p className="rounded-xl bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
           <div className="flex justify-end gap-2">
             <button onClick={() => setOpen(false)} className={btn.ghost}>Cancel</button>
