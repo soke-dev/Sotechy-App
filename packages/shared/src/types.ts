@@ -430,6 +430,8 @@ export interface MerchantStore {
   slug: string;
   /** Token symbol without the $ */
   ticker: string;
+  /** Its token's number on chain; 1 = $SOTECHY (Sotechy's own store) */
+  tokenId?: number | null;
   ownerId: string | null;
   sellerKind: "registered" | "individual";
   /** pending = test mode until Sotechy verifies the store */

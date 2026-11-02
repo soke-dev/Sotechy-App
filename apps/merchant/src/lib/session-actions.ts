@@ -186,7 +186,7 @@ export async function saveStoreDetails(_: SaveState, form: FormData): Promise<Sa
   const phone = field(form, "contactPhone");
   const whatsapp = field(form, "contactWhatsapp");
   try {
-    await api.updateStore({ name: field(form, "name"), contactPhone: phone, contactWhatsapp: !whatsapp || sameNumber(whatsapp, phone) ? null : whatsapp });
+    await api.updateStore({ contactPhone: phone, contactWhatsapp: !whatsapp || sameNumber(whatsapp, phone) ? null : whatsapp, contactEmail: field(form, "contactEmail") || undefined });
   } catch (err) {
     return { error: errorMessage(err) };
   }

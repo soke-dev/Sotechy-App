@@ -33,6 +33,8 @@ export function StoreDetails() {
     website: store.application?.website ?? null,
   };
   const waiting = store.profileChangeStatus === "pending" ? store.profileChange : null;
+  // Sotechy's own store (sells with $SOTECHY) isn't checked by Sotechy
+  const ownStore = store.tokenId === 1;
   const declined = store.profileChangeStatus === "declined";
   // The form starts from what's waiting (or was declined), so it can be fixed and sent again
   const [form, setForm] = useState<StoreProfileChange>(store.profileChange ?? current);
@@ -86,7 +88,9 @@ export function StoreDetails() {
 
       <Sheet open={open} onClose={() => setOpen(false)} title="Store details">
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-muted">Sotechy checks changes before they show in the app, usually within 24 hours. Until then customers see your current details.</p>
+          <p className="text-sm text-muted">
+            {ownStore ? "Sotechy's own store: changes show in the app as soon as you save." : "Sotechy checks changes before they show in the app, usually within 24 hours. Until then customers see your current details."}
+          </p>
           <Field label="Store name">
             <input value={form.name} onChange={(e) => set({ name: e.target.value })} maxLength={60} className={inputClass} />
           </Field>
@@ -106,7 +110,7 @@ export function StoreDetails() {
           {error && <p className="rounded-xl bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
           <div className="flex justify-end gap-2">
             <button onClick={() => setOpen(false)} className={btn.ghost}>Cancel</button>
-            <button onClick={send} disabled={busy} className={btn.primary}>{busy ? "Sending…" : "Send for approval"}</button>
+            <button onClick={send} disabled={busy} className={btn.primary}>{busy ? (ownStore ? "Saving…" : "Sending…") : ownStore ? "Save" : "Send for approval"}</button>
           </div>
         </div>
       </Sheet>

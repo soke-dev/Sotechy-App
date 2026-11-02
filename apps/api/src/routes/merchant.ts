@@ -124,6 +124,8 @@ export const merchantRoutes = new Hono<AppEnv>()
         name: storeName.optional(),
         contactPhone: z.string().max(30).optional(),
         contactWhatsapp: z.string().max(30).nullable().optional(),
+        /** Where order alerts and Sotechy's messages to the store go */
+        contactEmail: z.email("Enter a valid email").max(200).optional(),
       }),
     ),
     async (c) => {
@@ -133,11 +135,14 @@ export const merchantRoutes = new Hono<AppEnv>()
       if (!access) throw notFound("You don't have a store yet");
       if (access.role !== "owner" && access.role !== "admin") throw forbidden("Only the owner and admins can change the store's details");
       const store = access.store;
+      // A new name goes through Storefront → Store details, so Sotechy checks it (Sotechy's own store excepted)
+      if (input.name !== undefined && input.name.trim() !== store.name && store.tokenId !== 1) throw badRequest("Change your store name in Storefront → Store details. Sotechy checks it first.");
       const phone = phoneField(input.contactPhone, "Phone number");
       const patch = {
         ...(input.name !== undefined && { name: input.name }),
         ...(phone !== undefined && { contactPhone: phone }),
         ...(input.contactWhatsapp !== undefined && { contactWhatsapp: phoneField(input.contactWhatsapp, "WhatsApp number") }),
+        ...(input.contactEmail !== undefined && { contactEmail: input.contactEmail.trim().toLowerCase() }),
       };
       if (!Object.keys(patch).length) return c.json(store);
       const [row] = await db.update(schema.merchants).set(patch).where(eq(schema.merchants.id, store.id)).returning();

@@ -22,10 +22,10 @@ export function StoreDetailsForm() {
   const { store } = useAccount();
   const [state, action, pending] = useActionState(saveStoreDetails, null);
   return (
-    <Card title="Store details" description="Changes to your store name are checked by Sotechy.">
+    <Card title="Store details" description="How customers and Sotechy reach your store.">
       <form action={action} className="flex flex-col gap-4">
-        <Field label="Store name" required>
-          <input name="name" required minLength={2} maxLength={60} defaultValue={store.name} className={inputClass} />
+        <Field label="Store name" hint="Change it in Storefront → Store details, with your about line and socials.">
+          <div className="flex min-h-12 items-center rounded-2xl border border-line bg-surface-alt px-4 text-[15px] text-ink">{store.name}</div>
         </Field>
         <Field label="Store username" hint={`Your store's link is app.sotechy.shop/store/${store.slug} (share it from Storefront). Email support@sotechy.shop to change it.`}>
           <div className="flex min-h-12 items-center rounded-2xl border border-line bg-surface-alt px-4 text-[15px] text-muted">
@@ -36,8 +36,8 @@ export function StoreDetailsForm() {
           <PhoneField name="contactPhone" label="Phone for orders" required defaultValue={store.contactPhone} />
           <PhoneField name="contactWhatsapp" label="WhatsApp for order alerts" hint="Leave empty to use the phone number." defaultValue={store.contactWhatsapp} />
         </div>
-        <Field label="Support email" hint="The email you signed up with.">
-          <input value={store.contactEmail ?? ""} readOnly className={`${inputClass} bg-surface-alt text-muted`} />
+        <Field label="Support email" hint="Order alerts and messages from Sotechy go here.">
+          <input name="contactEmail" type="email" required maxLength={200} defaultValue={store.contactEmail ?? ""} className={inputClass} />
         </Field>
         <Saved state={state} />
         <button disabled={pending} className={btn.dark}>{pending ? "Saving…" : "Save store details"}</button>

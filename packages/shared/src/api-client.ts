@@ -132,7 +132,7 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     merchantMe: () => get<MerchantSession>("/merchant/me"),
     openStore: (input: { name: string; slug?: string; sellerKind: "registered" | "individual"; phone: string; whatsappPhone?: string | null; username?: string; referralCode?: string }) =>
       send<MerchantSession>("POST", "/merchant/store", input),
-    updateStore: (input: { name?: string; contactPhone?: string; contactWhatsapp?: string | null }) => send<MerchantStore>("PATCH", "/merchant/store", input),
+    updateStore: (input: { name?: string; contactPhone?: string; contactWhatsapp?: string | null; contactEmail?: string }) => send<MerchantStore>("PATCH", "/merchant/store", input),
     // The store's own business
     merchantProducts: () => get<MerchantProduct[]>("/merchant/products"),
     merchantProduct: (id: string) => get<MerchantProduct>(`/merchant/products/${encodeURIComponent(id)}`),

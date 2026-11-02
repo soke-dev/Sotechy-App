@@ -601,6 +601,26 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
         (["instagram", "x", "facebook", "tiktok"] as const).every((k) => change.socials[k] === (now[k] || null)) &&
         change.website === (store.application?.website || null);
       if (same) throw badRequest("Nothing has changed yet");
+      // Sotechy's own store (the one selling with $SOTECHY) needs no approval from Sotechy
+      if (store.tokenId === 1) {
+        const [own] = await db
+          .update(schema.merchants)
+          .set({
+            name: change.name,
+            tagline: change.tagline,
+            sells: change.sells,
+            application: { ...(store.application ?? {}), socials: change.socials, website: change.website } as typeof store.application,
+            profileChange: null,
+            profileChangeStatus: null,
+            profileChangeNote: null,
+            profileChangeAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.merchants.id, store.id))
+          .returning();
+        await audit(db, { actorId: c.get("user").id, action: "merchant.profile_change", entityType: "merchant", entityId: store.id, details: { ...change, applied: true } });
+        return c.json(own);
+      }
       const [row] = await db
         .update(schema.merchants)
         .set({ profileChange: change, profileChangeStatus: "pending", profileChangeNote: null, profileChangeAt: new Date(), updatedAt: new Date() })
