@@ -62,6 +62,8 @@ export const meRoutes = new Hono<AppEnv>()
       ...wallet,
       addressUrl: `${explorer}/address/${wallet.address}`,
       contractUrl: tokens ? `${explorer}/address/${tokens.address}` : null,
+      // Each store's token is one id on the ERC-1155 contract
+      balances: wallet.balances.map((b) => ({ ...b, tokenUrl: tokens ? `${explorer}/nft/${tokens.address}/${b.tokenId}` : null })),
       activity: wallet.activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
     });
   })

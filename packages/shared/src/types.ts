@@ -941,6 +941,8 @@ export interface WalletBalance {
   pending: number;
   /** Earned in all, ever (less what refunds took back) */
   earned?: number;
+  /** The token on the blockchain explorer */
+  tokenUrl?: string | null;
 }
 
 export interface WalletActivity {

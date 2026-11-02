@@ -3,7 +3,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
-import { formatNaira } from "@sotechy/shared";
+import { Image } from "expo-image";
+import { formatNaira, type WalletBalance } from "@sotechy/shared";
 import { Illo } from "@/components/illustrations";
 import { Sheet } from "@/components/shop-filters";
 import { openStore } from "@/components/store-bits";
@@ -51,6 +52,13 @@ export default function WalletScreen() {
   const [amount, setAmount] = useState("");
   const [sending, setSending] = useState(false);
   const [choosingToken, setChoosingToken] = useState(false);
+  // The token whose details are open; kept while its sheet slides away
+  const [token, setTokenState] = useState<WalletBalance | null>(null);
+  const [tokenOpen, setTokenOpen] = useState(false);
+  const setToken = (b: WalletBalance) => {
+    setTokenState(b);
+    setTokenOpen(true);
+  };
   // Who the typed @username is, looked up as they type
   const [recipient, setRecipient] = useState<{ state: "idle" | "looking" | "found" | "missing"; who?: Awaited<ReturnType<typeof api.walletRecipient>>; message?: string }>({ state: "idle" });
   useEffect(() => {
@@ -74,7 +82,7 @@ export default function WalletScreen() {
     };
   }, [to]);
   const { data, loading, error, reload } = useAsync(() => api.wallet(), [], { live: true });
-  const wallet = data ?? { address: null, addressUrl: null, balances: [], activity: [] };
+  const wallet = data ?? { address: null, addressUrl: null, contractUrl: null, balances: [], activity: [] };
   const held = wallet.balances.filter((b) => b.amount > 0);
   // Nothing is picked until the customer chooses a token
   const ticker = picked;
@@ -173,7 +181,7 @@ export default function WalletScreen() {
               return (
                 <View key={b.ticker}>
                   {i > 0 && <Divider />}
-                  <Pressable onPress={() => b.slug && openStore(b.slug)} style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md }}>
+                  <Pressable onPress={() => setToken(b)} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.md, opacity: pressed ? 0.6 : 1 })}>
                     <Illo name="coin" size={38} />
                     <View style={{ flex: 1, gap: 1 }}>
                       <Txt variant="label" numberOfLines={1}>
@@ -317,6 +325,101 @@ export default function WalletScreen() {
             {!chosen ? "Select a token first" : value > balance ? "More than you have" : `≈ ${formatNaira(Math.round(tokenNaira(value)))} · you have ${formatTokens(balance)} $${chosen.ticker}`}
           </Txt>
         </View>
+      </Sheet>
+
+      <Sheet
+        visible={tokenOpen && !!token}
+        title={token ? `$${token.ticker}` : "Token"}
+        onClose={() => setTokenOpen(false)}
+        footer={
+          token ? (
+            <Button
+              title="View token on chain"
+              icon="open-outline"
+              variant="dark"
+              disabled={!(token.tokenUrl ?? wallet.contractUrl)}
+              onPress={() => {
+                const url = token.tokenUrl ?? wallet.contractUrl;
+                if (url) Linking.openURL(url);
+              }}
+            />
+          ) : null
+        }
+      >
+        {token && (
+          <>
+            <View style={{ alignItems: "center", gap: 4 }}>
+              <Illo name="coin" size={64} />
+              <Text style={{ fontFamily: fonts.displayHeavy, fontSize: 34, letterSpacing: -1, color: colors.ink, marginTop: space.xs }}>{formatTokens(token.amount)}</Text>
+              <Txt variant="label" color={colors.brandPressed}>${token.ticker}</Txt>
+              <Txt variant="small">≈ {formatNaira(Math.round(tokenNaira(token.amount)))} to spend</Txt>
+            </View>
+            {(token.pending > 0 || (token.held ?? 0) > 0 || (token.earned ?? 0) > 0) && (
+              <View style={{ borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, paddingHorizontal: space.md, paddingVertical: space.xs }}>
+                {[
+                  (token.earned ?? 0) > 0 && { label: "Earned all time", value: formatTokens(token.earned!), tone: colors.ink },
+                  token.pending > 0 && { label: "On the way", value: `+${formatTokens(token.pending)}`, tone: colors.warning },
+                  (token.held ?? 0) > 0 && { label: "Held for an unpaid order", value: formatTokens(token.held!), tone: colors.ink2 },
+                ]
+                  .filter((r): r is { label: string; value: string; tone: string } => !!r)
+                  .map((r, i) => (
+                    <View key={r.label}>
+                      {i > 0 && <Divider />}
+                      <View style={[ui.between, { paddingVertical: space.sm }]}>
+                        <Txt variant="small">{r.label}</Txt>
+                        <Txt variant="label" color={r.tone}>{r.value}</Txt>
+                      </View>
+                    </View>
+                  ))}
+              </View>
+            )}
+            {/* The store that issues it */}
+            <View style={{ gap: space.sm }}>
+              <Txt variant="label">{token.ticker === "SOTECHY" ? "Issued by" : "The store"}</Txt>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface }}>
+                {token.logoUrl ? (
+                  <Image source={{ uri: token.logoUrl }} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.surfaceAlt }} contentFit="cover" />
+                ) : token.ticker === "SOTECHY" ? (
+                  <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.brandSoft, alignItems: "center", justifyContent: "center" }}>
+                    <Image source={require("../../assets/brand/sotechylogo.png")} style={{ width: 30, height: 30 }} contentFit="contain" />
+                  </View>
+                ) : (
+                  <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name="storefront-outline" size={22} color={colors.ink2} />
+                  </View>
+                )}
+                <View style={{ flex: 1, gap: 1 }}>
+                  <Txt variant="label" numberOfLines={1}>{token.ticker === "SOTECHY" ? "Sotechy" : token.store}</Txt>
+                  <Txt variant="caption">{token.ticker === "SOTECHY" ? "Spend it at any Sotechy store" : `Spend it at ${token.store} at checkout`}</Txt>
+                </View>
+                {token.slug ? (
+                  <Button
+                    title="Visit"
+                    size="sm"
+                    variant="outline"
+                    onPress={() => {
+                      setTokenOpen(false);
+                      openStore(token.slug!);
+                    }}
+                  />
+                ) : token.ticker === "SOTECHY" ? (
+                  <Button
+                    title="Stores"
+                    size="sm"
+                    variant="outline"
+                    onPress={() => {
+                      setTokenOpen(false);
+                      router.push("/stores");
+                    }}
+                  />
+                ) : null}
+              </View>
+            </View>
+            <Txt variant="caption">
+              ${token.ticker} is recorded on the blockchain, so anyone can check how many exist and who holds them. It&apos;s store credit: it can&apos;t be withdrawn or traded.
+            </Txt>
+          </>
+        )}
       </Sheet>
 
       <Sheet visible={sheet === "help"} title="What are tokens?" onClose={() => setSheet(null)}>
