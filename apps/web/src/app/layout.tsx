@@ -7,8 +7,8 @@ const heading = Bricolage_Grotesque({ variable: "--font-heading", subsets: ["lat
 const body = DM_Sans({ variable: "--font-body", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
-  title: "Sotechy — We're building something new",
-  description: "The new Sotechy is almost here: verified stores, delivery or pickup, and store tokens on every order. Follow along on X or email hello@sotechy.shop.",
+  title: "Sotechy — Shop stores you can trust",
+  description: "A marketplace of verified Nigerian stores: phones, fashion, beauty, groceries, home appliances and more, with delivery or pickup and tokens on every order. Shop on the web now; iPhone and Android apps coming soon.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
