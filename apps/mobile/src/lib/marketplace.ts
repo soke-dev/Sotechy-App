@@ -45,6 +45,11 @@ export interface StoreProduct {
   slug: string;
   /** The store takes price offers on it */
   negotiable?: boolean;
+  /** Its category in the store, for the store page's filter */
+  category?: string;
+  inStock?: boolean;
+  rating?: number | null;
+  createdAt?: string;
 }
 
 export interface MarketStore {
@@ -115,6 +120,10 @@ export const toStoreProduct = (p: CatalogProduct): StoreProduct => ({
   image: p.imageUrl ? { uri: p.imageUrl } : undefined,
   slug: p.slug,
   negotiable: p.negotiable || undefined,
+  category: p.storeCategory ?? p.categoryName ?? undefined,
+  inStock: p.totalAvailable > 0,
+  rating: p.ratingAverage ?? null,
+  createdAt: p.createdAt,
 });
 
 /** An API store in the app's shape */

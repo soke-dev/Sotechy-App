@@ -108,6 +108,8 @@ export interface CatalogProduct {
   storeName?: string | null;
   storeSlug?: string | null;
   negotiable?: boolean;
+  /** The store's own category for it (on a store's page) */
+  storeCategory?: string | null;
 }
 
 export interface Product {

@@ -22,8 +22,35 @@ import { useGrid, useScreenWidth } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
 import { shareStore } from "@/lib/share";
 import { useToast } from "@/components/toast";
+import { SORTS, SortSheet } from "@/components/shop-filters";
 
 type Tab = "products" | "about";
+type Theme = MarketStore["theme"];
+
+/** A chip in the store's own colours, for the products filter */
+function FilterChip({ label, icon, active, onPress, t }: { label: string; icon?: keyof typeof Ionicons.glyphMap; active?: boolean; onPress: () => void; t: Theme }) {
+  return (
+    <Pressable
+      onPress={() => {
+        tap();
+        onPress();
+      }}
+      accessibilityState={{ selected: !!active }}
+      style={{ flexDirection: "row", alignItems: "center", gap: 5, height: 34, paddingHorizontal: 13, borderRadius: radius.pill, backgroundColor: active ? t.accent : t.surface }}
+    >
+      {icon ? <Ionicons name={icon} size={14} color={active ? t.onAccent : t.text} /> : null}
+      <T color={active ? t.onAccent : t.text} size={13} weight={fonts.semibold}>{label}</T>
+    </Pressable>
+  );
+}
+
+/** Sorts a store's products the way the Shop screen's sort options do (they arrive newest first) */
+function sortProducts(list: StoreProduct[], sort: string) {
+  if (sort === "price_asc") return [...list].sort((a, b) => a.price - b.price);
+  if (sort === "price_desc") return [...list].sort((a, b) => b.price - a.price);
+  if (sort === "rating") return [...list].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+  return list;
+}
 
 
 function T({ children, color, size = 15, weight = fonts.body, style, lines }: { children: React.ReactNode; color: string; size?: number; weight?: string; style?: object; lines?: number }) {
@@ -130,6 +157,13 @@ export default function StoreScreen() {
   const [tab, setTab] = useState<Tab>("products");
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
+  // The products filter: a category, a sort, and quick toggles
+  const [category, setCategory] = useState<string | null>(null);
+  const [sort, setSort] = useState("newest");
+  const [sortOpen, setSortOpen] = useState(false);
+  const [deals, setDeals] = useState(false);
+  const [offers, setOffers] = useState(false);
+  const [inStock, setInStock] = useState(false);
   const subs = useStoreNotifications();
   const held = useHeldTokens(loaded.data?.ticker ?? "");
 
@@ -148,6 +182,26 @@ export default function StoreScreen() {
   if (!store) return <EmptyState illo="store" title="Store not found" message="It may have closed or changed its link." />;
   const q = query.trim().toLowerCase();
   const products = q ? store.products.filter((p) => p.name.toLowerCase().includes(q)) : store.products;
+  // The product types the store has listed, most products first
+  const catCounts = new Map<string, number>();
+  for (const p of store.products) if (p.category) catCounts.set(p.category, (catCounts.get(p.category) ?? 0) + 1);
+  const cats = [...catCounts].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+  const hasDeals = store.products.some((p) => p.compareAt && p.compareAt > p.price);
+  const hasOffers = store.products.some((p) => p.negotiable);
+  const filtered = sortProducts(
+    products.filter(
+      (p) => (!category || p.category === category) && (!deals || (p.compareAt && p.compareAt > p.price)) && (!offers || p.negotiable) && (!inStock || p.inStock),
+    ),
+    sort,
+  );
+  const filtering = !!category || deals || offers || inStock;
+  const clearFilters = () => {
+    setCategory(null);
+    setDeals(false);
+    setOffers(false);
+    setInStock(false);
+  };
+  const sortShort = SORTS.find((x) => x.value === sort)?.short ?? "Sort";
 
   const t = store.theme;
   const share = async () => {
@@ -333,8 +387,38 @@ export default function StoreScreen() {
         </View>
 
         <View style={{ marginTop: space.md, paddingHorizontal: gutter }}>
+          {/* Filter: sort and quick toggles, then the store's categories */}
+          {tab === "products" && store.products.length > 1 && (
+            <View style={{ gap: space.sm, marginBottom: space.md, marginHorizontal: -gutter }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingHorizontal: gutter }}>
+                <FilterChip t={t} icon="swap-vertical" label={sortShort} active={sort !== "newest"} onPress={() => setSortOpen(true)} />
+                {hasDeals && <FilterChip t={t} icon="flash-outline" label="Deals" active={deals} onPress={() => setDeals(!deals)} />}
+                {hasOffers && <FilterChip t={t} icon="pricetag-outline" label="Make an offer" active={offers} onPress={() => setOffers(!offers)} />}
+                <FilterChip t={t} icon="checkmark-circle-outline" label="In stock" active={inStock} onPress={() => setInStock(!inStock)} />
+                {filtering && <FilterChip t={t} icon="close" label="Clear" onPress={clearFilters} />}
+              </ScrollView>
+              {cats.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingHorizontal: gutter }}>
+                  <FilterChip t={t} label="All" active={!category} onPress={() => setCategory(null)} />
+                  {cats.map((c) => (
+                    <FilterChip key={c} t={t} label={`${c} (${catCounts.get(c)})`} active={category === c} onPress={() => setCategory(category === c ? null : c)} />
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          )}
+
           {tab === "products" &&
-            (products.length === 0 ? (
+            (products.length > 0 && filtered.length === 0 ? (
+              <View style={{ backgroundColor: t.surface, borderRadius: radius.lg, padding: space.xl, alignItems: "center", gap: space.sm }}>
+                <Illo name="search" size={52} />
+                <T color={t.text} weight={fonts.semibold}>Nothing matches</T>
+                <T color={t.muted} size={13.5} style={{ textAlign: "center" }}>Try another category or turn off a filter.</T>
+                <Pressable onPress={clearFilters} hitSlop={8}>
+                  <T color={t.accent} size={14} weight={fonts.bold}>Clear filters</T>
+                </Pressable>
+              </View>
+            ) : products.length === 0 ? (
               <View style={{ backgroundColor: t.surface, borderRadius: radius.lg, padding: space.xl, alignItems: "center", gap: space.sm }}>
                 <Illo name="box" size={56} />
                 <T color={t.text} weight={fonts.semibold}>No products yet</T>
@@ -342,7 +426,7 @@ export default function StoreScreen() {
               </View>
             ) : (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.md }}>
-                {products.map((p) => (
+                {filtered.map((p) => (
                   <ProductTile key={p.id} p={p} store={store} width={tileWidth} />
                 ))}
               </View>
@@ -390,6 +474,15 @@ export default function StoreScreen() {
       </ScrollView>
       {external.sheet}
       <StoreBadgeSheet visible={badgeOpen} official={isOfficialStore(store)} storeName={store.name} onClose={() => setBadgeOpen(false)} />
+      <SortSheet
+        visible={sortOpen}
+        value={sort}
+        onClose={() => setSortOpen(false)}
+        onChange={(v) => {
+          setSort(v);
+          setSortOpen(false);
+        }}
+      />
     </View>
   );
 }

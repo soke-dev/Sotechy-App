@@ -306,9 +306,16 @@ export const storeRoutes = new Hono()
     const items = await catalogQuery(and(eq(products.isPublished, true), eq(products.merchantId, store.id))).orderBy(desc(products.createdAt)).limit(200);
     // The store's own categories, most used first
     const counts = new Map<string, number>();
-    const cats = await db.select({ c: products.storeCategory }).from(products).where(and(eq(products.merchantId, store.id), eq(products.isPublished, true)));
+    const cats = await db.select({ id: products.id, c: products.storeCategory }).from(products).where(and(eq(products.merchantId, store.id), eq(products.isPublished, true)));
     for (const { c: name } of cats) if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
-    return c.json({ ...store, deliveryAreas: await liveAreas(db, store.id), categories: [...counts].sort((a, b) => b[1] - a[1]).map(([name]) => name), products: items });
+    // Each product's store category, so the store page can filter by it
+    const catOf = new Map(cats.map((x) => [x.id, x.c]));
+    return c.json({
+      ...store,
+      deliveryAreas: await liveAreas(db, store.id),
+      categories: [...counts].sort((a, b) => b[1] - a[1]).map(([name]) => name),
+      products: items.map((i) => ({ ...i, storeCategory: catOf.get(i.id) ?? null })),
+    });
   })
   .get("/facets", async (c) => {
     // Brands and price range for the current search / category, to build the filter sheet.
