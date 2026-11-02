@@ -29,6 +29,16 @@ export function issueToken(user: { id: string }, opts: { staff?: boolean } = {})
   return sign({ sub: user.id, iat: now, exp: now + (opts.staff ? STAFF_TOKEN_TTL_SECONDS : TOKEN_TTL_SECONDS), ...(opts.staff && { stf: 1 }) }, env.JWT_SECRET, "HS256");
 }
 
+/** The signed-in account's id from a bearer token, or null (for routes anyone may call) */
+export async function tokenUserId(header: string | undefined): Promise<string | null> {
+  if (!header?.startsWith("Bearer ")) return null;
+  try {
+    return String((await verify(header.slice(7), env.JWT_SECRET, "HS256")).sub);
+  } catch {
+    return null;
+  }
+}
+
 /** Requires a valid bearer token. Role is re-read from the database so demotions apply immediately. */
 export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
   const header = c.req.header("Authorization");

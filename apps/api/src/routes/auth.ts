@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { recordNotice } from "../services/push";
 import { db, schema } from "../db/client";
-import { checkPassword, hashPassword, issueToken, requireAuth, STAFF, type AppEnv } from "../lib/auth";
+import { checkPassword, hashPassword, issueToken, requireAuth, STAFF, tokenUserId, type AppEnv } from "../lib/auth";
 import { env } from "../env";
 import { badRequest, conflict, forbidden, HttpError, unauthorized } from "../lib/errors";
 import { sendEmail, sendEmailLater } from "../lib/email";
@@ -13,7 +13,7 @@ import { passwordCodeEmail, staffCodeEmail, welcomeEmail } from "../emails/templ
 import { getFeatures, requireFeature } from "../services/features";
 import { publicUser } from "../lib/serialize";
 import { audit } from "../lib/audit";
-import { claimUsername, normaliseUsername, phoneField, referrerFor, usernameRule } from "../lib/identity";
+import { claimUsername, mayUseOfficialNames, normaliseUsername, phoneField, referrerFor, usernameRule } from "../lib/identity";
 
 const credentials = z.object({
   email: z.email().transform((e) => e.toLowerCase()),
@@ -197,7 +197,10 @@ export const authRoutes = new Hono<AppEnv>()
   /** Is this username free? Signed-in users may "check" their own current one. */
   .get("/username/:name", async (c) => {
     const n = normaliseUsername(c.req.param("name"));
-    const problem = usernameRule(n);
+    // Sotechy's team and Sotechy's own store may use "sotechy" names
+    const uid = await tokenUserId(c.req.header("Authorization"));
+    const [me] = uid ? await db.select({ role: schema.users.role }).from(schema.users).where(eq(schema.users.id, uid)) : [];
+    const problem = usernameRule(n, { staff: await mayUseOfficialNames(uid, me?.role) });
     if (problem) return c.json({ username: n, available: false, reason: problem });
     const [owner] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.username, n));
     return c.json({ username: n, available: !owner, reason: owner ? `@${n} is taken` : null });
@@ -262,7 +265,7 @@ export const authRoutes = new Hono<AppEnv>()
         ...(input.pushPrefs !== undefined && { pushPrefs: input.pushPrefs }),
         // An uploaded photo is the account's picture too (a character leaves it as it was)
         ...(input.avatarStyle?.startsWith("http") && { avatarUrl: input.avatarStyle }),
-        ...(input.username !== undefined && { username: await claimUsername(input.username, id, { staff: c.get("user").role !== "customer" }) }),
+        ...(input.username !== undefined && { username: await claimUsername(input.username, id, { staff: await mayUseOfficialNames(id, c.get("user").role) }) }),
         ...(input.phone !== undefined && { phone: phoneField(input.phone, "Phone number") }),
         ...(input.whatsappPhone !== undefined && { whatsappPhone: phoneField(input.whatsappPhone, "WhatsApp number") }),
       };

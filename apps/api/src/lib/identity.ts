@@ -1,5 +1,5 @@
 // Usernames, phone numbers and store names: shared rules for sign-up, profiles and stores.
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { db, schema } from "../db/client";
 import { tickerIdeas } from "@sotechy/shared";
 import { badRequest, conflict } from "./errors";
@@ -29,6 +29,23 @@ export function usernameRule(name: string, opts: { staff?: boolean } = {}): stri
   if (RESERVED.has(n)) return `@${n} is reserved`;
   if (!opts.staff && OFFICIAL.test(n.replace(/[._]/g, ""))) return "Names with \"sotechy\" in them are kept for the Sotechy team";
   return null;
+}
+
+/** Sotechy's team, or whoever runs Sotechy's own store (the one selling with $SOTECHY, owner or team),
+ *  may use names with "sotechy" in them */
+export async function mayUseOfficialNames(userId: string | null | undefined, role?: string) {
+  if (!userId) return false;
+  if (role && role !== "customer") return true;
+  const m = schema.merchants;
+  const [own] = await db.select({ id: m.id }).from(m).where(and(eq(m.tokenId, 1), eq(m.ownerId, userId)));
+  if (own) return true;
+  const t = schema.merchantMembers;
+  const [member] = await db
+    .select({ id: t.merchantId })
+    .from(t)
+    .innerJoin(m, eq(m.id, t.merchantId))
+    .where(and(eq(m.tokenId, 1), eq(t.userId, userId), isNotNull(t.acceptedAt)));
+  return !!member;
 }
 
 /** Checks a username is valid and not taken by someone else; returns it normalised */
