@@ -10,6 +10,7 @@ import { useHeldTokens } from "@/lib/held-tokens";
 import { Illo } from "./illustrations";
 import { BrandMark, ProductArt, StoreCover } from "./store-brand";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { ScrollRow } from "./scroll-row";
 import { Txt } from "./ui";
 
 export const openStore = (slug: string) => router.push({ pathname: "/store/[slug]", params: { slug } });
@@ -46,7 +47,7 @@ export function FeaturedTag({ small }: { small?: boolean }) {
   );
 }
 
-/** "Earn $XENA" in the store's own colours */
+/** "Earn $TOBI" in the store's own colours */
 export function TokenChip({ store, label }: { store: MarketStore; label?: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", backgroundColor: store.theme.accent, borderRadius: radius.pill, paddingHorizontal: 9, paddingVertical: 3 }}>
@@ -191,11 +192,11 @@ export function MarketRail({ title, subtitle, items, dark, onSeeAll }: { title: 
           </Pressable>
         )}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: pad, gap: space.md }}>
+      <ScrollRow contentContainerStyle={{ paddingHorizontal: pad, gap: space.md }}>
         {items.map(({ store, product }) => (
           <MarketProductCard key={`${store.slug}-${product.id}`} store={store} product={product} onDark={dark} />
         ))}
-      </ScrollView>
+      </ScrollRow>
     </View>
   );
 }

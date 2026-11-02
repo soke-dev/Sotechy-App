@@ -79,7 +79,7 @@ export function tickerIdeas(storeName: string): string[] {
   const key = words.filter((w) => !GENERIC_NAME_WORDS.has(w));
   const main = key.length ? key : words;
   const initialsOf = (ws: string[]) => ws.map((w) => w[0]).join("");
-  // The store's own name: its first word that fits, e.g. XENA from Xena Gadgets, OKORO from JJ Okoro & Sons
+  // The store's own name: its first word that fits, e.g. TOBI from Tobi Gadgets, OKORO from JJ Okoro & Sons
   const name = main.find((w) => w.length >= 3 && w.length <= 8);
   const lead = name ?? main[0];
   const ideas = [

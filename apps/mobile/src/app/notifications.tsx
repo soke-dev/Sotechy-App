@@ -1,7 +1,7 @@
 // Everything the customer was told: order steps, offers, support replies, tokens, account security and
 // messages from stores they follow, with filters; and which stores they get updates from.
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router, type Href } from "expo-router";
+import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Switch, View } from "react-native";
 import { Illo } from "@/components/illustrations";
@@ -45,7 +45,13 @@ interface Row {
 export default function NotificationsScreen() {
   const { stores } = useStores();
   const { inbox, feed, isSubscribed, toggle, markAllRead } = useStoreNotifications();
-  const [filter, setFilter] = useState<Filter>("all");
+  // ?filter=store opens on one kind (the desktop sidebar's "Store news")
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const asked = FILTERS.find((f) => f.key === params.filter)?.key;
+  const [filter, setFilter] = useState<Filter>(asked ?? "all");
+  useEffect(() => {
+    if (asked) setFilter(asked);
+  }, [asked]);
   // Opening the list counts as reading it; the new ones stay marked for a moment first
   const [seen] = useState(() => new Set(feed.filter((n) => n.readAt).map((n) => n.id)));
   useEffect(() => {

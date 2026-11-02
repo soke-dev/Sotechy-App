@@ -25,6 +25,7 @@ import { byFeatured, isFeatured, isPro, SOTECHY_STORE, tileColor, toStoreProduct
 import { useStoreNotifications } from "@/lib/store-notifications";
 import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { ScrollRow } from "@/components/scroll-row";
 import { useContentWidth, useIsDesktop } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
@@ -238,7 +239,7 @@ export default function HomeScreen() {
         ) : null}
         <HomeSearch />
         {desktop ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
+          <ScrollRow contentContainerStyle={{ gap: space.sm }}>
             {(
               [
                 { icon: "storefront", label: "Explore stores", onPress: () => router.push("/stores"), dark: true },
@@ -271,7 +272,7 @@ export default function HomeScreen() {
                 <Txt variant="label" color={b.dark ? colors.white : colors.ink} style={{ fontSize: 13.5 }}>{b.label}</Txt>
               </Pressable>
             ))}
-          </ScrollView>
+          </ScrollRow>
         ) : (
         <View style={[ui.row, { gap: space.sm }]}>
           <Pressable
@@ -317,7 +318,7 @@ export default function HomeScreen() {
           <SectionHeader title="Shop by category" action="See all" onAction={() => router.push("/shop")} />
         </View>
         {/* Sotechy's own categories, then every kind of store on the marketplace, in two rows that scroll */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter }}>
+        <ScrollRow contentContainerStyle={{ paddingHorizontal: gutter }}>
           <View style={{ gap: space.md }}>
             {[0, 1].map((row) => {
               const all = [
@@ -340,7 +341,7 @@ export default function HomeScreen() {
               );
             })}
           </View>
-        </ScrollView>
+        </ScrollRow>
       </View>
 
       {/* The newest from every store, featured or not */}
@@ -351,11 +352,11 @@ export default function HomeScreen() {
         <View style={{ paddingHorizontal: gutter }}>
           <SectionHeader title="Stores on Sotechy" action="All stores" onAction={() => router.push("/stores")} />
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={Math.min(contentWidth * 0.7, 260) + space.md} decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
+        <ScrollRow snapToInterval={Math.min(contentWidth * 0.7, 260) + space.md} decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
           {byFeatured([SOTECHY_STORE, ...marketStores]).map((s) => (
             <FeaturedStoreCard key={s.slug} store={s} width={Math.min(contentWidth * 0.7, 260)} />
           ))}
-        </ScrollView>
+        </ScrollRow>
       </View>
 
       {/* Deals of the day */}

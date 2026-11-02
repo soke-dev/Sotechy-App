@@ -10,6 +10,7 @@ import { useTabBarInset } from "@/components/tab-bar";
 import { Chip, EmptyState, ErrorView, Input, Loading, ScreenHeader, Txt, ui } from "@/components/ui";
 import { byFeatured, SOTECHY_STORE, useStores } from "@/lib/marketplace";
 import { colors, gutter, radius, space } from "@/lib/theme";
+import { ScrollRow } from "@/components/scroll-row";
 import { useContentWidth, useIsDesktop } from "@/lib/layout";
 
 /** Where stores sign up and run their shop */
@@ -75,7 +76,7 @@ export default function StoresScreen() {
         <Input icon="search" placeholder="Search stores or $TICKER" value={q} onChangeText={setQ} />
 
         {(kinds.length > 0 || favourites.length > 0) && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }} style={{ marginHorizontal: -gutter }}>
+          <ScrollRow contentContainerStyle={{ gap: space.sm }} style={{ marginHorizontal: -gutter }}>
             <View style={{ width: gutter - space.sm }} />
             <Chip label="All stores" active={!kind} onPress={() => setKind("")} />
             {favourites.length > 0 && <Chip label={`♥ Saved (${favourites.length})`} active={kind === SAVED} onPress={() => setKind(kind === SAVED ? "" : SAVED)} />}
@@ -83,7 +84,7 @@ export default function StoresScreen() {
               <Chip key={k} label={k} active={kind === k} onPress={() => setKind(kind === k ? "" : k)} />
             ))}
             <View style={{ width: gutter - space.sm }} />
-          </ScrollView>
+          </ScrollRow>
         )}
 
         {shown.length === 0 ? (

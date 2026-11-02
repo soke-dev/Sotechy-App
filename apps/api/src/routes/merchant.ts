@@ -14,7 +14,7 @@ import { storeAccess } from "../services/team";
 
 const storeOf = async (ownerId: string) => (await db.select().from(schema.merchants).where(eq(schema.merchants.ownerId, ownerId)))[0] ?? null;
 
-/** "xena", then "xena-2", "xena-3"… (or "XENA", "XENA2"…) until one is free */
+/** "tobi", then "tobi-2", "tobi-3"… (or "TOBI", "TOBI2"…) until one is free */
 async function firstFree(base: string, column: typeof schema.merchants.slug | typeof schema.merchants.ticker, join: string, max: number) {
   for (let n = 1; ; n++) {
     const suffix = n === 1 ? "" : `${join}${n}`;
@@ -59,7 +59,7 @@ export const merchantRoutes = new Hono<AppEnv>()
         username: z.string().max(30).optional(),
         /** Optional, for accounts made with Google that haven't entered one yet */
         referralCode: z.string().max(30).optional(),
-        /** The store's username and link (sotechy.shop/xena-gadgets); made from the name when left out */
+        /** The store's username and link (sotechy.shop/tobi-gadgets); made from the name when left out */
         slug: z.string().max(40).optional(),
       }),
     ),

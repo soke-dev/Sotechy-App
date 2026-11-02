@@ -473,7 +473,7 @@ export const POLICIES: Policy[] = [
       <>
         <h3>1. What tokens are</h3>
         <p>
-          Every store on Sotechy has its own reward token, like $XENA from Xena Gadgets. Sotechy&apos;s is $SOTECHY. Tokens are store credit that you can spend at checkout. They&apos;re kept in
+          Every store on Sotechy has its own reward token, like $TOBI from Tobi Gadgets. Sotechy&apos;s is $SOTECHY. Tokens are store credit that you can spend at checkout. They&apos;re kept in
           your Sotechy wallet and recorded on a public blockchain so balances can be checked.
         </p>
 

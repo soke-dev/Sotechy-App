@@ -39,6 +39,7 @@ import { openPolicy } from "@/lib/policies";
 import { useCart } from "@/lib/cart";
 import { useFeatures } from "@/lib/store-config";
 import { colors, fonts, gutter, lightPalette, radius, space } from "@/lib/theme";
+import { ScrollRow } from "@/components/scroll-row";
 import { useOpenCart } from "@/components/cart-drawer";
 import { useIsDesktop, useScreenWidth } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
@@ -722,11 +723,11 @@ export default function ProductScreen() {
             <View style={{ paddingHorizontal: gutter }}>
               <SectionHeader title="Related products" action="See all" onAction={() => router.push({ pathname: "/shop", params: { category: related.data?.slug ?? "" } })} />
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
+            <ScrollRow contentContainerStyle={{ paddingHorizontal: gutter, gap: space.md }}>
               {related.data.items.map((p) => (
                 <ProductCard key={p.id} product={p} width={150} />
               ))}
-            </ScrollView>
+            </ScrollRow>
           </View>
         )}
       </ScrollView>

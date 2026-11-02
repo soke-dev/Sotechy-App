@@ -23,14 +23,6 @@ export function ProductArt({ product, store, scale = 0.76 }: { product: StorePro
 /** The store's logo mark, filling a square */
 export function BrandMark({ store, size }: { store: MarketStore; size: number }) {
   const t = store.theme;
-  if (store.slug === "xena")
-    return (
-      <Svg width={size} height={size} viewBox="0 0 48 48">
-        <Rect width={48} height={48} rx={14} fill="#1E2433" />
-        <Path d="M14 13 L34 35 M34 13 L14 35" stroke={t.accent} strokeWidth={6.5} strokeLinecap="round" />
-        <Circle cx={37} cy={11} r={3} fill="#FFFFFF" />
-      </Svg>
-    );
   if (store.slug === "brighthome")
     return (
       <Svg width={size} height={size} viewBox="0 0 48 48">

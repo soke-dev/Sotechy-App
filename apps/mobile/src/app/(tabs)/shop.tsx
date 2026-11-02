@@ -14,6 +14,7 @@ import { Button, Chip, EmptyState, ErrorView, Input, Loading, productIcon, Scree
 import { CategoryTile } from "@/components/category-tile";
 import { api } from "@/lib/api";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { ScrollRow } from "@/components/scroll-row";
 import { useGrid } from "@/lib/layout";
 import { useFeatures } from "@/lib/store-config";
 import { useAsync } from "@/lib/use-async";
@@ -163,18 +164,18 @@ export default function ShopScreen() {
       </View>
       <View>
         {/* Categories as on Home: a round icon, then the name */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.sm }}>
+        <ScrollRow contentContainerStyle={{ paddingHorizontal: gutter, gap: space.sm }}>
           <CategoryTile label="All" icon="apps-outline" active={!category} onPress={() => setCategory("")} />
           {/* Every department and its sections, in the menu that slides in from the left */}
           <CategoryTile label="All categories" icon="grid-outline" onPress={menu.open} />
           {groups.map((g) => (
             <CategoryTile key={g.key} label={g.name} icon={g.icon} image={g.image} active={group?.key === g.key} onPress={() => setCategory(g.value)} />
           ))}
-        </ScrollView>
+        </ScrollRow>
       </View>
       {subs.length > 0 && group && (
         <View style={{ flexShrink: 0 }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.lg, paddingTop: space.md }}>
+          <ScrollRow contentContainerStyle={{ paddingHorizontal: gutter, gap: space.lg, paddingTop: space.md }}>
             {[{ key: "all", name: "All", value: group.value }, ...subs].map((s) => {
               const on = category === s.value;
               return (
@@ -183,13 +184,13 @@ export default function ShopScreen() {
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </ScrollRow>
         </View>
       )}
 
       {/* Filter toolbar: quick toggles plus the full filter sheet; everything stacks */}
       <View style={{ flexShrink: 0, marginTop: space.md, paddingTop: space.md, borderTopWidth: 1, borderTopColor: colors.line }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: gutter, gap: space.sm }}>
+        <ScrollRow contentContainerStyle={{ paddingHorizontal: gutter, gap: space.sm }}>
           <FiltersButton count={active} onPress={() => setSheet("filters")} />
           <Chip icon="swap-vertical" label={sortShort} trailingIcon="chevron-down" active={sort !== "newest"} onPress={() => setSheet("sort")} />
           <Chip icon="pricetag-outline" label="Deals" active={filters.deals} onPress={() => toggle({ deals: !filters.deals })} />
@@ -197,7 +198,7 @@ export default function ShopScreen() {
           {features.reviews && <Chip icon="star" label="4 & up" active={filters.minRating === 4} onPress={() => toggle({ minRating: filters.minRating === 4 ? undefined : 4 })} />}
           <Chip label={brandLabel(filters)} trailingIcon="chevron-down" active={filters.brands.length > 0} onPress={() => setSheet("filters")} />
           <Chip label={priceLabel(filters)} trailingIcon="chevron-down" active={hasPrice} onPress={() => setSheet("filters")} />
-        </ScrollView>
+        </ScrollRow>
       </View>
 
       <View style={[ui.between, { paddingHorizontal: gutter, paddingVertical: space.md }]}>

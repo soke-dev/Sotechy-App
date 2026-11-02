@@ -66,7 +66,7 @@ export function phoneField(value: string | null | undefined, label: string) {
 const RESERVED_STORES = new Set(["admin", "api", "app", "help", "support", "login", "signup", "terms", "privacy", "store", "stores", "shop", "merchant", "merchants", "www", "mail", "official"]);
 
 /**
- * Why a store username (its link, sotechy.shop/xena-gadgets) can't be used, or null if it's fine.
+ * Why a store username (its link, sotechy.shop/tobi-gadgets) can't be used, or null if it's fine.
  * Lowercase letters, numbers and single hyphens, 3 to 30 long.
  */
 export function storeHandleRule(handle: string, opts: { staff?: boolean } = {}): string | null {
@@ -81,7 +81,7 @@ export function storeHandleRule(handle: string, opts: { staff?: boolean } = {}):
   return null;
 }
 
-/** "Xena Gadgets & Co." → "xena-gadgets-co" */
+/** "Tobi Gadgets & Co." → "tobi-gadgets-co" */
 export const slugify = (name: string) =>
   name
     .toLowerCase()
@@ -91,7 +91,7 @@ export const slugify = (name: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 40) || "store";
 
-/** "Xena Gadgets" → "XENA", "JB Phones" → "JBPHO": 3–5 capital letters for the store token */
+/** "Tobi Gadgets" → "TOBI", "JB Phones" → "JBPHO": 3–5 capital letters for the store token */
 export function tickerFrom(name: string) {
   const idea = tickerIdeas(name)[0];
   if (idea) return idea;

@@ -138,7 +138,7 @@ export function StoreHandleField({ storeName }: { storeName: string }) {
           data-1p-ignore
           data-lpignore="true"
           className={`${inputClass} pl-8`}
-          placeholder="xena-gadgets"
+          placeholder="tobi-gadgets"
         />
         {h && !problem && !checking && <Check size={18} className="absolute right-4 text-good" />}
       </span>

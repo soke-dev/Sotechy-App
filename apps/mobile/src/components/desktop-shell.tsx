@@ -34,7 +34,7 @@ const YOURS: { href: Href; label: string; icon: IconName; path: string }[] = [
   { href: "/wallet", label: "Wallet", icon: "wallet-outline", path: "/wallet" },
   { href: "/wishlist", label: "Saved", icon: "heart-outline", path: "/wishlist" },
   { href: "/offers", label: "My offers", icon: "pricetag-outline", path: "/offers" },
-  { href: "/notifications", label: "Store news", icon: "notifications-outline", path: "/notifications" },
+  { href: { pathname: "/notifications", params: { filter: "store" } }, label: "Store news", icon: "megaphone-outline", path: "/notifications" },
 ];
 
 function NavRow({ active, onPress, children, label }: { active: boolean; onPress: () => void; children: ReactNode; label: string }) {
