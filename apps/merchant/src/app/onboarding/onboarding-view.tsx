@@ -23,7 +23,7 @@ const STEPS: Record<StepId, { title: string; intro: string }> = {
   setup: { title: "Business type", intro: "How your business is set up decides what we ask for next." },
   business: { title: "Business details", intro: "Your business exactly as it's registered with CAC." },
   documents: { title: "Documents", intro: "We check these against CAC. They're stored privately and only Sotechy's review team sees them." },
-  you: { title: "Your ID", intro: "A short ID and selfie check for the store owner, done securely with Didit." },
+  you: { title: "Your ID", intro: "A photo of the owner's ID, a selfie and a short smile video. About 3 minutes." },
   people: { title: "Directors and owners", intro: "Everyone who is a director, or owns 25% or more of the business." },
   store: { title: "Your store", intro: "Tell us what you do and what you sell, and name your store's token." },
   payout: { title: "Payout account", intro: "Where Sotechy sends the money for your orders." },
@@ -69,9 +69,16 @@ export interface OnboardingStart {
 
 type TickerCheck = { ticker: string; available: boolean; reason: string | null } | null;
 
-export default function OnboardingView({ initialStep, start }: { initialStep?: StepId; start: OnboardingStart }) {
+export default function OnboardingView({ initialStep, start, notice }: { initialStep?: StepId; start: OnboardingStart; notice?: string }) {
   const app = start.application;
   const router = useRouter();
+  // A short message after coming back from the ID check ("ID submitted…"), gone after a few seconds
+  const [toast, setToast] = useState(notice ?? null);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [toast]);
   const [kind, setKind] = useState<Kind>(start.kind);
   const [structure, setStructure] = useState<BusinessStructure>(app?.structure ?? "LTD");
   // CAC numbers carry their prefix: RC (companies), BN (business names), IT (incorporated trustees)
@@ -249,6 +256,11 @@ export default function OnboardingView({ initialStep, start }: { initialStep?: S
 
   return (
     <div className="min-h-screen bg-background">
+      {toast && (
+        <div role="status" className="fixed inset-x-4 top-4 z-50 mx-auto flex max-w-md items-center gap-3 rounded-2xl bg-panel px-4 py-3 text-sm font-semibold text-white shadow-[0_16px_36px_-16px_rgba(23,18,14,0.6)]">
+          <Check size={18} className="text-good" /> {toast}
+        </div>
+      )}
       <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-3">

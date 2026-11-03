@@ -20,6 +20,7 @@ import { paymentMethodSchema } from "../orders";
 import { orderCases } from "../../services/order-cases";
 import { replyToTicket, ticketThread } from "../../services/support-chat";
 import { adminPulse } from "../../services/pulse";
+import { adminIdCheck, adminIdChecks, decideIdCheck, idCheckCounts, storeIdCheck } from "../../services/id-checks";
 
 const { users, branches, promotions, paymentMethods, cryptoAssets, appSettings, suppliers, purchaseOrders, purchaseOrderItems, supportTickets, auditLogs } =
   schema;
@@ -387,7 +388,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       .leftJoin(users, eq(users.id, m.ownerId))
       .where(eq(m.id, c.req.param("id")));
     if (!row) throw notFound("Store not found");
-    const [zones, counts] = await Promise.all([
+    const [zones, counts, idCheck] = await Promise.all([
       db.select().from(schema.deliveryZones).where(eq(schema.deliveryZones.merchantId, row.store.id)).orderBy(asc(schema.deliveryZones.createdAt)),
       db
         .select({
@@ -397,8 +398,12 @@ export const adminManagementRoutes = new Hono<AppEnv>()
         })
         .from(m)
         .where(eq(m.id, row.store.id)),
+      // The owner's newest check through Sotechy's own ID check, if they used it
+      storeIdCheck(row.store.id),
     ]);
-    return c.json({ ...row.store, owner: row.owner, zones, ...counts[0] });
+    // Never send the phone link's secret to the browser
+    const { idHandoffHash: _hash, idHandoffExpiresAt: _exp, ...store } = row.store;
+    return c.json({ ...store, owner: row.owner, zones, idCheck, ...counts[0] });
   })
   /** What's waiting for a decision, for the admin menu's counts */
   /** Store orders that need Sotechy: not accepted, not delivered, paybacks owed */
@@ -416,6 +421,8 @@ export const adminManagementRoutes = new Hono<AppEnv>()
         payouts: sql<number>`(select count(*)::int from merchant_payouts p where p.stage <> 'payback' and ((p.status = 'scheduled' and p.due_at <= now()) or p.status = 'failed'))`,
         // Customers' refunds waiting to be approved or sent
         refunds: sql<number>`(select count(*)::int from refunds r where r.status in ('requested', 'approved'))`,
+        // Store owners' ID checks waiting for a decision
+        idChecks: sql<number>`(select count(*)::int from id_checks k where k.status = 'in_review')`,
       })
       .from(users)
       .limit(1);
@@ -426,9 +433,25 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       support: row?.support ?? 0,
       payouts: row?.payouts ?? 0,
       refunds: row?.refunds ?? 0,
+      idChecks: row?.idChecks ?? 0,
       cases: (await orderCases()).length,
     });
   })
+  /** Store owners' ID checks (Sotechy's own check): waiting, sent back to redo, verified or declined */
+  .get("/id-checks", zValidator("query", z.object({ status: z.enum(["in_review", "resubmit", "approved", "declined"]).default("in_review") })), async (c) =>
+    c.json({ checks: await adminIdChecks(c.req.valid("query").status), counts: await idCheckCounts() }),
+  )
+  .get("/id-checks/:id", async (c) => c.json(await adminIdCheck(c.req.param("id"))))
+  /** Approve the person's identity, send it back with what to redo, or decline it. The store itself is approved separately. */
+  .post(
+    "/id-checks/:id/decision",
+    ADMIN,
+    zValidator(
+      "json",
+      z.object({ outcome: z.enum(["approve", "redo", "decline"]), items: z.array(z.string().max(40)).max(20).optional(), note: z.string().trim().max(1000).optional() }),
+    ),
+    async (c) => c.json(await decideIdCheck(c.req.param("id"), c.get("user").id, c.req.valid("json"))),
+  )
   /** Stores' asked-for details (name, about, what they sell, socials, website), each beside what the app shows now */
   .get("/store-changes", async (c) => {
     const m = schema.merchants;
@@ -623,6 +646,10 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       const actor = c.get("user");
       const [before] = await db.select().from(schema.merchants).where(eq(schema.merchants.id, c.req.param("id")));
       if (!before) throw notFound("Store not found");
+      // A store goes live only once its owner's identity is verified (Sotechy's own store excepted)
+      if (status === "approved" && before.status !== "approved" && before.kycStatus !== "approved" && before.tokenId !== SOTECHY_TOKEN.id) {
+        throw badRequest("Verify the owner's ID first (Merchants → ID checks). Approving the ID doesn't approve the store; do that here after.");
+      }
       const store = await db.transaction(async (tx) => {
         // Approving a store approves its token too: the ticker is fixed and the token is created on Monad
         const [row] = await tx

@@ -1,4 +1,5 @@
 import type { Bank, PayoutAccount, PayoutPlan, PayoutRow } from "./payouts";
+import type { IdCheckState } from "./id-checks";
 import type {
   Address,
   OfferView,
@@ -182,7 +183,7 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     checkStoreHandle: (handle: string) => get<{ handle: string; available: boolean; reason: string | null }>(`/merchant/handle/${encodeURIComponent(handle)}`),
     /** Starts the owner's ID + liveness check; open the returned URL */
     startIdCheck: () => send<{ url: string }>("POST", "/merchant/verification"),
-    idCheckStatus: () => get<{ status: KycStatus; updatedAt: string | null; available: boolean }>("/merchant/verification"),
+    idCheckStatus: () => get<IdCheckState>("/merchant/verification"),
 
     // Saved addresses
     addresses: () => get<Address[]>("/me/addresses"),

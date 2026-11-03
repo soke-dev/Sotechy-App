@@ -1,5 +1,5 @@
 // Marketplace stores as the admin API returns them (GET /admin/merchants and /admin/merchants/:id).
-import type { KycStatus, MerchantApplicationInput } from "@sotechy/shared";
+import type { AdminIdCheck, KycStatus, MerchantApplicationInput } from "@sotechy/shared";
 
 export interface KycResult {
   diditStatus: string;
@@ -75,6 +75,8 @@ export interface AdminStoreDetail extends Omit<AdminStore, "ownerName" | "ownerE
   products: number;
   orders: number;
   sales: number;
+  /** The owner's newest check through Sotechy's own ID check, if they used it */
+  idCheck: AdminIdCheck | null;
 }
 
 /** Where a store is in Sotechy's process */
@@ -105,7 +107,7 @@ export const STAGE: Record<Stage, { label: string; tone: "warn" | "info" | "good
 export const KYC: Record<KycStatus, { label: string; ok: boolean | null }> = {
   not_started: { label: "ID check not started", ok: null },
   in_progress: { label: "ID check in progress", ok: null },
-  in_review: { label: "ID check being reviewed by Didit", ok: null },
+  in_review: { label: "ID under verification", ok: null },
   approved: { label: "Identity verified", ok: true },
   declined: { label: "ID check declined", ok: false },
   resubmit: { label: "ID check needs a retry", ok: false },

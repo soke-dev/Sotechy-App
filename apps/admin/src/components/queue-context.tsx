@@ -17,9 +17,11 @@ export interface Queue {
   /** Store payouts to send now, and customers' refunds waiting */
   payouts: number;
   refunds: number;
+  /** Store owners' ID checks waiting for a decision */
+  idChecks: number;
 }
 
-const EMPTY: Queue = { merchants: 0, storeChanges: 0, zones: 0, cases: 0, support: 0, payouts: 0, refunds: 0 };
+const EMPTY: Queue = { merchants: 0, storeChanges: 0, zones: 0, cases: 0, support: 0, payouts: 0, refunds: 0, idChecks: 0 };
 const QueueContext = createContext<Queue>(EMPTY);
 
 export function QueueProvider({ value, children }: { value: Queue; children: ReactNode }) {

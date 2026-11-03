@@ -78,6 +78,7 @@ export const SAMPLES: Record<string, ["Customers" | "Merchants", () => Email | n
   "id-check-passed": ["Merchants", () => T.idCheckEmail(to, { name: "Kemi Bello", store: "Kemi Phones", outcome: "approved" })],
   "id-check-retry": ["Merchants", () => T.idCheckEmail(to, { name: "Kemi Bello", store: "Kemi Phones", outcome: "resubmit" })],
   "id-check-declined": ["Merchants", () => T.idCheckEmail(to, { name: "Kemi Bello", store: "Kemi Phones", outcome: "declined" })],
+  "id-check-redo": ["Merchants", () => T.idCheckEmail(to, { name: "Kemi Bello", store: "Kemi Phones", outcome: "resubmit", redo: ["ID photo blurry: Retake it in good light, holding the phone still.", "Face covered: Take off caps, sunglasses or face masks so your whole face shows."], note: "We couldn't read your date of birth." })],
   "store-verified": ["Merchants", () => T.storeVerifiedEmail(to, { name: "Kemi Bello", store: "Kemi Phones" })],
   featured: ["Merchants", () => T.featuredEmail(to, { store: "Sotechy Shop", until: inHours(24 * 30), price: 2_000 })],
 };

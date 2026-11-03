@@ -4,7 +4,8 @@ import OnboardingView, { type StepId } from "./onboarding-view";
 
 const STEPS: StepId[] = ["setup", "business", "documents", "you", "people", "store", "payout", "review"];
 
-/** ?step=you opens a step directly; Didit sends merchants back with ?verify=done after their ID check */
+/** ?step=you opens a step directly; Didit sends merchants back with ?verify=done after their ID check, and
+ *  Sotechy's own check with ?verify=sent */
 export default async function OnboardingPage({ searchParams }: { searchParams: Promise<{ step?: string; verify?: string }> }) {
   const [{ step, verify }, { user, store }, fee] = await Promise.all([searchParams, getStoreSession(), getFeeRate()]);
   const initial = verify ? "you" : STEPS.find((s) => s === step);
@@ -12,6 +13,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
     <FeeProvider fee={fee}>
     <OnboardingView
       initialStep={initial}
+      notice={verify === "sent" ? "ID submitted. It's now under verification: carry on with your setup." : undefined}
       start={{
         storeName: store.name,
         ticker: store.ticker,

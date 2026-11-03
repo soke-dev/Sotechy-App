@@ -20,6 +20,7 @@ import {
   MapPin,
   Package,
   ScanBarcode,
+  ScanFace,
   ScrollText,
   Settings,
   ShoppingBag,
@@ -68,6 +69,7 @@ export const NAV: NavGroup[] = [
     illo: "store",
     pages: [
       { href: "/merchants", label: "Merchants", icon: Store, illo: "store", countKey: "merchants" },
+      { href: "/id-checks", label: "ID checks", icon: ScanFace, illo: "shield", countKey: "idChecks" },
       { href: "/store-changes", label: "Store changes", icon: FilePen, illo: "doc", countKey: "storeChanges" },
       { href: "/delivery-areas", label: "Delivery areas", icon: MapPin, illo: "pin", countKey: "zones" },
       { href: "/merchant-payouts", label: "Merchant payouts", icon: Banknote, illo: "bank", countKey: "payouts" },

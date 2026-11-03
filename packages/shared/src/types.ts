@@ -555,6 +555,8 @@ export interface AppFeatures {
   /** Strip at the top of the home screen */
   announcement: string;
   announcementOn: boolean;
+  /** Store owners' ID checks go through Didit; off = Sotechy's own check (ID photo, selfie, smile video) reviewed in admin */
+  diditIdCheck: boolean;
 }
 
 export const DEFAULT_FEATURES: AppFeatures = {
@@ -575,6 +577,7 @@ export const DEFAULT_FEATURES: AppFeatures = {
   maintenanceMessage: "We're making improvements and will be back shortly.",
   announcement: "",
   announcementOn: false,
+  diditIdCheck: false,
 };
 
 export type BannerStyle = "dark" | "orange" | "light";

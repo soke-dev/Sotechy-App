@@ -284,6 +284,9 @@ export const merchants = pgTable("merchants", {
   kycSessionId: text().unique(),
   kycResult: jsonb().$type<KycResult>(),
   kycUpdatedAt: timestamp({ withTimezone: true }),
+  /** "Continue on your phone": a one-time link (its hash) that lets the owner's phone do the manual ID check */
+  idHandoffHash: text(),
+  idHandoffExpiresAt: timestamp({ withTimezone: true }),
   /** Where payouts go, checked with the bank through Flutterwave */
   payoutBankCode: text(),
   payoutBankName: text(),
@@ -862,6 +865,35 @@ export const media = pgTable("media", {
   createdBy: uuid().references(() => users.id, { onDelete: "set null" }),
   createdAt: createdAt(),
 });
+
+/** Sotechy's own ID check: the owner's ID photo, a selfie and a smile video, checked by an admin (when Didit is off) */
+export const idCheckStatusEnum = pgEnum("id_check_status", ["in_review", "approved", "resubmit", "declined"]);
+export const idChecks = pgTable(
+  "id_checks",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    merchantId: uuid()
+      .notNull()
+      .references(() => merchants.id, { onDelete: "cascade" }),
+    /** Who sent it (the store's owner) */
+    userId: uuid().references(() => users.id, { onDelete: "set null" }),
+    /** "nin" | "drivers_licence" | "passport" */
+    idType: text().notNull(),
+    /** Private media: the front of the ID, the selfie and the smile video */
+    idPhotoId: uuid().references(() => media.id, { onDelete: "set null" }),
+    selfieId: uuid().references(() => media.id, { onDelete: "set null" }),
+    videoId: uuid().references(() => media.id, { onDelete: "set null" }),
+    status: idCheckStatusEnum().notNull().default("in_review"),
+    /** What to redo (codes, see ID_REDO_ITEMS) when sent back */
+    redoItems: jsonb().$type<string[]>().notNull().default([]),
+    /** Sotechy's note to the owner: what to fix, or why it was declined */
+    note: text(),
+    reviewedBy: uuid().references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.status, t.createdAt), index().on(t.merchantId, t.createdAt)],
+);
 
 export const bannerStyleEnum = pgEnum("banner_style", ["dark", "orange", "light"]);
 export const bannerLinkEnum = pgEnum("banner_link", ["none", "category", "product", "deals", "url", "store", "stores", "wallet"]);

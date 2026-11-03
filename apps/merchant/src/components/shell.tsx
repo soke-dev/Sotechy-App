@@ -118,9 +118,10 @@ function StoreCard({ store, onNavigate }: { store: ShellStore; onNavigate?: () =
           </p>
           {/* Where it stands, and what kind of store it is, on one row */}
           <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.pill}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
-              {status.label}
+            {/* One line, however narrow the menu */}
+            <span className={`inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.pill}`}>
+              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.dot}`} />
+              <span className="truncate">{status.label}</span>
             </span>
             {store.verified && <span className="text-[11px] text-white/55">{store.official ? "Official store" : "Verified seller"}</span>}
           </span>

@@ -4,7 +4,7 @@ import { ArrowLeft, Check, ExternalLink, FileText, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
-import { formatNaira } from "@sotechy/shared";
+import { formatNaira, idTypeLabel } from "@sotechy/shared";
 import { CheckIcon } from "@/components/merchant-bits";
 import { RelTime } from "@/components/rel-time";
 import { Card, dangerButtonClass, inputClass, Pill, primaryButtonClass, secondaryButtonClass, Sheet } from "@/components/ui";
@@ -50,6 +50,8 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
 
   const stage = stageOf(store);
   const kyc = KYC[store.kycStatus];
+  const idVerified = store.kycStatus === "approved" || store.tokenId === 1;
+  const manual = store.idCheck;
   const k = store.kycResult;
   const app = store.application;
   const docs = Object.entries(app?.documents ?? {});
@@ -118,12 +120,14 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
                 <button disabled={busy} onClick={() => { setNoteText(""); setReviewing("declined"); }} className="inline-flex min-h-11 items-center rounded-full bg-white/10 px-5 text-sm font-semibold text-[#ffb4aa] hover:bg-white/15 disabled:opacity-40">
                   Decline
                 </button>
+                {/* A store goes live only once its owner's ID is verified (approving the ID never approves the store) */}
                 <button
-                  disabled={busy}
+                  disabled={busy || !idVerified}
                   onClick={() => run(() => confirmStatus("approved"))}
+                  title={idVerified ? undefined : "Verify their ID first"}
                   className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-40"
                 >
-                  <Check size={16} /> {busy ? "Saving…" : "Approve and go live"}
+                  <Check size={16} /> {busy ? "Saving…" : idVerified ? "Approve and go live" : "Verify their ID first"}
                 </button>
               </>
             )}
@@ -167,8 +171,32 @@ export function StoreReview({ store }: { store: AdminStoreDetail }) {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.5fr_1fr]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Card title="Identity check" description="The owner's ID and live selfie, checked by Didit. Sotechy keeps the result, not the photos.">
-            {k ? (
+          <Card
+            title="Identity check"
+            description={manual ? "The owner's ID photo, selfie and smile video, checked by Sotechy in ID checks." : "The owner's ID and live selfie, checked by Didit. Sotechy keeps the result, not the photos."}
+          >
+            {manual ? (
+              <div>
+                <Row label="Result">
+                  <Pill tone={kyc.ok ? "good" : kyc.ok === false ? "bad" : "warn"}>{kyc.label}</Pill>
+                </Row>
+                <Row label="ID">{idTypeLabel(manual.idType)}</Row>
+                <Row label="Sent">
+                  <RelTime iso={manual.createdAt} />
+                  {manual.attempt > 1 ? ` · try ${manual.attempt}` : ""}
+                </Row>
+                {manual.reviewedAt && (
+                  <Row label="Decided">
+                    {manual.reviewedByName ? `${manual.reviewedByName} · ` : ""}
+                    <RelTime iso={manual.reviewedAt} />
+                  </Row>
+                )}
+                {manual.note && <p className="mt-3 rounded-2xl bg-surface-alt px-3 py-2 text-sm">&ldquo;{manual.note}&rdquo;</p>}
+                <Link href={`/id-checks?status=${manual.status}&id=${manual.id}`} className={`${secondaryButtonClass} mt-4`}>
+                  {manual.status === "in_review" ? "Check their ID now" : "Open the ID check"}
+                </Link>
+              </div>
+            ) : k ? (
               <div>
                 <Row label="Result">
                   <Pill tone={kyc.ok ? "good" : kyc.ok === false ? "bad" : "warn"}>{k.diditStatus}</Pill>

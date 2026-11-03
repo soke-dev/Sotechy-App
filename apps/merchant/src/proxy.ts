@@ -6,7 +6,9 @@ const OPEN = ["/login", "/signup", "/logout", "/forgot", "/terms", "/join"];
 export function proxy(request: NextRequest) {
   const hasToken = request.cookies.has("sotechy_merchant_token");
   const path = request.nextUrl.pathname;
-  if (!hasToken && !OPEN.includes(path)) return NextResponse.redirect(new URL("/login", request.url));
+  // The phone link from an ID check's QR code works without signing in
+  const open = OPEN.includes(path) || path.startsWith("/verify-phone/");
+  if (!hasToken && !open) return NextResponse.redirect(new URL("/login", request.url));
   if (hasToken && path === "/login") return NextResponse.redirect(new URL("/", request.url));
   return NextResponse.next();
 }

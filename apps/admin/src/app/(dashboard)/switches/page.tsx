@@ -36,6 +36,16 @@ const GROUPS: { title: string; items: { key: Switch; label: string; description:
     ],
   },
   {
+    title: "Stores",
+    items: [
+      {
+        key: "diditIdCheck",
+        label: "Use Didit for ID checks",
+        description: "Off: store owners send their ID photo, a selfie and a smile video, and you approve each one in Merchants → ID checks. Switching only changes new checks; ones already started finish the way they began.",
+      },
+    ],
+  },
+  {
     title: "Accounts",
     items: [
       { key: "signups", label: "New sign-ups", description: "Off: only existing customers can sign in." },

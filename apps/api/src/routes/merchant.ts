@@ -9,7 +9,8 @@ import { claimUsername, phoneField, referrerFor, slugify, storeHandleRule, ticke
 import { publicUser } from "../lib/serialize";
 import { sendEmailLater } from "../lib/email";
 import { storeOpenedEmail } from "../emails/templates";
-import { diditConfigured, refreshIdCheck, startIdCheck } from "../services/didit";
+import { startIdCheck } from "../services/didit";
+import { createHandoff, idCheckMethod, idCheckState, latestCheck, storeForHandoff, submitManualCheck } from "../services/id-checks";
 import { storeAccess } from "../services/team";
 
 const storeOf = async (ownerId: string) => (await db.select().from(schema.merchants).where(eq(schema.merchants.ownerId, ownerId)))[0] ?? null;
@@ -99,22 +100,33 @@ export const merchantRoutes = new Hono<AppEnv>()
     const [taken] = await db.select({ id: schema.merchants.id }).from(schema.merchants).where(eq(schema.merchants.slug, h));
     return c.json({ handle: h, available: !taken, reason: taken ? `@${h} is taken` : null });
   })
-  /** Starts (or restarts) the owner's ID + liveness check; returns Didit's page to send them to */
+  /** Starts (or restarts) the owner's ID + liveness check on Didit (when it's switched on); returns Didit's page */
   .post("/verification", async (c) => {
     const store = await storeOf(c.get("user").id);
     if (!store) throw notFound("You don't have a store yet");
     if (store.kycStatus === "approved") throw conflict("Your ID is already verified");
     if (store.kycStatus === "in_review") throw conflict("Your ID check is being reviewed. We'll email you the result.");
+    if ((await idCheckMethod(store)) !== "didit") throw badRequest("Verify your ID with the steps on the page.");
     return c.json({ url: await startIdCheck(store) });
   })
-  /** The check's status; while it's open, asks Didit for news (so it works even before webhooks reach us) */
+  /** The check's status and which way it's done (Didit, or Sotechy's own check with what to redo) */
   .get("/verification", async (c) => {
-    let store = await storeOf(c.get("user").id);
+    const store = await storeOf(c.get("user").id);
     if (!store) throw notFound("You don't have a store yet");
-    if (store.kycSessionId && (store.kycStatus === "in_progress" || store.kycStatus === "in_review") && diditConfigured()) {
-      store = (await refreshIdCheck(store.kycSessionId).catch(() => null)) ?? store;
-    }
-    return c.json({ status: store.kycStatus, updatedAt: store.kycUpdatedAt, available: diditConfigured() });
+    return c.json(await idCheckState(store));
+  })
+  /** Sotechy's own check: the front of the ID, a selfie and a smile video (multipart) */
+  .post("/verification/manual", async (c) => {
+    const store = await storeOf(c.get("user").id);
+    if (!store) throw notFound("You don't have a store yet");
+    return c.json(await submitManualCheck(store, await c.req.parseBody()), 201);
+  })
+  /** "Continue on your phone": a one-time link (for a QR code) that works for 30 minutes without signing in */
+  .post("/verification/handoff", async (c) => {
+    const store = await storeOf(c.get("user").id);
+    if (!store) throw notFound("You don't have a store yet");
+    if ((await idCheckMethod(store)) !== "manual") throw badRequest("Verify your ID with the steps on the page.");
+    return c.json(await createHandoff(store));
   })
   .patch(
     "/store",
@@ -149,3 +161,24 @@ export const merchantRoutes = new Hono<AppEnv>()
       return c.json(row);
     },
   );
+
+/**
+ * The owner's phone, opened from the QR code on their computer: no sign-in, just the one-time link.
+ * It only lets them send their own store's ID check, and stops working once sent or after 30 minutes.
+ */
+export const idHandoffRoutes = new Hono()
+  .get("/:token", async (c) => {
+    const store = await storeForHandoff(c.req.param("token"));
+    const [owner] = store.ownerId ? await db.select({ name: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, store.ownerId)) : [];
+    const last = await latestCheck(store.id);
+    return c.json({
+      storeName: store.name,
+      ownerName: owner?.name ?? null,
+      status: store.kycStatus,
+      check: last ? { idType: last.idType, status: last.status, redoItems: last.redoItems ?? [], note: last.note } : null,
+    });
+  })
+  .post("/:token", async (c) => {
+    const store = await storeForHandoff(c.req.param("token"));
+    return c.json(await submitManualCheck(store, await c.req.parseBody()), 201);
+  });

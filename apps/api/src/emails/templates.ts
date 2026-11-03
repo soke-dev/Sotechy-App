@@ -292,18 +292,18 @@ export function featuredEmail(to: string, d: { store: string; until: Date; price
 
 const ID_CHECK = {
   approved: {
-    subject: "Your ID check passed",
-    heading: "Your ID check passed",
+    subject: "You're verified on Sotechy",
+    heading: "Your identity is verified",
     lead: "Your ID and selfie matched.",
-    note: { tone: "good" as const, text: "Next, Sotechy reviews the rest of your setup. We'll email you as soon as your store is live." },
+    note: { tone: "good" as const, text: "Next, Sotechy reviews the rest of your store setup. We'll email you as soon as your store is live." },
     button: "Continue setup",
   },
   resubmit: {
-    subject: "Your ID check needs another try",
-    heading: "Let's try your ID check again",
-    lead: "Some photos weren't clear enough to check.",
-    note: { tone: "warn" as const, text: "Use good light, keep the whole ID in the frame with no glare, and hold still for the selfie." },
-    button: "Try again",
+    subject: "Please redo part of your ID check",
+    heading: "Almost there: redo part of your ID check",
+    lead: "Some of what you sent wasn't clear enough to check.",
+    note: { tone: "warn" as const, text: "Use good light, keep the whole ID in the frame with no glare, and keep your face uncovered." },
+    button: "Redo it now",
   },
   declined: {
     subject: "We couldn't verify your ID",
@@ -314,18 +314,25 @@ const ID_CHECK = {
   },
 };
 
-export function idCheckEmail(to: string, d: { name: string | null; store: string; outcome: keyof typeof ID_CHECK }) {
+/**
+ * The result of an owner's ID check. From Sotechy's own check, `redo` lists exactly what to send again and
+ * `note` is the reviewer's message (or the reason it was declined).
+ */
+export function idCheckEmail(to: string, d: { name: string | null; store: string; outcome: keyof typeof ID_CHECK; redo?: string[]; note?: string | null }) {
   const c = ID_CHECK[d.outcome];
+  const blocks: Block[] = [{ kind: "text", text: `Hi ${first(d.name)}, ${c.lead.charAt(0).toLowerCase()}${c.lead.slice(1)}` }];
+  if (d.redo?.length) {
+    blocks.push({ kind: "text", text: "Here's what to redo:" }, { kind: "checklist", items: d.redo.map((text) => ({ done: false, text })) });
+  }
+  if (d.note) blocks.push({ kind: "note", tone: d.outcome === "declined" ? "bad" : "brand", icon: "chat", text: d.note });
+  if (d.outcome !== "resubmit" || !d.redo?.length) blocks.push({ kind: "note", tone: c.note.tone, icon: "shield", text: c.note.text });
+  blocks.push({ kind: "button", label: c.button, url: merchantLink("/onboarding?step=you") });
   return build(to, c.subject, {
-    preheader: `${c.lead} ${c.note.text}`,
+    preheader: `${c.lead} ${d.note ?? c.note.text}`,
     hero: "verified",
     eyebrow: `${d.store} · ID check`,
     heading: c.heading,
-    blocks: [
-      { kind: "text", text: `Hi ${first(d.name)}, ${c.lead.charAt(0).toLowerCase()}${c.lead.slice(1)}` },
-      { kind: "note", tone: c.note.tone, icon: "shield", text: c.note.text },
-      { kind: "button", label: c.button, url: merchantLink("/onboarding?step=you") },
-    ],
+    blocks,
     reason: "You're getting this because you verified your identity to sell on Sotechy.",
   });
 }

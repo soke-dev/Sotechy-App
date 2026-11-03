@@ -73,6 +73,7 @@ const featureFields = z
     maintenanceMessage: z.string().max(300),
     announcement: z.string().max(160),
     announcementOn: z.boolean(),
+    diditIdCheck: z.boolean(),
   } satisfies { [K in keyof AppFeatures]: z.ZodType<AppFeatures[K]> })
   .partial();
 

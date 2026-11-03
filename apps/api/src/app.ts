@@ -18,7 +18,7 @@ import { chainPublicRoutes } from "./routes/chain-public";
 import { devEmailRoutes } from "./routes/dev-emails";
 import { geoRoutes } from "./routes/geo";
 import { mediaRoutes } from "./routes/media";
-import { merchantRoutes } from "./routes/merchant";
+import { idHandoffRoutes, merchantRoutes } from "./routes/merchant";
 import { merchantTeamRoutes } from "./routes/merchant-team";
 import { merchantMarketRoutes } from "./routes/merchant-market";
 import { meRoutes } from "./routes/me";
@@ -53,6 +53,8 @@ export const app = new Hono()
   .route("/orders", orderRoutes)
   .route("/offers", offerRoutes)
   .route("/me", meRoutes)
+  // Before the signed-in merchant routes: a phone continuing an ID check has no sign-in
+  .route("/id-handoff", idHandoffRoutes)
   .route("/merchant", merchantTeamRoutes)
   .route("/merchant", merchantRoutes)
   .route("/merchant", merchantMarketRoutes)
