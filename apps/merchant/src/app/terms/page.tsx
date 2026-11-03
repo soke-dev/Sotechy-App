@@ -4,7 +4,7 @@ import { Illo } from "@/components/illustrations";
 
 export const metadata: Metadata = { title: "Merchant terms · Sotechy" };
 
-const UPDATED = "27 October 2026";
+const UPDATED = "3 November 2026";
 
 const SECTIONS: { id: string; title: string; points: string[] }[] = [
   {
@@ -28,9 +28,13 @@ const SECTIONS: { id: string; title: string; points: string[] }[] = [
     id: "verification",
     title: "Verification",
     points: [
-      "Every store is checked before it can sell. That includes an identity check of the owner (an ID document and a live selfie, run by our partner Didit), and for registered businesses, their CAC documents.",
+      "Every store is checked before it can sell. That includes an identity check of the owner (a photo of a valid ID, a selfie and a short live video) and, for registered businesses, their CAC documents.",
+      "You confirm that the ID, photos and video you send are your own, genuine and unaltered, and that the details you give us are true. Sending someone else's ID, or a fake or edited one, ends your store, may forfeit payouts still held, and may be reported to the police and regulators.",
+      "Sotechy decides, at its discretion, whether a check passes. We may ask you to redo part of it, ask for more information, or decline it, and we don't have to give every reason. Passing the ID check doesn't by itself approve your store; we review your store separately.",
+      "The name on your ID becomes the name on your Sotechy account and must match the owner of your payout account.",
       "Until Sotechy approves your store you can explore your dashboard and set things up, but you can't list products, take orders or send notifications.",
-      "We may ask for more information at any time, and we may decline or pause a store that doesn't pass our checks.",
+      "We may check again at any time, for example if your details change or we see signs of fraud, and we may pause a store until it passes.",
+      "We handle your verification data under our privacy policy and the Nigeria Data Protection Act 2023. Sotechy is registered with the Nigeria Data Protection Commission.",
     ],
   },
   {

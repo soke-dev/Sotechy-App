@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { BUSINESS } from "@sotechy/shared";
 
 export const CONTACT = { email: "hello@sotechy.shop", address: BUSINESS.headOffice, x: "https://x.com/sotechyshop" };
-export const UPDATED = "2 November 2026";
+export const UPDATED = "3 November 2026";
 
 export interface Policy {
   slug: string;
@@ -64,7 +64,8 @@ export const POLICIES: Policy[] = [
           <li>Products sold by Sotechy&apos;s own store are sold by Sotechy, and we&apos;re the seller for those.</li>
           <li>
             <b>Official store</b> (orange tick) means a registered business whose documents we&apos;ve checked. <b>Verified seller</b> (blue tick) means an individual or freelancer whose identity
-            we&apos;ve checked. These badges show we&apos;ve checked who the seller is. They aren&apos;t a guarantee of every product they sell.
+            we&apos;ve checked. These badges show we&apos;ve checked who the seller is. They aren&apos;t a guarantee of every product they sell, or of how a store behaves after it was
+            checked.
           </li>
           <li>
             Stores agree to our{" "}
@@ -81,6 +82,10 @@ export const POLICIES: Policy[] = [
           <li>Give accurate details, including a phone number and delivery address where you can be reached. Keep your password and sign-in codes private.</li>
           <li>You&apos;re responsible for activity on your account. Tell us straight away at <Mail /> if you think someone else has used it.</li>
           <li>One person, one account. Accounts can&apos;t be sold or transferred.</li>
+          <li>
+            We may ask you to confirm who you are, for example with an ID and a photo of yourself, to protect your account, prevent fraud or meet the law. If you don&apos;t, or we can&apos;t confirm
+            it, we may limit, pause or close the account.
+          </li>
           <li>Your account comes with a Sotechy wallet that holds your tokens. We look after it for you; it can&apos;t be used outside Sotechy.</li>
         </ul>
 
@@ -533,12 +538,14 @@ export const POLICIES: Policy[] = [
       "Stores see only what they need for your order.",
       "The blockchain shows wallet addresses and amounts, never your name or contact details.",
       "You can ask to see, correct or delete your data at any time.",
+      "Sotechy is registered with the Nigeria Data Protection Commission (NDPC) and follows the Nigeria Data Protection Act 2023.",
     ],
     body: (
       <>
         <h3>1. Who&apos;s responsible</h3>
         <p>
-          Sotechy ({CONTACT.address}) is responsible for the personal data described here, under the Nigeria Data Protection Act 2023. Questions or requests: <Mail />.
+          Sotechy ({CONTACT.address}) is responsible for the personal data described here. We&apos;re registered with the Nigeria Data Protection Commission (NDPC) and handle personal
+          data in line with the Nigeria Data Protection Act 2023 and the Commission&apos;s regulations. Questions or requests: <Mail />.
         </p>
 
         <h3>2. What we collect</h3>
@@ -565,8 +572,7 @@ export const POLICIES: Policy[] = [
             <b>The app:</b> device type, notification tokens, notification choices, and basic logs to keep the service working and secure.
           </li>
           <li>
-            <b>Stores selling on Sotechy:</b> business and registration details, documents, owners&apos; identity checks (ID and a selfie, done by our verification partner) and payout bank
-            details.
+            <b>Stores selling on Sotechy:</b> business and registration details, documents, the store owner&apos;s identity verification (see section 4) and payout bank details.
           </li>
         </ul>
 
@@ -579,44 +585,76 @@ export const POLICIES: Policy[] = [
           <li>To send offers and store news, only if you&apos;ve agreed or follow that store. You can turn these off at any time in Security &amp; notifications.</li>
         </ul>
 
-        <h3>4. Who we share it with</h3>
+        <h3>4. Identity verification for store owners</h3>
+        <p>
+          To keep Sotechy safe for shoppers, everyone who opens a store must confirm who they are before the store can sell. We ask for a photo of a valid ID (NIN slip or card, driver&apos;s
+          licence or international passport), a selfie and a short video taken live with your camera, and we compare them with each other and with the details you gave us.
+        </p>
+        <ul>
+          <li>
+            <b>Why:</b> to confirm the store owner is a real person who is who they say they are, to stop impersonation, fraud, money laundering and other misuse, and to meet our legal duties.
+            We rely on your consent, given when you send the check, on our legal obligations, and on our legitimate interest in protecting shoppers and stores.
+          </li>
+          <li>
+            <b>Your face is sensitive data:</b> photos and video of your face are treated as sensitive personal data. We use them only to verify your identity and investigate fraud, never for
+            marketing or profiling, and we never sell them.
+          </li>
+          <li>
+            <b>Who sees it:</b> only authorised Sotechy staff who need to, and service providers that help us verify identities or prevent fraud, under contracts that protect your data. We may
+            share it with the police, regulators or courts when the law requires it or to report suspected fraud.
+          </li>
+          <li>
+            <b>The result:</b> we decide whether a check passes. We may ask you to redo part of it, ask for more information, or decline it. Without a passed check your store can&apos;t go live.
+            The name on your ID becomes the name on your account.
+          </li>
+          <li>
+            <b>Your choice:</b> you don&apos;t have to verify, but you can&apos;t sell on Sotechy without it. Sending a check that isn&apos;t yours, or a fake or altered ID, ends your store and
+            may be reported to the authorities.
+          </li>
+        </ul>
+
+        <h3>5. Who we share it with</h3>
         <p>We never sell your data. We share only what&apos;s needed with:</p>
         <ul>
           <li>the store you buy from: your name, phone and delivery address, for your order;</li>
           <li>payment and payout partners, to take payments, send refunds and pay stores;</li>
-          <li>our identity-verification partner, for store owners&apos; ID checks;</li>
+          <li>identity-verification and anti-fraud providers we may use, for store owners&apos; identity checks;</li>
           <li>service providers for hosting, email, notifications, maps and address lookup, under contracts that protect your data;</li>
           <li>authorities, when the law requires it or to prevent fraud.</li>
         </ul>
         <p>Some of these providers store data outside Nigeria. When they do, we use the safeguards the Nigeria Data Protection Act requires.</p>
 
-        <h3>5. The blockchain</h3>
+        <h3>6. The blockchain</h3>
         <p>
           Token movements and order receipts are recorded on a public blockchain. These records show wallet addresses, amounts and a fingerprint of the receipt, never your name, phone, email or
           address. They can&apos;t be deleted, even if you close your account, but without our records they can&apos;t be linked to you.
         </p>
 
-        <h3>6. How long we keep it</h3>
+        <h3>7. How long we keep it</h3>
         <ul>
           <li>Account data: while your account is open, and up to 2 years after it closes in case of disputes.</li>
           <li>Orders, payments and refunds: 6 years, as tax and accounting law requires.</li>
           <li>Support chats: 3 years.</li>
           <li>Store verification documents: while the store sells on Sotechy and for the period the law requires after.</li>
+          <li>
+            Identity verification (ID photo, selfie and video): while the store sells on Sotechy, then up to 6 years after it closes, as anti-fraud and record-keeping laws require, unless a
+            dispute or investigation needs them longer.
+          </li>
         </ul>
 
-        <h3>7. Your rights</h3>
+        <h3>8. Your rights</h3>
         <p>
           You can ask to see, correct, delete or get a copy of your personal data, object to how we use it, or withdraw consent for marketing. Email <Mail /> and we&apos;ll reply within 30 days.
           We may need to keep some records the law requires. You can also complain to the Nigeria Data Protection Commission.
         </p>
 
-        <h3>8. Security</h3>
+        <h3>9. Security</h3>
         <p>
           Data is encrypted in transit. Private documents are stored encrypted and only seen by our review team. Staff access needs two-step sign-in, and we review who can see what. No system is
           perfectly secure, so we&apos;ll tell you and the Commission promptly if a breach puts your data at risk.
         </p>
 
-        <h3>9. Children</h3>
+        <h3>10. Children</h3>
         <p>Sotechy isn&apos;t meant for children under 13, and we don&apos;t knowingly collect their data.</p>
       </>
     ),
