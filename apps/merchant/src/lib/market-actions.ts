@@ -161,6 +161,11 @@ export async function listBanks(): Promise<Result<Bank[]>> {
   return attempt(() => api.banks());
 }
 
+/** The name the bank has on an account, to confirm before saving it */
+export async function lookupPayoutAccount(input: { bankCode: string; accountNumber: string }): Promise<Result<{ bankCode: string; bankName: string; accountNumber: string; accountName: string; match: "business" | "owner" | null }>> {
+  return attempt(() => api.post("/merchant/payout-accounts/lookup", input));
+}
+
 /** Checks the account with the bank and saves it as where payouts go */
 export async function savePayoutAccount(input: { bankCode: string; accountNumber: string }): Promise<Result<PayoutAccount>> {
   return attempt(() => api.savePayoutAccount(input), ["/settings", "/payouts", "/onboarding"]);

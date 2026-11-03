@@ -34,6 +34,15 @@ async function ownerOf(store: Store) {
   return owner ?? null;
 }
 
+/** Asks the bank for the name on an account, without saving it, so the store can confirm it first */
+export async function lookupPayoutAccount(store: Store, input: { bankCode: string; accountNumber: string }) {
+  const bank = (await payoutBanks()).find((b) => b.code === input.bankCode);
+  if (!bank) throw badRequest("Choose your bank from the list");
+  const owner = await ownerOf(store);
+  const accountName = await nombaResolve(bank, input.accountNumber, owner?.fullName ?? store.name);
+  return { bankCode: bank.code, bankName: bank.name, accountNumber: input.accountNumber, accountName, match: accountNameMatch(accountName, [store.name, store.application?.registeredName], owner?.fullName ?? "") };
+}
+
 /** Checks an account with the bank and adds it (or refreshes it if it's already there) */
 export async function addPayoutAccount(store: Store, actorId: string, input: { bankCode: string; accountNumber: string; makeDefault?: boolean }) {
   const bank = (await payoutBanks()).find((b) => b.code === input.bankCode);

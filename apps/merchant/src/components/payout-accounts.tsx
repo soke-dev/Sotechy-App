@@ -117,7 +117,7 @@ export function PayoutAccounts() {
       <Sheet open={adding} onClose={() => setAdding(false)} title="Add a payout account">
         <PayoutAccountForm
           saved={null}
-          submitLabel={list.length ? "Check and add account" : "Check and save account"}
+          submitLabel={list.length ? "Confirm and add account" : "Confirm and save account"}
           save={async (input) => {
             const r = await addPayoutAccount(input);
             if ("error" in r) return r;

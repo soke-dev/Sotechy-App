@@ -15,7 +15,7 @@ import { slugify, storeHandleRule } from "../lib/identity";
 import { payoutBanks } from "../services/nomba";
 import { buyFeaturing, featuredCount, featuringPayMethods, featuringSettings, proCount, purchasesOf, standardUntil, storeFeatureCount } from "../services/featuring";
 import { roleAllows, storeAccess, type StoreRole } from "../services/team";
-import { addPayoutAccount, makeDefault, payoutAccountsOf, removePayoutAccount } from "../services/payout-accounts";
+import { addPayoutAccount, lookupPayoutAccount, makeDefault, payoutAccountsOf, removePayoutAccount } from "../services/payout-accounts";
 import { findCustomer, startWalkIn, walkInsOf } from "../services/walk-in";
 import { feePayMethods } from "../services/fee-checkout";
 import { storeTokenStats } from "../services/tokens";
@@ -536,6 +536,12 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
 
   // --- Payouts: the account they go to, and what's been paid ---
   .get("/banks", async (c) => c.json(await payoutBanks()))
+  /** The name on an account, from the bank, before the store confirms it (nothing is saved) */
+  .post(
+    "/payout-accounts/lookup",
+    zValidator("json", z.object({ bankCode: z.string().trim().min(2).max(10), accountNumber: z.string().regex(/^\d{10}$/, "Account numbers have 10 digits") })),
+    async (c) => c.json(await lookupPayoutAccount(c.get("store"), c.req.valid("json"))),
+  )
   /** Setup's single account: checked with the bank, added, and made the default */
   .put(
     "/payout-account",
