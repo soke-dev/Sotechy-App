@@ -13,6 +13,7 @@ import { badRequest, notFound } from "../../lib/errors";
 import { getFeatures } from "../../services/features";
 import { getAccount, getUsdRate, moneyMovesConfigured, moneyMovesMode } from "../../services/moneymoves";
 import { bankProvider, bankProviderReady } from "../../services/bank-pay";
+import { nombaReady } from "../../services/nomba";
 import { compressImage } from "../../lib/images";
 
 const { media, banners, popups, appSettings } = schema;
@@ -194,6 +195,8 @@ export const adminContentRoutes = new Hono<AppEnv>()
         bachsReady: bankProviderReady("bachs"),
         bachsWebhookSecretSet: Boolean(env.BACHS_WEBHOOK_SECRET),
         bachsWebhookUrl: `${base}/webhooks/bachs`,
+        /** Payout bank accounts are checked with Nomba once all three of its keys are set */
+        nombaReady: nombaReady(),
       },
     };
     if (status.configured) {

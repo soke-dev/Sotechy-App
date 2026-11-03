@@ -16,7 +16,7 @@ interface MoneyMovesStatus {
   rate: { rate: number; source: string; updatedAt: string };
   account: { name: string; mode: string; verified: boolean } | null;
   error: string | null;
-  bank: { provider: "moneymoves" | "bachs"; moneymovesReady: boolean; bachsReady: boolean; bachsWebhookSecretSet: boolean; bachsWebhookUrl: string };
+  bank: { provider: "moneymoves" | "bachs"; moneymovesReady: boolean; bachsReady: boolean; bachsWebhookSecretSet: boolean; bachsWebhookUrl: string; nombaReady?: boolean };
 }
 
 function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
@@ -95,6 +95,17 @@ export default async function SettingsPage() {
                 <code className="mt-1 block select-all break-all text-sm">{m.bank.bachsWebhookUrl}</code>
               </div>
             )}
+          </Card>
+        )}
+
+        {m && (
+          <Card title="Store payout account checks" description="When a store adds its payout bank account, the bank confirms the name on it. Nothing to switch: Nomba is used as soon as its keys are on the API service.">
+            <ul className="flex flex-col gap-1 text-sm">
+              <Check ok={!!m.bank.nombaReady}>
+                Nomba keys set (<code>NOMBA_CLIENT_ID</code>, <code>NOMBA_CLIENT_SECRET</code>, <code>NOMBA_ACCOUNT_ID</code>)
+              </Check>
+            </ul>
+            <p className="mt-2 text-sm font-semibold">{m.bank.nombaReady ? "Checked with Nomba" : "Checked with Bachs until all three Nomba keys are set"}</p>
           </Card>
         )}
 
