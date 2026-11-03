@@ -10,7 +10,7 @@ import { sendEmailLater } from "../lib/email";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { compressImage } from "../lib/images";
 import { idCheckEmail } from "../emails/templates";
-import { diditConfigured, refreshIdCheck } from "./didit";
+import { diditConfigured, nameCase, refreshIdCheck } from "./didit";
 import { getFeatures } from "./features";
 
 type Store = typeof schema.merchants.$inferSelect;
@@ -224,7 +224,7 @@ export async function idCheckCounts() {
 }
 
 /** Approve, send back to redo (with what was missed), or decline. Emails the owner every time. */
-export async function decideIdCheck(id: string, actorId: string, input: { outcome: "approve" | "redo" | "decline"; items?: string[]; note?: string }) {
+export async function decideIdCheck(id: string, actorId: string, input: { outcome: "approve" | "redo" | "decline"; items?: string[]; note?: string; name?: string }) {
   const [check] = await db.select().from(schema.idChecks).where(eq(schema.idChecks.id, id));
   if (!check) throw notFound("ID check not found");
   if (check.status !== "in_review") throw conflict("This check has already been decided");
@@ -234,6 +234,9 @@ export async function decideIdCheck(id: string, actorId: string, input: { outcom
   const note = input.note?.trim() || null;
   if (input.outcome === "redo" && !items.length) throw badRequest("Pick what they need to redo");
   if (input.outcome === "decline" && !note) throw badRequest("Say why it's declined. The owner sees this.");
+  // Approving: the owner's name as it's printed on the ID becomes the name on their profile
+  const idName = input.name?.trim().replace(/\s+/g, " ") ?? "";
+  if (input.outcome === "approve" && idName.length < 3) throw badRequest("Enter the name exactly as it's on the ID");
 
   const status = input.outcome === "approve" ? "approved" : input.outcome === "redo" ? "resubmit" : "declined";
   const [store] = await db.transaction(async (tx) => {
@@ -243,13 +246,16 @@ export async function decideIdCheck(id: string, actorId: string, input: { outcom
       .where(eq(schema.idChecks.id, check.id));
     // Only the identity: approving the store itself stays a separate decision in Merchants
     const updated = await tx.update(schema.merchants).set({ kycStatus: status, kycUpdatedAt: new Date() }).where(eq(schema.merchants.id, check.merchantId)).returning();
-    await audit(tx, { actorId, action: `merchant.id_check_${input.outcome}`, entityType: "merchant", entityId: check.merchantId, details: { checkId: check.id, items, note } });
+    // The name on their ID goes on their profile (and they can't change it after, as with Didit)
+    if (input.outcome === "approve" && updated[0]?.ownerId) await tx.update(schema.users).set({ fullName: nameCase(idName) }).where(eq(schema.users.id, updated[0].ownerId));
+    await audit(tx, { actorId, action: `merchant.id_check_${input.outcome}`, entityType: "merchant", entityId: check.merchantId, details: { checkId: check.id, items, note, ...(input.outcome === "approve" && { nameOnId: nameCase(idName) }) } });
     return updated;
   });
 
   if (store) {
     const [owner] = store.ownerId ? await db.select({ email: schema.users.email, name: schema.users.fullName }).from(schema.users).where(eq(schema.users.id, store.ownerId)) : [];
     const to = store.contactEmail ?? owner?.email;
+    // (after approving, `owner.name` is already the name from the ID)
     if (to) {
       sendEmailLater(
         idCheckEmail(to, {

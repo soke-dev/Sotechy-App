@@ -4,9 +4,9 @@
 import { revalidatePath } from "next/cache";
 import { api, errorMessage } from "@/lib/api";
 
-export async function decideIdCheck(id: string, outcome: "approve" | "redo" | "decline", items: string[], note: string): Promise<{ ok: true } | { error: string }> {
+export async function decideIdCheck(id: string, outcome: "approve" | "redo" | "decline", items: string[], note: string, name?: string): Promise<{ ok: true } | { error: string }> {
   try {
-    await api.post(`/admin/id-checks/${id}/decision`, { outcome, items, note: note.trim() || undefined });
+    await api.post(`/admin/id-checks/${id}/decision`, { outcome, items, note: note.trim() || undefined, name: name?.trim() || undefined });
     revalidatePath("/id-checks");
     revalidatePath("/merchants");
     return { ok: true };

@@ -448,7 +448,13 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     ADMIN,
     zValidator(
       "json",
-      z.object({ outcome: z.enum(["approve", "redo", "decline"]), items: z.array(z.string().max(40)).max(20).optional(), note: z.string().trim().max(1000).optional() }),
+      z.object({
+        outcome: z.enum(["approve", "redo", "decline"]),
+        items: z.array(z.string().max(40)).max(20).optional(),
+        note: z.string().trim().max(1000).optional(),
+        /** Approving: the name exactly as it's on the ID, for their profile */
+        name: z.string().trim().max(120).optional(),
+      }),
     ),
     async (c) => c.json(await decideIdCheck(c.req.param("id"), c.get("user").id, c.req.valid("json"))),
   )

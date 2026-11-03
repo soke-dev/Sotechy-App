@@ -16,13 +16,15 @@ export function IdCheckDecision({ id, ownerName }: { id: string; ownerName: stri
   const [mode, setMode] = useState<"none" | "redo" | "decline">("none");
   const [items, setItems] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  // The name exactly as it's printed on the ID; it becomes the name on their profile when approved
+  const [idName, setIdName] = useState(ownerName ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
 
   const decide = (outcome: "approve" | "redo" | "decline") =>
     start(async () => {
       setError(null);
-      const r = await decideIdCheck(id, outcome, outcome === "redo" ? items : [], outcome === "approve" ? "" : note);
+      const r = await decideIdCheck(id, outcome, outcome === "redo" ? items : [], outcome === "approve" ? "" : note, outcome === "approve" ? idName : undefined);
       if ("error" in r) return setError(r.error);
       setMode("none");
       setItems([]);
@@ -38,13 +40,20 @@ export function IdCheckDecision({ id, ownerName }: { id: string; ownerName: stri
           {CHECKS.map((c, i) => (
             <label key={c} className="flex items-center gap-2.5 text-sm">
               <input type="checkbox" checked={ticked[i]} onChange={(e) => setTicked(ticked.map((t, j) => (j === i ? e.target.checked : t)))} className="h-4 w-4" />
-              {i === 0 && ownerName ? `Name on the ID matches the owner (${ownerName})` : c}
+              {i === 0 ? `Name on the ID matches the one you typed${idName.trim() ? ` (${idName.trim()})` : ""}` : c}
             </label>
           ))}
         </div>
       </div>
 
       <div className="flex flex-col gap-3">
+        {mode === "none" && (
+          <label className="block rounded-2xl border border-line bg-surface p-4 text-sm font-semibold">
+            Name on the ID
+            <span className="block text-xs font-normal text-muted">Type it as it&apos;s printed on the ID. It becomes the name on their profile, and they can&apos;t change it after.</span>
+            <input value={idName} onChange={(e) => setIdName(e.target.value)} maxLength={120} placeholder="e.g. Ovie Akpo" className={`${inputClass} mt-2 w-full`} />
+          </label>
+        )}
         {mode === "redo" && (
           <div className="rounded-2xl bg-warn-soft p-4">
             <p className="mb-2 text-sm font-semibold">What was missed? They only redo these.</p>
@@ -83,7 +92,7 @@ export function IdCheckDecision({ id, ownerName }: { id: string; ownerName: stri
         <div className="flex flex-wrap gap-2">
           {mode === "none" && (
             <>
-              <button type="button" disabled={busy} onClick={() => decide("approve")} className={buttonClass}>
+              <button type="button" disabled={busy || idName.trim().length < 3} onClick={() => decide("approve")} className={buttonClass} title={idName.trim().length < 3 ? "Enter the name on the ID first" : undefined}>
                 <Check size={16} /> {busy ? "Saving…" : "Approve ID"}
               </button>
               <button type="button" disabled={busy} onClick={() => setMode("redo")} className={secondaryButtonClass}>
