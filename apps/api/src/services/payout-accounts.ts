@@ -9,6 +9,7 @@ import { sendEmailLater } from "../lib/email";
 import { accountNameMatch } from "../lib/identity";
 import { payoutAccountChangedEmail } from "../emails/templates";
 import { railBanks, railRecipient, railResolve } from "./payout-rail";
+import { nombaReady, nombaResolve } from "./nomba";
 
 export const MAX_PAYOUT_ACCOUNTS = 3;
 const accounts = schema.payoutAccounts;
@@ -42,7 +43,8 @@ export async function addPayoutAccount(store: Store, actorId: string, input: { b
   const same = existing.find((a) => a.bankCode === bank.code && a.accountNumber === input.accountNumber);
   if (!same && existing.length >= MAX_PAYOUT_ACCOUNTS) throw badRequest(`You can keep up to ${MAX_PAYOUT_ACCOUNTS} payout accounts. Remove one first.`);
   const owner = await ownerOf(store);
-  const accountName = await railResolve(bank.code, input.accountNumber, owner?.fullName ?? store.name);
+  // The bank confirms the name on the account through Nomba (the payout service's lookup until Nomba's keys are set)
+  const accountName = nombaReady() ? await nombaResolve(bank, input.accountNumber, owner?.fullName ?? store.name) : await railResolve(bank.code, input.accountNumber, owner?.fullName ?? store.name);
   const match = accountNameMatch(accountName, [store.name, store.application?.registeredName], owner?.fullName ?? "");
   const values = { bankName: bank.name, accountName, match, verifiedAt: new Date() };
   const [row] = same

@@ -53,6 +53,13 @@ const schema = z.object({
   DIDIT_API_KEY: z.string().optional(),
   DIDIT_WORKFLOW_ID: z.string().optional(),
   DIDIT_WEBHOOK_SECRET: z.string().optional(),
+  /** Nomba (developer.nomba.com → API keys): checks the name on a store's payout bank account */
+  NOMBA_CLIENT_ID: z.string().optional(),
+  NOMBA_CLIENT_SECRET: z.string().optional(),
+  /** The parent business account's id, sent as the accountId header */
+  NOMBA_ACCOUNT_ID: z.string().optional(),
+  /** Only to point at Nomba's sandbox (https://sandbox.nomba.com); otherwise the live API */
+  NOMBA_API_URL: z.string().url().optional(),
   /** The operator wallet's private key (0x…): writes token movements and receipts on chain. Never the owner key. */
   CHAIN_OPERATOR_KEY: z
     .string()
