@@ -12,7 +12,7 @@ import { requireAuth, type AppEnv } from "../lib/auth";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { BUSINESS_DOCUMENTS, MIN_BUSINESS_DESCRIPTION, tickerProblem, isMapLink } from "@sotechy/shared";
 import { slugify, storeHandleRule } from "../lib/identity";
-import { railBanks } from "../services/payout-rail";
+import { payoutBanks } from "../services/nomba";
 import { buyFeaturing, featuredCount, featuringPayMethods, featuringSettings, proCount, purchasesOf, standardUntil, storeFeatureCount } from "../services/featuring";
 import { roleAllows, storeAccess, type StoreRole } from "../services/team";
 import { addPayoutAccount, makeDefault, payoutAccountsOf, removePayoutAccount } from "../services/payout-accounts";
@@ -535,7 +535,7 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
   })
 
   // --- Payouts: the account they go to, and what's been paid ---
-  .get("/banks", async (c) => c.json(await railBanks()))
+  .get("/banks", async (c) => c.json(await payoutBanks()))
   /** Setup's single account: checked with the bank, added, and made the default */
   .put(
     "/payout-account",

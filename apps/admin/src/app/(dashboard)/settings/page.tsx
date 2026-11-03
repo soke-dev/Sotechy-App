@@ -105,7 +105,7 @@ export default async function SettingsPage() {
                 Nomba keys set (<code>NOMBA_CLIENT_ID</code>, <code>NOMBA_CLIENT_SECRET</code>, <code>NOMBA_ACCOUNT_ID</code>)
               </Check>
             </ul>
-            <p className="mt-2 text-sm font-semibold">{m.bank.nombaReady ? "Checked with Nomba" : "Checked with Bachs until all three Nomba keys are set"}</p>
+            <p className="mt-2 text-sm font-semibold">{m.bank.nombaReady ? "Checked with Nomba" : "Stores can't add payout accounts until all three Nomba keys are set on the API service"}</p>
           </Card>
         )}
 

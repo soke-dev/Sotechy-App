@@ -3,6 +3,7 @@
 // Locally without keys it stands in, so the flow can be tried end to end.
 import type { Bank } from "@sotechy/shared";
 import { env } from "../env";
+import { NIGERIAN_BANKS } from "./banks";
 import { HttpError } from "../lib/errors";
 
 export const nombaReady = () => !!(env.NOMBA_CLIENT_ID && env.NOMBA_CLIENT_SECRET && env.NOMBA_ACCOUNT_ID);
@@ -50,13 +51,23 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Pr
 }
 
 let banksCache: { at: number; banks: Bank[] } | null = null;
-/** Nomba's banks and their codes (kept for a day) */
-export async function nombaBanks(): Promise<Bank[]> {
+/** Nomba's banks and their codes, A to Z (kept for a day); our own list without keys or if Nomba doesn't answer */
+export async function payoutBanks(): Promise<Bank[]> {
+  if (!nombaReady()) return NIGERIAN_BANKS;
+  const banks = await nombaBanks().catch((err) => {
+    console.warn("Nomba bank list failed:", err instanceof Error ? err.message : err);
+    return [] as Bank[];
+  });
+  return banks.length ? banks : NIGERIAN_BANKS;
+}
+
+async function nombaBanks(): Promise<Bank[]> {
   if (banksCache && Date.now() - banksCache.at < 86_400_000) return banksCache.banks;
   const { json } = await call<Json[]>("GET", "/v1/transfers/banks");
   const banks = (Array.isArray(json?.data) ? json.data : [])
     .map((b) => ({ code: String(b.code ?? ""), name: String(b.name ?? "") }))
-    .filter((b) => b.code && b.name);
+    .filter((b) => b.code && b.name)
+    .sort((a, b) => a.name.localeCompare(b.name));
   if (banks.length) banksCache = { at: Date.now(), banks };
   return banks;
 }

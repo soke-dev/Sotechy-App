@@ -88,7 +88,7 @@ export function CustomersView({ orders, following = [] }: { orders: Order[]; fol
         actions={
           <label className="flex h-11 w-full items-center gap-2 rounded-full border border-line bg-surface px-4 focus-within:border-ink sm:w-72">
             <Search size={16} className="text-muted" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, @username or phone" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search customers" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
           </label>
         }
       />

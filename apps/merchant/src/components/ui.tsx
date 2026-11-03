@@ -38,12 +38,14 @@ export function Card({ title, description, actions, children, className = "", pa
 export function StatCard({ illo, label, value, hint, accent }: { illo: IlloName; label: string; value: ReactNode; hint?: ReactNode; accent?: boolean; wide?: boolean }) {
   return (
     <div className={`min-w-0 rounded-2xl border px-4 py-3 ${accent ? "border-brand/30 bg-brand-soft" : "border-line bg-surface"}`}>
-      <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
-        <Illo name={illo} size={16} />
-        <span className="truncate">{label}</span>
+      <p className="flex items-start gap-1.5 text-xs font-medium leading-snug text-muted">
+        <span className="shrink-0">
+          <Illo name={illo} size={16} />
+        </span>
+        <span className="line-clamp-2 min-w-0">{label}</span>
       </p>
       <p className="font-display mt-1 truncate text-xl font-bold leading-tight sm:text-[22px]">{value}</p>
-      {hint && <p className="mt-0.5 truncate text-xs text-muted">{hint}</p>}
+      {hint && <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted">{hint}</p>}
     </div>
   );
 }

@@ -65,38 +65,41 @@ export function PayoutAccounts() {
       ) : (
         <ul className="flex flex-col gap-3">
           {list.map((a) => (
-            <li key={a.id} className={`flex flex-wrap items-center gap-4 rounded-2xl border p-4 ${a.isDefault ? "border-ink bg-surface" : "border-line bg-surface-alt/40"}`}>
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft">
-                <Illo name="bank" size={28} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-2 font-semibold">
-                  <span className="truncate">{a.accountName}</span>
-                  {a.isDefault && (
-                    <Pill tone="dark" dot={false}>
-                      Default
-                    </Pill>
+            <li key={a.id} className={`flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:gap-4 ${a.isDefault ? "border-ink bg-surface" : "border-line bg-surface-alt/40"}`}>
+              {/* The account: full width on a phone, the buttons go under it */}
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft">
+                  <Illo name="bank" size={28} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
+                    <span className="min-w-0 break-words">{a.accountName}</span>
+                    {a.isDefault && (
+                      <Pill tone="dark" dot={false}>
+                        Default
+                      </Pill>
+                    )}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {a.bankName} · ••••{a.accountNumber.slice(-4)}
+                  </p>
+                  {a.match ? (
+                    <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-good">
+                      <Check size={13} className="shrink-0" /> {MATCH[a.match]}
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 flex items-start gap-1 text-xs font-semibold text-warn">
+                      <AlertTriangle size={13} className="mt-px shrink-0" /> Name doesn&apos;t match; Sotechy reviews payouts to it
+                    </p>
                   )}
-                </p>
-                <p className="text-sm text-muted">
-                  {a.bankName} · ••••{a.accountNumber.slice(-4)}
-                </p>
-                {a.match ? (
-                  <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-good">
-                    <Check size={13} /> {MATCH[a.match]}
-                  </p>
-                ) : (
-                  <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-warn">
-                    <AlertTriangle size={13} /> Name doesn&apos;t match; Sotechy reviews payouts to it
-                  </p>
-                )}
+                </div>
               </div>
               {!a.isDefault && (
-                <div className="flex gap-2">
-                  <button type="button" disabled={busy} onClick={() => setConfirm({ kind: "default", account: a })} className={btn.outline}>
+                <div className="flex gap-2 sm:shrink-0">
+                  <button type="button" disabled={busy} onClick={() => setConfirm({ kind: "default", account: a })} className={`${btn.outline} flex-1 sm:flex-none`}>
                     <Star size={15} /> Make default
                   </button>
-                  <button type="button" disabled={busy} onClick={() => setConfirm({ kind: "remove", account: a })} aria-label={`Remove ${a.bankName} account`} className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-muted hover:border-bad hover:text-bad">
+                  <button type="button" disabled={busy} onClick={() => setConfirm({ kind: "remove", account: a })} aria-label={`Remove ${a.bankName} account`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line text-muted hover:border-bad hover:text-bad">
                     <Trash2 size={16} />
                   </button>
                 </div>

@@ -226,7 +226,7 @@ export function FeaturedView({ data, justPaid }: { data: Featuring; justPaid: bo
                 </div>
                 <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 ${on ? "border-brand bg-brand text-white" : pro ? "border-white/40" : "border-line"}`}>{on && <Check size={14} strokeWidth={3} />}</span>
               </div>
-              <div className="grid grid-cols-[auto_1fr] items-start gap-4">
+              <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[auto_1fr]">
                 <HomeMock pro={pro} name={store.name} />
                 <ul className="flex flex-col gap-2 text-[13px]">
                   {pro && (

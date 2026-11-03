@@ -40,7 +40,7 @@ const SORTS: { id: string; label: string; by: (a: Product, b: Product) => number
 /** Pill-shaped dropdown used for the Type, Price and Sort filters. */
 function PillSelect({ value, onChange, options, active }: { value: string; onChange: (v: string) => void; options: { id: string; label: string }[]; active: boolean }) {
   return (
-    <span className="relative inline-flex min-w-0 flex-1 sm:flex-none">
+    <span className="relative inline-flex min-w-0 sm:flex-none">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -223,7 +223,7 @@ export function ProductsView({ products }: { products: Product[] }) {
         </div>
       </div>
 
-      <div className="mb-5 flex flex-wrap items-center gap-2">
+      <div className="mb-5 grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
         <PillSelect value={type} onChange={setType} active={type !== "all"} options={[{ id: "all", label: "All categories" }, ...TYPES.map((t) => ({ id: t, label: t }))]} />
         <PillSelect value={price} onChange={setPrice} active={price !== "any"} options={PRICES} />
         <PillSelect value={sort} onChange={setSort} active={false} options={SORTS} />

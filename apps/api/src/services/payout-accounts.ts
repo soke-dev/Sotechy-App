@@ -8,8 +8,7 @@ import { badRequest, notFound } from "../lib/errors";
 import { sendEmailLater } from "../lib/email";
 import { accountNameMatch } from "../lib/identity";
 import { payoutAccountChangedEmail } from "../emails/templates";
-import { railBanks, railRecipient, railResolve } from "./payout-rail";
-import { nombaReady, nombaResolve } from "./nomba";
+import { nombaResolve, payoutBanks } from "./nomba";
 
 export const MAX_PAYOUT_ACCOUNTS = 3;
 const accounts = schema.payoutAccounts;
@@ -37,14 +36,14 @@ async function ownerOf(store: Store) {
 
 /** Checks an account with the bank and adds it (or refreshes it if it's already there) */
 export async function addPayoutAccount(store: Store, actorId: string, input: { bankCode: string; accountNumber: string; makeDefault?: boolean }) {
-  const bank = (await railBanks()).find((b) => b.code === input.bankCode);
+  const bank = (await payoutBanks()).find((b) => b.code === input.bankCode);
   if (!bank) throw badRequest("Choose your bank from the list");
   const existing = await db.select().from(accounts).where(eq(accounts.merchantId, store.id));
   const same = existing.find((a) => a.bankCode === bank.code && a.accountNumber === input.accountNumber);
   if (!same && existing.length >= MAX_PAYOUT_ACCOUNTS) throw badRequest(`You can keep up to ${MAX_PAYOUT_ACCOUNTS} payout accounts. Remove one first.`);
   const owner = await ownerOf(store);
-  // The bank confirms the name on the account through Nomba (the payout service's lookup until Nomba's keys are set)
-  const accountName = nombaReady() ? await nombaResolve(bank, input.accountNumber, owner?.fullName ?? store.name) : await railResolve(bank.code, input.accountNumber, owner?.fullName ?? store.name);
+  // The bank confirms the name on the account through Nomba
+  const accountName = await nombaResolve(bank, input.accountNumber, owner?.fullName ?? store.name);
   const match = accountNameMatch(accountName, [store.name, store.application?.registeredName], owner?.fullName ?? "");
   const values = { bankName: bank.name, accountName, match, verifiedAt: new Date() };
   const [row] = same
@@ -61,17 +60,7 @@ export async function makeDefault(store: Store, actorId: string, accountId: stri
   const [account] = await db.select().from(accounts).where(and(eq(accounts.id, accountId), eq(accounts.merchantId, store.id)));
   if (!account) throw notFound("Payout account not found");
   const owner = await ownerOf(store);
-  // With Bachs, the store's account there is pointed at this bank account
-  const recipientId = await railRecipient({
-    existingId: store.payoutRecipientId,
-    storeId: store.id,
-    storeName: store.name,
-    email: store.contactEmail ?? owner?.email ?? "",
-    ownerName: owner?.fullName ?? store.name,
-    bankCode: account.bankCode,
-    accountNumber: account.accountNumber,
-    accountName: account.accountName,
-  });
+  // Payouts are sent by hand from admin, so no payout service needs to know about the account
   const wasDefault = account.isDefault && store.payoutAccountNumber === account.accountNumber;
   await db.transaction(async (tx) => {
     await tx.update(accounts).set({ isDefault: false }).where(and(eq(accounts.merchantId, store.id), ne(accounts.id, account.id)));
@@ -85,7 +74,6 @@ export async function makeDefault(store: Store, actorId: string, accountId: stri
         payoutAccountName: account.accountName,
         payoutAccountMatch: account.match,
         payoutVerifiedAt: account.verifiedAt,
-        payoutRecipientId: recipientId ?? store.payoutRecipientId,
         // Setup shows the same account
         application: { ...(store.application ?? {}), bank: { bankName: account.bankName, accountNumber: account.accountNumber } } as Store["application"],
       })
