@@ -126,7 +126,7 @@ export function AuthFrame({
           <img src="/brand/sotechy-logo.png" alt="SoTechy" className="h-8 w-auto lg:h-11" />
           <span className="mono rounded-full border-[1.5px] border-sun/50 px-2.5 py-1 text-[10px] text-sun lg:text-[11px]">Merchant</span>
         </div>
-        <h1 className="display relative mt-4 text-[36px] lg:mt-11 lg:text-[76px]">
+        <h1 className="display relative mb-6 mt-4 text-[36px] lg:mb-0 lg:mt-11 lg:text-[76px]">
           {title[0]}
           <br />
           <span className="relative text-brand">
@@ -144,7 +144,8 @@ export function AuthFrame({
             </div>
           ))}
         </div>
-        <div className="relative mt-1 h-24 lg:mt-0 lg:min-h-[300px] lg:flex-1">
+        {/* Phones: the picture sits beside the headline, so the band stays short */}
+        <div className="absolute bottom-[38px] right-2 h-[118px] w-[46%] max-w-[190px] lg:relative lg:bottom-auto lg:right-auto lg:mt-0 lg:h-auto lg:min-h-[300px] lg:w-auto lg:max-w-none lg:flex-1">
           <Shopfront />
           <div className="hidden lg:block">{stickers}</div>
         </div>
