@@ -144,7 +144,8 @@ const { costPrice: _cost, ...publicVariantColumns } = getTableColumns(productVar
 // Where a store delivers: its approved, active delivery areas
 const liveZone = sql`z.merchant_id = "merchants"."id" and z.review = 'approved' and z.is_active`;
 const storeDelivery = {
-  deliveryStates: sql<string[]>`(select coalesce(array_agg(distinct z.state order by z.state), '{}') from delivery_zones z where ${liveZone})`,
+  // Each state once, in the order the store first added it
+  deliveryStates: sql<string[]>`(select coalesce(array_agg(s.state order by s.added), '{}') from (select z.state, min(z.created_at) as added from delivery_zones z where ${liveZone} group by z.state) s)`,
   deliveryFrom: sql<number | null>`(select min(z.home_fee)::float from delivery_zones z where ${liveZone})`,
 };
 

@@ -1,6 +1,6 @@
 // What a marketplace store charges for an order, from its approved delivery areas: door delivery to the
 // customer's state (and city, when the area lists cities), or collection at one of its pickup points.
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { areaDeliveryFee, deliveryAreaFor, type StoreDeliveryArea } from "@sotechy/shared";
 import { schema, type Tx } from "../db/client";
 import { badRequest } from "../lib/errors";
@@ -11,7 +11,9 @@ export async function liveAreas(tx: Pick<Tx, "select">, merchantId: string): Pro
   const rows = await tx
     .select()
     .from(z)
-    .where(and(eq(z.merchantId, merchantId), eq(z.review, "approved"), eq(z.isActive, true)));
+    .where(and(eq(z.merchantId, merchantId), eq(z.review, "approved"), eq(z.isActive, true)))
+    // In the order the store added them, so the state it set up first is shown first
+    .orderBy(asc(z.createdAt), asc(z.id));
   return rows.map((r) => ({
     id: r.id,
     state: r.state,
