@@ -149,7 +149,7 @@ export default function Home() {
 
       {/* Nav */}
       <header className="mx-auto flex max-w-[1240px] items-center justify-between gap-4 px-4 py-5 sm:px-8">
-        <Image src="/brand/light-logo-small.png" alt="Sotechy" width={194} height={97} priority className="h-9 w-auto sm:h-10" />
+        <Image src="/brand/sotechy-logo.png" alt="Sotechy" width={900} height={248} priority className="h-10 w-auto sm:h-12" />
         <nav className="hidden items-center gap-8 text-[15px] font-medium md:flex">
           <a href="#how">How it works</a>
           <a href="#tokens">Tokens</a>

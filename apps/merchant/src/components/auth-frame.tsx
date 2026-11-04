@@ -123,7 +123,7 @@ export function AuthFrame({
         </svg>
         <div className="relative flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/light-logo-small.png" alt="SoTechy" className="h-7 w-auto lg:h-9" />
+          <img src="/brand/sotechy-logo.png" alt="SoTechy" className="h-8 w-auto lg:h-11" />
           <span className="mono rounded-full border-[1.5px] border-sun/50 px-2.5 py-1 text-[10px] text-sun lg:text-[11px]">Merchant</span>
         </div>
         <h1 className="display relative mt-4 text-[36px] lg:mt-11 lg:text-[76px]">
