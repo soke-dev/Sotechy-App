@@ -1,18 +1,19 @@
-// sotechy.shop: what Sotechy is, the kinds of stores on it, and where to shop (the iPhone app, the web app, and the
-// Android app coming soon).
+// sotechy.shop: what Sotechy is and where to shop (the iPhone app, the web app, and the Android app coming soon).
+// "Sunrise Market": the brand's sunrise stripes, ink outlines and stickers, with a little motion throughout.
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { anyCategory, BUSINESS, MARKET_DEPARTMENTS } from "@sotechy/shared";
 import { DownloadMenu } from "@/components/download-menu";
-import { Illo, type IlloName } from "@/components/illustrations";
 import { APP_STORE_URL, AppleLogo, PlayLogo } from "@/components/store-logos";
+import { TokenCounter } from "@/components/token-counter";
 
 const APP_URL = "https://app.sotechy.shop";
 const X_URL = "https://x.com/sotechyshop";
 const TIKTOK_URL = "https://www.tiktok.com/@sotechyshop";
 const EMAIL = "hello@sotechy.shop";
 const MERCHANT_URL = "https://merchant.sotechy.shop";
+const SELL_VIDEO_URL = "https://youtu.be/M8ooFskZfHI";
 
 /** A department of the app's Shop screen, the same way the app's menu opens it */
 function shopLink(name: string) {
@@ -20,42 +21,6 @@ function shopLink(name: string) {
   if (!d) return `${APP_URL}/shop`;
   return `${APP_URL}/shop?category=${encodeURIComponent(anyCategory(...d.sections.flatMap((s) => s.items), ...(d.sotechy ?? [])))}&label=${encodeURIComponent(d.name)}`;
 }
-
-/** Line icons for the popular categories (24×24, drawn with the text colour) */
-const ICONS: Record<string, ReactNode> = {
-  tv: <><rect x="2.5" y="4.5" width="19" height="12.5" rx="2" /><path d="M8 20.5h8M12 17v3.5" /></>,
-  phone: <><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" /><path d="M10.5 18.5h3" /></>,
-  laptop: <><rect x="4.5" y="5" width="15" height="10" rx="1.5" /><path d="M2.5 19h19l-1.5-4h-16z" /></>,
-  fridge: <><rect x="5.5" y="2.5" width="13" height="19" rx="2" /><path d="M5.5 9.5h13M9 5.5v2M9 12.5v3" /></>,
-  shirt: <path d="M8.5 3.5 4 6l1.8 4 2.2-1v11.5h8V9l2.2 1L20 6l-4.5-2.5a3.5 3.5 0 0 1-7 0Z" />,
-  beauty: <><path d="M9 21.5h6v-9H9z" /><path d="M10 12.5V8.5l4-3v7" /><path d="M10 16.5h4" /></>,
-  food: <><path d="M3.5 9.5h17l-1.6 10a2 2 0 0 1-2 1.5H7.1a2 2 0 0 1-2-1.5z" /><path d="m8.5 9.5 3-6M15.5 9.5l-3-6" /></>,
-  power: <path d="M13 2.5 5 13.5h6l-1 8 8-11h-6z" />,
-};
-
-const POPULAR: { name: string; icon: keyof typeof ICONS; tint: string }[] = [
-  { name: "Phones & tablets", icon: "phone", tint: "#FFE9CC" },
-  { name: "TV & audio", icon: "tv", tint: "#E3F1FC" },
-  { name: "Fashion", icon: "shirt", tint: "#FCE4EC" },
-  { name: "Beauty", icon: "beauty", tint: "#F3E5F5" },
-  { name: "Food & drinks", icon: "food", tint: "#E6F4EA" },
-  { name: "Home appliances", icon: "fridge", tint: "#FFF4D6" },
-  { name: "Computers", icon: "laptop", tint: "#E8EAF6" },
-  { name: "Power & solar", icon: "power", tint: "#FFF0E0" },
-];
-
-const TRUST: { illo: IlloName; title: string; text: string }[] = [
-  { illo: "shield", title: "Verified stores", text: "Checked by Sotechy before they sell" },
-  { illo: "card", title: "Pay your way", text: "Transfer, stablecoin or tokens" },
-  { illo: "bike", title: "Delivery or pickup", text: "Track every step to your door" },
-  { illo: "chat", title: "Real help", text: "Live chat with our team" },
-];
-
-const STEPS = [
-  { n: "1", title: "Find it", text: "Search across many stores, compare prices, or make an offer where a store takes them." },
-  { n: "2", title: "Pay safely", text: "Check out in one place. You pay through Sotechy, and we step in if an order doesn't arrive." },
-  { n: "3", title: "Get it delivered", text: "Home delivery or pickup, with a notification at every step until it's in your hands." },
-];
 
 const FOOTER_LINKS: { title: string; links: { label: string; href: string }[] }[] = [
   {
@@ -88,12 +53,8 @@ const FOOTER_LINKS: { title: string; links: { label: string; href: string }[] }[
   },
 ];
 
-// The cards floating around the phones in the hero
-const FLOAT: { illo: IlloName; label: string; style: CSSProperties }[] = [
-  { illo: "shield", label: "Verified stores", style: { top: "10%", left: "-4%", "--tilt": "-4deg", animationDelay: "0s" } as CSSProperties },
-  { illo: "coin", label: "+1 token per ₦1", style: { top: "46%", right: "-2%", "--tilt": "5deg", animationDelay: "1.4s" } as CSSProperties },
-  { illo: "bike", label: "On its way", style: { bottom: "9%", left: "-2%", "--tilt": "3deg", animationDelay: "2.4s" } as CSSProperties },
-];
+const MARQUEE_CATEGORIES = "PHONES ✶ FASHION ✶ BEAUTY ✶ GROCERIES ✶ HOME APPLIANCES ✶ POWER & SOLAR ✶ COMPUTERS ✶";
+const MARQUEE_MOTTO = "SHOP ✶ EARN ✶ REPEAT ✶ SHOP ✶ EARN ✶ REPEAT ✶ SHOP ✶ EARN ✶ REPEAT ✶";
 
 function XLogo({ size = 16 }: { size?: number }) {
   return (
@@ -111,368 +72,635 @@ function TikTokLogo({ size = 16 }: { size?: number }) {
   );
 }
 
-function GlobeIcon() {
+/** The arrow: drawn, in a round ink chip on buttons */
+const ArrowIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </svg>
+);
+const Chip = ({ className = "" }: { className?: string }) => (
+  <span className={`chip ${className}`}>
+    <ArrowIcon />
+  </span>
+);
+
+const Check = () => (
+  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-[2.5px] border-foreground bg-[#FDB913]">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#17120E" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </svg>
+  </span>
+);
+
+/** The yellow hand-drawn line under a word, drawn in as the page opens */
+const Underline = () => (
+  <svg aria-hidden viewBox="0 0 300 30" preserveAspectRatio="none" className="absolute -bottom-3 left-0 h-5 w-full sm:-bottom-[18px] sm:h-[26px]">
+    <path className="draw" d="M4 18 C 70 6, 140 26, 200 12 S 280 8, 296 16" fill="none" stroke="#FDB913" strokeWidth="7" strokeLinecap="round" />
+  </svg>
+);
+
+/** The receipt's torn top and bottom edges */
+function Zigzag({ flip = false }: { flip?: boolean }) {
+  const points = Array.from({ length: 41 }, (_, i) => `${i * 10.5} ${i % 2 ? (flip ? 14 : 0) : 7}`).join(" L ");
+  const d = flip ? `M0 0 L ${points} L420 0 Z` : `M0 14 L ${points} L420 14 Z`;
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-      <circle cx="12" cy="12" r="9.5" />
-      <path d="M2.5 12h19M12 2.5c2.6 2.6 3.9 5.8 3.9 9.5s-1.3 6.9-3.9 9.5c-2.6-2.6-3.9-5.8-3.9-9.5S9.4 5.1 12 2.5Z" />
+    <svg aria-hidden viewBox="0 0 420 14" width="100%" height="14" preserveAspectRatio="none" className="block">
+      <path d={d} fill="#FFFFFF" />
     </svg>
   );
 }
 
-/** A shopfront, for selling on Sotechy */
-const StoreIcon = () => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M3.5 9.5 5 4h14l1.5 5.5" />
-    <path d="M3.5 9.5a2.8 2.8 0 0 0 5.6 0 2.8 2.8 0 0 0 5.8 0 2.8 2.8 0 0 0 5.6 0" />
-    <path d="M5 12v8h14v-8M10 20v-5h4v5" />
-  </svg>
-);
-
-const Arrow = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M5 12h14M13 6l6 6-6 6" />
-  </svg>
-);
-
-/** The App Store (out now, a link) and Google Play (coming soon, not a link) */
-function StoreBadge({ store }: { store: "apple" | "google" }) {
-  if (store === "apple") {
-    return (
-      <a
-        href={APP_STORE_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex h-14 flex-1 items-center gap-3 rounded-2xl bg-foreground px-4 text-white transition hover:bg-black"
-      >
-        <AppleLogo />
-        <span className="leading-tight">
-          <span className="block text-[11px] font-medium text-white/70">Download on the</span>
-          <span className="block whitespace-nowrap font-display text-lg font-bold">App Store</span>
-        </span>
-      </a>
-    );
-  }
+/** A step of "How it works": its picture, its big outlined number and its words */
+function Step({ n, title, text, tint, children }: { n: string; title: string; text: string; tint: string; children: ReactNode }) {
   return (
-    <span aria-disabled title="Coming soon" className="relative inline-flex h-14 flex-1 cursor-default select-none items-center gap-3 rounded-2xl bg-foreground px-4 text-white">
-      <PlayLogo />
-      <span className="leading-tight">
-        <span className="block text-[11px] font-medium text-white/70">Coming soon on</span>
-        <span className="block whitespace-nowrap font-display text-lg font-bold">Google Play</span>
-      </span>
-      <span className="absolute -right-2 -top-2 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">Soon</span>
-    </span>
-  );
-}
-
-/** The store buttons side by side, and the web app under them */
-function GetButtons({ center = false }: { center?: boolean }) {
-  return (
-    <div className={`flex w-full max-w-[380px] flex-col gap-3 ${center ? "mx-auto" : ""}`}>
-      <div className="flex gap-3">
-        <StoreBadge store="apple" />
-        <StoreBadge store="google" />
+    <div className="tile overflow-hidden rounded-[28px] border-[3px] border-foreground bg-white">
+      <div className="border-b-[3px] border-foreground" style={{ background: tint }}>
+        {children}
       </div>
-      <a
-        href={APP_URL}
-        className="inline-flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-brand px-6 font-display text-lg font-bold text-white shadow-[0_14px_30px_-12px_rgba(247,147,30,0.7)] transition hover:bg-brand-strong"
-      >
-        <GlobeIcon /> Shop on the web <Arrow />
-      </a>
+      <div className="px-7 pb-8 pt-6">
+        <div className="display text-[54px] text-transparent [-webkit-text-stroke:2px_#17120E]">{n}</div>
+        <div className="display mt-1.5 text-3xl">{title}</div>
+        <p className="mt-2.5 leading-relaxed text-ink-2">{text}</p>
+      </div>
     </div>
   );
 }
 
-/** One of the app's real screens in a phone outline */
-function Phone({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
+/** A category tile with its own drawing */
+function Tile({ name, href, bg, className = "", children }: { name: ReactNode; href: string; bg: string; className?: string; children: ReactNode }) {
   return (
-    <div className={`rounded-[2.6rem] bg-foreground p-2.5 shadow-[0_40px_80px_-30px_rgba(120,60,0,0.45)] ${className}`}>
-      <Image src={src} alt={alt} width={720} height={1520} className="h-auto w-full rounded-[2.1rem]" />
-    </div>
+    <a href={href} className={`tile relative overflow-hidden rounded-[28px] border-[3px] border-foreground p-6 ${className}`} style={{ background: bg }}>
+      <div className="display relative z-10 text-[26px] sm:text-[28px]">{name}</div>
+      {children}
+    </a>
   );
 }
-
-const Heading = ({ children, sub }: { children: ReactNode; sub?: string }) => (
-  <div>
-    <h2 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{children}</h2>
-    {sub && <p className="mt-2 max-w-xl text-ink-2">{sub}</p>}
-  </div>
-);
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* Warm glow behind the hero */}
-      <div aria-hidden className="pointer-events-none absolute -top-48 left-1/2 h-[640px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,#ffe3b3,transparent)] opacity-80" />
+    <div className="overflow-hidden bg-[#FFF6EA]">
+      {/* Announcement */}
+      <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="block bg-foreground px-4 py-2.5 text-center text-[13px] text-[#FFF1DF]">
+        <span className="mono text-[#FDB913]">New</span>&nbsp;&nbsp;The Sotechy app is live on the App Store&nbsp;&nbsp;
+        <span className="arr">
+          <ArrowIcon />
+        </span>
+      </a>
 
-      <header className="relative mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
-        <Image src="/brand/light-logo-small.png" alt="Sotechy" width={194} height={97} priority className="h-9 w-auto sm:h-11" />
-        <nav className="flex items-center gap-1.5 sm:gap-3">
-          <a
-            href={MERCHANT_URL}
-            className="hidden h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-semibold text-ink-2 transition hover:bg-white hover:text-foreground sm:inline-flex"
-          >
-            <StoreIcon /> Sell on Sotechy
+      {/* Nav */}
+      <header className="mx-auto flex max-w-[1240px] items-center justify-between gap-4 px-4 py-5 sm:px-8">
+        <Image src="/brand/light-logo-small.png" alt="Sotechy" width={194} height={97} priority className="h-9 w-auto sm:h-10" />
+        <nav className="hidden items-center gap-8 text-[15px] font-medium md:flex">
+          <a href="#how">How it works</a>
+          <a href="#tokens">Tokens</a>
+          <a href="#categories">Categories</a>
+          <a href="#sell">Sell</a>
+        </nav>
+        <div className="flex items-center gap-2">
+          <a href={MERCHANT_URL} className="hidden px-3 py-2 text-[15px] font-semibold sm:inline">
+            Sell on Sotechy
           </a>
           <DownloadMenu />
-        </nav>
+        </div>
       </header>
 
-      <main className="relative">
-        {/* Hero */}
-        <section className="mx-auto grid max-w-6xl items-center gap-14 px-4 pb-14 pt-8 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:pt-16">
-          <div>
-            <h1 className="font-display text-[2.7rem] font-extrabold leading-[1.03] tracking-tight sm:text-6xl">
-              Shop stores <br className="hidden sm:block" />
-              you can <span className="text-brand">trust.</span>
-            </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-2">
-              Sotechy is a marketplace of verified Nigerian stores. Phones, fashion, beauty, groceries, home appliances and more, delivered to your door, with tokens you earn on every
-              order.
-            </p>
-            <div className="mt-8">
-              <GetButtons />
-            </div>
-          </div>
-
-          {/* Two of the app's screens, with cards floating around them */}
-          <div className="relative mx-auto w-full max-w-[460px]">
-            <div aria-hidden className="absolute inset-x-[6%] top-[8%] bottom-[4%] rounded-full bg-gradient-to-br from-brand/30 to-[#fdb913]/30 blur-3xl" />
-            <div className="relative flex items-end justify-center">
-              <Phone src="/images/app/product.webp" alt="A product in the Sotechy app" className="-mr-16 mb-10 w-[46%] rotate-[-6deg] opacity-95" />
-              <Phone src="/images/app/home.webp" alt="The Sotechy app's home screen" className="relative z-10 w-[56%]" />
-            </div>
-            {FLOAT.map(({ illo, label, style }) => (
-              <span key={label} className="float absolute z-20 flex items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm font-bold shadow-[0_14px_34px_-14px_rgba(23,18,14,0.35)]" style={style}>
-                <Illo name={illo} size={28} /> {label}
-              </span>
-            ))}
-          </div>
-        </section>
-
-        {/* Trust strip */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-6 rounded-[2rem] border border-line bg-white px-5 py-6 sm:px-8 lg:grid-cols-4">
-            {TRUST.map((t) => (
-              <div key={t.title} className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-soft">
-                  <Illo name={t.illo} size={30} />
+      <main>
+        {/* Hero: dark, with the sunrise */}
+        <section className="relative mx-2.5 overflow-hidden rounded-[28px] bg-foreground text-[#FFF1DF] sm:mx-4 sm:rounded-[36px]">
+          <svg aria-hidden width="100%" height="100%" className="absolute inset-0 opacity-[0.07]">
+            <defs>
+              <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1.6" fill="#FFF1DF" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#dots)" />
+          </svg>
+          <div className="relative mx-auto grid max-w-[1240px] items-center gap-10 px-5 pt-12 sm:px-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14 lg:pb-[72px] lg:pt-20">
+            <div className="min-w-0">
+              <h1 className="display text-[46px] sm:text-7xl lg:text-[84px] xl:text-[96px]">
+                Shop stores
+                <br />
+                you can{" "}
+                <span className="relative whitespace-nowrap text-brand">
+                  trust.
+                  <Underline />
                 </span>
-                <span className="min-w-0">
-                  <span className="block font-display font-bold leading-tight">{t.title}</span>
-                  <span className="block text-[13px] leading-snug text-muted">{t.text}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Popular categories */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <Heading sub="Stores across Nigeria selling everything from TVs to groceries.">Popular categories</Heading>
-            <a href={`${APP_URL}/shop`} className="hidden font-semibold text-brand-strong hover:underline sm:inline">
-              All {MARKET_DEPARTMENTS.length} categories →
-            </a>
-          </div>
-          <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {POPULAR.map((c) => (
-              <a
-                key={c.name}
-                href={shopLink(c.name)}
-                className="group flex items-center gap-2.5 rounded-2xl border border-line bg-white p-2.5 transition sm:rounded-3xl hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_18px_40px_-26px_rgba(23,18,14,0.4)] sm:gap-4 sm:p-4"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-foreground sm:h-14 sm:w-14 sm:rounded-2xl" style={{ background: c.tint }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6 sm:h-7 sm:w-7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    {ICONS[c.icon]}
-                  </svg>
-                </span>
-                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 font-display text-[14px] font-bold leading-tight group-hover:text-brand-strong sm:text-base">
-                  {c.name}
-                  <span className="hidden text-muted transition group-hover:translate-x-0.5 group-hover:text-brand-strong sm:inline">→</span>
-                </span>
-              </a>
-            ))}
-          </div>
-          <a href={`${APP_URL}/shop`} className="mt-5 inline-block font-semibold text-brand-strong hover:underline sm:hidden">
-            All {MARKET_DEPARTMENTS.length} categories →
-          </a>
-        </section>
-
-        {/* How it works, with a store page beside it */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
-          <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.1fr]">
-            <div className="order-2 mx-auto w-full max-w-[300px] lg:order-1">
-              <Phone src="/images/app/store.webp" alt="A store on Sotechy" />
-            </div>
-            <div className="order-1 lg:order-2">
-              <Heading>How it works</Heading>
-              <ol className="mt-7 space-y-6">
-                {STEPS.map((s) => (
-                  <li key={s.n} className="flex gap-4">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-foreground font-display text-lg font-bold text-white">{s.n}</span>
-                    <span>
-                      <span className="block font-display text-lg font-bold">{s.title}</span>
-                      <span className="text-ink-2">{s.text}</span>
+              </h1>
+              <p className="mt-8 max-w-[520px] text-lg leading-relaxed text-[#FFF1DF]/70 sm:text-xl">
+                Phones, fashion, beauty, groceries and home appliances from stores Sotechy has checked. Delivered to your door, with tokens on every order.
+              </p>
+              {/* Both stores on one row, the web shop under them */}
+              <div className="mt-9 flex w-full max-w-[440px] flex-col gap-3">
+                <div className="flex gap-3">
+                  <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="pop flex min-w-0 flex-1 items-center gap-2 rounded-[18px] border-2 border-[#FFF1DF] bg-[#FFF1DF] px-3 py-2.5 text-foreground sm:gap-3 sm:px-[18px] sm:py-3">
+                    <AppleLogo size={22} />
+                    <span className="leading-tight">
+                      <span className="block text-[11px] opacity-70">Download on the</span>
+                      <span className="display block whitespace-nowrap text-base tracking-normal sm:text-xl">App Store</span>
                     </span>
-                  </li>
-                ))}
-              </ol>
+                  </a>
+                  <span aria-disabled className="relative flex min-w-0 flex-1 cursor-default items-center gap-2 rounded-[18px] border-2 border-[#FFF1DF]/35 px-3 py-2.5 sm:gap-3 sm:px-[18px] sm:py-3">
+                    <PlayLogo size={22} />
+                    <span className="leading-tight">
+                      <span className="block text-[11px] opacity-70">Coming soon on</span>
+                      <span className="display block whitespace-nowrap text-base tracking-normal sm:text-xl">Google Play</span>
+                    </span>
+                    <span className="mono absolute -right-2 -top-3 rounded-full border-2 border-foreground bg-[#FDB913] px-2 py-0.5 text-[10px] tracking-[0.08em] text-foreground">Soon</span>
+                  </span>
+                </div>
+                <a href={APP_URL} className="pop display flex min-h-[60px] items-center justify-center gap-3 rounded-[18px] border-2 border-brand bg-brand pl-6 pr-3.5 text-xl tracking-normal text-foreground">
+                  Shop on the web <Chip />
+                </a>
+              </div>
+            </div>
+
+            {/* The sunrise, the phone and the stickers. On phones only the top half of the phone rises out of it. */}
+            <div className="relative -mx-5 h-[340px] overflow-hidden sm:mx-0 lg:h-[600px] lg:overflow-visible">
+              <div className="absolute bottom-10 left-1/2 -ml-[270px] h-[270px] w-[540px] origin-bottom scale-[0.8] overflow-hidden lg:bottom-[130px] lg:scale-100">
+                <div className="rise absolute left-0 top-0 h-[540px] w-[540px] rounded-full bg-gradient-to-b from-[#FDB913] to-[#F27405]" />
+                <div className="stripe absolute left-0 top-[176px] h-3.5 w-full bg-foreground" style={{ animationDelay: "0.9s" }} />
+                <div className="stripe absolute left-0 top-[206px] h-[18px] w-full bg-foreground" style={{ animationDelay: "1.02s" }} />
+                <div className="stripe absolute left-0 top-[240px] h-[22px] w-full bg-foreground" style={{ animationDelay: "1.14s" }} />
+              </div>
+              <div className="absolute bottom-9 left-0 right-0 h-1.5 rounded bg-[#FFF1DF] lg:bottom-[124px]" />
+              <div className="absolute -bottom-[300px] left-1/2 -ml-[115px] w-[230px] lg:bottom-5 lg:-ml-[130px] lg:w-[260px]">
+                <div className="floaty rounded-[42px] border-2 border-[#3A2F27] bg-foreground p-[11px] shadow-[0_40px_80px_-30px_rgba(0,0,0,0.8)]" style={{ "--r": "-4deg" } as CSSProperties}>
+                  <Image src="/images/app/home.webp" alt="The Sotechy app's home screen" width={720} height={1520} priority className="block h-auto w-full rounded-[32px]" />
+                </div>
+              </div>
+              <div className="floaty absolute left-3.5 top-[60px] flex items-center gap-2.5 rounded-[18px] border-[3px] border-foreground bg-[#FFF1DF] px-4 py-2.5 font-bold text-foreground shadow-[5px_5px_0_#F7931E] lg:-left-2.5 lg:top-[150px]" style={{ "--r": "-7deg", animationDelay: "0.8s" } as CSSProperties}>
+                <span className="coin-spin wordmark flex h-[30px] w-[30px] items-center justify-center rounded-full border-[2.5px] border-foreground bg-[#FDB913] text-[15px]">S</span>
+                +1 token per ₦1
+              </div>
+              <div className="floaty absolute right-3.5 top-[150px] flex items-center gap-2.5 rounded-[18px] border-[3px] border-foreground bg-brand px-4 py-2.5 font-bold text-foreground shadow-[5px_5px_0_#FFF1DF] lg:-right-1.5 lg:bottom-[210px] lg:top-auto" style={{ "--r": "6deg", animationDelay: "1.6s" } as CSSProperties}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#17120E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="5.5" cy="17" r="3" />
+                  <circle cx="18.5" cy="17" r="3" />
+                  <path d="M8.5 17h6l3-6h-4l-2-4H9" />
+                </svg>
+                On its way
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Marquee bands */}
+        <div aria-hidden className="relative mt-11 h-[150px] sm:h-[190px]">
+          <div className="absolute -left-[2%] top-[18px] w-[104%] rotate-2 overflow-hidden border-y-[3px] border-foreground bg-[#FDB913] py-3 sm:py-4">
+            <div className="marquee-rev display text-2xl sm:text-[34px]">
+              <span className="px-5">{MARQUEE_MOTTO}</span>
+              <span className="px-5">{MARQUEE_MOTTO}</span>
+            </div>
+          </div>
+          <div className="absolute -left-[2%] top-[62px] w-[104%] -rotate-2 overflow-hidden border-y-[3px] border-foreground bg-brand py-4 sm:top-[74px] sm:py-5">
+            <div className="marquee display text-[34px] sm:text-[50px]">
+              <span className="px-5">{MARQUEE_CATEGORIES}</span>
+              <span className="px-5">{MARQUEE_CATEGORIES}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* How it works */}
+        <section id="how" className="mx-auto max-w-[1240px] px-4 pb-10 pt-20 sm:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-5">
+            <div>
+              <div className="mono text-[13px] text-[#C96A05]">How it works</div>
+              <h2 className="display mt-3 text-5xl sm:text-7xl">
+                Three steps.
+                <br />
+                No wahala.
+              </h2>
+            </div>
+            <p className="max-w-[380px] text-[17px] leading-relaxed text-ink-2">One checkout across many stores, with Sotechy between you and the seller the whole way.</p>
+          </div>
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            <Step n="01" title="Find it" tint="#FFE9CC" text="Search every store, compare prices and read real reviews. Make an offer where a store takes them.">
+              <svg viewBox="0 0 360 220" width="100%" role="img" aria-label="A magnifier sweeping over a row of shops" className="block">
+                <rect x="0" y="182" width="360" height="38" fill="#F7C58A" />
+                <g stroke="#17120E" strokeWidth="3" strokeLinejoin="round">
+                  <rect x="26" y="92" width="94" height="90" fill="#FFFFFF" />
+                  <path d="M20 76h106v20H20z" fill="#F7931E" />
+                  <path d="M41 76v20M62 76v20M83 76v20M104 76v20" stroke="#FFF1DF" strokeWidth="8" />
+                  <path d="M20 76h106v20H20z" fill="none" />
+                  <rect x="60" y="134" width="26" height="48" fill="#FDB913" />
+                  <rect x="134" y="70" width="94" height="112" fill="#FFFFFF" />
+                  <path d="M128 54h106v20H128z" fill="#17120E" />
+                  <rect x="150" y="96" width="62" height="34" fill="#E3F1FC" />
+                  <rect x="168" y="140" width="26" height="42" fill="#F27405" />
+                  <rect x="242" y="98" width="94" height="84" fill="#FFFFFF" />
+                  <path d="M236 82h106v20H236z" fill="#FDB913" />
+                  <path d="M257 82v20M278 82v20M299 82v20M320 82v20" stroke="#FFF1DF" strokeWidth="8" />
+                  <path d="M236 82h106v20H236z" fill="none" />
+                  <rect x="276" y="138" width="26" height="44" fill="#F7931E" />
+                </g>
+                <g className="sweep">
+                  <circle cx="70" cy="120" r="34" fill="rgba(255, 255, 255, 0.45)" stroke="#17120E" strokeWidth="6" />
+                  <path d="M94 144l26 26" stroke="#17120E" strokeWidth="10" strokeLinecap="round" />
+                </g>
+              </svg>
+            </Step>
+            <Step n="02" title="Pay safely" tint="#E3F1FC" text="Transfer, stablecoin or tokens. You pay Sotechy, never the store, and we step in if anything goes wrong.">
+              <svg viewBox="0 0 360 220" width="100%" role="img" aria-label="A naira coin dropping into a phone with a shield" className="block">
+                <g stroke="#17120E" strokeWidth="3" strokeLinejoin="round">
+                  <rect x="128" y="40" width="104" height="180" rx="18" fill="#17120E" />
+                  <rect x="138" y="52" width="84" height="168" rx="10" fill="#FFF6EA" />
+                  <path d="M180 86l32 12v24c0 22-14 36-32 44-18-8-32-22-32-44V98z" fill="#1C8A4C" />
+                  <path d="M166 124l10 10 20-22" fill="none" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" />
+                </g>
+                <g className="drop">
+                  <circle cx="268" cy="70" r="24" fill="#FDB913" stroke="#17120E" strokeWidth="3" />
+                  <text x="268" y="79" textAnchor="middle" fontFamily="DM Sans, sans-serif" fontWeight="700" fontSize="26" fill="#17120E">
+                    ₦
+                  </text>
+                </g>
+                <circle cx="86" cy="70" r="12" fill="#F7931E" stroke="#17120E" strokeWidth="3" />
+              </svg>
+            </Step>
+            <Step n="03" title="Delivered" tint="#E6F4EA" text="To your door or a pickup point near you, with a notification at every step until it's in your hands.">
+              <svg viewBox="0 0 360 220" width="100%" role="img" aria-label="A delivery rider on the road" className="block">
+                <rect x="0" y="170" width="360" height="50" fill="#3A2F27" />
+                <line className="road" x1="0" y1="196" x2="360" y2="196" stroke="#FFF1DF" strokeWidth="5" strokeDasharray="18 10" />
+                <g className="ride">
+                  <path d="M60 120h-26M70 136h-40M58 152h-20" stroke="#17120E" strokeWidth="4" strokeLinecap="round" opacity="0.5" />
+                  <g stroke="#17120E" strokeWidth="3" strokeLinejoin="round">
+                    <rect x="104" y="82" width="56" height="46" rx="6" fill="#F7931E" />
+                    <path d="M112 96h40" stroke="#FFF1DF" strokeWidth="5" />
+                    <path d="M98 148h118l18-34h-26l-14-24" fill="#FDB913" />
+                    <circle cx="196" cy="62" r="16" fill="#C96A05" />
+                    <path d="M184 52h26" strokeWidth="6" strokeLinecap="round" />
+                    <path d="M196 78l-6 36h24" fill="none" strokeWidth="10" strokeLinecap="round" />
+                  </g>
+                  <g className="wheel">
+                    <circle cx="112" cy="156" r="20" fill="#17120E" />
+                    <circle cx="112" cy="156" r="8" fill="#FFF1DF" />
+                    <path d="M112 136v40M92 156h40" stroke="#FFF1DF" strokeWidth="3" />
+                  </g>
+                  <g className="wheel">
+                    <circle cx="232" cy="156" r="20" fill="#17120E" />
+                    <circle cx="232" cy="156" r="8" fill="#FFF1DF" />
+                    <path d="M232 136v40M212 156h40" stroke="#FFF1DF" strokeWidth="3" />
+                  </g>
+                </g>
+              </svg>
+            </Step>
+          </div>
+        </section>
+
+        {/* Money held safely */}
+        <section className="mx-auto max-w-[1240px] px-4 pb-10 pt-16 sm:px-8">
+          <div className="grid items-center gap-10 rounded-[36px] border-[3px] border-foreground bg-white p-6 shadow-[6px_8px_0_#17120E] sm:p-14 sm:shadow-[10px_12px_0_#17120E] lg:grid-cols-2">
+            <div className="min-w-0">
+              <div className="mono text-[13px] text-[#C96A05]">Buyer protection</div>
+              <h2 className="display mt-3 text-[42px] sm:text-6xl">
+                You pay Sotechy.
+                <br />
+                <span className="text-brand">Never the store.</span>
+              </h2>
+              <div className="mt-8 flex flex-col gap-3.5 text-[17px]">
+                <div className="flex items-center gap-3.5">
+                  <Check />
+                  Every store is checked before it can sell
+                </div>
+                <div className="flex items-center gap-3.5">
+                  <Check />
+                  Your money is held until the order goes through
+                </div>
+                <div className="flex items-center gap-3.5">
+                  <Check />
+                  If an order doesn&apos;t arrive, we step in
+                </div>
+              </div>
+            </div>
+            <div className="relative h-[230px] rounded-[28px] bg-foreground text-[#FFF1DF] sm:h-[300px]">
+              <svg aria-hidden width="100%" height="40" className="absolute left-0 top-[64px] sm:top-[105px]">
+                <line className="flow" x1="17%" y1="20" x2="83%" y2="20" stroke="rgba(255, 241, 223, 0.35)" strokeWidth="4" strokeDasharray="10 8" />
+              </svg>
+              <div className="absolute inset-x-0 top-[50px] flex text-center text-sm font-bold sm:top-[70px] sm:text-base">
+                <div className="w-1/3">
+                  <div className="mx-auto flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#FFF1DF] sm:h-[110px] sm:w-[110px]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#17120E" strokeWidth="2" strokeLinecap="round" aria-hidden className="h-9 w-9 sm:h-14 sm:w-14">
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M4.5 20.5c1.2-4 4-6 7.5-6s6.3 2 7.5 6" />
+                    </svg>
+                  </div>
+                  <div className="mt-3">You</div>
+                </div>
+                <div className="w-1/3">
+                  <div className="pulse-soft mx-auto flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#FDB913] sm:h-[110px] sm:w-[110px]">
+                    <Image src="/brand/sotechy-mark.svg" alt="" width={62} height={70} className="h-9 w-auto sm:h-[62px]" />
+                  </div>
+                  <div className="mt-3">Sotechy</div>
+                </div>
+                <div className="w-1/3">
+                  <div className="mx-auto flex h-[68px] w-[68px] items-center justify-center rounded-full bg-[#FFF1DF] sm:h-[110px] sm:w-[110px]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#17120E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-9 w-9 sm:h-14 sm:w-14">
+                      <path d="M3.5 9.5 5 4h14l1.5 5.5" />
+                      <path d="M3.5 9.5a2.8 2.8 0 0 0 5.6 0 2.8 2.8 0 0 0 5.8 0 2.8 2.8 0 0 0 5.6 0" />
+                      <path d="M5 12v8h14v-8M10 20v-5h4v5" />
+                    </svg>
+                  </div>
+                  <div className="mt-3">The store</div>
+                </div>
+              </div>
+              <div className="travel absolute top-[70px] whitespace-nowrap rounded-full border-[2.5px] border-foreground bg-brand px-2.5 py-1 text-xs font-bold text-foreground sm:top-[106px] sm:px-3.5 sm:py-1.5 sm:text-[15px]">₦572,000</div>
+              <div className="mono absolute inset-x-0 bottom-6 text-center text-xs text-[#FDB913]">Held safely by Sotechy</div>
             </div>
           </div>
         </section>
 
         {/* Tokens */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
-          <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand to-[#fdb913] px-6 py-10 sm:px-10 sm:py-12">
-            <div aria-hidden className="absolute -right-10 -top-10 h-56 w-56 rounded-full bg-white/15" />
-            <div aria-hidden className="absolute -bottom-16 right-24 h-44 w-44 rounded-full bg-white/10" />
-            <div className="relative grid items-center gap-8 lg:grid-cols-[1.3fr_1fr]">
-              <div>
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/25 px-3 py-1 text-sm font-semibold text-foreground">
-                  <Illo name="coin" size={20} /> Store tokens
-                </span>
-                <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">Earn while you shop</h2>
-                <p className="mt-3 max-w-lg text-lg text-foreground/80">
-                  Every store on Sotechy has its own token. Earn 1 for every ₦1 you spend there, get extra when you review what you bought, and spend them at checkout like cash.
-                </p>
-              </div>
-              {/* A worked example, the way the app shows it on a product */}
-              <div className="rounded-3xl bg-white p-5 shadow-[0_24px_50px_-28px_rgba(120,60,0,0.6)]">
-                <p className="text-sm font-semibold text-muted">You buy</p>
-                <p className="font-display text-lg font-bold">Hisense 55&quot; 4K UHD Smart TV</p>
-                <p className="font-display text-2xl font-extrabold">₦572,000</p>
-                <div className="my-4 border-t border-dashed border-line" />
-                <p className="text-sm font-semibold text-muted">You earn</p>
-                <p className="flex items-center gap-2 font-display text-2xl font-extrabold text-brand-strong">
-                  <Illo name="coin" size={30} /> 572,000 $SOTECHY
-                </p>
-                <p className="mt-1 text-sm text-muted">Released when your order is delivered</p>
+        <section id="tokens" className="relative mx-2.5 mt-16 overflow-hidden rounded-[28px] border-[3px] border-foreground bg-brand sm:mx-4 sm:rounded-[36px]">
+          <div aria-hidden className="absolute -right-[120px] -top-[120px] h-[460px] w-[460px] rounded-full border-[3px] border-foreground/15" />
+          <div aria-hidden className="absolute -right-10 -top-10 h-[300px] w-[300px] rounded-full border-[3px] border-foreground/15" />
+          <div className="relative mx-auto grid max-w-[1240px] items-center gap-14 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-2">
+            <div className="min-w-0">
+              <div className="mono text-[13px]">Store tokens</div>
+              <h2 className="display mt-3 text-[52px] sm:text-[84px]">
+                Earn while
+                <br />
+                <span className="text-[#FFF1DF] [-webkit-text-stroke:2px_#17120E]">you shop.</span>
+              </h2>
+              <p className="mt-6 max-w-[470px] text-lg leading-relaxed sm:text-[19px]">Every store has its own token. Earn 1 for every ₦1 you spend, get extra for reviews, and spend them at checkout like cash.</p>
+              <div className="mt-7 flex flex-wrap gap-2.5 font-bold">
+                <span className="rounded-full bg-foreground px-5 py-3 text-[#FFF1DF]">1 token for every ₦1</span>
+                <span className="rounded-full border-[2.5px] border-foreground bg-[#FFF1DF] px-[18px] py-2.5">Extra for reviews</span>
+                <span className="rounded-full border-[2.5px] border-foreground bg-[#FFF1DF] px-[18px] py-2.5">+10% $SOTECHY at other stores</span>
               </div>
             </div>
+            {/* A receipt */}
+            <div className="relative w-full max-w-[420px] justify-self-center">
+              <div className="coin-spin wordmark absolute -right-3 -top-11 z-10 flex h-[110px] w-[110px] items-center justify-center rounded-full border-4 border-foreground bg-[#FDB913] text-[54px] text-[#C97A0A] shadow-[inset_0_-10px_0_#E9A21A] sm:-right-[34px] sm:h-32 sm:w-32 sm:text-[62px]">S</div>
+              <div className="-rotate-[2.5deg] [filter:drop-shadow(10px_12px_0_#17120E)]">
+                <Zigzag />
+                <div className="bg-white px-8 py-6">
+                  <div className="mono text-center text-xs text-muted">Sotechy receipt · order SO-1024</div>
+                  <div className="my-4 border-t-2 border-dashed border-line" />
+                  <div className="flex justify-between gap-3">
+                    <span>Hisense 55&quot; 4K Smart TV</span>
+                    <b>₦572,000</b>
+                  </div>
+                  <div className="mt-2 flex justify-between gap-3 text-muted">
+                    <span>Delivery to Benin City</span>
+                    <span>₦3,000</span>
+                  </div>
+                  <div className="my-4 border-t-2 border-dashed border-line" />
+                  <div className="mono text-xs text-muted">You earn</div>
+                  <div className="display mt-1.5 text-[44px] text-[#F27405]">
+                    <TokenCounter to={572000} />
+                  </div>
+                  <div className="display mt-0.5 text-[22px]">$SOTECHY</div>
+                  <div className="mt-2.5 text-[13px] text-muted">Released when your order is delivered</div>
+                  <svg aria-hidden viewBox="0 0 200 40" width="100%" height="40" className="mt-4 block">
+                    <g fill="#17120E">
+                      {[0, 6, 10, 17, 22, 26, 34, 39, 45, 49, 56, 61, 65, 73, 79, 83, 90, 95, 101, 105, 113, 118, 122, 129, 135, 139, 147, 152, 158, 162, 169, 174, 178, 186, 192, 196].map((x, i) => (
+                        <rect key={x} x={x} y="0" width={[3, 1.5, 4, 2, 1.5, 5][i % 6]} height="40" />
+                      ))}
+                    </g>
+                  </svg>
+                </div>
+                <Zigzag flip />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Categories */}
+        <section id="categories" className="mx-auto max-w-[1240px] px-4 pb-10 pt-24 sm:px-8">
+          <div className="flex flex-wrap items-end justify-between gap-5">
+            <div>
+              <div className="mono text-[13px] text-[#C96A05]">{MARKET_DEPARTMENTS.length} categories</div>
+              <h2 className="display mt-3 text-5xl sm:text-7xl">
+                Everything
+                <br />
+                Nigeria shops for.
+              </h2>
+            </div>
+            <a href={`${APP_URL}/shop`} className="pop inline-flex items-center gap-2.5 rounded-full border-[2.5px] border-foreground bg-white py-2 pl-5 pr-2 font-bold">
+              All categories <Chip className="!h-[30px] !w-[30px] !text-white" />
+            </a>
+          </div>
+          <div className="mt-11 grid auto-rows-[170px] grid-cols-2 gap-4 md:auto-rows-[230px] md:grid-cols-4">
+            <a href={shopLink("Home appliances")} className="tile relative col-span-2 flex flex-col justify-between overflow-hidden rounded-[28px] border-[3px] border-foreground bg-[#FDB913] p-7 md:row-span-2">
+              <div className="relative z-10">
+                <div className="display text-[34px] sm:text-[44px]">
+                  Home
+                  <br />
+                  appliances
+                </div>
+                <div className="mt-2 font-semibold">
+                  From every verified store{" "}
+                  <span className="arr">
+                    <ArrowIcon />
+                  </span>
+                </div>
+              </div>
+              <svg aria-hidden viewBox="0 0 300 260" className="absolute -bottom-1.5 right-3 w-[30%] md:right-5 md:w-[60%]">
+                <g stroke="#17120E" strokeWidth="5" strokeLinejoin="round">
+                  <rect x="40" y="20" width="110" height="236" rx="14" fill="#FFF6EA" />
+                  <path d="M40 104h110" />
+                  <path d="M128 50v30M128 128v40" strokeWidth="8" strokeLinecap="round" />
+                  <rect x="164" y="120" width="120" height="136" rx="14" fill="#FFFFFF" />
+                  <path d="M164 150h120" />
+                  <circle cx="184" cy="135" r="5" fill="#17120E" />
+                  <circle cx="202" cy="135" r="5" fill="#F7931E" />
+                  <circle cx="224" cy="204" r="36" fill="#E3F1FC" />
+                  <path d="M200 208c14-10 32 6 48-4" fill="none" stroke="#2F6FB3" strokeWidth="5" strokeLinecap="round" />
+                </g>
+              </svg>
+            </a>
+            <Tile name="Fashion" href={shopLink("Fashion")} bg="#FCE4EC">
+              <svg aria-hidden viewBox="0 0 120 110" className="absolute bottom-2.5 right-3.5 w-1/2">
+                <path d="M38 10 12 24l10 24 12-6v58h52V42l12 6 10-24-26-14a22 22 0 0 1-44 0Z" fill="#F7931E" stroke="#17120E" strokeWidth="5" strokeLinejoin="round" />
+              </svg>
+            </Tile>
+            <Tile name="Beauty" href={shopLink("Beauty")} bg="#F3E5F5">
+              <svg aria-hidden viewBox="0 0 120 120" className="absolute bottom-2 right-4 w-[42%]">
+                <g stroke="#17120E" strokeWidth="5" strokeLinejoin="round">
+                  <rect x="38" y="60" width="44" height="56" rx="6" fill="#17120E" />
+                  <path d="M44 60V34l30-22v48z" fill="#E0457B" />
+                  <rect x="34" y="56" width="52" height="12" rx="4" fill="#FDB913" />
+                </g>
+              </svg>
+            </Tile>
+            <Tile name="Groceries" href={shopLink("Food & drinks")} bg="#E6F4EA">
+              <svg aria-hidden viewBox="0 0 140 120" className="absolute bottom-1.5 right-3 w-[54%]">
+                <g stroke="#17120E" strokeWidth="5" strokeLinejoin="round">
+                  <circle cx="50" cy="44" r="22" fill="#F27405" />
+                  <path d="M78 18c10 6 14 18 10 30" fill="none" strokeLinecap="round" />
+                  <ellipse cx="92" cy="44" rx="14" ry="24" fill="#1C8A4C" />
+                  <path d="M14 56h112l-12 56H26z" fill="#FDB913" />
+                  <path d="M48 70v30M70 70v30M92 70v30" strokeLinecap="round" />
+                </g>
+              </svg>
+            </Tile>
+            <Tile
+              name={
+                <>
+                  Phones &amp;
+                  <br />
+                  gadgets
+                </>
+              }
+              href={shopLink("Phones & tablets")}
+              bg="#E3F1FC"
+            >
+              <svg aria-hidden viewBox="0 0 140 120" className="absolute bottom-1.5 right-3 w-[52%]">
+                <g stroke="#17120E" strokeWidth="5" strokeLinejoin="round">
+                  <rect x="58" y="6" width="54" height="108" rx="12" fill="#17120E" />
+                  <rect x="65" y="16" width="40" height="80" rx="6" fill="#FFF6EA" />
+                  <rect x="71" y="24" width="28" height="20" rx="4" fill="#F7931E" />
+                  <path d="M71 56h28M71 66h18" strokeWidth="5" strokeLinecap="round" />
+                  <path d="M20 70a12 12 0 1 1 18 10v20" fill="#FFFFFF" strokeLinecap="round" />
+                  <path d="M30 96h12" strokeLinecap="round" />
+                </g>
+              </svg>
+            </Tile>
           </div>
         </section>
 
         {/* Sellers */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
-          <div className="relative overflow-hidden rounded-[2rem] bg-foreground px-6 py-10 text-white sm:px-10 sm:py-12">
-            <div aria-hidden className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-brand opacity-90" />
-            <div aria-hidden className="absolute -right-4 top-24 h-40 w-40 rounded-full border-2 border-white/15" />
-            <div className="relative max-w-xl">
-              <div className="flex items-center gap-4">
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white">
-                  <Illo name="store" size={38} />
-                </span>
-                <h2 className="font-display text-3xl font-extrabold sm:text-4xl">Sell on Sotechy</h2>
+        <section id="sell" className="relative mx-2.5 mt-20 overflow-hidden rounded-[28px] bg-foreground text-[#FFF1DF] sm:mx-4 sm:rounded-[36px]">
+          <div className="relative mx-auto grid max-w-[1240px] items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-2">
+            <svg viewBox="0 0 520 440" width="100%" role="img" aria-label="A shopfront with a swinging Your Store sign">
+              <rect x="0" y="400" width="520" height="40" fill="#3A2F27" />
+              <g stroke="#FFF1DF" strokeWidth="4" strokeLinejoin="round">
+                <rect x="70" y="170" width="380" height="232" fill="#FFF6EA" />
+                <path d="M50 120h420v58H50z" fill="#F7931E" />
+                <path d="M102 120v58M155 120v58M208 120v58M261 120v58M314 120v58M367 120v58M420 120v58" stroke="#FFF1DF" strokeWidth="22" />
+                <path d="M50 120h420v58H50z" fill="none" />
+                <path d="M50 178c13 22 39 22 52 0 13 22 39 22 53 0 13 22 39 22 53 0 13 22 39 22 53 0 13 22 39 22 53 0 13 22 39 22 53 0 13 22 39 22 53 0" fill="#F7931E" />
+                <rect x="104" y="226" width="170" height="120" rx="8" fill="#3A2914" />
+                <rect x="124" y="268" width="48" height="78" fill="#FDB913" />
+                <rect x="186" y="292" width="64" height="54" fill="#F27405" />
+                <rect x="310" y="226" width="104" height="176" fill="#F27405" />
+                <circle cx="396" cy="320" r="7" fill="#FFF1DF" />
+              </g>
+              <g className="swing">
+                <path d="M210 36v40M310 36v40" stroke="#FFF1DF" strokeWidth="4" />
+                <rect x="176" y="72" width="168" height="48" rx="12" fill="#FFF1DF" />
+                <text x="260" y="104" textAnchor="middle" fontFamily="var(--font-heading), sans-serif" fontWeight="800" fontSize="24" fill="#17120E">
+                  YOUR STORE
+                </text>
+              </g>
+              <circle cx="470" cy="60" r="30" fill="#FDB913" />
+            </svg>
+            <div className="min-w-0">
+              <div className="mono text-[13px] text-[#FDB913]">For businesses and freelancers</div>
+              <h2 className="display mt-3 text-[56px] sm:text-[80px]">
+                Sell on
+                <br />
+                <span className="text-brand">Sotechy.</span>
+              </h2>
+              <div className="mt-8 flex flex-col gap-4 text-lg">
+                <div className="flex gap-4">
+                  <span className="mono pt-1 text-sm text-[#FDB913]">01</span>Your own storefront, with your logo, colours and a verified badge
+                </div>
+                <div className="flex gap-4">
+                  <span className="mono pt-1 text-sm text-[#FDB913]">02</span>Customers pay Sotechy, so you never chase a payment
+                </div>
+                <div className="flex gap-4">
+                  <span className="mono pt-1 text-sm text-[#FDB913]">03</span>Your own store token, so customers keep coming back
+                </div>
               </div>
-              <p className="mt-3 text-lg text-white/75">
-                Open your store with its own token and reach customers across Nigeria. Businesses and freelancers are welcome: half of each order is paid upfront and the rest after
-                delivery.
-              </p>
-              <a href={MERCHANT_URL} className="mt-6 inline-flex min-h-12 items-center rounded-full bg-brand px-6 font-semibold text-white transition hover:bg-brand-strong">
-                Open your store
-              </a>
+              <div className="mt-9 flex flex-wrap gap-3">
+                <a href={MERCHANT_URL} className="pop display inline-flex min-h-[58px] items-center gap-3 rounded-[18px] border-2 border-brand bg-brand pl-6 pr-3 text-[19px] tracking-normal text-foreground">
+                  Open your store <Chip />
+                </a>
+                <a href={SELL_VIDEO_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[58px] items-center gap-2.5 rounded-[18px] border-2 border-[#FFF1DF]/35 px-5 font-bold">
+                  <span className="flex h-[22px] w-[30px] items-center justify-center rounded-md bg-[#FF0000]">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden>
+                      <path d="M7 4.5v15l13-7.5z" />
+                    </svg>
+                  </span>
+                  Watch the video
+                </a>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Get Sotechy */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
-          <div className="flex flex-col items-center rounded-[2rem] border border-line bg-white px-6 py-12 text-center">
-            <Image src="/brand/sotechy-icon-512.png" alt="" width={80} height={80} className="h-20 w-20 rounded-3xl shadow-[0_14px_30px_-14px_rgba(247,147,30,0.7)]" />
-            <h2 className="mt-5 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">Get Sotechy</h2>
-            <p className="mt-2 max-w-lg text-ink-2">Get the iPhone app on the App Store. The Android app is coming soon, and you can shop on the web today with the same account.</p>
-            <div className="mt-7 w-full">
-              <GetButtons center />
+        {/* Get the app */}
+        <section id="get" className="mx-auto max-w-[1240px] px-4 pb-20 pt-24 sm:px-8">
+          <div className="grid items-end overflow-hidden rounded-[36px] border-[3px] border-foreground bg-[#FDB913] px-6 pt-10 sm:px-14 sm:pt-14 lg:grid-cols-2">
+            <div className="min-w-0 pb-10 sm:pb-14">
+              <h2 className="display text-[56px] sm:text-[88px]">Get the app.</h2>
+              <p className="mt-4 max-w-[430px] text-lg leading-relaxed sm:text-[19px]">Shop, track your orders and spend your tokens. The same account works on the web at sotechy.shop.</p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" className="pop inline-flex items-center gap-3 rounded-[18px] border-2 border-foreground bg-foreground px-5 py-3 text-[#FFF1DF]">
+                  <AppleLogo size={24} />
+                  <span className="leading-tight">
+                    <span className="block text-[11px] opacity-70">Download on the</span>
+                    <span className="display block text-xl tracking-normal">App Store</span>
+                  </span>
+                </a>
+                <span aria-disabled className="inline-flex cursor-default items-center gap-3 rounded-[18px] border-2 border-dashed border-foreground bg-[#FFF1DF] px-5 py-3">
+                  <PlayLogo size={22} />
+                  <span className="leading-tight">
+                    <span className="block text-[11px] opacity-70">Coming soon on</span>
+                    <span className="display block text-xl tracking-normal">Google Play</span>
+                  </span>
+                </span>
+              </div>
+            </div>
+            <div className="relative h-[300px] sm:h-[430px]">
+              <div className="floaty absolute -bottom-[90px] left-[6%] w-[170px] rounded-[34px] border-[3px] border-foreground bg-foreground p-2 sm:w-[230px] sm:rounded-[40px] sm:p-2.5" style={{ "--r": "-8deg" } as CSSProperties}>
+                <Image src="/images/app/product.webp" alt="A product in the Sotechy app" width={720} height={1520} className="block h-auto w-full rounded-[26px] sm:rounded-[31px]" />
+              </div>
+              <div className="floaty absolute -bottom-[60px] right-[4%] w-[180px] rounded-[34px] border-[3px] border-foreground bg-foreground p-2 sm:w-[240px] sm:rounded-[40px] sm:p-2.5" style={{ "--r": "6deg", animationDelay: "1.2s" } as CSSProperties}>
+                <Image src="/images/app/store.webp" alt="A store on Sotechy" width={720} height={1520} className="block h-auto w-full rounded-[26px] sm:rounded-[31px]" />
+              </div>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="relative bg-foreground text-white">
-        <div className="mx-auto max-w-6xl px-4 pb-8 pt-14 sm:px-6">
-          <div className="grid gap-10 lg:grid-cols-[1.5fr_repeat(3,minmax(0,1fr))]">
-            <div className="max-w-sm">
-              <div className="flex items-center gap-2.5">
-                <Image src="/brand/sotechy-icon-512.png" alt="" width={40} height={40} className="h-10 w-10 rounded-xl" />
-                <span className="font-display text-2xl font-extrabold tracking-tight">Sotechy</span>
+      {/* Footer */}
+      <footer className="overflow-hidden bg-foreground pt-16 text-[#FFF1DF]">
+        <div className="mx-auto max-w-[1240px] px-4 sm:px-8">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-[1.2fr_repeat(3,minmax(0,1fr))] lg:gap-12">
+            <div className="col-span-2 lg:col-span-1">
+              <div className="display text-4xl">
+                Shop stores you can <span className="text-brand">trust.</span>
               </div>
-              <p className="mt-4 leading-relaxed text-white/60">A marketplace of verified Nigerian stores, delivered to your door, with tokens on every order.</p>
-              <div className="mt-6 flex flex-wrap gap-2.5">
-                <a
-                  href={APP_STORE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-11 items-center gap-2.5 rounded-xl border border-white/20 px-3.5 transition hover:border-white/50 hover:bg-white/5"
-                >
-                  <AppleLogo size={18} />
-                  <span className="leading-tight">
-                    <span className="block text-[10px] text-white/60">Download on the</span>
-                    <span className="block text-sm font-semibold">App Store</span>
-                  </span>
+              <div className="mt-6 flex items-center gap-2">
+                <a href={`mailto:${EMAIL}`} className="mr-2 text-[#FFF1DF]/70 transition hover:text-white">
+                  {EMAIL}
                 </a>
-                <span aria-disabled className="inline-flex h-11 cursor-default items-center gap-2.5 rounded-xl border border-white/10 px-3.5 text-white/60">
-                  <PlayLogo size={17} />
-                  <span className="leading-tight">
-                    <span className="block text-[10px]">Coming soon on</span>
-                    <span className="block text-sm font-semibold">Google Play</span>
-                  </span>
-                </span>
+                <a href={X_URL} target="_blank" rel="noopener noreferrer" aria-label="Sotechy on X" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 transition hover:border-white/50">
+                  <XLogo size={14} />
+                </a>
+                <a href={TIKTOK_URL} target="_blank" rel="noopener noreferrer" aria-label="Sotechy on TikTok" className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 transition hover:border-white/50">
+                  <TikTokLogo size={15} />
+                </a>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-3">
-              {FOOTER_LINKS.map((col) => (
-                <nav key={col.title} aria-label={col.title}>
-                  <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40">{col.title}</h3>
-                  <ul className="mt-4 space-y-3">
-                    {col.links.map((l) => (
-                      <li key={l.label}>
-                        {l.href.startsWith("/") ? (
-                          <Link href={l.href} className="text-[15px] text-white/75 transition hover:text-white">
-                            {l.label}
-                          </Link>
-                        ) : (
-                          <a href={l.href} className="text-[15px] text-white/75 transition hover:text-white">
-                            {l.label}
-                          </a>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-              ))}
-            </div>
+            {FOOTER_LINKS.map((col) => (
+              <nav key={col.title} aria-label={col.title}>
+                <h3 className="mono text-xs text-[#FDB913]">{col.title}</h3>
+                <ul className="mt-4 space-y-3">
+                  {col.links.map((l) => (
+                    <li key={l.label}>
+                      {l.href.startsWith("/") ? (
+                        <Link href={l.href} className="text-[15px] text-[#FFF1DF]/75 transition hover:text-white">
+                          {l.label}
+                        </Link>
+                      ) : (
+                        <a href={l.href} className="text-[15px] text-[#FFF1DF]/75 transition hover:text-white">
+                          {l.label}
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ))}
           </div>
-
-          <div className="mt-14 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm text-white/50 sm:flex-row sm:items-center sm:justify-between">
-            <p>
-              © {BUSINESS.name} · {BUSINESS.headOffice}
-            </p>
-            <div className="flex items-center gap-2">
-              <a href={`mailto:${EMAIL}`} className="mr-2 transition hover:text-white">
-                {EMAIL}
-              </a>
-              <a
-                href={X_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Sotechy on X"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/75 transition hover:border-white/40 hover:text-white"
-              >
-                <XLogo size={14} />
-              </a>
-              <a
-                href={TIKTOK_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Sotechy on TikTok"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/75 transition hover:border-white/40 hover:text-white"
-              >
-                <TikTokLogo size={15} />
-              </a>
-            </div>
-          </div>
+          <p className="mt-14 border-t border-white/10 pt-6 text-sm text-[#FFF1DF]/50">
+            © {BUSINESS.name} · {BUSINESS.headOffice}
+          </p>
+        </div>
+        <div aria-hidden className="wordmark mt-10 translate-y-[14%] bg-gradient-to-r from-[#F27405] via-[#F7931E] to-[#FDB913] bg-clip-text text-center text-[22vw] leading-[0.8] tracking-[-0.04em] text-transparent">
+          SoTechy
         </div>
       </footer>
     </div>

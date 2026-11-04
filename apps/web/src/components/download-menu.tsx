@@ -28,16 +28,9 @@ export function DownloadMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="true"
-        className="inline-flex h-10 items-center gap-2 rounded-full bg-foreground px-4 text-sm font-semibold text-white transition hover:bg-black"
+        className="pop inline-flex h-11 items-center rounded-full border-2 border-foreground bg-brand px-5 text-[15px] font-bold text-foreground"
       >
-        <span className="flex items-center gap-1.5">
-          <AppleLogo size={16} />
-          <PlayLogo size={14} />
-        </span>
-        <span>Download</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={`transition ${open ? "rotate-180" : ""}`}>
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        Get the app
       </button>
 
       {open && (

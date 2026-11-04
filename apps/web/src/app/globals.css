@@ -58,6 +58,266 @@ html {
   }
 }
 
+/* ---- The landing page: sunrise stripes, stickers and ink outlines ---- */
+.mono {
+  font-family: var(--font-mono-label), ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.display {
+  font-family: var(--font-heading), sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+.wordmark {
+  font-family: var(--font-word), sans-serif;
+  font-weight: 900;
+}
+/* Buttons lift onto a hard ink shadow */
+.pop {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.pop:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #17120e;
+}
+.tile {
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.tile:hover {
+  transform: translateY(-6px) rotate(-0.6deg);
+  box-shadow: 8px 10px 0 #17120e;
+}
+/* The arrow: in a round ink chip on buttons, on its own in a line of text */
+.chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: #17120e;
+  color: #f7931e;
+  transition: transform 0.2s;
+}
+.arr {
+  display: inline-flex;
+  vertical-align: -3px;
+  transition: transform 0.2s;
+}
+a:hover .chip {
+  transform: translateX(4px) rotate(-8deg);
+}
+a:hover .arr {
+  transform: translateX(4px);
+}
+
+.marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 32s linear infinite;
+}
+.marquee-rev {
+  display: flex;
+  width: max-content;
+  animation: marquee-rev 26s linear infinite;
+}
+.rise {
+  animation: rise 1.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stripe {
+  animation: stripe 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.floaty {
+  animation: floaty 5s ease-in-out infinite;
+}
+.coin-spin {
+  animation: coin 3.2s ease-in-out infinite;
+}
+.draw {
+  stroke-dasharray: 420;
+  animation: draw 1.4s 0.6s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+.wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin-slow 0.8s linear infinite;
+}
+.road {
+  animation: dash 0.6s linear infinite;
+}
+.ride {
+  animation: ride 2.6s ease-in-out infinite alternate;
+}
+.sweep {
+  animation: sweep 4s ease-in-out infinite;
+}
+.drop {
+  animation: drop 2.6s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+.flow {
+  animation: dash 0.9s linear infinite;
+}
+.travel {
+  animation: travel 4.5s ease-in-out infinite;
+}
+.swing {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: swing 3s ease-in-out infinite;
+}
+.pulse-soft {
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes marquee-rev {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes rise {
+  from {
+    transform: translateY(70%);
+  }
+}
+@keyframes stripe {
+  from {
+    transform: translateX(-110%);
+  }
+}
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--r, 0deg));
+  }
+  50% {
+    transform: translateY(-14px) rotate(var(--r, 0deg));
+  }
+}
+@keyframes coin {
+  0%,
+  40%,
+  100% {
+    transform: scaleX(1);
+  }
+  55% {
+    transform: scaleX(0.06);
+  }
+  70% {
+    transform: scaleX(1);
+  }
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: 420;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes dash {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+@keyframes ride {
+  from {
+    transform: translateX(-26px);
+  }
+  to {
+    transform: translateX(26px);
+  }
+}
+@keyframes sweep {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(150px, 8px);
+  }
+}
+@keyframes drop {
+  0% {
+    transform: translateY(-70px);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+/* The money chip: from the first circle's middle to the second's, then fades */
+@keyframes travel {
+  0% {
+    left: calc(16.66% - 2.6rem);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  48%,
+  62% {
+    left: calc(50% - 2.6rem);
+    opacity: 1;
+  }
+  100% {
+    left: calc(50% - 2.6rem);
+    opacity: 0;
+  }
+}
+@keyframes swing {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee,
+  .marquee-rev,
+  .rise,
+  .stripe,
+  .floaty,
+  .coin-spin,
+  .draw,
+  .wheel,
+  .road,
+  .ride,
+  .sweep,
+  .drop,
+  .flow,
+  .travel,
+  .swing,
+  .pulse-soft {
+    animation: none;
+  }
+}
+
 /* Policy text */
 .policy h2 {
   font-family: var(--font-heading);

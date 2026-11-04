@@ -185,3 +185,140 @@
     animation: none;
   }
 }
+
+/* ---- Sign-in and sign-up: the "Sunrise Market" look (dark brand panel, ink outlines, stickers) ---- */
+.mono {
+  font-family: var(--font-mono-label), ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.display {
+  font-family: var(--font-heading), sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+.pop {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.pop:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--c-ink);
+}
+.chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: #17120e;
+  color: #f7931e;
+  transition: transform 0.2s;
+}
+.pop:hover .chip {
+  transform: translateX(4px) rotate(-8deg);
+}
+/* The form's fields: thick ink outlines, an orange shadow while typing */
+.auth-skin label > span:first-child {
+  color: var(--c-ink);
+  font-weight: 700;
+}
+.auth-skin input[class*="border-line"],
+.auth-skin span[class*="rounded-2xl"][class*="border"]:has(> input) {
+  min-height: 56px;
+  border: 2.5px solid var(--c-ink);
+  border-radius: 16px;
+  box-shadow: none;
+  transition: box-shadow 0.15s;
+}
+.auth-skin input[class*="border-line"]:focus,
+.auth-skin span[class*="rounded-2xl"][class*="border"]:has(> input):focus-within {
+  box-shadow: 4px 4px 0 #f7931e;
+  --tw-ring-shadow: 0 0 #0000;
+}
+.auth-skin span[class*="rounded-2xl"][class*="border"]:has(> input) > span:first-child {
+  border-right: 2.5px solid var(--c-ink);
+  background: var(--c-brand-soft);
+  color: var(--c-ink);
+}
+/* The picked "You are selling as" card */
+.auth-skin form button[type="button"][class*="border-ink"] {
+  box-shadow: 4px 4px 0 #f7931e;
+}
+.auth-marquee {
+  display: flex;
+  width: max-content;
+  animation: auth-marquee 26s linear infinite;
+}
+.auth-rise {
+  animation: auth-rise 1.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.auth-stripe {
+  transform-box: fill-box;
+  animation: auth-stripe 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.auth-floaty {
+  animation: auth-floaty 5s ease-in-out infinite;
+}
+.auth-swing {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: auth-swing 3s ease-in-out infinite;
+}
+.auth-draw {
+  stroke-dasharray: 420;
+  animation: auth-draw 1.3s 0.5s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+@keyframes auth-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes auth-rise {
+  from {
+    transform: translateY(70%);
+  }
+}
+@keyframes auth-stripe {
+  from {
+    transform: translateX(-110%);
+  }
+}
+@keyframes auth-floaty {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--r, 0deg));
+  }
+  50% {
+    transform: translateY(-12px) rotate(var(--r, 0deg));
+  }
+}
+@keyframes auth-swing {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes auth-draw {
+  from {
+    stroke-dashoffset: 420;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-marquee,
+  .auth-rise,
+  .auth-stripe,
+  .auth-floaty,
+  .auth-swing,
+  .auth-draw {
+    animation: none;
+  }
+}

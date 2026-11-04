@@ -168,6 +168,8 @@ export const btn = {
   outline: "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-ink transition hover:bg-surface-alt disabled:opacity-50",
   ghost: "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold text-ink-2 transition hover:bg-surface-alt",
   danger: "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 text-sm font-semibold text-bad transition hover:bg-bad-soft",
+  /** The big orange button of the sign-in and sign-up forms, with an arrow chip at its end */
+  auth: "pop inline-flex min-h-[60px] w-full items-center justify-center gap-3 rounded-[18px] border-[2.5px] border-[#17120E] bg-brand pl-6 pr-3.5 font-display text-lg font-extrabold text-[#17120E] disabled:opacity-50",
 };
 
 /** A $TICKER amount with the coin illustration. */

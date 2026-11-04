@@ -6,6 +6,7 @@ import { useActionState, useState } from "react";
 import { FormError, PhoneField, ReferralField, StoreHandleField } from "@/components/account-fields";
 import { GoogleButton } from "@/components/google-button";
 import { Illo } from "@/components/illustrations";
+import { ArrowChip } from "@/components/auth-frame";
 import { AuthHeading } from "@/components/auth-heading";
 import { btn, Field, inputClass } from "@/components/ui";
 import { openStore, signOut, signUp } from "@/lib/session-actions";
@@ -14,11 +15,11 @@ export function AccountStep({ referral }: { referral?: string }) {
   const [state, action, pending] = useActionState(signUp, null);
   return (
     <>
-      <AuthHeading>Open your store</AuthHeading>
-      <p className="mb-8 mt-1 text-muted">Set up in a few minutes. Explore your dashboard straight away, and start selling once Sotechy verifies your store.</p>
+      <AuthHeading>Open your store.</AuthHeading>
+      <p className="mb-7 mt-3 text-ink-2">Set up in a few minutes. Explore your dashboard straight away, and start selling once Sotechy verifies your store.</p>
       <GoogleButton />
       <div className="my-6 flex items-center gap-3 text-xs text-muted">
-        <span className="h-px flex-1 bg-line" /> or use email <span className="h-px flex-1 bg-line" />
+        <span className="h-0.5 flex-1 bg-line" /> or use your email <span className="h-0.5 flex-1 bg-line" />
       </div>
       <form action={action} className="flex flex-col gap-4">
         <Field label="Email" required>
@@ -32,7 +33,10 @@ export function AccountStep({ referral }: { referral?: string }) {
         </Field>
         <ReferralField defaultValue={referral} />
         <FormError message={state?.error} />
-        <button disabled={pending} className={btn.dark}>{pending ? "Creating your account…" : "Create account"}</button>
+        <button disabled={pending} className={btn.auth}>
+          {pending ? "Creating your account…" : "Create account"}
+          <ArrowChip />
+        </button>
       </form>
       <p className="mt-8 text-center text-sm text-muted">
         Already have a Sotechy account? <Link href="/login" className="font-semibold text-brand-strong hover:underline">Sign in</Link>
@@ -50,8 +54,8 @@ export function StoreStep({ firstName, askReferral, phone, referral }: { firstNa
 
   return (
     <>
-      <AuthHeading whySell={false}>{firstName ? `Hi ${firstName}, about your store` : "About your store"}</AuthHeading>
-      <p className="mb-8 mt-1 text-muted">You can change these later in settings.</p>
+      <AuthHeading>{firstName ? `Hi ${firstName}, about your store.` : "About your store."}</AuthHeading>
+      <p className="mb-7 mt-3 text-ink-2">You can change these later in settings.</p>
       <form action={action} className="flex flex-col gap-5">
         <Field label="Store name" required>
           <input name="storeName" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={60} className={inputClass} placeholder="e.g. Sotechy Shop" />
@@ -99,7 +103,10 @@ export function StoreStep({ firstName, askReferral, phone, referral }: { firstNa
           </span>
         </label>
         <FormError message={state?.error} />
-        <button disabled={pending || !agreed} className={btn.primary}>{pending ? "Opening your store…" : "Continue to setup"}</button>
+        <button disabled={pending || !agreed} className={btn.auth}>
+          {pending ? "Opening your store…" : "Continue to setup"}
+          <ArrowChip />
+        </button>
       </form>
       <form action={signOut} className="mt-6 text-center text-sm text-muted">
         Wrong account? <button className="font-semibold text-brand-strong hover:underline">Sign out</button>

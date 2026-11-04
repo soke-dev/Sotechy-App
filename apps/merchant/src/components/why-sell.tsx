@@ -58,7 +58,7 @@ function WhatsAppIcon() {
   );
 }
 
-export function WhySell({ tone = "dark", className = "" }: { tone?: "dark" | "light"; className?: string }) {
+export function WhySell({ tone = "dark", className = "" }: { tone?: "dark" | "light" | "sticker"; className?: string }) {
   const [open, setOpen] = useState(false);
   const known = useFeeRate();
   const [fee, setFee] = useState(known);
@@ -78,7 +78,7 @@ export function WhySell({ tone = "dark", className = "" }: { tone?: "dark" | "li
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full py-1.5 pl-2 pr-3 text-[13px] font-semibold transition sm:text-sm ${tone === "dark" ? "bg-white/10 text-sun hover:bg-white/15" : "bg-brand-soft text-brand-strong hover:bg-brand-soft/70"} ${className}`}
+        className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full py-1.5 pl-2 pr-3 text-[13px] font-semibold transition sm:text-sm ${tone === "dark" ? "bg-white/10 text-sun hover:bg-white/15" : tone === "sticker" ? "-rotate-2 border-[2.5px] border-[#17120E] bg-sun font-bold text-[#17120E] shadow-[3px_3px_0_#17120E] hover:rotate-0" : "bg-brand-soft text-brand-strong hover:bg-brand-soft/70"} ${className}`}
       >
         <Illo name="store" size={20} /> Why sell on Sotechy?
       </button>
