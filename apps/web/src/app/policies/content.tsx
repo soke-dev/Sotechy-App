@@ -175,6 +175,19 @@ export const POLICIES: Policy[] = [
             payment networks. We&apos;ll keep you updated and help where we can.
           </li>
           <li>
+            Stores, their staff and the riders they use are independent businesses and people, not Sotechy&apos;s employees or agents. Sotechy isn&apos;t responsible for what they do, or for what a
+            customer does to a store, including any injury, loss of life, theft or damage to property that happens when people meet for a delivery or a pickup. A claim for that is against the
+            person responsible. This doesn&apos;t cover harm Sotechy itself causes through its own negligence, or anything else the law doesn&apos;t allow us to exclude.
+          </li>
+          <li>
+            Use products as their makers&apos; instructions say. Sotechy isn&apos;t responsible for injury or damage from misusing a product. If a product is faulty, the store and the manufacturer
+            answer for it, and we&apos;ll help you with the claim.
+          </li>
+          <li>
+            Stay safe when you meet: collect pickups at the store&apos;s listed location, and check deliveries at your door. If anyone threatens or hurts you, contact the police first, then tell us
+            at <Mail />. We&apos;ll suspend the account involved and help the police with what we hold.
+          </li>
+          <li>
             The app may link to other websites, such as a store&apos;s social media or a blockchain explorer. We don&apos;t run them and aren&apos;t responsible for their content.
           </li>
         </ul>

@@ -4,7 +4,7 @@ import { Illo } from "@/components/illustrations";
 
 export const metadata: Metadata = { title: "Merchant terms · Sotechy" };
 
-const UPDATED = "3 November 2026";
+const UPDATED = "4 November 2026";
 
 const SECTIONS: { id: string; title: string; points: string[] }[] = [
   {
@@ -87,6 +87,16 @@ const SECTIONS: { id: string; title: string; points: string[] }[] = [
     points: [
       "Use customers' names, numbers and addresses only to complete their orders and answer their questions.",
       "Store notifications go only to customers who follow your store. Don't send customers messages they didn't ask for, and never sell or share their details.",
+    ],
+  },
+  {
+    id: "safety",
+    title: "Meeting customers and safety",
+    points: [
+      "You're responsible for how you, your team and the riders you use treat customers. Be respectful, and hand over orders at your listed pickup location or the customer's delivery address.",
+      "Sotechy isn't responsible for any injury, loss of life, theft or damage to property that happens between you (or anyone working for you) and a customer, in person or otherwise. A claim for that is against the person responsible. This doesn't cover harm Sotechy itself causes through its own negligence.",
+      "If anyone in your store threatens, harasses or harms a customer, your store will be closed and we'll help the police. If a customer threatens or harms you, report it to the police and to us, and we'll close their account.",
+      "If someone makes a claim against Sotechy because of something you or your team did, you agree to cover Sotechy's reasonable costs of dealing with it.",
     ],
   },
   {
