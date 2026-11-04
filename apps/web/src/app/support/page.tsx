@@ -5,7 +5,7 @@ import { CONTACT } from "../policies/content";
 import { InShort, PolicyFrame } from "../policies/policy-page";
 
 export const metadata: Metadata = {
-  title: "Help and support — Sotechy",
+  title: "Sotechy: Help and support",
   description: "Contact Sotechy: live chat in the app, email, or visit us in Benin City. Help with orders, payments, delivery, returns and your account.",
 };
 

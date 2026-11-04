@@ -9,7 +9,7 @@ export const generateStaticParams = () => POLICIES.map((p) => ({ policy: p.slug 
 export async function generateMetadata({ params }: { params: Promise<{ policy: string }> }): Promise<Metadata> {
   const { policy } = await params;
   const p = POLICIES.find((x) => x.slug === policy);
-  return p ? { title: `${p.title} — Sotechy`, description: p.summary } : {};
+  return p ? { title: `Sotechy: ${p.title}`, description: p.summary } : {};
 }
 
 export default async function PolicyPage({ params }: { params: Promise<{ policy: string }> }) {

@@ -1,13 +1,16 @@
-// sotechy.shop: what Sotechy is, the kinds of stores on it, and where to shop (the web app now; the iPhone and
-// Android apps are coming soon).
+// sotechy.shop: what Sotechy is, the kinds of stores on it, and where to shop (the iPhone app, the web app, and the
+// Android app coming soon).
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { anyCategory, BUSINESS, MARKET_DEPARTMENTS } from "@sotechy/shared";
+import { DownloadMenu } from "@/components/download-menu";
 import { Illo, type IlloName } from "@/components/illustrations";
+import { APP_STORE_URL, AppleLogo, PlayLogo } from "@/components/store-logos";
 
 const APP_URL = "https://app.sotechy.shop";
 const X_URL = "https://x.com/sotechyshop";
+const TIKTOK_URL = "https://www.tiktok.com/@sotechyshop";
 const EMAIL = "hello@sotechy.shop";
 const MERCHANT_URL = "https://merchant.sotechy.shop";
 
@@ -54,6 +57,37 @@ const STEPS = [
   { n: "3", title: "Get it delivered", text: "Home delivery or pickup, with a notification at every step until it's in your hands." },
 ];
 
+const FOOTER_LINKS: { title: string; links: { label: string; href: string }[] }[] = [
+  {
+    title: "Shop",
+    links: [
+      { label: "Shop on the web", href: APP_URL },
+      { label: "Phones & tablets", href: shopLink("Phones & tablets") },
+      { label: "Fashion", href: shopLink("Fashion") },
+      { label: "Home appliances", href: shopLink("Home appliances") },
+      { label: "All categories", href: `${APP_URL}/shop` },
+    ],
+  },
+  {
+    title: "Sotechy",
+    links: [
+      { label: "Sell on Sotechy", href: MERCHANT_URL },
+      { label: "Store tokens", href: "/rewards" },
+      { label: "Help & support", href: "/support" },
+    ],
+  },
+  {
+    title: "Policies",
+    links: [
+      { label: "Terms", href: "/terms" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Payments", href: "/payments" },
+      { label: "Delivery", href: "/delivery" },
+      { label: "Returns & refunds", href: "/returns" },
+    ],
+  },
+];
+
 // The cards floating around the phones in the hero
 const FLOAT: { illo: IlloName; label: string; style: CSSProperties }[] = [
   { illo: "shield", label: "Verified stores", style: { top: "10%", left: "-4%", "--tilt": "-4deg", animationDelay: "0s" } as CSSProperties },
@@ -69,21 +103,10 @@ function XLogo({ size = 16 }: { size?: number }) {
   );
 }
 
-function AppleLogo() {
+function TikTokLogo({ size = 16 }: { size?: number }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M16.37 12.62c-.03-2.6 2.13-3.86 2.22-3.92-1.21-1.77-3.09-2.01-3.76-2.04-1.6-.16-3.12.94-3.93.94-.81 0-2.06-.92-3.39-.89-1.74.03-3.35 1.01-4.25 2.57-1.81 3.14-.46 7.79 1.3 10.34.86 1.25 1.89 2.65 3.23 2.6 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.39.81 1.4-.02 2.28-1.27 3.13-2.52.99-1.45 1.4-2.85 1.42-2.92-.03-.01-2.72-1.04-2.72-4.13zM13.79 4.98c.71-.86 1.19-2.06 1.06-3.25-1.02.04-2.26.68-3 1.54-.66.76-1.24 1.98-1.08 3.15 1.14.09 2.31-.58 3.02-1.44z" />
-    </svg>
-  );
-}
-
-function PlayLogo() {
-  return (
-    <svg width="20" height="22" viewBox="0 0 20 22" aria-hidden>
-      <path d="M1 1.2 11.4 11 1 20.8c-.3-.2-.5-.6-.5-1.1V2.3c0-.5.2-.9.5-1.1Z" fill="#00D7FE" />
-      <path d="m14.9 7.6-3.5 3.4L1 1.2c.3-.2.8-.2 1.2 0l12.7 6.4Z" fill="#00F076" />
-      <path d="m14.9 14.4-12.7 6.4c-.4.2-.9.2-1.2 0L11.4 11l3.5 3.4Z" fill="#F83A4B" />
-      <path d="m18.6 12.3-3.7 2.1-3.5-3.4 3.5-3.4 3.7 2.1c.9.5.9 2.1 0 2.6Z" fill="#FFC900" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48Z" />
     </svg>
   );
 }
@@ -97,20 +120,45 @@ function GlobeIcon() {
   );
 }
 
+/** A shopfront, for selling on Sotechy */
+const StoreIcon = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3.5 9.5 5 4h14l1.5 5.5" />
+    <path d="M3.5 9.5a2.8 2.8 0 0 0 5.6 0 2.8 2.8 0 0 0 5.8 0 2.8 2.8 0 0 0 5.6 0" />
+    <path d="M5 12v8h14v-8M10 20v-5h4v5" />
+  </svg>
+);
+
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d="M5 12h14M13 6l6 6-6 6" />
   </svg>
 );
 
-/** App Store and Google Play: not out yet, so they say "Coming soon" and aren't links */
+/** The App Store (out now, a link) and Google Play (coming soon, not a link) */
 function StoreBadge({ store }: { store: "apple" | "google" }) {
+  if (store === "apple") {
+    return (
+      <a
+        href={APP_STORE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex h-14 flex-1 items-center gap-3 rounded-2xl bg-foreground px-4 text-white transition hover:bg-black"
+      >
+        <AppleLogo />
+        <span className="leading-tight">
+          <span className="block text-[11px] font-medium text-white/70">Download on the</span>
+          <span className="block whitespace-nowrap font-display text-lg font-bold">App Store</span>
+        </span>
+      </a>
+    );
+  }
   return (
     <span aria-disabled title="Coming soon" className="relative inline-flex h-14 flex-1 cursor-default select-none items-center gap-3 rounded-2xl bg-foreground px-4 text-white">
-      {store === "apple" ? <AppleLogo /> : <PlayLogo />}
+      <PlayLogo />
       <span className="leading-tight">
         <span className="block text-[11px] font-medium text-white/70">Coming soon on</span>
-        <span className="block whitespace-nowrap font-display text-lg font-bold">{store === "apple" ? "App Store" : "Google Play"}</span>
+        <span className="block whitespace-nowrap font-display text-lg font-bold">Google Play</span>
       </span>
       <span className="absolute -right-2 -top-2 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">Soon</span>
     </span>
@@ -158,14 +206,15 @@ export default function Home() {
       <div aria-hidden className="pointer-events-none absolute -top-48 left-1/2 h-[640px] w-[1100px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,#ffe3b3,transparent)] opacity-80" />
 
       <header className="relative mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
-        <Image src="/brand/light-logo-small.png" alt="Sotechy" width={194} height={97} priority className="h-11 w-auto" />
-        <nav className="flex items-center gap-2 sm:gap-3">
-          <a href={MERCHANT_URL} className="hidden rounded-full px-4 py-2 text-sm font-semibold text-ink-2 transition hover:text-foreground sm:inline-flex">
-            Sell on Sotechy
+        <Image src="/brand/light-logo-small.png" alt="Sotechy" width={194} height={97} priority className="h-9 w-auto sm:h-11" />
+        <nav className="flex items-center gap-1.5 sm:gap-3">
+          <a
+            href={MERCHANT_URL}
+            className="hidden h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-semibold text-ink-2 transition hover:bg-white hover:text-foreground sm:inline-flex"
+          >
+            <StoreIcon /> Sell on Sotechy
           </a>
-          <a href={APP_URL} className="inline-flex items-center rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-white transition hover:bg-black">
-            Shop now
-          </a>
+          <DownloadMenu />
         </nav>
       </header>
 
@@ -310,10 +359,12 @@ export default function Home() {
             <div aria-hidden className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-brand opacity-90" />
             <div aria-hidden className="absolute -right-4 top-24 h-40 w-40 rounded-full border-2 border-white/15" />
             <div className="relative max-w-xl">
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white">
-                <Illo name="store" size={38} />
-              </span>
-              <h2 className="mt-5 font-display text-3xl font-extrabold sm:text-4xl">Sell on Sotechy</h2>
+              <div className="flex items-center gap-4">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white">
+                  <Illo name="store" size={38} />
+                </span>
+                <h2 className="font-display text-3xl font-extrabold sm:text-4xl">Sell on Sotechy</h2>
+              </div>
               <p className="mt-3 text-lg text-white/75">
                 Open your store with its own token and reach customers across Nigeria. Businesses and freelancers are welcome: half of each order is paid upfront and the rest after
                 delivery.
@@ -330,7 +381,7 @@ export default function Home() {
           <div className="flex flex-col items-center rounded-[2rem] border border-line bg-white px-6 py-12 text-center">
             <Image src="/brand/sotechy-icon-512.png" alt="" width={80} height={80} className="h-20 w-20 rounded-3xl shadow-[0_14px_30px_-14px_rgba(247,147,30,0.7)]" />
             <h2 className="mt-5 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">Get Sotechy</h2>
-            <p className="mt-2 max-w-lg text-ink-2">The apps for iPhone and Android are coming soon. Shop on the web today with the same account.</p>
+            <p className="mt-2 max-w-lg text-ink-2">Get the iPhone app on the App Store. The Android app is coming soon, and you can shop on the web today with the same account.</p>
             <div className="mt-7 w-full">
               <GetButtons center />
             </div>
@@ -338,31 +389,90 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="relative border-t border-line">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6">
-          <span>
-            © {BUSINESS.name} · {BUSINESS.headOffice}
-          </span>
-          <span className="flex flex-wrap gap-x-5 gap-y-2">
-            <a href={APP_URL} className="hover:text-foreground">
-              Shop
-            </a>
-            <Link href="/support" className="hover:text-foreground">
-              Help
-            </Link>
-            <Link href="/policies" className="hover:text-foreground">
-              Policies
-            </Link>
-            <Link href="/privacy" className="hover:text-foreground">
-              Privacy
-            </Link>
-            <a href={X_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground">
-              <XLogo size={12} /> @sotechyshop
-            </a>
-            <a href={`mailto:${EMAIL}`} className="hover:text-foreground">
-              {EMAIL}
-            </a>
-          </span>
+      <footer className="relative bg-foreground text-white">
+        <div className="mx-auto max-w-6xl px-4 pb-8 pt-14 sm:px-6">
+          <div className="grid gap-10 lg:grid-cols-[1.5fr_repeat(3,minmax(0,1fr))]">
+            <div className="max-w-sm">
+              <div className="flex items-center gap-2.5">
+                <Image src="/brand/sotechy-icon-512.png" alt="" width={40} height={40} className="h-10 w-10 rounded-xl" />
+                <span className="font-display text-2xl font-extrabold tracking-tight">Sotechy</span>
+              </div>
+              <p className="mt-4 leading-relaxed text-white/60">A marketplace of verified Nigerian stores, delivered to your door, with tokens on every order.</p>
+              <div className="mt-6 flex flex-wrap gap-2.5">
+                <a
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-11 items-center gap-2.5 rounded-xl border border-white/20 px-3.5 transition hover:border-white/50 hover:bg-white/5"
+                >
+                  <AppleLogo size={18} />
+                  <span className="leading-tight">
+                    <span className="block text-[10px] text-white/60">Download on the</span>
+                    <span className="block text-sm font-semibold">App Store</span>
+                  </span>
+                </a>
+                <span aria-disabled className="inline-flex h-11 cursor-default items-center gap-2.5 rounded-xl border border-white/10 px-3.5 text-white/60">
+                  <PlayLogo size={17} />
+                  <span className="leading-tight">
+                    <span className="block text-[10px]">Coming soon on</span>
+                    <span className="block text-sm font-semibold">Google Play</span>
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-3">
+              {FOOTER_LINKS.map((col) => (
+                <nav key={col.title} aria-label={col.title}>
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40">{col.title}</h3>
+                  <ul className="mt-4 space-y-3">
+                    {col.links.map((l) => (
+                      <li key={l.label}>
+                        {l.href.startsWith("/") ? (
+                          <Link href={l.href} className="text-[15px] text-white/75 transition hover:text-white">
+                            {l.label}
+                          </Link>
+                        ) : (
+                          <a href={l.href} className="text-[15px] text-white/75 transition hover:text-white">
+                            {l.label}
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-14 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm text-white/50 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              © {BUSINESS.name} · {BUSINESS.headOffice}
+            </p>
+            <div className="flex items-center gap-2">
+              <a href={`mailto:${EMAIL}`} className="mr-2 transition hover:text-white">
+                {EMAIL}
+              </a>
+              <a
+                href={X_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Sotechy on X"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/75 transition hover:border-white/40 hover:text-white"
+              >
+                <XLogo size={14} />
+              </a>
+              <a
+                href={TIKTOK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Sotechy on TikTok"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-white/75 transition hover:border-white/40 hover:text-white"
+              >
+                <TikTokLogo size={15} />
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>

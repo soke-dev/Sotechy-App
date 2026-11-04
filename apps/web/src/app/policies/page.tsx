@@ -4,7 +4,7 @@ import { POLICIES } from "./content";
 import { InShort, PolicyFrame } from "./policy-page";
 
 export const metadata: Metadata = {
-  title: "Terms and policies — Sotechy",
+  title: "Sotechy: Terms and policies",
   description: "Terms of service, payments, delivery and pickup, returns and refunds, warranty, rewards and tokens, and privacy on Sotechy.",
 };
 
