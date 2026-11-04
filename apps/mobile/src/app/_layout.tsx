@@ -19,6 +19,7 @@ import { CartFeedbackProvider } from "@/components/cart-feedback";
 import { DialogProvider } from "@/components/dialog";
 import { MenuProvider } from "@/components/menu";
 import { ToastProvider } from "@/components/toast";
+import { UpdateGate } from "@/components/update-gate";
 import { AuthProvider } from "@/lib/auth";
 import { CartProvider } from "@/lib/cart";
 import { StoreConfigProvider } from "@/lib/store-config";
@@ -131,6 +132,8 @@ export default function RootLayout() {
                               <ThemedNavigator />
                               {/* Not on the web: a page load should be quick */}
                               {intro && Platform.OS !== "web" && <AnimatedSplash ready onDone={() => setIntro(false)} />}
+                              {/* A downloaded app update: restart before carrying on */}
+                              {Platform.OS !== "web" && <UpdateGate held={intro} />}
                             </AccountExtrasProvider>
                         </StoreNotificationsProvider>
                       </MenuProvider>
