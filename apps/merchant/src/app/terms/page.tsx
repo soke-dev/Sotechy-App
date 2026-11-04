@@ -73,6 +73,16 @@ const SECTIONS: { id: string; title: string; points: string[] }[] = [
     ],
   },
   {
+    id: "fraud",
+    title: "Suspicious and fraudulent payments",
+    points: [
+      "Tell us straight away if an order looks suspicious, for example a rush order for several high-value items, or a buyer who asks to collect somewhere other than your listed pickup point or to pay you outside Sotechy. You may hold that order while we check, and it won't count against you.",
+      "If we're checking a payment, we'll ask you to hold the order. Don't hand the item over until we tell you the payment is cleared.",
+      "If a customer's payment turns out to be stolen or fraudulent, or their bank takes it back, the order is treated like a dispute: money not yet paid to you is held or returned to its rightful owner, and what was already paid to you for that order may be taken from what we owe you. Where you followed these terms and handed the item over as the order said, we'll look at your case fairly, help you recover the item where we can, and tell you what we decide.",
+      "We may report suspected fraud or money laundering to the police, the EFCC, the NFIU, banks and our payment partners, and share the order details they need. Please help with any investigation.",
+    ],
+  },
+  {
     id: "tokens",
     title: "Your store token",
     points: [

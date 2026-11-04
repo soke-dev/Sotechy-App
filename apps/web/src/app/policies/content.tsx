@@ -280,10 +280,30 @@ export const POLICIES: Policy[] = [
           An order waits 24 hours for payment. After that it&apos;s cancelled automatically, any tokens you put towards it come back to your wallet, and any offer price on it is used up.
         </p>
 
-        <h3>6. Fraud and reversals</h3>
-        <p>
-          If a payment is reversed, disputed or turns out to be fraudulent, we may cancel the order, take back tokens earned on it, and ask you to return the item or pay for it.
-        </p>
+        <h3>6. Fraud, stolen money and reversals</h3>
+        <ul>
+          <li>Pay only with money, bank accounts and wallets that are yours, or that the owner has allowed you to use.</li>
+          <li>
+            <b>Checking a payment:</b> if a payment looks unusual, or a bank or payment partner tells us it may come from stolen money, a hacked account or a scam, we may hold the payment and the
+            order while we check. We may ask you to confirm who you are and where the money came from, and the item isn&apos;t sent until the payment is cleared.
+          </li>
+          <li>
+            <b>Refunds go back where the money came from:</b> we refund to the bank account or wallet the payment came from. If we can&apos;t send it there, we send it only to an account in your
+            own name that matches the payer, and we may ask you to show it&apos;s yours. We don&apos;t send refunds to anyone else.
+          </li>
+          <li>
+            <b>Returning money to its owner:</b> if a payment turns out to be fraudulent, we may return it to the person it was taken from, or to their bank, instead of to you, when a bank, the
+            police or a court asks us to, or the law requires it.
+          </li>
+          <li>
+            <b>Reporting:</b> we may report suspected fraud or money laundering to the police, the Economic and Financial Crimes Commission (EFCC), the Nigerian Financial Intelligence Unit (NFIU),
+            banks and our payment partners, and share the account, order and payment details they need.
+          </li>
+          <li>
+            <b>Reversals and costs:</b> if a payment is reversed, disputed or turns out to be fraudulent, we may cancel the order, take back tokens earned on it, and ask you to return the item or pay
+            for it. If you made a fraudulent payment, you&apos;re responsible for the losses and reasonable costs it causes Sotechy and the store.
+          </li>
+        </ul>
       </>
     ),
   },
