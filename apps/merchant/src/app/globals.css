@@ -161,8 +161,26 @@
     animation: pop-in 0.22s ease-out;
   }
 }
+/* A side panel: up from the bottom on phones, in from the right on computers */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.drawer-anim {
+  animation: sheet-up 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (min-width: 640px) {
+  .drawer-anim {
+    animation: slide-in-right 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .sheet-anim,
+  .drawer-anim,
   .backdrop-anim {
     animation: none;
   }
