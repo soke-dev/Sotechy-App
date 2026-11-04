@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { BUSINESS } from "@sotechy/shared";
 
 export const CONTACT = { email: "hello@sotechy.shop", address: BUSINESS.headOffice, x: "https://x.com/sotechyshop" };
-export const UPDATED = "3 November 2026";
+export const UPDATED = "4 November 2026";
 
 export interface Policy {
   slug: string;
@@ -110,6 +110,10 @@ export const POLICIES: Policy[] = [
           <li>
             A store or Sotechy may cancel an order if the item is out of stock, the price was clearly wrong, the delivery address can&apos;t be reached, or we suspect fraud. If you&apos;ve paid,
             you get a full refund.
+          </li>
+          <li>
+            Sotechy may also refuse or cancel any order, for any reason, before it&apos;s sent or ready for pickup. If you&apos;ve paid, you get a full refund, including delivery, back the
+            way you paid, and any tokens you used come back to your wallet. That refund is all we owe you for the cancellation.
           </li>
           <li>You can cancel an unpaid order in the app at any time. Once paid, contact us and we&apos;ll cancel it if the store hasn&apos;t sent it yet.</li>
         </ul>
