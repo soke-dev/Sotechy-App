@@ -10,9 +10,9 @@ import { isPaid, PayChoiceSheet, useMoneyMoves, type PayMethod } from "@/compone
 import { useToast } from "@/components/toast";
 import { Button, Divider, ErrorView, Loading, SummaryRow, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
-import { useCart } from "@/lib/cart";
 import { orderSteps, statusCopy } from "@/lib/orders";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { buyAgainMessage, useBuyAgain } from "@/components/add-to-cart";
 import { useOpenCart } from "@/components/cart-drawer";
 import { useAsync } from "@/lib/use-async";
 import { openWhatsApp } from "@/lib/whatsapp";
@@ -184,7 +184,8 @@ export default function OrderScreen() {
   }, [order?.status]);
   const toast = useToast();
   const dialog = useDialog();
-  const cart = useCart();
+  const rebuy = useBuyAgain();
+  const [rebuying, setRebuying] = useState(false);
   const openCart = useOpenCart();
 
   if (loading && !order) return <Loading />;
@@ -305,12 +306,11 @@ export default function OrderScreen() {
     } else toast("Thanks for your review!", { icon: "star" });
   }
 
-  function buyAgain() {
+  async function buyAgain() {
     tap();
-    for (const i of order!.items) {
-      cart.add({ variantId: i.variantId, productId: i.productId ?? i.variantId, productName: i.productName, variantName: i.variantName, unitPrice: i.unitPrice, imageUrl: i.imageUrl ?? null }, i.quantity);
-    }
-    toast("Added to cart again", { action: { label: "View", onPress: openCart } });
+    setRebuying(true);
+    const result = await rebuy(order!.items).finally(() => setRebuying(false));
+    toast(buyAgainMessage(result), result.added ? { action: { label: "View", onPress: openCart } } : undefined);
   }
 
   return (
@@ -472,7 +472,7 @@ export default function OrderScreen() {
           finished ? (
             <View style={[ui.row, { gap: space.xs }]}>
               {order.status === "delivered" && reviewable.length > 0 && <Button title="Review" size="sm" variant="outline" icon="star-outline" onPress={startReview} />}
-              <Button title="Buy again" size="sm" variant="outline" icon="refresh" onPress={buyAgain} />
+              <Button title="Buy again" size="sm" variant="outline" icon="refresh" loading={rebuying} onPress={() => void buyAgain()} />
             </View>
           ) : undefined
         }

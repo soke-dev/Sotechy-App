@@ -52,6 +52,7 @@ export function Txt({
   style,
   numberOfLines,
   selectable,
+  fit,
   children,
 }: {
   variant?: keyof typeof type;
@@ -59,10 +60,12 @@ export function Txt({
   style?: StyleProp<TextStyle>;
   numberOfLines?: number;
   selectable?: boolean;
+  /** Shrinks the text a little to stay within its lines, instead of cutting it off */
+  fit?: boolean;
   children: ReactNode;
 }) {
   return (
-    <Text numberOfLines={numberOfLines} selectable={selectable} style={[type[variant], { color: color ?? (mutedVariants.has(variant) ? colors.muted : colors.ink) }, style]}>
+    <Text numberOfLines={numberOfLines} selectable={selectable} adjustsFontSizeToFit={fit} minimumFontScale={fit ? 0.7 : undefined} style={[type[variant], { color: color ?? (mutedVariants.has(variant) ? colors.muted : colors.ink) }, style]}>
       {children}
     </Text>
   );
@@ -183,9 +186,10 @@ export function BottomBar({ children, aboveTabBar }: { children: ReactNode; abov
 
 export function SummaryRow({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: string }) {
   return (
-    <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 4 }}>
-      <Txt variant={strong ? "label" : "small"} color={strong ? colors.ink : colors.muted}>{label}</Txt>
-      <Txt variant={strong ? "price" : "medium"} color={tone}>{value}</Txt>
+    // A long label (an item's name) wraps to two lines and never pushes the amount out of line
+    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: space.md, paddingVertical: 4 }}>
+      <Txt variant={strong ? "label" : "small"} color={strong ? colors.ink : colors.muted} numberOfLines={2} style={{ flex: 1 }}>{label}</Txt>
+      <Txt variant={strong ? "price" : "medium"} color={tone} style={{ flexShrink: 0, textAlign: "right" }}>{value}</Txt>
     </View>
   );
 }

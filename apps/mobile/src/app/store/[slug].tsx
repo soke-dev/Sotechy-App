@@ -89,7 +89,6 @@ function ProductTile({ p, store, width }: { p: StoreProduct; store: MarketStore;
       <View style={{ padding: space.sm + 2, gap: 2 }}>
         <T color={t.text} size={13.5} weight={fonts.semibold} lines={2}>{p.name}</T>
         <T color={t.text} size={15} weight={fonts.bold}>{formatNaira(p.price)}</T>
-        <T color={t.dark ? t.accent : t.muted} size={11.5} weight={fonts.semibold}>+{formatTokens(p.price)} ${store.ticker}</T>
       </View>
     </Pressable>
   );

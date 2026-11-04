@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { useFeatures } from "@/lib/store-config";
-import { colors, gutter, radius, space } from "@/lib/theme";
+import { colors, fonts, gutter, radius, space } from "@/lib/theme";
 import { useAsync } from "@/lib/use-async";
 import { loadStore } from "@/lib/marketplace";
 import { refreshHeldTokens } from "@/lib/held-tokens";
@@ -232,6 +232,11 @@ export default function CheckoutScreen() {
     return { ticker: b.ticker, balance: b.amount, amount, value, most: Math.min(b.amount, nairaToTokens(Math.max(0, total - TOKEN_RULES.minCashPerOrder))) };
   });
   const tokensValue = Math.round(tokenPlan.reduce((n, t) => n + t.value, 0) * 100) / 100;
+  // What this order earns once delivered, as the API works it out: 1 of the store's tokens per ₦1 of goods after the promo
+  // and tokens (delivery doesn't earn), plus a $SOTECHY bonus at other stores
+  const earnTicker = seller ? storeTicker : "SOTECHY";
+  const earns = Math.max(0, Math.floor(cart.subtotal - discount - tokensValue));
+  const earnBonus = earnTicker && earnTicker !== "SOTECHY" ? Math.floor(earns * TOKEN_RULES.crossBonus) : 0;
   const due = Math.max(0, Math.round((total - tokensValue) * 100) / 100);
 
   /** Checks the typed code; the order checks it again with real prices. */
@@ -457,90 +462,109 @@ export default function CheckoutScreen() {
           )}
         </Section>
 
-        {promoOn && <Section step={3} title="Promo code">
-          {promo ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.successSoft, borderRadius: radius.md, padding: space.md }}>
-              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-              <View style={{ flex: 1 }}>
-                <Txt variant="label" color={colors.success}>{promo.code} applied</Txt>
-                <Txt variant="small" color={colors.ink2}>{promo.name} · you save {formatNaira(promo.discount)}</Txt>
-              </View>
-              <Pressable
-                onPress={() => {
-                  setPromo(null);
-                  setPromoCode("");
-                }}
-                hitSlop={8}
-              >
-                <Txt variant="label" color={colors.ink2}>Remove</Txt>
-              </Pressable>
-            </View>
-          ) : (
-            <View style={{ gap: 6 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
-                <View style={{ flex: 1 }}>
-                  <Input
-                    icon="pricetag-outline"
-                    placeholder="Promo code (optional)"
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                    value={promoCode}
-                    onChangeText={(t) => {
-                      setPromoCode(t);
-                      setPromoError(null);
+        <Section step={3} title="Payment">
+          {promoOn && (
+            <>
+              {promo ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.successSoft, borderRadius: radius.md, padding: space.md }}>
+                  <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                  <View style={{ flex: 1 }}>
+                    <Txt variant="label" color={colors.success}>{promo.code} applied</Txt>
+                    <Txt variant="small" color={colors.ink2}>{promo.name} · you save {formatNaira(promo.discount)}</Txt>
+                  </View>
+                  <Pressable
+                    onPress={() => {
+                      setPromo(null);
+                      setPromoCode("");
                     }}
-                    onSubmitEditing={() => checkPromo().catch(() => {})}
-                    returnKeyType="done"
-                  />
+                    hitSlop={8}
+                  >
+                    <Txt variant="label" color={colors.ink2}>Remove</Txt>
+                  </Pressable>
                 </View>
-                <Button title="Apply" variant="outline" onPress={() => checkPromo().catch(() => {})} loading={checkingPromo} disabled={!promoCode.trim()} />
-              </View>
-              {promoError && <Txt variant="small" color={colors.danger}>{promoError}</Txt>}
-            </View>
+              ) : (
+                <View style={{ gap: 6 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+                    <View style={{ flex: 1 }}>
+                      <Input
+                        icon="pricetag-outline"
+                        placeholder="Promo code (optional)"
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        value={promoCode}
+                        onChangeText={(t) => {
+                          setPromoCode(t);
+                          setPromoError(null);
+                        }}
+                        onSubmitEditing={() => checkPromo().catch(() => {})}
+                        returnKeyType="done"
+                      />
+                    </View>
+                    <Button title="Apply" variant="outline" onPress={() => checkPromo().catch(() => {})} loading={checkingPromo} disabled={!promoCode.trim()} />
+                  </View>
+                  {promoError && <Txt variant="small" color={colors.danger}>{promoError}</Txt>}
+                </View>
+              )}
+            </>
           )}
-        </Section>}
 
-        {tokenPlan.length > 0 && (
-          <Pressable
-            onPress={() => {
-              tap();
-              setTokensOpen(true);
-            }}
-            style={({ pressed }) => [ui.card, { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderColor: usingTokens.length ? colors.brand : colors.line, opacity: pressed ? 0.85 : 1 }]}
-          >
-            <Illo name="coin" size={34} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Txt variant="label">Pay with your store tokens</Txt>
-              <Txt variant="caption" color={usingTokens.length ? colors.success : colors.muted}>
-                {usingTokens.length
-                  ? `${usingTokens.map((t) => `$${t.ticker}`).join(" + ")} · −${formatNaira(tokensValue)}`
-                  : `Up to ${formatNaira(Math.min(Math.max(0, total - TOKEN_RULES.minCashPerOrder), tokenPlan.reduce((n, t) => n + tokensToNaira(t.most), 0)))} off with ${tokenPlan.map((t) => `$${t.ticker}`).join(" and ")}`}
-              </Txt>
-            </View>
-            <Txt variant="label" color={colors.brandPressed}>{usingTokens.length ? "Change" : "Use"}</Txt>
-          </Pressable>
-        )}
+          {tokenPlan.length > 0 && (
+            <Pressable
+              onPress={() => {
+                tap();
+                setTokensOpen(true);
+              }}
+              style={({ pressed }) => [ui.card, { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md, borderColor: usingTokens.length ? colors.brand : colors.line, opacity: pressed ? 0.85 : 1 }]}
+            >
+              <Illo name="coin" size={34} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Txt variant="label">Pay with your store tokens</Txt>
+                <Txt variant="caption" color={usingTokens.length ? colors.success : colors.muted}>
+                  {usingTokens.length
+                    ? `${usingTokens.map((t) => `$${t.ticker}`).join(" + ")} · −${formatNaira(tokensValue)}`
+                    : `Up to ${formatNaira(Math.min(Math.max(0, total - TOKEN_RULES.minCashPerOrder), tokenPlan.reduce((n, t) => n + tokensToNaira(t.most), 0)))} off with ${tokenPlan.map((t) => `$${t.ticker}`).join(" and ")}`}
+                </Txt>
+              </View>
+              <Txt variant="label" color={colors.brandPressed}>{usingTokens.length ? "Change" : "Use"}</Txt>
+            </Pressable>
+          )}
 
-        <View style={ui.card}>
-          <Txt variant="heading" style={{ marginBottom: space.sm }}>Order summary</Txt>
-          {cart.lines.map((l) => (
-            <SummaryRow key={l.variantId} label={`${l.quantity} × ${l.productName}`} value={formatNaira(l.unitPrice * l.quantity)} />
-          ))}
-          <Divider style={{ marginVertical: space.sm }} />
-          <SummaryRow label="Subtotal" value={formatNaira(cart.subtotal)} />
-          <SummaryRow label={fulfilment === "pickup" ? "Pickup" : "Home delivery"} value={deliveryFee ? formatNaira(deliveryFee) : "Free"} />
-          {discount > 0 && <SummaryRow label={`Promo (${promo?.code})`} value={`-${formatNaira(discount)}`} tone={colors.success} />}
-          {tokensValue > 0 && <SummaryRow label="Paid with tokens" value={`-${formatNaira(tokensValue)}`} tone={colors.success} />}
-          <Divider style={{ marginVertical: space.sm }} />
-          <View style={[ui.between, { paddingVertical: 4 }]}>
-            <Txt variant="label">Total</Txt>
-            <View style={[ui.row, { gap: space.sm }]}>
-              {features.usdPrices && fx.data ? <Txt variant="small">≈ {formatUsd(due, fx.data.rate)}</Txt> : null}
-              <Txt variant="price">{formatNaira(due)}</Txt>
+          <View style={ui.card}>
+            <Txt variant="heading" style={{ marginBottom: space.sm }}>Order summary</Txt>
+            {cart.lines.map((l) => (
+              <SummaryRow key={l.variantId} label={`${l.quantity} × ${l.productName}`} value={formatNaira(l.unitPrice * l.quantity)} />
+            ))}
+            <Divider style={{ marginVertical: space.sm }} />
+            <SummaryRow label="Subtotal" value={formatNaira(cart.subtotal)} />
+            <SummaryRow label={fulfilment === "pickup" ? "Pickup" : "Home delivery"} value={deliveryFee ? formatNaira(deliveryFee) : "Free"} />
+            {discount > 0 && <SummaryRow label={`Promo (${promo?.code})`} value={`-${formatNaira(discount)}`} tone={colors.success} />}
+            {tokensValue > 0 && <SummaryRow label="Paid with tokens" value={`-${formatNaira(tokensValue)}`} tone={colors.success} />}
+            <Divider style={{ marginVertical: space.sm }} />
+            <View style={[ui.between, { paddingVertical: 4 }]}>
+              <Txt variant="label">Total</Txt>
+              <View style={[ui.row, { gap: space.sm }]}>
+                {features.usdPrices && fx.data ? <Txt variant="small">≈ {formatUsd(due, fx.data.rate)}</Txt> : null}
+                <Txt variant="price">{formatNaira(due)}</Txt>
+              </View>
             </View>
+            <Txt variant="caption" style={{ marginTop: space.sm }}>Final amount is confirmed by Sotechy when the order is placed.</Txt>
+            {earnTicker && earns > 0 ? (
+              // One row: what the order earns, shrinking a little on narrow phones rather than wrapping
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: space.sm, paddingVertical: 5, paddingHorizontal: space.sm, borderRadius: radius.md, backgroundColor: colors.brandSoft }}>
+                <Illo name="coin" size={18} />
+                <Txt variant="caption" color={colors.ink} numberOfLines={1} fit style={{ flex: 1, fontSize: 11.5 }}>
+                  You&apos;ll earn <Txt variant="caption" color={colors.ink} style={{ fontSize: 11.5, fontFamily: fonts.bold }}>{earns.toLocaleString("en-NG")} ${earnTicker}</Txt>
+                  {earnBonus > 0 ? (
+                    <>
+                      {" "}+ <Txt variant="caption" color={colors.ink} style={{ fontSize: 11.5, fontFamily: fonts.bold }}>{earnBonus.toLocaleString("en-NG")} $SOTECHY</Txt> bonus
+                    </>
+                  ) : null}{" "}
+                  when this order is delivered
+                </Txt>
+              </View>
+            ) : null}
           </View>
-          <Txt variant="caption" style={{ marginTop: space.sm }}>Final amount is confirmed by Sotechy when the order is placed.</Txt>
-        </View>
+        </Section>
 
         {error && (
           <View style={{ backgroundColor: colors.dangerSoft, borderRadius: radius.md, padding: space.md, flexDirection: "row", gap: space.sm }}>

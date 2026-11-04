@@ -8,9 +8,9 @@ import { useToast } from "@/components/toast";
 import { Button, EmptyState, ErrorView, Loading, ScreenHeader, StatusPill, tap, Txt, ui } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { useCart } from "@/lib/cart";
 import { orderSteps } from "@/lib/orders";
 import { colors, fonts, gutter, radius, space } from "@/lib/theme";
+import { buyAgainMessage, useBuyAgain } from "@/components/add-to-cart";
 import { useOpenCart } from "@/components/cart-drawer";
 import { useAsync } from "@/lib/use-async";
 import { ProductImage } from "@/components/product-image";
@@ -53,7 +53,6 @@ function MiniProgress({ order }: { order: OrderSummary }) {
 }
 
 function OrderCard({ order }: { order: OrderSummary }) {
-  const cart = useCart();
   const openCart = useOpenCart();
   const toast = useToast();
   const open = () => router.push({ pathname: "/order/[id]", params: { id: order.id } });
@@ -62,12 +61,13 @@ function OrderCard({ order }: { order: OrderSummary }) {
   const first = order.items[0];
   const extra = order.items.length - 1;
 
-  const buyAgain = () => {
+  const rebuy = useBuyAgain();
+  const [rebuying, setRebuying] = useState(false);
+  const buyAgain = async () => {
     tap();
-    for (const i of order.items) {
-      cart.add({ variantId: i.variantId, productId: i.productId ?? i.variantId, productName: i.productName, variantName: i.variantName, unitPrice: i.unitPrice, imageUrl: i.imageUrl ?? null }, i.quantity);
-    }
-    toast("Added to cart again", { action: { label: "View", onPress: openCart } });
+    setRebuying(true);
+    const result = await rebuy(order.items).finally(() => setRebuying(false));
+    toast(buyAgainMessage(result), result.added ? { action: { label: "View", onPress: openCart } } : undefined);
   };
 
   return (
@@ -112,7 +112,7 @@ function OrderCard({ order }: { order: OrderSummary }) {
             {order.status === "delivered" && order.items.some((i) => i.productId && !order.reviewedProductIds?.includes(i.productId)) && (
               <Button title="Review" size="sm" variant="outline" icon="star-outline" onPress={() => router.push({ pathname: "/order/[id]", params: { id: order.id, review: "1" } })} />
             )}
-            <Button title={order.status === "delivered" ? "Buy again" : "Order again"} size="sm" variant="outline" icon="refresh" onPress={buyAgain} />
+            <Button title={order.status === "delivered" ? "Buy again" : "Order again"} size="sm" variant="outline" icon="refresh" loading={rebuying} onPress={() => void buyAgain()} />
           </View>
         ) : (
           <Button title="Track order" size="sm" variant="dark" icon="navigate-outline" onPress={open} />

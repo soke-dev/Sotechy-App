@@ -4,7 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatNaira, formatUsd, type CatalogProduct, type OfferView, type ProductDetail, type ProductReviews, type Review } from "@sotechy/shared";
+import { formatNaira, formatUsd, TOKEN_RULES, type CatalogProduct, type OfferView, type ProductDetail, type ProductReviews, type Review } from "@sotechy/shared";
 import { useCartFeedback } from "@/components/cart-feedback";
 import { Illo, type IlloName } from "@/components/illustrations";
 import { ProductCard } from "@/components/product-card";
@@ -43,7 +43,7 @@ import { ScrollRow } from "@/components/scroll-row";
 import { useOpenCart } from "@/components/cart-drawer";
 import { useIsDesktop, useScreenWidth } from "@/lib/layout";
 import { useAsync } from "@/lib/use-async";
-import { loadStore } from "@/lib/marketplace";
+import { formatTokens, loadStore } from "@/lib/marketplace";
 import { sellerOf, useAddToCart } from "@/components/add-to-cart";
 
 type Tab = "overview" | "about" | "reviews";
@@ -183,6 +183,11 @@ function OverviewTab({
   const points = [...new Set(areas.flatMap((a) => (a.pickupPlaces?.length ? a.pickupPlaces.map((pl) => [pl.name, pl.address].filter(Boolean).join(", ")) : a.pickupPoint ? [[a.pickupPoint, a.pickupAddress].filter(Boolean).join(", ")] : [])))];
   const states = [...new Set(areas.map((a) => a.state))];
   const known = !store || !!storeInfo.data;
+  // What buying one earns: 1 of the store's tokens per ₦1 of the chosen option (or the cheapest, before one is picked)
+  const price = (product.variants.find((v) => v.id === variantId) ?? product.variants[0])?.price ?? 0;
+  const earns = Math.floor(price);
+  // Other stores' orders also earn a $SOTECHY bonus on top
+  const bonus = store && store.ticker !== "SOTECHY" ? Math.floor(earns * TOKEN_RULES.crossBonus) : 0;
   return (
     <View style={{ gap: space.lg }}>
       {store ? (
@@ -205,12 +210,12 @@ function OverviewTab({
           <Divider />
           {[
             ["shield-checkmark-outline", "Checked and verified by Sotechy"],
-            ["sparkles-outline", `Earn $${store.ticker} on this order, plus 10% in $SOTECHY`],
+            ["sparkles-outline", earns > 0 ? `Earn ${formatTokens(earns)} $${store.ticker}${bonus > 0 ? ` + ${formatTokens(bonus)} $SOTECHY bonus` : ""} on this order` : `Earn $${store.ticker} on this order`],
             ["chatbubbles-outline", "Ask the store or make an offer in the app"],
           ].map(([icon, text]) => (
             <View key={text} style={[ui.row, { gap: space.sm }]}>
               <Ionicons name={icon as IconName} size={16} color={colors.success} />
-              <Txt variant="small" color={colors.ink2}>{text}</Txt>
+              <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>{text}</Txt>
             </View>
           ))}
         </Pressable>

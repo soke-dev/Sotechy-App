@@ -75,7 +75,7 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
               </View>
             )}
           </View>
-          {/* Three short rows: name; price with any discount; the brand with the rating */}
+          {/* Three short rows: name; price with any discount; the rating */}
           {/* Room for a two-line name is kept at the foot of the card, so short names sit right on their price
               and cards in a row stay the same height */}
           <View style={{ padding: 10, gap: 4, minHeight: 104 }}>
@@ -94,14 +94,6 @@ export function ProductCard({ product, width, quickAdd = true }: { product: Cata
               ) : null}
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, minHeight: 16 }}>
-              {product.brand ? (
-                <>
-                  <Ionicons name="pricetag-outline" size={11} color={colors.muted} />
-                  <Txt variant="caption" numberOfLines={1} style={{ flex: 1, fontSize: 11.5 }}>{product.brand}</Txt>
-                </>
-              ) : (
-                <View style={{ flex: 1 }} />
-              )}
               {rated ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
                   <Ionicons name="star" size={11} color={colors.brandYellow} />
