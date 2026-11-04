@@ -187,7 +187,7 @@ export default function Home() {
                 </span>
               </h1>
               <p className="mt-8 max-w-[520px] text-lg leading-relaxed text-[#FFF1DF]/70 sm:text-xl">
-                Fashion, beauty, groceries, home appliances, phones and gadgets, and so much more from stores you can trust. Delivered to your door, with tokens you earn on every order.
+                Home appliances, phones and gadgets, fashion, beauty, groceries and so much more from stores you can trust. Delivered to your door, with tokens you earn on every order.
               </p>
               {/* Both stores on one row, the web shop under them */}
               <div className="mt-9 flex w-full max-w-[440px] flex-col gap-3">
