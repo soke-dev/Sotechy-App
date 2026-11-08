@@ -23,12 +23,16 @@ const TRONGRID = "https://api.trongrid.io";
 /** What's needed to find a coin's transfers: 1Click's chain code, and the token's contract (none for native coins) */
 export type Watchable = { net?: string; contract?: string | null };
 
-/** The transaction that paid this deposit address, if one has landed */
-export async function findDepositTx(depositAddress: string, asset: Watchable): Promise<string | null> {
+/**
+ * The transaction that paid this deposit address, if one has landed since `since` (when the address was given out, in
+ * ms). Anything older isn't the customer's payment: an address can be set up before it's handed over.
+ */
+export async function findDepositTx(depositAddress: string, asset: Watchable, since: number): Promise<string | null> {
   const contract = asset.contract || null;
-  if (asset.net === "sol") return solana(depositAddress, contract);
-  if (asset.net === "tron") return tron(depositAddress, contract);
-  if (asset.net && asset.net in EVM && contract) return evm(asset.net as keyof typeof EVM, depositAddress as Address, contract as Address);
+  const after = since - 60_000;
+  if (asset.net === "sol") return solana(depositAddress, contract, after);
+  if (asset.net === "tron") return tron(depositAddress, contract, after);
+  if (asset.net && asset.net in EVM && contract) return evm(asset.net as keyof typeof EVM, depositAddress as Address, contract as Address, after);
   return null;
 }
 
@@ -57,41 +61,47 @@ async function solanaRpc<T>(method: string, params: unknown[]): Promise<T> {
 }
 
 /** Solana: a token arrives in the deposit address's token account for that mint; SOL arrives at the address itself */
-async function solana(owner: string, mint: string | null) {
+async function solana(owner: string, mint: string | null, after: number) {
   // The address itself: a fresh deposit address's first token transfer creates its token account in the same
   // transaction, which lists the address. Then its token accounts for the mint, for transfers after that.
   const accounts = [owner];
   if (mint) {
-    const r = await solanaRpc<{ value: { pubkey: string }[] }>("getTokenAccountsByOwner", [owner, { mint }, { encoding: "jsonParsed" }]).catch(() => ({ value: [] }));
+    const r = await solanaRpc<{ value: { pubkey: string }[] }>("getTokenAccountsByOwner", [owner, { mint }, { encoding: "jsonParsed", commitment: "confirmed" }]).catch(() => ({ value: [] }));
     accounts.push(...r.value.slice(0, 3).map((a) => a.pubkey));
   }
   // The newest transfer wins
   let best: { signature: string; blockTime: number } | null = null;
   for (const account of accounts) {
-    const signatures = await solanaRpc<{ signature: string; err: unknown; blockTime: number | null }[]>("getSignaturesForAddress", [account, { limit: 3 }]);
-    const s = signatures.find((x) => !x.err);
+    // "confirmed" sees a transfer in a second or two; "finalized", the default, takes up to half a minute
+    const signatures = await solanaRpc<{ signature: string; err: unknown; blockTime: number | null }[]>("getSignaturesForAddress", [account, { limit: 3, commitment: "confirmed" }]);
+    const s = signatures.find((x) => !x.err && (x.blockTime ?? Infinity) * 1000 >= after);
     if (s && (!best || (s.blockTime ?? 0) > best.blockTime)) best = { signature: s.signature, blockTime: s.blockTime ?? 0 };
   }
   return best?.signature ?? null;
 }
 
 /** Tron: TRC-20 transfers (USDT) or TRX sent to the deposit address */
-async function tron(address: string, contract: string | null) {
+async function tron(address: string, contract: string | null, after: number) {
   if (contract) {
-    const r = await json<{ data?: { transaction_id: string; to: string }[] }>(`${TRONGRID}/v1/accounts/${address}/transactions/trc20?only_to=true&limit=3&contract_address=${contract}`);
-    return r.data?.find((t) => t.to === address)?.transaction_id ?? null;
+    const r = await json<{ data?: { transaction_id: string; to: string; block_timestamp: number }[] }>(
+      `${TRONGRID}/v1/accounts/${address}/transactions/trc20?only_to=true&limit=3&contract_address=${contract}&min_timestamp=${after}`,
+    );
+    return r.data?.find((t) => t.to === address && t.block_timestamp >= after)?.transaction_id ?? null;
   }
-  const r = await json<{ data?: { txID: string }[] }>(`${TRONGRID}/v1/accounts/${address}/transactions?only_to=true&limit=3`);
-  return r.data?.[0]?.txID ?? null;
+  const r = await json<{ data?: { txID: string; block_timestamp: number }[] }>(`${TRONGRID}/v1/accounts/${address}/transactions?only_to=true&limit=3&min_timestamp=${after}`);
+  return r.data?.find((t) => t.block_timestamp >= after)?.txID ?? null;
 }
 
 const clients: Partial<Record<keyof typeof EVM, PublicClient>> = {};
 
 /** EVM: the token's Transfer events to the deposit address in the last stretch of blocks */
-async function evm(net: keyof typeof EVM, to: Address, token: Address) {
+async function evm(net: keyof typeof EVM, to: Address, token: Address, after: number) {
   const c = EVM[net];
   const client = (clients[net] ??= createPublicClient({ chain: c.chain, transport: fallback(c.rpcs.map((url) => http(url))) }) as PublicClient);
   const latest = await client.getBlockNumber();
   const logs = await client.getLogs({ address: token, event: TRANSFER, args: { to }, fromBlock: latest > c.window ? latest - c.window : 0n, toBlock: latest });
-  return logs.at(-1)?.transactionHash ?? null;
+  const last = logs.at(-1);
+  if (!last?.blockNumber) return null;
+  const block = await client.getBlock({ blockNumber: last.blockNumber });
+  return Number(block.timestamp) * 1000 >= after ? last.transactionHash : null;
 }

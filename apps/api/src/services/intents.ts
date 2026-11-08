@@ -91,6 +91,8 @@ export type SavedIntent = {
   amountOutUsdc: string;
   rate: number;
   deadline: string;
+  /** When the address was given out (ISO); a transfer before then isn't this payment */
+  openedAt?: string;
 };
 
 export const savedIntent = (raw: unknown) => (raw as { intents?: SavedIntent } | null)?.intents ?? null;
@@ -151,6 +153,7 @@ export async function openIntent(payment: typeof schema.payments.$inferSelect, o
     amountOutUsdc: usdc.toFixed(2),
     rate,
     deadline: q.quote.deadline ?? deadline,
+    openedAt: new Date().toISOString(),
   };
 }
 
@@ -170,6 +173,8 @@ export async function checkIntent(payment: typeof schema.payments.$inferSelect):
     if (!s) continue;
     // Not seen by 1Click yet: look on the network ourselves, and if it's there, hand 1Click the transaction
     if (s.status === "PENDING_DEPOSIT" && (await nudge(saved))) s = (await statusOf(saved).catch(() => null)) ?? s;
+    // Our own sighting counts: the customer sees "received" as soon as the transfer lands, while 1Click catches up
+    if (s.status === "PENDING_DEPOSIT" && nudged.get(saved.depositAddress)?.tx) s = { ...s, status: "KNOWN_DEPOSIT_TX" };
     if (i === 0) current = s.status;
     if (s.status === "SUCCESS") {
       await settle(payment, saved, s);
@@ -216,17 +221,19 @@ const nudged = new Map<string, { at: number; tx?: string }>();
 
 /**
  * Looks for the customer's transfer on its network (Solana, Tron, BNB Chain, Base, Ethereum) and hands it to 1Click,
- * so the payment is picked up within seconds. At most every 6 seconds per address, and once per transaction found.
+ * so the payment is picked up within seconds. At most every 3 seconds per address, and once per transaction found.
  * True when a transaction was just handed over.
  */
 async function nudge(saved: SavedIntent): Promise<boolean> {
   const seen = nudged.get(saved.depositAddress);
-  if (seen && (seen.tx || Date.now() - seen.at < 6_000)) return false;
+  if (seen && (seen.tx || Date.now() - seen.at < 3_000)) return false;
   if (nudged.size > 5_000) nudged.clear();
   nudged.set(saved.depositAddress, { at: Date.now() });
   const asset = (await intentsAssets().catch(() => [])).find((a) => a.assetId === saved.originAsset);
   if (!asset) return false;
-  const tx = await findDepositTx(saved.depositAddress, asset).catch(() => null);
+  // Addresses opened before this was recorded: only transfers in the last hour count
+  const since = saved.openedAt ? new Date(saved.openedAt).getTime() : Date.now() - 60 * 60_000;
+  const tx = await findDepositTx(saved.depositAddress, asset, since).catch(() => null);
   if (!tx) return false;
   nudged.set(saved.depositAddress, { at: Date.now(), tx });
   // Already known to 1Click is fine too
