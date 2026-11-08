@@ -160,7 +160,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
       .intentsAssets()
       .then((r) => {
         setAssets(r.assets);
-        // Start on the first coin offered (USDT on Solana)
+        // Start on the first coin offered (USDC on Solana)
         if (r.assets[0]) {
           setAsset(r.assets[0]);
           setChain(r.assets[0].chain);

@@ -70,8 +70,9 @@ export async function intentsAssets(): Promise<IntentsAsset[]> {
     const shown = t?.symbol === "wNEAR" ? "NEAR" : t?.symbol === "USDT0" ? "USDT" : t?.symbol;
     return t ? [{ assetId: t.assetId, symbol: shown!, chain: CHAIN_NAME[chain] ?? chain, decimals: t.decimals, priceUsd: t.price }] : [];
   };
-  // Stablecoins first (USDT before USDC on each network), then native coins
-  const list = [...STABLE_NETWORKS.flatMap((chain) => [...pick(chain, "USDT"), ...pick(chain, "USDC")]), ...NATIVES.flatMap(([chain, symbol]) => pick(chain, symbol))];
+  // Stablecoins first (USDC before USDT on Solana, USDT before USDC elsewhere), then native coins
+  const stables = (chain: string) => (chain === "sol" ? ["USDC", "USDT"] : ["USDT", "USDC"]);
+  const list = [...STABLE_NETWORKS.flatMap((chain) => stables(chain).flatMap((symbol) => pick(chain, symbol))), ...NATIVES.flatMap(([chain, symbol]) => pick(chain, symbol))];
   assets = { list, at: Date.now() };
   return list;
 }
