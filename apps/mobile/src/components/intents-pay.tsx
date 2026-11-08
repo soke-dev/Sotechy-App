@@ -31,12 +31,35 @@ const CHAIN_LOGO: Record<string, ImageSourcePropType> = {
   Tron: require("../../assets/crypto/chain-tron.png"),
   Arbitrum: require("../../assets/crypto/chain-arbitrum.png"),
   Bitcoin: require("../../assets/crypto/chain-bitcoin.png"),
+  "BNB Chain": require("../../assets/crypto/chain-bnb.png"),
+  TON: require("../../assets/crypto/chain-ton.png"),
+  Polygon: require("../../assets/crypto/chain-polygon.png"),
+  Optimism: require("../../assets/crypto/chain-optimism.png"),
+  Avalanche: require("../../assets/crypto/chain-avalanche.png"),
+  Aptos: require("../../assets/crypto/chain-aptos.png"),
+  Sui: require("../../assets/crypto/chain-sui.png"),
+  Stellar: require("../../assets/crypto/chain-stellar.png"),
+  "XRP Ledger": require("../../assets/crypto/chain-xrp.png"),
+  Dogecoin: require("../../assets/crypto/chain-dogecoin.png"),
+  Litecoin: require("../../assets/crypto/chain-litecoin.png"),
+  Cardano: require("../../assets/crypto/chain-cardano.png"),
+  "Bitcoin Cash": require("../../assets/crypto/chain-bitcoin-cash.png"),
+  Zcash: require("../../assets/crypto/chain-zcash.png"),
 };
-const COIN_NAME: Record<string, string> = { USDT: "Tether", USDC: "USD Coin", BTC: "Bitcoin", ETH: "Ether", SOL: "Solana", NEAR: "NEAR" };
-/** Native coins on their own network don't need a network badge */
+const COIN_NAME: Record<string, string> = {
+  USDT: "Tether", USDC: "USD Coin", BTC: "Bitcoin", ETH: "Ether", SOL: "Solana", NEAR: "NEAR", BNB: "BNB", TRX: "TRON", XRP: "XRP",
+  DOGE: "Dogecoin", LTC: "Litecoin", TON: "Toncoin", AVAX: "Avalanche", POL: "Polygon", SUI: "Sui", APT: "Aptos", ADA: "Cardano",
+  XLM: "Stellar Lumens", BCH: "Bitcoin Cash", ZEC: "Zcash",
+};
+/** Native coins on their own network don't need a network badge (coins without a logo of their own use their
+ *  network's, also without a badge) */
 const NATIVE: Record<string, string> = { BTC: "Bitcoin", ETH: "Ethereum", SOL: "Solana", NEAR: "NEAR" };
 /** What a refund address looks like on each network, as a hint in the field */
-const ADDRESS_HINT: Record<string, string> = { Tron: "T…", Solana: "Your Solana address", Bitcoin: "bc1… or 1…", NEAR: "name.near or 64-character address" };
+const ADDRESS_HINT: Record<string, string> = {
+  Tron: "T…", Solana: "Your Solana address", Bitcoin: "bc1… or 1…", NEAR: "name.near or 64-character address", TON: "UQ… or EQ…",
+  Stellar: "G…", "XRP Ledger": "r…", Dogecoin: "D…", Litecoin: "ltc1… or L…", Cardano: "addr1…", "Bitcoin Cash": "bitcoincash:q… or q…",
+  Zcash: "t1…",
+};
 
 /** Where the swap is, as three steps; a failed or refunded swap is shown on its own */
 const STAGE: Record<IntentSwapStatus, number> = { PENDING_DEPOSIT: 0, KNOWN_DEPOSIT_TX: 1, PROCESSING: 1, SUCCESS: 2, INCOMPLETE_DEPOSIT: 0, REFUNDED: -1, FAILED: -1 };
@@ -48,7 +71,7 @@ const trim = (n: number) => (n >= 1000 ? n.toLocaleString("en-US", { maximumFrac
 /** A coin's logo, with its network's logo as a small badge */
 function CoinMark({ symbol, chain, size = 36 }: { symbol: string; chain?: string; size?: number }) {
   const badge = Math.round(size * 0.44);
-  const showBadge = !!chain && !!CHAIN_LOGO[chain] && NATIVE[symbol] !== chain;
+  const showBadge = !!chain && !!CHAIN_LOGO[chain] && !!COIN_LOGO[symbol] && NATIVE[symbol] !== chain;
   return (
     <View style={{ width: size, height: size }}>
       <Image source={COIN_LOGO[symbol] ?? CHAIN_LOGO[chain ?? ""]} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.surfaceAlt }} />

@@ -12,27 +12,26 @@ const API = "https://1click.chaindefuser.com/v0";
 /** What Sotechy receives: USDC on Base */
 export const USDC_BASE = "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near";
 
-/** The coins customers can pay with (1Click asset ids), in the order they're offered */
-const OFFERED = [
-  // Stablecoins first, USDT before USDC: Tron's USDT is what most Nigerian crypto users hold
-  "nep141:tron-d28a265909efecdcee7c5028585214ea0b96f015.omft.near", // USDT on Tron
-  "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near", // USDC on Base
-  "nep141:eth-0xdac17f958d2ee523a2206206994597c13d831ec7.omft.near", // USDT on Ethereum
-  "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near", // USDC on Ethereum
-  "nep141:sol-c800a4bd850783ccb82c2b2c7e84175443606352.omft.near", // USDT on Solana
-  "nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near", // USDC on Solana
-  "nep141:usdt.tether-token.near", // USDT on NEAR
-  "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1", // USDC on NEAR
-  "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near", // USDC on Arbitrum
-  // Then the rest
-  "nep141:btc.omft.near", // BTC
-  "nep141:eth.omft.near", // ETH
-  "nep141:base.omft.near", // ETH on Base
-  "nep141:sol.omft.near", // SOL
-  "nep141:wrap.near", // NEAR
+/** Networks for USDT and USDC, in the order they're offered: Tron first, since its USDT is what most Nigerian crypto
+ *  users hold. Keys are 1Click's chain codes. */
+const STABLE_NETWORKS = ["tron", "bsc", "base", "eth", "sol", "ton", "near", "arb", "pol", "op", "avax", "aptos", "sui", "stellar"];
+/** Native coins after the stablecoins: [chain, symbol as 1Click lists it] */
+const NATIVES: [string, string][] = [
+  ["btc", "BTC"], ["eth", "ETH"], ["sol", "SOL"], ["bsc", "BNB"], ["tron", "TRX"], ["near", "wNEAR"], ["xrp", "XRP"], ["doge", "DOGE"],
+  ["ltc", "LTC"], ["ton", "TON"], ["avax", "AVAX"], ["pol", "POL"], ["sui", "SUI"], ["aptos", "APT"], ["cardano", "ADA"],
+  ["stellar", "XLM"], ["bch", "BCH"], ["zec", "ZEC"], ["base", "ETH"], ["arb", "ETH"],
 ];
+/** Where a chain lists more than one token with the same symbol, the canonical one */
+const PREFERRED: Record<string, string> = {
+  "near:USDT": "nep141:usdt.tether-token.near",
+  "near:USDC": "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+};
 
-const CHAIN_NAME: Record<string, string> = { base: "Base", eth: "Ethereum", sol: "Solana", arb: "Arbitrum", near: "NEAR", tron: "Tron", btc: "Bitcoin" };
+const CHAIN_NAME: Record<string, string> = {
+  tron: "Tron", bsc: "BNB Chain", base: "Base", eth: "Ethereum", sol: "Solana", ton: "TON", near: "NEAR", arb: "Arbitrum",
+  pol: "Polygon", op: "Optimism", avax: "Avalanche", aptos: "Aptos", sui: "Sui", stellar: "Stellar", btc: "Bitcoin",
+  xrp: "XRP Ledger", doge: "Dogecoin", ltc: "Litecoin", cardano: "Cardano", bch: "Bitcoin Cash", zec: "Zcash",
+};
 
 export type IntentsAsset = { assetId: string; symbol: string; chain: string; decimals: number; priceUsd: number };
 
@@ -64,11 +63,13 @@ let assets: { list: IntentsAsset[]; at: number } | null = null;
 export async function intentsAssets(): Promise<IntentsAsset[]> {
   if (assets && Date.now() - assets.at < 5 * 60_000) return assets.list;
   const all = await oneClick<{ assetId: string; symbol: string; blockchain: string; decimals: number; price: number }[]>("GET", "/tokens");
-  const byId = new Map(all.map((t) => [t.assetId, t]));
-  const list = OFFERED.flatMap((id) => {
-    const t = byId.get(id);
-    return t ? [{ assetId: id, symbol: t.symbol === "wNEAR" ? "NEAR" : t.symbol, chain: CHAIN_NAME[t.blockchain] ?? t.blockchain, decimals: t.decimals, priceUsd: t.price }] : [];
-  });
+  const pick = (chain: string, symbol: string) => {
+    const found = all.filter((t) => t.blockchain === chain && t.symbol === symbol);
+    const t = found.find((x) => x.assetId === PREFERRED[`${chain}:${symbol}`]) ?? found[0];
+    return t ? [{ assetId: t.assetId, symbol: t.symbol === "wNEAR" ? "NEAR" : t.symbol, chain: CHAIN_NAME[chain] ?? chain, decimals: t.decimals, priceUsd: t.price }] : [];
+  };
+  // Stablecoins first (USDT before USDC on each network), then native coins
+  const list = [...STABLE_NETWORKS.flatMap((chain) => [...pick(chain, "USDT"), ...pick(chain, "USDC")]), ...NATIVES.flatMap(([chain, symbol]) => pick(chain, symbol))];
   assets = { list, at: Date.now() };
   return list;
 }
