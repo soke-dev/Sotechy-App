@@ -45,11 +45,12 @@ const CHAIN_LOGO: Record<string, ImageSourcePropType> = {
   Cardano: require("../../assets/crypto/chain-cardano.png"),
   "Bitcoin Cash": require("../../assets/crypto/chain-bitcoin-cash.png"),
   Zcash: require("../../assets/crypto/chain-zcash.png"),
+  Monad: require("../../assets/crypto/chain-monad.png"),
 };
 const COIN_NAME: Record<string, string> = {
   USDT: "Tether", USDC: "USD Coin", BTC: "Bitcoin", ETH: "Ether", SOL: "Solana", NEAR: "NEAR", BNB: "BNB", TRX: "TRON", XRP: "XRP",
   DOGE: "Dogecoin", LTC: "Litecoin", TON: "Toncoin", AVAX: "Avalanche", POL: "Polygon", SUI: "Sui", APT: "Aptos", ADA: "Cardano",
-  XLM: "Stellar Lumens", BCH: "Bitcoin Cash", ZEC: "Zcash",
+  XLM: "Stellar Lumens", BCH: "Bitcoin Cash", ZEC: "Zcash", MON: "Monad",
 };
 /** Native coins on their own network don't need a network badge (coins without a logo of their own use their
  *  network's, also without a badge) */
@@ -159,7 +160,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
       .intentsAssets()
       .then((r) => {
         setAssets(r.assets);
-        // Start on the first coin offered (USDT on Tron)
+        // Start on the first coin offered (USDT on Solana)
         if (r.assets[0]) {
           setAsset(r.assets[0]);
           setChain(r.assets[0].chain);

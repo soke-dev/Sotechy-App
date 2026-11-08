@@ -130,7 +130,7 @@ export default async function SettingsPage() {
         </Card>
 
         {data.intents && (
-          <Card title="Pay with crypto" className="xl:col-span-2" description="NEAR Intents: customers pay with USDT or USDC on 14 networks, or BTC, ETH, SOL, BNB, XRP, NEAR and more (41 coins), and Sotechy receives the order's total as USDC on Base.">
+          <Card title="Pay with crypto" className="xl:col-span-2" description="NEAR Intents: customers pay with USDT or USDC on 15 networks, or SOL, BTC, ETH, BNB, NEAR, MON and more (45 coins), and Sotechy receives the order's total as USDC on Base.">
             <ActionForm action={saveSetting} className="flex flex-wrap items-end gap-3">
               <input type="hidden" name="key" value="intents" />
               <SwitchField name="enabled" label="Show “Pay with crypto” in the app" defaultChecked={!s.intents || s.intents.enabled === "on"} />
