@@ -95,6 +95,9 @@ const schema = z.object({
   ),
   /** 1Click API key from NEAR Intents (optional; without it 1Click adds its unauthenticated fee) */
   ONECLICK_JWT: trimmed(z.string().optional()),
+  /** Alchemy key: fast, reliable lookups for spotting crypto payments on Solana, Ethereum, Base and BNB Chain
+   *  (free public nodes are used without it, and as a fallback) */
+  ALCHEMY_API_KEY: trimmed(z.string().optional()),
   /** The merchant dashboard, where Didit sends people back after their check */
   MERCHANT_APP_URL: z.string().default("https://merchant.sotechy.shop"),
 });

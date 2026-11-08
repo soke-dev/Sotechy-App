@@ -170,6 +170,8 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
   const [picking, setPicking] = useState<"chain" | "coin" | null>(null);
   const [refundTo, setRefundTo] = useState("");
   const [quote, setQuote] = useState<IntentQuote | null>(null);
+  /** When the deposit address was shown, so a reassuring note can follow if the payment takes a while */
+  const [quotedAt, setQuotedAt] = useState<number | null>(null);
   const [swap, setSwap] = useState<IntentSwapStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -238,6 +240,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
     setError(null);
     try {
       setQuote(await api.startIntentsPayment(order.id, asset.assetId, refundTo.trim()));
+      setQuotedAt(Date.now());
     } catch (err) {
       setError(err instanceof Error ? err.message : "We couldn't get a price. Please try again.");
     } finally {
@@ -432,9 +435,17 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
                   })
                 )}
                 {swap === "INCOMPLETE_DEPOSIT" && <Txt variant="small" color={colors.warning}>Less than the amount shown arrived. Send the rest to the same address.</Txt>}
-                {!failed && stage === 0 && swap !== "SUCCESS" && (
-                  <Txt variant="caption" color={colors.muted}>Payments on {quote.chain} usually show up in {ARRIVES[quote.chain] ?? "under a minute"}. Pasting your transaction ID below makes it faster.</Txt>
-                )}
+                {!failed && stage === 0 && swap !== "SUCCESS" && (quotedAt && Date.now() - quotedAt > 2 * 60_000 ? (
+                  <View style={{ gap: 4, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.brandSoft }}>
+                    <Txt variant="label">Already sent it? You&apos;re all good.</Txt>
+                    <Txt variant="small">
+                      Your money is safe. {quote.chain} sometimes takes a few minutes to confirm a payment, and we&apos;re watching for it the whole time. Your
+                      order turns Paid by itself, even if you close this. If nothing shows after 30 minutes, message us from your order and we&apos;ll trace it for you.
+                    </Txt>
+                  </View>
+                ) : (
+                  <Txt variant="caption" color={colors.muted}>Payments on {quote.chain} usually show up in {ARRIVES[quote.chain] ?? "under a minute"}. We&apos;ll spot it as soon as it lands.</Txt>
+                ))}
               </View>
 
               {/* Already sent: the transaction ID gets it picked up straight away */}

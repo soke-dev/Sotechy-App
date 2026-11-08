@@ -7,6 +7,7 @@ import { env } from "../env";
 import { getUsdRate } from "./moneymoves";
 import { getSetting } from "./settings";
 import { confirmPayment } from "./orders";
+import { findDepositTx } from "./deposit-watch";
 
 const API = "https://1click.chaindefuser.com/v0";
 /** What Sotechy receives: USDC on Base */
@@ -32,7 +33,8 @@ const CHAIN_NAME: Record<string, string> = {
   xrp: "XRP Ledger", doge: "Dogecoin", ltc: "Litecoin", cardano: "Cardano", bch: "Bitcoin Cash", zec: "Zcash",
 };
 
-export type IntentsAsset = { assetId: string; symbol: string; chain: string; decimals: number; priceUsd: number };
+/** A coin on offer. `net` (1Click's chain code) and `contract` are for spotting payments, not shown in the app. */
+export type IntentsAsset = { assetId: string; symbol: string; chain: string; decimals: number; priceUsd: number; net?: string; contract?: string | null };
 
 /** Set up when Sotechy has a Base address to receive USDC at */
 export const intentsOn = () => !!env.INTENTS_RECIPIENT;
@@ -61,14 +63,14 @@ let assets: { list: IntentsAsset[]; at: number } | null = null;
 /** The coins on offer, with 1Click's current prices (kept for five minutes) */
 export async function intentsAssets(): Promise<IntentsAsset[]> {
   if (assets && Date.now() - assets.at < 5 * 60_000) return assets.list;
-  const all = await oneClick<{ assetId: string; symbol: string; blockchain: string; decimals: number; price: number }[]>("GET", "/tokens");
+  const all = await oneClick<{ assetId: string; symbol: string; blockchain: string; decimals: number; price: number; contractAddress?: string }[]>("GET", "/tokens");
   // USDT0 is Tether's own cross-chain USDT (on Monad, for one), so it's shown as USDT
   const SAME: Record<string, string[]> = { USDT: ["USDT", "USDT0"] };
   const pick = (chain: string, symbol: string) => {
     const found = all.filter((t) => t.blockchain === chain && (SAME[symbol] ?? [symbol]).includes(t.symbol));
     const t = found.find((x) => x.assetId === PREFERRED[`${chain}:${symbol}`]) ?? found[0];
     const shown = t?.symbol === "wNEAR" ? "NEAR" : t?.symbol === "USDT0" ? "USDT" : t?.symbol;
-    return t ? [{ assetId: t.assetId, symbol: shown!, chain: CHAIN_NAME[chain] ?? chain, decimals: t.decimals, priceUsd: t.price }] : [];
+    return t ? [{ assetId: t.assetId, symbol: shown!, chain: CHAIN_NAME[chain] ?? chain, decimals: t.decimals, priceUsd: t.price, net: chain, contract: t.contractAddress || null }] : [];
   };
   // Stablecoins first (USDC before USDT on Solana, USDT before USDC elsewhere), then native coins
   const stables = (chain: string) => (chain === "sol" ? ["USDC", "USDT"] : ["USDT", "USDC"]);
@@ -164,8 +166,10 @@ export async function checkIntent(payment: typeof schema.payments.$inferSelect):
   // The newest address first; the earlier ones too, in case the customer paid one of those before switching coins
   let current: Status | null = null;
   for (const [i, saved] of all.entries()) {
-    const s = await statusOf(saved).catch(() => null);
+    let s = await statusOf(saved).catch(() => null);
     if (!s) continue;
+    // Not seen by 1Click yet: look on the network ourselves, and if it's there, hand 1Click the transaction
+    if (s.status === "PENDING_DEPOSIT" && (await nudge(saved))) s = (await statusOf(saved).catch(() => null)) ?? s;
     if (i === 0) current = s.status;
     if (s.status === "SUCCESS") {
       await settle(payment, saved, s);
@@ -201,21 +205,64 @@ async function settle(payment: typeof schema.payments.$inferSelect, saved: Saved
 export async function submitDeposit(payment: typeof schema.payments.$inferSelect, txHash: string) {
   const saved = savedIntent(payment.raw);
   if (!saved) throw new Error("This payment has no crypto deposit open");
-  await oneClick("POST", "/deposit/submit", { depositAddress: saved.depositAddress, txHash, ...(saved.depositMemo && { memo: saved.depositMemo }) });
+  await submitTx(saved, txHash);
 }
 
-/** Confirms Intents payments in the background, for customers who close the app before the swap finishes */
+const submitTx = (saved: SavedIntent, txHash: string) =>
+  oneClick("POST", "/deposit/submit", { depositAddress: saved.depositAddress, txHash, ...(saved.depositMemo && { memo: saved.depositMemo }) });
+
+/** Deposit addresses already looked for (when, and the transaction found), so the networks aren't asked too often */
+const nudged = new Map<string, { at: number; tx?: string }>();
+
+/**
+ * Looks for the customer's transfer on its network (Solana, Tron, BNB Chain, Base, Ethereum) and hands it to 1Click,
+ * so the payment is picked up within seconds. At most every 6 seconds per address, and once per transaction found.
+ * True when a transaction was just handed over.
+ */
+async function nudge(saved: SavedIntent): Promise<boolean> {
+  const seen = nudged.get(saved.depositAddress);
+  if (seen && (seen.tx || Date.now() - seen.at < 6_000)) return false;
+  if (nudged.size > 5_000) nudged.clear();
+  nudged.set(saved.depositAddress, { at: Date.now() });
+  const asset = (await intentsAssets().catch(() => [])).find((a) => a.assetId === saved.originAsset);
+  if (!asset) return false;
+  const tx = await findDepositTx(saved.depositAddress, asset).catch(() => null);
+  if (!tx) return false;
+  nudged.set(saved.depositAddress, { at: Date.now(), tx });
+  // Already known to 1Click is fine too
+  await submitTx(saved, tx).catch((err) => console.warn(`Deposit ${tx} not handed to 1Click:`, err instanceof Error ? err.message : err));
+  return true;
+}
+
+/** When each open payment was last checked in the background */
+const lastChecked = new Map<string, number>();
+
+/**
+ * Confirms Intents payments in the background, for customers who close the app before the swap finishes: every 10
+ * seconds while a payment is in its first hour (when nearly every payment arrives), every 30 seconds after that.
+ */
 export function startIntentsWatcher() {
   if (!intentsOn()) return;
+  let busy = false;
   setInterval(async () => {
+    if (busy) return;
+    busy = true;
     try {
       const open = await db
         .select()
         .from(schema.payments)
         .where(and(eq(schema.payments.status, "pending"), sql`${schema.payments.raw} ? 'intents'`, sql`${schema.payments.createdAt} > now() - interval '4 days'`));
-      for (const p of open) await checkIntent(p).catch((err) => console.error(`Intents check for payment ${p.id} failed`, err instanceof Error ? err.message : err));
+      for (const p of open) {
+        const young = Date.now() - p.createdAt.getTime() < 60 * 60_000;
+        if (!young && Date.now() - (lastChecked.get(p.id) ?? 0) < 30_000) continue;
+        lastChecked.set(p.id, Date.now());
+        await checkIntent(p).catch((err) => console.error(`Intents check for payment ${p.id} failed`, err instanceof Error ? err.message : err));
+      }
+      if (lastChecked.size > 5_000) lastChecked.clear();
     } catch (err) {
       console.error("Intents watcher failed", err);
+    } finally {
+      busy = false;
     }
-  }, 30_000);
+  }, 10_000);
 }
