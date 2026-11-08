@@ -13,7 +13,7 @@ import { colors, fonts, radius, space } from "@/lib/theme";
 import { Sheet } from "./shop-filters";
 import { Button, tap, Txt } from "./ui";
 
-const CHECK_EVERY_MS = 5000;
+const CHECK_EVERY_MS = 3000;
 
 const COIN_LOGO: Record<string, ImageSourcePropType> = {
   USDT: require("../../assets/crypto/coin-usdt.png"),
@@ -60,6 +60,12 @@ const ADDRESS_HINT: Record<string, string> = {
   Tron: "T…", Solana: "Your Solana address", Bitcoin: "bc1… or 1…", NEAR: "name.near or 64-character address", TON: "UQ… or EQ…",
   Stellar: "G…", "XRP Ledger": "r…", Dogecoin: "D…", Litecoin: "ltc1… or L…", Cardano: "addr1…", "Bitcoin Cash": "bitcoincash:q… or q…",
   Zcash: "t1…",
+};
+
+/** How soon a payment on each network usually shows up, without its transaction ID */
+const ARRIVES: Record<string, string> = {
+  Bitcoin: "10 to 30 minutes", "Bitcoin Cash": "a few minutes", Litecoin: "a few minutes", Dogecoin: "a few minutes", Zcash: "a few minutes",
+  Cardano: "a few minutes", Ethereum: "1 to 3 minutes",
 };
 
 /** Where the swap is, as three steps; a failed or refunded swap is shown on its own */
@@ -146,8 +152,12 @@ function useCountdown(deadline: string | undefined) {
     return () => clearInterval(t);
   }, []);
   if (!deadline) return null;
+  // How long the deposit address takes payments: days or hours while there's plenty of time, a clock in the last hour
   const left = Math.max(0, new Date(deadline).getTime() - now);
-  return { text: `${Math.floor(left / 60_000)}:${String(Math.floor((left % 60_000) / 1000)).padStart(2, "0")}`, over: left === 0 };
+  const hours = left / 3_600_000;
+  const text =
+    hours >= 48 ? `${Math.floor(hours / 24)} days` : hours >= 1 ? `${Math.floor(hours)}h` : `${Math.floor(left / 60_000)}:${String(Math.floor((left % 60_000) / 1000)).padStart(2, "0")}`;
+  return { text, over: left === 0, soon: hours < 1 };
 }
 
 /** The whole flow for one order; `onDone(paid)` closes it */
@@ -164,6 +174,9 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState("");
+  const [sending, setSending] = useState(false);
+  const [txNote, setTxNote] = useState<{ ok: boolean; text: string } | null>(null);
   const open = useRef(true);
   const left = useCountdown(quote?.deadline);
 
@@ -236,10 +249,25 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
     setTimeout(() => setCopied(null), 1600);
   }
 
-  async function paste() {
+  async function paste(set: (v: string) => void) {
     tap();
     const text = (await Clipboard.getStringAsync()).trim();
-    if (text) setRefundTo(text);
+    if (text) set(text);
+  }
+
+  /** Hands NEAR Intents the transaction ID, so the payment is picked up now rather than when it's spotted */
+  async function submitTx() {
+    setSending(true);
+    setTxNote(null);
+    try {
+      const r = await api.submitIntentsTx(order.id, txHash.trim());
+      if (r.swap) setSwap(r.swap);
+      setTxNote({ ok: true, text: "Got it. Checking your payment now." });
+    } catch (err) {
+      setTxNote({ ok: false, text: err instanceof Error ? err.message : "That transaction couldn't be checked. Try again." });
+    } finally {
+      setSending(false);
+    }
   }
 
   const stage = swap ? STAGE[swap] : 0;
@@ -322,7 +350,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
                           autoCorrect={false}
                           style={{ flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.ink, paddingVertical: 12 }}
                         />
-                        <Pressable onPress={() => void paste()} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.md, backgroundColor: colors.surfaceAlt }}>
+                        <Pressable onPress={() => void paste(setRefundTo)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.md, backgroundColor: colors.surfaceAlt }}>
                           <Txt variant="label">Paste</Txt>
                         </Pressable>
                       </View>
@@ -351,9 +379,9 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
                     <Txt variant="caption">{quote.chain} network</Txt>
                   </View>
                   {left && (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 5, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: left.over ? colors.dangerSoft : colors.warningSoft }}>
-                      <Ionicons name="time-outline" size={13} color={left.over ? colors.danger : colors.warning} />
-                      <Txt variant="caption" color={left.over ? colors.danger : colors.warning}>{left.over ? "Price expired" : `Price held ${left.text}`}</Txt>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 5, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: left.over ? colors.dangerSoft : left.soon ? colors.warningSoft : colors.surfaceAlt }}>
+                      <Ionicons name="time-outline" size={13} color={left.over ? colors.danger : left.soon ? colors.warning : colors.muted} />
+                      <Txt variant="caption" color={left.over ? colors.danger : left.soon ? colors.warning : colors.ink}>{left.over ? "This address has expired" : `Send within ${left.text}`}</Txt>
                     </View>
                   )}
                 </View>
@@ -400,7 +428,38 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
                   })
                 )}
                 {swap === "INCOMPLETE_DEPOSIT" && <Txt variant="small" color={colors.warning}>Less than the amount shown arrived. Send the rest to the same address.</Txt>}
+                {!failed && stage === 0 && swap !== "SUCCESS" && (
+                  <Txt variant="caption" color={colors.muted}>Payments on {quote.chain} usually show up in {ARRIVES[quote.chain] ?? "under a minute"}. Pasting your transaction ID below makes it faster.</Txt>
+                )}
               </View>
+
+              {/* Already sent: the transaction ID gets it picked up straight away */}
+              {!failed && stage === 0 && swap !== "SUCCESS" && (
+                <View style={{ gap: 6 }}>
+                  <Txt variant="caption" color={colors.muted}>Sent it? Paste the transaction ID from your wallet</Txt>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 52, paddingLeft: space.md, paddingRight: 6, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.surface }}>
+                    <TextInput
+                      value={txHash}
+                      onChangeText={setTxHash}
+                      placeholder="Transaction ID (hash)"
+                      placeholderTextColor={colors.faint}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      style={{ flex: 1, fontFamily: fonts.medium, fontSize: 14, color: colors.ink, paddingVertical: 10 }}
+                    />
+                    {txHash.trim().length < 16 ? (
+                      <Pressable onPress={() => void paste(setTxHash)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.md, backgroundColor: colors.surfaceAlt }}>
+                        <Txt variant="label">Paste</Txt>
+                      </Pressable>
+                    ) : (
+                      <Pressable disabled={sending} onPress={() => void submitTx()} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.md, backgroundColor: colors.ink }}>
+                        {sending ? <ActivityIndicator size="small" color={colors.onInverse} /> : <Txt variant="label" color={colors.onInverse}>Confirm</Txt>}
+                      </Pressable>
+                    )}
+                  </View>
+                  {txNote && <Txt variant="caption" color={txNote.ok ? colors.success : colors.danger}>{txNote.text}</Txt>}
+                </View>
+              )}
               <Txt variant="caption" color={colors.muted} style={{ textAlign: "center" }}>
                 Refunds go to {short(refundTo)} · Powered by NEAR Intents
               </Txt>

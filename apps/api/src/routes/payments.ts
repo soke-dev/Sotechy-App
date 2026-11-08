@@ -17,7 +17,7 @@ import { bachsCheckout, bachsCheckoutPaid, bachsCreateCheckout, type BachsChecko
 import { bankProvider, bankTransferAvailable, stablecoinAvailable } from "../services/bank-pay";
 import { FEATURE_REF, settleFeaturing } from "../services/featuring";
 import { settleWalkIn, WALK_IN_REF } from "../services/walk-in";
-import { checkIntent, intentsAssets, intentsAvailable, openIntent, savedIntent } from "../services/intents";
+import { checkIntent, intentsAssets, intentsAvailable, openIntent, savedIntent, submitDeposit } from "../services/intents";
 
 const isUuid = (v: string | null | undefined): v is string => !!v && /^[0-9a-f-]{36}$/i.test(v);
 
@@ -184,6 +184,21 @@ export const paymentRoutes = new Hono<AppEnv>()
       return c.json(intent);
     },
   )
+
+  /** The customer's transaction ID for their Intents payment, so 1Click picks it up straight away */
+  .post("/intents/submit", requireAuth, zValidator("json", z.object({ orderId: z.uuid(), txHash: z.string().trim().min(16).max(200) })), async (c) => {
+    const { orderId, txHash } = c.req.valid("json");
+    const [order] = await db.select({ id: schema.orders.id }).from(schema.orders).where(and(eq(schema.orders.id, orderId), eq(schema.orders.customerId, c.get("user").id)));
+    if (!order) throw notFound("Order not found");
+    const [payment] = await db.select().from(schema.payments).where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.provider, "near-intents"), eq(schema.payments.status, "pending")));
+    if (!payment) throw badRequest("There's no crypto payment waiting for this order");
+    try {
+      await submitDeposit(payment, txHash);
+    } catch (err) {
+      throw badRequest(err instanceof Error ? `That transaction couldn't be checked: ${err.message}` : "That transaction couldn't be checked");
+    }
+    return c.json({ swap: await checkIntent(payment).catch(() => null) });
+  })
 
   /** Where the customer's Intents payment is; a finished swap confirms the order */
   .get("/intents/status", requireAuth, async (c) => {

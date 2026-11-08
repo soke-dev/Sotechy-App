@@ -272,6 +272,8 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     /** NEAR Intents: the coins on offer, a deposit address for one, and where the payment is */
     intentsAssets: () => get<{ on: boolean; assets: IntentsAsset[] }>("/payments/intents/assets"),
     startIntentsPayment: (orderId: string, assetId: string, refundTo: string) => send<IntentQuote>("POST", "/payments/intents/initialize", { orderId, assetId, refundTo }),
+    /** The customer's transaction ID, so NEAR Intents picks the payment up straight away */
+    submitIntentsTx: (orderId: string, txHash: string) => send<{ swap: IntentSwapStatus | null }>("POST", "/payments/intents/submit", { orderId, txHash }),
     intentsStatus: (orderId: string) => get<{ swap: IntentSwapStatus | null; orderStatus: string; intent: IntentQuote | null }>(`/payments/intents/status?orderId=${orderId}`),
     wishlist: () => get<CatalogProduct[]>("/me/wishlist"),
     toggleWishlist: (productId: string) => send<{ saved: boolean }>("POST", `/me/wishlist/${productId}`),

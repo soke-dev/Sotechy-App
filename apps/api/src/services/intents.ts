@@ -159,6 +159,16 @@ export async function checkIntent(payment: typeof schema.payments.$inferSelect):
   return s.status;
 }
 
+/**
+ * Tells 1Click about the customer's transaction, so it picks the deposit up straight away instead of waiting to spot
+ * it on the network. Optional: without it the deposit is still found, just later.
+ */
+export async function submitDeposit(payment: typeof schema.payments.$inferSelect, txHash: string) {
+  const saved = savedIntent(payment.raw);
+  if (!saved) throw new Error("This payment has no crypto deposit open");
+  await oneClick("POST", "/deposit/submit", { depositAddress: saved.depositAddress, txHash, ...(saved.depositMemo && { memo: saved.depositMemo }) });
+}
+
 /** Confirms Intents payments in the background, for customers who close the app before the swap finishes */
 export function startIntentsWatcher() {
   if (!intentsOn()) return;
