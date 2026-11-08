@@ -18,6 +18,9 @@ export const NEAR_EXPLORER = { mainnet: "https://nearblocks.io", testnet: "https
 const RPC = env.NEAR_RPC_URL ?? { mainnet: "https://rpc.mainnet.near.org", testnet: "https://rpc.testnet.near.org" }[env.NEAR_NETWORK];
 const TGAS = 1_000_000_000_000n;
 const BATCH = 50;
+/** Token changes per apply_ops. NEAR reserves a call's whole gas allowance up front (about 0.001 NEAR per Tgas),
+ *  so batches stay small and each allowance fits its batch: a change burns well under 1 Tgas. */
+const CHANGES_PER_CALL = 25;
 
 export const nearOn = () =>
   !!(env.NEAR_OPERATOR_ACCOUNT && env.NEAR_OPERATOR_KEY && env.NEAR_CONTRACT) &&
@@ -31,13 +34,14 @@ const nearAccount = (address: unknown) => String(address).toLowerCase();
 
 const view = async <T>(contractId: string, method: string, args: Record<string, unknown>) => (await provider().callFunction({ contractId, method, args })) as T | undefined;
 
+/** Gas allowance in Tgas; 20 covers a receipt step or a new token with room to spare */
 type Call = { method: string; args: object; tgas?: bigint };
 
 /** Sends calls to one contract as one transaction (all or nothing) and returns its hash */
 async function send(receiverId: string, calls: Call[]): Promise<string> {
   const res = await operator().signAndSendTransaction({
     receiverId,
-    actions: calls.map((c) => actions.functionCall(c.method, c.args, (c.tgas ?? 50n) * TGAS, 0n)),
+    actions: calls.map((c) => actions.functionCall(c.method, c.args, (c.tgas ?? 20n) * TGAS, 0n)),
     waitUntil: "FINAL",
   });
   return (res as { transaction: { hash: string } }).transaction.hash;
@@ -72,7 +76,7 @@ const tokenChange = (o: Op) => ({
 async function sendChanges(list: Op[]): Promise<boolean> {
   if (!list.length) return true;
   try {
-    await markDone(list, await send(env.NEAR_CONTRACT!, [{ method: "apply_ops", args: { ops: list.map(tokenChange) }, tgas: 300n }]));
+    await markDone(list, await send(env.NEAR_CONTRACT!, [{ method: "apply_ops", args: { ops: list.map(tokenChange) }, tgas: 20n + BigInt(list.length) }]));
     return true;
   } catch (err) {
     if (list.length === 1) {
@@ -208,7 +212,7 @@ async function pass(limit: number) {
     if (op.contract === "tokens" && op.kind !== "register") {
       // Consecutive token changes go out together
       let j = i;
-      while (j < list.length && list[j].contract === "tokens" && list[j].kind !== "register" && list[j].nearTries < MAX_TRIES) j++;
+      while (j < list.length && j - i < CHANGES_PER_CALL && list[j].contract === "tokens" && list[j].kind !== "register" && list[j].nearTries < MAX_TRIES) j++;
       const group = list.slice(i, j);
       if (!(await sendChanges(group))) return done;
       done += group.length;
