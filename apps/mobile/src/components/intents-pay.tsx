@@ -67,7 +67,19 @@ const STAGE: Record<IntentSwapStatus, number> = { PENDING_DEPOSIT: 0, KNOWN_DEPO
 const STEPS = ["Waiting for your payment", "Payment received, converting", "Order paid"];
 
 const short = (a: string, head = 8, tail = 6) => (a.length > head + tail + 1 ? `${a.slice(0, head)}…${a.slice(-tail)}` : a);
-const trim = (n: number) => (n >= 1000 ? n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : n >= 1 ? n.toFixed(2) : n.toPrecision(3));
+/** At most 4 decimals, rounded up so a customer never sends too little (any excess comes back to their refund
+ *  address after the swap). Works on the exact decimal string. */
+function upTo4(amount: string) {
+  const [whole, frac = ""] = amount.split(".");
+  const cut = frac.slice(0, 4).padEnd(4, "0");
+  const up = /[1-9]/.test(frac.slice(4)) ? 1n : 0n;
+  const n = BigInt(whole + cut) + up;
+  const digits = n.toString().padStart(5, "0");
+  const out = `${digits.slice(0, -4)}.${digits.slice(-4)}`.replace(/\.?0+$/, "");
+  return out === "" ? "0" : out;
+}
+/** A rough amount for the coin list: 2 decimals from 1 up, otherwise at most 4, rounded up */
+const trim = (n: number) => (n >= 1000 ? n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : n >= 1 ? n.toFixed(2) : upTo4(n.toFixed(12)));
 
 /** A coin's logo, with its network's logo as a small badge */
 function CoinMark({ symbol, chain, size = 36 }: { symbol: string; chain?: string; size?: number }) {
@@ -327,9 +339,9 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
               <View style={{ alignItems: "center", gap: space.sm, paddingVertical: space.sm }}>
                 <CoinMark symbol={quote.symbol} chain={quote.chain} size={56} />
                 <Txt variant="caption" color={colors.muted}>Send exactly</Txt>
-                <Pressable onPress={() => void copy("amount", quote.amountInFormatted)} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Pressable onPress={() => void copy("amount", upTo4(quote.amountInFormatted))} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <Txt style={{ fontFamily: fonts.displayHeavy, fontSize: 30, lineHeight: 34, color: colors.ink }} selectable>
-                    {quote.amountInFormatted} {quote.symbol}
+                    {upTo4(quote.amountInFormatted)} {quote.symbol}
                   </Txt>
                   <Ionicons name={copied === "amount" ? "checkmark" : "copy-outline"} size={18} color={colors.brand} />
                 </Pressable>
