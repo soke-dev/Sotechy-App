@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** Pasted values lose stray spaces and line breaks, and a blank one counts as not set */
+const trimmed = <T extends z.ZodTypeAny>(type: T) => z.preprocess((v) => (typeof v === "string" ? v.trim() || undefined : v), type);
+
 const schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   /** "on" makes admins re-enter their password for money moves and approvals; off for now */
@@ -72,22 +75,26 @@ const schema = z.object({
   BASE_RPC_URL: z.string().url().optional(),
   /** NEAR mirror: every token change and receipt is also written there (off without the operator key) */
   NEAR_NETWORK: z.enum(["mainnet", "testnet"]).default("testnet"),
-  NEAR_RPC_URL: z.string().url().optional(),
+  NEAR_RPC_URL: trimmed(z.string().url().optional()),
   /** The operator account (e.g. api.sotechy.near) and its key (ed25519:…). Never the owner's key. */
-  NEAR_OPERATOR_ACCOUNT: z.string().optional(),
-  NEAR_OPERATOR_KEY: z
-    .string()
-    .regex(/^ed25519:[1-9A-HJ-NP-Za-km-z]+$/, "NEAR_OPERATOR_KEY must be an ed25519:… key")
-    .optional(),
+  NEAR_OPERATOR_ACCOUNT: trimmed(z.string().optional()),
+  NEAR_OPERATOR_KEY: trimmed(
+    z
+      .string()
+      .regex(/^ed25519:[1-9A-HJ-NP-Za-km-z]+$/, "NEAR_OPERATOR_KEY must be an ed25519:… key")
+      .optional(),
+  ),
   /** The Sotechy contract on NEAR (store tokens and receipts), e.g. contract.sotechy.near */
-  NEAR_CONTRACT: z.string().optional(),
+  NEAR_CONTRACT: trimmed(z.string().optional()),
   /** Pay with any coin through NEAR Intents: Sotechy's Base address that receives the USDC (off without it) */
-  INTENTS_RECIPIENT: z
-    .string()
-    .regex(/^0x[0-9a-fA-F]{40}$/, "INTENTS_RECIPIENT must be a 0x… address")
-    .optional(),
+  INTENTS_RECIPIENT: trimmed(
+    z
+      .string()
+      .regex(/^0x[0-9a-fA-F]{40}$/, "INTENTS_RECIPIENT must be a 0x… address")
+      .optional(),
+  ),
   /** 1Click API key from NEAR Intents (optional; without it 1Click adds its unauthenticated fee) */
-  ONECLICK_JWT: z.string().optional(),
+  ONECLICK_JWT: trimmed(z.string().optional()),
   /** The merchant dashboard, where Didit sends people back after their check */
   MERCHANT_APP_URL: z.string().default("https://merchant.sotechy.shop"),
 });
