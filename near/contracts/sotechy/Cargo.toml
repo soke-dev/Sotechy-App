@@ -1,0 +1,16 @@
+[package]
+name = "sotechy"
+description = "Sotechy on NEAR: every store's reward token (NEP-245) and a soulbound, status-tracking receipt for every order (NEP-171), in one contract"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/soke-dev/sotechy-near"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { workspace = true }
+
+[dev-dependencies]
+near-sdk = { workspace = true, features = ["unit-testing"] }

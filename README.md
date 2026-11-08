@@ -14,6 +14,25 @@ Sotechy is a multi-store marketplace. Verified stores sell through the Sotechy a
 
 How tokens, the reserve and payouts work is in [docs/tokens/README.md](docs/tokens/README.md).
 
+## NEAR Hackathon
+
+**Start here: [`near/`](near).** It has the Sotechy contract on NEAR (store tokens as NEP-245, and soulbound receipts as dynamic NEP-171 that change with the order), with tests, deploy scripts and a demo you can run without keys. NEAR is wired into the live app:
+- [`apps/api/src/services/near.ts`](apps/api/src/services/near.ts) mirrors every token change and receipt to NEAR.
+- [`apps/api/src/services/intents.ts`](apps/api/src/services/intents.ts) and [`apps/mobile/src/components/intents-pay.tsx`](apps/mobile/src/components/intents-pay.tsx) let customers pay with any coin on any chain through NEAR Intents.
+
+Live on mainnet at [`contract.sotechy.near`](https://nearblocks.io/address/contract.sotechy.near).
+
+**Baseline (pre-hackathon code).**
+- **Sotechy Shop** has been an electronics store in Benin City since 2022. Its old website was a separate codebase and isn't in this repo.
+- **This repo's first commit** ([`4bbbaa4`](https://github.com/soke-dev/Sotechy-App/commit/4bbbaa4), tag `pre-hackathon`, 25 Oct 2026) brought in about 10,850 lines that were already written: the API basics, the admin dashboard, the customer app shell and the landing page. Treat that commit as baseline.
+
+**Built during the hackathon** (every commit after `4bbbaa4`, from 25 Oct 2026; tag `hackathon-submission`):
+- the marketplace: store verification, storefronts, payouts, offers, promotions and walk-in sales
+- the merchant dashboard
+- store tokens and the reserve
+- the Base contracts
+- everything in `near/`, the NEAR mirror, and NEAR Intents checkout
+
 ## What the marketplace does
 
 - **Stores and verification.** A store signs up in the merchant dashboard, sets up its business (CAC details or as an individual), passes an ID and selfie check (Didit), adds a payout account and names its token. Admin approves it, asks for changes, or declines it, with a note the owner sees.
@@ -22,7 +41,7 @@ How tokens, the reserve and payouts work is in [docs/tokens/README.md](docs/toke
 - **Cart and checkout.** One cart can hold several stores; each store checks out on its own. Customers pay through Money Moves, with stablecoin or by bank transfer (a direct checkout to the business account, turned on by `MONEYMOVES_DIRECT_KEY`), and can put store tokens towards an order.
 - **Orders.** The store accepts, sends it (with tracking and the driver's phone for pickup), and marks it collected or delivered after ticking what it checked. The customer confirms they got it, or says it didn't arrive and Sotechy follows up.
 - **Payouts.** Each order pays the store in two parts: the first when it accepts, the rest when the customer confirms delivery. Admin pays them by hand for now and marks them paid; the store is emailed.
-- **Store tokens.** Customers earn the store's token on every order (plus $SOTECHY), held until it's paid and released on delivery. Tokens live on Monad; every delivered order also gets a receipt fingerprint recorded on-chain.
+- **Store tokens.** Customers earn the store's token on every order (plus $SOTECHY), held until it's paid and released on delivery. Tokens are recorded on Base and mirrored to NEAR; every order also gets an on-chain receipt.
 - **Selling tools.** Price offers, store promo codes, paid featuring and banners, walk-in sales that still earn customers tokens, reviews, followers and store news.
 - **Talking to people.** Push notifications and an in-app notifications list, email (Resend), WhatsApp links, and live chat with Sotechy's team in the app.
 

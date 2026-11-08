@@ -1,0 +1,8 @@
+{
+  "name": "sotechy-near-demo",
+  "private": true,
+  "type": "module",
+  "description": "Reads Sotechy's NEAR contracts and gets a live NEAR Intents quote. No keys needed.",
+  "scripts": { "start": "node demo.mjs" },
+  "dependencies": { "near-api-js": "7.4.0" }
+}

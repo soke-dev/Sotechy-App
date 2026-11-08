@@ -1,0 +1,5 @@
+# near-sdk 5.30 needs Rust 1.95+; cargo-near 0.23 builds the wasm the NEAR runtime accepts
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]
