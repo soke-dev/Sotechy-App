@@ -1269,9 +1269,14 @@ export const chainOps = pgTable(
     baseAt: timestamp({ withTimezone: true }),
     baseError: text(),
     baseTries: integer().notNull().default(0),
+    /** The NEAR mirror, which gets every change (and the receipt status changes only NEAR keeps) */
+    nearTx: text(),
+    nearAt: timestamp({ withTimezone: true }),
+    nearError: text(),
+    nearTries: integer().notNull().default(0),
     createdAt: createdAt(),
   },
-  (t) => [unique().on(t.contract, t.kind, t.sourceId), index().on(t.monadAt), index().on(t.baseAt)],
+  (t) => [unique().on(t.contract, t.kind, t.sourceId), index().on(t.monadAt), index().on(t.baseAt), index().on(t.nearAt)],
 );
 
 /** A store's payout accounts (up to 3). Payouts always go to the default one, which is also copied onto the store. */

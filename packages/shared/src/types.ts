@@ -517,6 +517,8 @@ export interface StoreConfig {
   /** The app's ways to pay, as Admin → Settings has them (stablecoin on Money Moves; bank transfer on Money Moves or Bachs) */
   stablecoin?: boolean;
   bankTransfer?: boolean;
+  /** Any coin on any chain through NEAR Intents, settled to Sotechy as USDC on Base */
+  intents?: boolean;
   branches: Branch[];
   paymentMethods: PaymentMethodConfig[];
   cryptoAssets: CryptoAsset[];
@@ -1060,3 +1062,29 @@ export interface SupportChat {
   ticketId: string | null;
   messages: { id: string; fromStaff: boolean; body: string; imageUrl?: string | null; createdAt: string }[];
 }
+
+/** A coin a customer can pay with through NEAR Intents */
+export interface IntentsAsset {
+  assetId: string;
+  symbol: string;
+  chain: string;
+  decimals: number;
+  priceUsd: number;
+}
+
+/** An open NEAR Intents payment: send `amountInFormatted` of the coin to `depositAddress` before `deadline` */
+export interface IntentQuote {
+  depositAddress: string;
+  depositMemo: string | null;
+  originAsset: string;
+  symbol: string;
+  chain: string;
+  amountIn: string;
+  amountInFormatted: string;
+  amountOutUsdc: string;
+  rate: number;
+  deadline: string;
+}
+
+/** 1Click's swap states, from waiting for the deposit to done or refunded */
+export type IntentSwapStatus = "PENDING_DEPOSIT" | "KNOWN_DEPOSIT_TX" | "PROCESSING" | "SUCCESS" | "INCOMPLETE_DEPOSIT" | "REFUNDED" | "FAILED";

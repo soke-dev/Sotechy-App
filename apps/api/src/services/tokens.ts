@@ -98,7 +98,7 @@ export async function ensureStoreTokens() {
   }
 }
 
-async function tokenOf(merchantId: string | null, tx: Pick<Tx, "select"> = db) {
+export async function tokenOf(merchantId: string | null, tx: Pick<Tx, "select"> = db) {
   if (!merchantId) return SOTECHY_TOKEN.id;
   const [store] = await tx.select({ tokenId: merchants.tokenId }).from(merchants).where(eq(merchants.id, merchantId));
   return store?.tokenId ?? null;

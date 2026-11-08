@@ -337,11 +337,17 @@ export async function queueStats() {
 
 /** Lets changes that failed too often go again */
 export async function retryStuck() {
-  // Changes that failed too often on either chain go again
+  // Changes that failed too often on any chain go again
   const rows = await db
     .update(ops)
-    .set({ monadTries: 0, monadError: null, baseTries: 0, baseError: null })
-    .where(or(and(isNull(ops.monadAt), sql`${ops.monadTries} >= ${MAX_TRIES}`), and(isNull(ops.baseAt), sql`${ops.baseTries} >= ${MAX_TRIES}`)))
+    .set({ monadTries: 0, monadError: null, baseTries: 0, baseError: null, nearTries: 0, nearError: null })
+    .where(
+      or(
+        and(isNull(ops.monadAt), sql`${ops.monadTries} >= ${MAX_TRIES}`),
+        and(isNull(ops.baseAt), sql`${ops.baseTries} >= ${MAX_TRIES}`),
+        and(isNull(ops.nearAt), sql`${ops.nearTries} >= ${MAX_TRIES}`),
+      ),
+    )
     .returning({ id: ops.id });
   return rows.length;
 }

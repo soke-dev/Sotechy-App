@@ -70,6 +70,24 @@ const schema = z.object({
   /** Own RPC endpoints, if the public ones get slow or rate-limited */
   MONAD_RPC_URL: z.string().url().optional(),
   BASE_RPC_URL: z.string().url().optional(),
+  /** NEAR mirror: every token change and receipt is also written there (off without the operator key) */
+  NEAR_NETWORK: z.enum(["mainnet", "testnet"]).default("testnet"),
+  NEAR_RPC_URL: z.string().url().optional(),
+  /** The operator account (e.g. api.sotechy.near) and its key (ed25519:…). Never the owner's key. */
+  NEAR_OPERATOR_ACCOUNT: z.string().optional(),
+  NEAR_OPERATOR_KEY: z
+    .string()
+    .regex(/^ed25519:[1-9A-HJ-NP-Za-km-z]+$/, "NEAR_OPERATOR_KEY must be an ed25519:… key")
+    .optional(),
+  /** The Sotechy contract on NEAR (store tokens and receipts), e.g. contract.sotechy.near */
+  NEAR_CONTRACT: z.string().optional(),
+  /** Pay with any coin through NEAR Intents: Sotechy's Base address that receives the USDC (off without it) */
+  INTENTS_RECIPIENT: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/, "INTENTS_RECIPIENT must be a 0x… address")
+    .optional(),
+  /** 1Click API key from NEAR Intents (optional; without it 1Click adds its unauthenticated fee) */
+  ONECLICK_JWT: z.string().optional(),
   /** The merchant dashboard, where Didit sends people back after their check */
   MERCHANT_APP_URL: z.string().default("https://merchant.sotechy.shop"),
 });

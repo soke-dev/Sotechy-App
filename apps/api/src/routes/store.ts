@@ -9,6 +9,7 @@ import { notFound } from "../lib/errors";
 import { getFeatures, requireFeature } from "../services/features";
 import { getUsdRate } from "../services/moneymoves";
 import { bankTransferAvailable, stablecoinAvailable } from "../services/bank-pay";
+import { intentsOn } from "../services/intents";
 import { findPromotion } from "../services/promotions";
 import { liveAreas } from "../services/store-delivery";
 import { payoutSettings } from "../services/payouts";
@@ -189,9 +190,11 @@ export const storeRoutes = new Hono()
       popups: popupRows,
       // Sotechy's fee on each store sale, as admin sets it (stores see it before they sign up)
       marketplaceFee: payouts.feeRate,
-      // The app's two ways to pay, as Admin → Settings has them
+      // The app's ways to pay, as Admin → Settings has them
       stablecoin: await stablecoinAvailable(),
       bankTransfer: await bankTransferAvailable(),
+      // Any coin on any chain, through NEAR Intents
+      intents: intentsOn(),
     });
   })
   .post("/promo/check", zValidator("json", z.object({ code: z.string().trim().min(1).max(40), subtotal: z.number().nonnegative(), store: z.string().max(80).optional() })), async (c) => {

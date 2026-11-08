@@ -4,6 +4,8 @@ import { env } from "./env";
 import { releaseExpiredReservations } from "./services/orders";
 import { payoutRound } from "./services/payouts";
 import { startChainWorker } from "./services/chain";
+import { startNearWorker } from "./services/near";
+import { startIntentsWatcher } from "./services/intents";
 
 serve({ fetch: app.fetch, port: env.PORT, hostname: "0.0.0.0" }, (info) => {
   console.log(`Sotechy API listening on http://localhost:${info.port}`);
@@ -18,6 +20,8 @@ setInterval(() => {
 
 // Copy the token ledger and receipts onto Monad as they happen
 startChainWorker();
+startNearWorker();
+startIntentsWatcher();
 
 // Check payouts on their way, and send due ones when automatic sending is on.
 setInterval(() => {

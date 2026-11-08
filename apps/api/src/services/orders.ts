@@ -12,6 +12,7 @@ import { deliveryFeeFor, getSetting, type DeliverySettings } from "./settings";
 import { agreedPriceFor, releaseOffers } from "./offers";
 import { payoutsForStatus } from "./payouts";
 import { commitSpent, spendForOrder, tokensForStatus } from "./tokens";
+import { nearReceiptForStatus } from "./near";
 import { storeDeliveryCharge } from "./store-delivery";
 
 const { orders, orderItems, payments, inventory, productVariants, products, orderStatusHistory } = schema;
@@ -408,6 +409,7 @@ export async function confirmPayment(
     return { payment: updated, alreadyConfirmed: false };
   });
   if (paidOrderId) void notifyOrderStatus(paidOrderId, "paid");
+  if (paidOrderId) await nearReceiptForStatus(paidOrderId, "paid");
   return result;
 }
 
@@ -456,6 +458,7 @@ export async function updateOrderStatus(actor: AuthUser, orderId: string, to: Or
   void notifyOrderStatus(orderId, to);
   if (updated.merchantId) await payoutsForStatus(orderId, to);
   await tokensForStatus(orderId, to);
+  await nearReceiptForStatus(orderId, to);
   return updated;
 }
 
@@ -508,6 +511,7 @@ export async function cancelOrder(actor: AuthUser, orderId: string, note?: strin
   if (actor.id !== updated.customerId) void notifyOrderStatus(orderId, "cancelled");
   if (updated.merchantId) await payoutsForStatus(orderId, "cancelled");
   await tokensForStatus(orderId, "cancelled");
+  await nearReceiptForStatus(orderId, "cancelled");
   return updated;
 }
 

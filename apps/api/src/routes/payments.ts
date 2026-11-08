@@ -17,6 +17,7 @@ import { bachsCheckout, bachsCheckoutPaid, bachsCreateCheckout, type BachsChecko
 import { bankProvider, bankTransferAvailable, stablecoinAvailable } from "../services/bank-pay";
 import { FEATURE_REF, settleFeaturing } from "../services/featuring";
 import { settleWalkIn, WALK_IN_REF } from "../services/walk-in";
+import { checkIntent, intentsAssets, intentsOn, openIntent, savedIntent } from "../services/intents";
 
 const isUuid = (v: string | null | undefined): v is string => !!v && /^[0-9a-f-]{36}$/i.test(v);
 
@@ -144,6 +145,58 @@ export const paymentRoutes = new Hono<AppEnv>()
     if (lastAsked.size > 5000) lastAsked.clear();
     await lookUp(saved).catch(() => {});
     return c.json({ status: (await status()) ?? before });
+  })
+
+  /** The coins a customer can pay with through NEAR Intents */
+  .get("/intents/assets", async (c) => {
+    if (!intentsOn()) return c.json({ on: false, assets: [] });
+    return c.json({ on: true, assets: await intentsAssets() });
+  })
+
+  /**
+   * Pay with any coin through NEAR Intents: a one-off deposit address and the exact amount of the chosen coin, for
+   * Sotechy to receive the order's total in USDC on Base. `refundTo` is the customer's own address on that coin's
+   * chain, where 1Click returns the coins if the swap can't happen. An open quote for the same coin is reused.
+   */
+  .post(
+    "/intents/initialize",
+    requireAuth,
+    zValidator("json", z.object({ orderId: z.uuid(), assetId: z.string().min(3).max(200), refundTo: z.string().min(10).max(120) })),
+    async (c) => {
+      await requireFeature("ordering", "Online ordering is paused right now");
+      if (!intentsOn()) throw new HttpError(503, "Paying with crypto through NEAR Intents isn't available right now.");
+      const user = c.get("user");
+      const { orderId, assetId, refundTo } = c.req.valid("json");
+      const [order] = await db.select().from(schema.orders).where(and(eq(schema.orders.id, orderId), eq(schema.orders.customerId, user.id)));
+      if (!order) throw notFound("Order not found");
+      if (order.status !== "pending_payment" || order.paymentMethod !== "online") throw badRequest("This order is not awaiting payment");
+      const [payment] = await db.select().from(schema.payments).where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.status, "pending")));
+      if (!payment) throw badRequest("No pending payment for this order");
+      const open = savedIntent(payment.raw);
+      if (open && open.originAsset === assetId && new Date(open.deadline).getTime() > Date.now() + 5 * 60_000) return c.json(open);
+      let intent;
+      try {
+        intent = await openIntent(payment, assetId, refundTo.trim());
+      } catch (err) {
+        throw badRequest(err instanceof Error ? `We couldn't get a price for that coin: ${err.message}` : "We couldn't get a price for that coin");
+      }
+      await db.update(schema.payments).set({ provider: "near-intents", raw: { intents: intent } }).where(eq(schema.payments.id, payment.id));
+      return c.json(intent);
+    },
+  )
+
+  /** Where the customer's Intents payment is; a finished swap confirms the order */
+  .get("/intents/status", requireAuth, async (c) => {
+    const orderId = c.req.query("orderId");
+    if (!isUuid(orderId)) throw badRequest("orderId is required");
+    const user = c.get("user");
+    const [order] = await db.select({ id: schema.orders.id, status: schema.orders.status }).from(schema.orders).where(and(eq(schema.orders.id, orderId), eq(schema.orders.customerId, user.id)));
+    if (!order) throw notFound("Order not found");
+    const [payment] = await db.select().from(schema.payments).where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.provider, "near-intents")));
+    if (!payment) return c.json({ swap: null, orderStatus: order.status });
+    const swap = payment.status === "pending" ? await checkIntent(payment).catch(() => null) : "SUCCESS";
+    const [now] = await db.select({ status: schema.orders.status }).from(schema.orders).where(eq(schema.orders.id, orderId));
+    return c.json({ swap, orderStatus: now?.status ?? order.status, intent: savedIntent(payment.raw) });
   })
 
   /**

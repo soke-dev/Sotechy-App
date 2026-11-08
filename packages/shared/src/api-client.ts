@@ -2,6 +2,9 @@ import type { Bank, PayoutAccount, PayoutPlan, PayoutRow } from "./payouts";
 import type { IdCheckState } from "./id-checks";
 import type {
   Address,
+  IntentQuote,
+  IntentsAsset,
+  IntentSwapStatus,
   OfferView,
   OrderReceipt,
   WalletView,
@@ -266,6 +269,10 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     checkOnlinePayment: (orderId: string) => send<{ status: string }>("POST", `/payments/online/check`, { orderId }),
     startOnlinePayment: (orderId: string, method: "stablecoin" | "bank" = "stablecoin") =>
       send<{ checkoutUrl: string }>("POST", `/payments/online/initialize`, { orderId, method }),
+    /** NEAR Intents: the coins on offer, a deposit address for one, and where the payment is */
+    intentsAssets: () => get<{ on: boolean; assets: IntentsAsset[] }>("/payments/intents/assets"),
+    startIntentsPayment: (orderId: string, assetId: string, refundTo: string) => send<IntentQuote>("POST", "/payments/intents/initialize", { orderId, assetId, refundTo }),
+    intentsStatus: (orderId: string) => get<{ swap: IntentSwapStatus | null; orderStatus: string; intent: IntentQuote | null }>(`/payments/intents/status?orderId=${orderId}`),
     wishlist: () => get<CatalogProduct[]>("/me/wishlist"),
     toggleWishlist: (productId: string) => send<{ saved: boolean }>("POST", `/me/wishlist/${productId}`),
     /** When anything of the customer's last changed; live screens reload when it moves */

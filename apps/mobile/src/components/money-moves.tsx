@@ -10,22 +10,25 @@ import { api } from "@/lib/api";
 import { useStoreConfig } from "@/lib/store-config";
 import { colors, space } from "@/lib/theme";
 import { Illo, type IlloName } from "./illustrations";
+import { IntentsPayWindow } from "./intents-pay";
 import { Sheet } from "./shop-filters";
 import { Button, tap, Txt, ui } from "./ui";
 
-export type PayMethod = "stablecoin" | "bank";
+/** stablecoin and bank go through the providers admin picks; intents is any coin through NEAR Intents */
+export type PayMethod = "stablecoin" | "bank" | "intents";
 
 // Stablecoin goes through Money Moves; bank transfer through Money Moves or Bachs, as admin chooses
 const PAY_CHOICES: { id: PayMethod; illo: IlloName; title: string; subtitle: string }[] = [
   { id: "stablecoin", illo: "coin", title: "Pay with stablecoin", subtitle: "Pay with USDT or USDC" },
   { id: "bank", illo: "bank", title: "Pay with bank transfer", subtitle: "Send the exact amount from any Nigerian bank app" },
+  { id: "intents", illo: "sparkle", title: "Pay with any crypto", subtitle: "BTC, ETH, SOL, NEAR, USDC or USDT on any chain · NEAR Intents" },
 ];
 
 /** Bottom sheet of ways to pay; picking one calls `onPay` with it. `extra` sits above the choices (e.g. paying with tokens). */
 export function PayChoiceSheet({ visible, amount, onClose, onPay, extra }: { visible: boolean; amount: number; onClose: () => void; onPay: (method: PayMethod) => void; extra?: ReactNode }) {
   // Each way to pay shows only while admin has it switched on (stablecoin until the settings load)
   const config = useStoreConfig().config;
-  const choices = PAY_CHOICES.filter((c) => (c.id === "bank" ? !!config?.bankTransfer : config?.stablecoin !== false));
+  const choices = PAY_CHOICES.filter((c) => (c.id === "bank" ? !!config?.bankTransfer : c.id === "intents" ? !!config?.intents : config?.stablecoin !== false));
   return (
     <Sheet visible={visible} title={`Pay ${formatNaira(amount)}`} onClose={onClose}>
       {extra}
@@ -173,8 +176,21 @@ function WebPayWindow({ url, popup, onOpen, onCheck, onDone }: { url: string; po
  */
 export function useMoneyMoves() {
   const [win, setWin] = useState<{ url: string; finish: (returned: boolean) => void; web?: { popup: boolean; open: () => void; check: () => Promise<boolean> } } | null>(null);
+  const [intents, setIntents] = useState<{ order: Pending["order"]; finish: (paid: boolean) => void } | null>(null);
 
   const pay = useCallback(async (order: Pending["order"], method: PayMethod = "stablecoin") => {
+    // Any coin through NEAR Intents: our own window, no provider page
+    if (method === "intents") {
+      return new Promise<boolean>((resolve) => {
+        setIntents({
+          order,
+          finish: async (paid) => {
+            setIntents(null);
+            resolve(paid || (await isPaid(order.id)));
+          },
+        });
+      });
+    }
     const { checkoutUrl } = await api.startOnlinePayment(order.id, method);
     let paid = false;
     let open = true;
@@ -268,7 +284,9 @@ export function useMoneyMoves() {
 
   return {
     pay,
-    sheet: !win ? null : win.web ? (
+    sheet: intents ? (
+      <IntentsPayWindow order={intents.order} onDone={intents.finish} />
+    ) : !win ? null : win.web ? (
       <WebPayWindow url={win.url} popup={win.web.popup} onOpen={win.web.open} onCheck={win.web.check} onDone={win.finish} />
     ) : (
       <PayWindow url={win.url} onDone={win.finish} />
