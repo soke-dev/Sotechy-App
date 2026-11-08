@@ -32,6 +32,8 @@ interface SettingsResponse {
   paymentMethods: PaymentMethodConfig[];
   cryptoAssets: CryptoAsset[];
   settings: Record<string, Record<string, string | number | null>>;
+  intents?: { setUp: boolean; recipient: string | null; keySet: boolean };
+  near?: { on: boolean; network: string; explorer: string; contract: string | null; waiting: number; stuck: number; done: number; last: string | null };
 }
 
 export default async function SettingsPage() {
@@ -126,6 +128,27 @@ export default async function SettingsPage() {
             <Field label="Own rate (₦ per $1)"><input name="manualRate" type="number" min={1} step="0.01" defaultValue={s.fx?.manualRate ?? ""} className={inputClass} /></Field>
           </ActionForm>
         </Card>
+
+        {data.intents && (
+          <Card title="Pay with any crypto" className="xl:col-span-2" description="NEAR Intents: customers pay with BTC, ETH, SOL, NEAR or USDC/USDT on many chains, and Sotechy receives the order's total as USDC on Base.">
+            <ActionForm action={saveSetting} className="flex flex-wrap items-end gap-3">
+              <input type="hidden" name="key" value="intents" />
+              <SwitchField name="enabled" label="Show “Pay with any crypto” in the app" defaultChecked={!s.intents || s.intents.enabled === "on"} />
+            </ActionForm>
+            <ul className="mt-3 flex flex-col gap-1 text-sm">
+              <Check ok={data.intents.setUp}>
+                USDC arrives at {data.intents.recipient ? <code className="break-all">{data.intents.recipient}</code> : "an address not set yet"} (<code>INTENTS_RECIPIENT</code>, on Base)
+              </Check>
+              <Check ok={data.intents.keySet}>1Click key set (<code>ONECLICK_JWT</code>; without it NEAR Intents adds a small fee)</Check>
+            </ul>
+            {data.near && (
+              <p className="mt-3 text-xs text-muted">
+                NEAR mirror: {data.near.on ? `on, writing to ${data.near.contract} (${data.near.network})` : "off"} · {data.near.done} written, {data.near.waiting} waiting
+                {data.near.stuck > 0 ? `, ${data.near.stuck} stuck (Tokens → retry)` : ""}
+              </p>
+            )}
+          </Card>
+        )}
 
         <Card className="xl:col-span-2" title="Payment methods" description="Online = shown in the app: “Money Moves” is Pay with stablecoin, “Bank transfer” is Pay with bank transfer. In store = offered at the POS.">
           <div className="flex flex-col divide-y divide-line">

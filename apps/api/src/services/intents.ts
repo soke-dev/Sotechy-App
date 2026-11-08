@@ -5,6 +5,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "../db/client";
 import { env } from "../env";
 import { getUsdRate } from "./moneymoves";
+import { getSetting } from "./settings";
 import { confirmPayment } from "./orders";
 
 const API = "https://1click.chaindefuser.com/v0";
@@ -33,8 +34,15 @@ const CHAIN_NAME: Record<string, string> = { base: "Base", eth: "Ethereum", sol:
 
 export type IntentsAsset = { assetId: string; symbol: string; chain: string; decimals: number; priceUsd: number };
 
-/** On when Sotechy has a Base address to receive USDC at */
+/** Set up when Sotechy has a Base address to receive USDC at */
 export const intentsOn = () => !!env.INTENTS_RECIPIENT;
+
+/** Offered in the app: set up, and not switched off in Admin → Settings (on until an admin turns it off) */
+export async function intentsAvailable() {
+  if (!intentsOn()) return false;
+  const s = await getSetting<{ enabled?: string | null }>("intents");
+  return !s || s.enabled === "on";
+}
 
 async function oneClick<T>(method: "GET" | "POST", path: string, body?: object): Promise<T> {
   const res = await fetch(`${API}${path}`, {

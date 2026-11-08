@@ -17,7 +17,7 @@ import { bachsCheckout, bachsCheckoutPaid, bachsCreateCheckout, type BachsChecko
 import { bankProvider, bankTransferAvailable, stablecoinAvailable } from "../services/bank-pay";
 import { FEATURE_REF, settleFeaturing } from "../services/featuring";
 import { settleWalkIn, WALK_IN_REF } from "../services/walk-in";
-import { checkIntent, intentsAssets, intentsOn, openIntent, savedIntent } from "../services/intents";
+import { checkIntent, intentsAssets, intentsAvailable, openIntent, savedIntent } from "../services/intents";
 
 const isUuid = (v: string | null | undefined): v is string => !!v && /^[0-9a-f-]{36}$/i.test(v);
 
@@ -149,7 +149,7 @@ export const paymentRoutes = new Hono<AppEnv>()
 
   /** The coins a customer can pay with through NEAR Intents */
   .get("/intents/assets", async (c) => {
-    if (!intentsOn()) return c.json({ on: false, assets: [] });
+    if (!(await intentsAvailable())) return c.json({ on: false, assets: [] });
     return c.json({ on: true, assets: await intentsAssets() });
   })
 
@@ -164,7 +164,7 @@ export const paymentRoutes = new Hono<AppEnv>()
     zValidator("json", z.object({ orderId: z.uuid(), assetId: z.string().min(3).max(200), refundTo: z.string().min(10).max(120) })),
     async (c) => {
       await requireFeature("ordering", "Online ordering is paused right now");
-      if (!intentsOn()) throw new HttpError(503, "Paying with crypto through NEAR Intents isn't available right now.");
+      if (!(await intentsAvailable())) throw new HttpError(503, "Paying with crypto through NEAR Intents isn't available right now.");
       const user = c.get("user");
       const { orderId, assetId, refundTo } = c.req.valid("json");
       const [order] = await db.select().from(schema.orders).where(and(eq(schema.orders.id, orderId), eq(schema.orders.customerId, user.id)));

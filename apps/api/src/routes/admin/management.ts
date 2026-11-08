@@ -7,6 +7,9 @@ import { isMapLink } from "@sotechy/shared";
 import { db, schema } from "../../db/client";
 import { ensureStoreTokens, SOTECHY_TOKEN, walletFor } from "../../services/tokens";
 import { chainView } from "../../services/chain-primary";
+import { intentsOn } from "../../services/intents";
+import { nearStats } from "../../services/near";
+import { env } from "../../env";
 import { audit } from "../../lib/audit";
 import { hashPassword, MANAGERS, requireRole, type AppEnv, requirePassword } from "../../lib/auth";
 import { badRequest, conflict, notFound } from "../../lib/errors";
@@ -210,7 +213,14 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       db.select().from(cryptoAssets),
       db.select().from(appSettings),
     ]);
-    return c.json({ paymentMethods: methods, cryptoAssets: assets, settings: Object.fromEntries(settings.map((s) => [s.key, s.value])) });
+    return c.json({
+      paymentMethods: methods,
+      cryptoAssets: assets,
+      settings: Object.fromEntries(settings.map((s) => [s.key, s.value])),
+      // Pay with any crypto (NEAR Intents) and the NEAR mirror, as the server has them set up
+      intents: { setUp: intentsOn(), recipient: env.INTENTS_RECIPIENT ?? null, keySet: !!env.ONECLICK_JWT },
+      near: await nearStats(),
+    });
   })
   .patch(
     "/settings/payment-methods/:code",
@@ -243,7 +253,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     },
   )
   .put("/settings/:key", ADMIN, zValidator("json", z.record(z.string(), z.unknown())), async (c) => {
-    const key = z.enum(["delivery", "reservation_hold", "bank_transfer", "bank_provider", "support", "fx"]).parse(c.req.param("key"));
+    const key = z.enum(["delivery", "reservation_hold", "bank_transfer", "bank_provider", "support", "fx", "intents"]).parse(c.req.param("key"));
     const value = c.req.valid("json");
     const [row] = await db
       .insert(appSettings)

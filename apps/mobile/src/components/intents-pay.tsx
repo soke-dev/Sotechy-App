@@ -41,6 +41,8 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
   const insets = useSafeAreaInsets();
   const [assets, setAssets] = useState<IntentsAsset[] | null>(null);
   const [asset, setAsset] = useState<IntentsAsset | null>(null);
+  // Pick a chain first (or see every coin), then a coin on it
+  const [chain, setChain] = useState<string | null>(null);
   const [refundTo, setRefundTo] = useState("");
   const [quote, setQuote] = useState<IntentQuote | null>(null);
   const [swap, setSwap] = useState<IntentSwapStatus | null>(null);
@@ -119,8 +121,32 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
             <>
               <Txt variant="small">Pay with what you hold, on any of these chains. NEAR Intents converts it, and Sotechy receives your order&apos;s total in USDC.</Txt>
               {!assets && !error && <ActivityIndicator color={colors.brand} style={{ marginTop: space.lg }} />}
+              {assets && (
+                <>
+                  <Txt variant="caption">Chain</Txt>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>
+                    {[null, ...Array.from(new Set(assets.map((a) => a.chain)))].map((c) => {
+                      const on = chain === c;
+                      return (
+                        <Pressable
+                          key={c ?? "all"}
+                          onPress={() => {
+                            tap();
+                            setChain(c);
+                            if (c && asset && asset.chain !== c) setAsset(null);
+                          }}
+                          style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 2, borderColor: on ? colors.ink : colors.line, backgroundColor: on ? colors.ink : colors.surface }}
+                        >
+                          <Txt variant="label" color={on ? colors.onInverse : colors.ink}>{c ?? "All chains"}</Txt>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                  <Txt variant="caption">Coin</Txt>
+                </>
+              )}
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
-                {assets?.map((a) => {
+                {assets?.filter((a) => !chain || a.chain === chain).map((a) => {
                   const on = asset?.assetId === a.assetId;
                   return (
                     <Pressable
