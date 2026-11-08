@@ -1072,7 +1072,7 @@ export interface IntentsAsset {
   priceUsd: number;
 }
 
-/** An open NEAR Intents payment: send `amountInFormatted` of the coin to `depositAddress` before `deadline` */
+/** An open NEAR Intents payment: send `amountInFormatted` of the coin to `depositAddress` (with `depositMemo`, if any) before `deadline` */
 export interface IntentQuote {
   depositAddress: string;
   depositMemo: string | null;
