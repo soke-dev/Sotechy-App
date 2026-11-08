@@ -1063,7 +1063,7 @@ export interface SupportChat {
   messages: { id: string; fromStaff: boolean; body: string; imageUrl?: string | null; createdAt: string }[];
 }
 
-/** A coin a customer can pay with through NEAR Intents */
+/** A coin a customer can pay with through NEAR Intents (1Click asset id, its chain, and 1Click's USD price) */
 export interface IntentsAsset {
   assetId: string;
   symbol: string;
