@@ -91,27 +91,22 @@ async function nearStatus() {
     return { address: accountId, url: links.address(accountId), balance: b ? Math.round(b.free * 10_000) / 10_000 : null };
   };
   const base = { address: contract, version: 1, url: links.address(contract), earlier: [] };
-  let contracts: object[];
-  let owner = { address: "", url: "", balance: null as number | null };
-  try {
-    const [paused, limits, issued, ownerId] = await Promise.all([
-      nearRead<boolean>("is_paused"),
-      nearRead<{ max_mint_per_op: string; max_mint_per_day: string; minted_today: string }>("limits"),
-      nearRead<string>("nft_total_supply"),
-      nearRead<string>("owner"),
-    ]);
-    const state = paused ? "paused" : "running";
-    contracts = [
-      { ...base, contract: "tokens", reachable: true, state, needsCopy: false, perMint: Number(limits?.max_mint_per_op ?? 0), perDay: Number(limits?.max_mint_per_day ?? 0), mintedToday: Number(limits?.minted_today ?? 0) },
-      { ...base, contract: "receipts", reachable: true, state, needsCopy: false, issued: Number(issued ?? 0) },
-    ];
-    if (ownerId) owner = await wallet(ownerId);
-  } catch {
-    contracts = [
-      { ...base, contract: "tokens", reachable: false },
-      { ...base, contract: "receipts", reachable: false },
-    ];
-  }
+  // Each read stands alone, so one refused request doesn't blank the whole card
+  const [paused, limits, issued, ownerId] = await Promise.allSettled([
+    nearRead<boolean>("is_paused"),
+    nearRead<{ max_mint_per_op: string; max_mint_per_day: string; minted_today: string }>("limits"),
+    nearRead<string>("nft_total_supply"),
+    nearRead<string>("owner"),
+  ]);
+  const got = <T>(r: PromiseSettledResult<T>) => (r.status === "fulfilled" ? r.value : undefined);
+  const reachable = paused.status === "fulfilled";
+  const state = got(paused) ? "paused" : "running";
+  const l = got(limits);
+  const contracts: object[] = [
+    { ...base, contract: "tokens", reachable, state, needsCopy: false, ...(l && { perMint: Number(l.max_mint_per_op), perDay: Number(l.max_mint_per_day), mintedToday: Number(l.minted_today) }) },
+    { ...base, contract: "receipts", reachable, state, needsCopy: false, ...(got(issued) !== undefined && { issued: Number(got(issued)) }) },
+  ];
+  const owner = got(ownerId) ? await wallet(got(ownerId)!) : { address: "", url: "", balance: null as number | null };
   const operator = await wallet(env.NEAR_OPERATOR_ACCOUNT);
   return {
     chain: "near" as const,

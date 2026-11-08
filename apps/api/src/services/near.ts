@@ -4,7 +4,7 @@
 // takes as an account name (an eth-implicit account), so each customer is the same on both chains.
 import type { OrderStatus } from "@sotechy/shared";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { Account, actions, JsonRpcProvider, KeyPairSigner, type KeyPairString } from "near-api-js";
+import { Account, actions, FailoverRpcProvider, JsonRpcProvider, KeyPairSigner, type KeyPairString } from "near-api-js";
 import { hexToString, type Hex } from "viem";
 import { db, schema } from "../db/client";
 import { env } from "../env";
@@ -15,7 +15,11 @@ const ops = schema.chainOps;
 type Op = typeof ops.$inferSelect;
 
 export const NEAR_EXPLORER = { mainnet: "https://nearblocks.io", testnet: "https://testnet.nearblocks.io" }[env.NEAR_NETWORK];
-const RPC = env.NEAR_RPC_URL ?? { mainnet: "https://rpc.mainnet.near.org", testnet: "https://rpc.testnet.near.org" }[env.NEAR_NETWORK];
+/** FastNEAR first (NEAR's own public RPC is rate-limited), then NEAR's; NEAR_RPC_URL goes in front of both */
+const RPCS = [
+  ...(env.NEAR_RPC_URL ? [env.NEAR_RPC_URL] : []),
+  ...{ mainnet: ["https://free.rpc.fastnear.com", "https://rpc.mainnet.near.org"], testnet: ["https://test.rpc.fastnear.com", "https://rpc.testnet.near.org"] }[env.NEAR_NETWORK],
+];
 const TGAS = 1_000_000_000_000n;
 const BATCH = 50;
 /** Token changes per apply_ops. NEAR reserves a call's whole gas allowance up front (about 0.001 NEAR per Tgas),
@@ -26,7 +30,9 @@ export const nearOn = () =>
   !!(env.NEAR_OPERATOR_ACCOUNT && env.NEAR_OPERATOR_KEY && env.NEAR_CONTRACT) &&
   (env.NODE_ENV === "production" || env.CHAIN_WRITES_IN_DEV === "true");
 
-const provider = () => new JsonRpcProvider({ url: RPC });
+// Each endpoint retries a refused or dropped request a few times before the next one takes over
+const rpc = new FailoverRpcProvider(RPCS.map((url) => new JsonRpcProvider({ url }, { retries: 3, wait: 400, backoff: 2 })));
+const provider = () => rpc;
 const operator = () => new Account(env.NEAR_OPERATOR_ACCOUNT!, provider(), KeyPairSigner.fromSecretKey(env.NEAR_OPERATOR_KEY as KeyPairString));
 
 /** A wallet address as its NEAR account (eth-implicit accounts are the lowercase 0x address) */
@@ -260,15 +266,8 @@ export const nearRead = <T>(method: string, args: Record<string, unknown> = {}) 
 
 /** An account's NEAR balance, and what's free beyond what its storage locks (1 NEAR per 100 KB) */
 export async function nearBalance(accountId: string) {
-  const res = await fetch(RPC, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "view_account", finality: "final", account_id: accountId } }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  const r = ((await res.json()) as { result?: { amount: string; storage_usage: number } }).result;
-  if (!r) return null;
-  const balance = Number(BigInt(r.amount) / 10n ** 18n) / 1e6;
+  const r = await provider().viewAccount({ accountId });
+  const balance = Number(r.amount / 10n ** 18n) / 1e6;
   return { balance, free: balance - r.storage_usage / 100_000 };
 }
 
