@@ -168,6 +168,8 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
   const [chain, setChain] = useState<string | null>(null);
   const [asset, setAsset] = useState<IntentsAsset | null>(null);
   const [picking, setPicking] = useState<"chain" | "coin" | null>(null);
+  /** What's typed in the open list's search box */
+  const [search, setSearch] = useState("");
   const [refundTo, setRefundTo] = useState("");
   const [quote, setQuote] = useState<IntentQuote | null>(null);
   /** When the deposit address was shown, so a reassuring note can follow if the payment takes a while */
@@ -208,6 +210,37 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
 
   const chains = useMemo(() => (assets ? Array.from(new Set(assets.map((a) => a.chain))) : []), [assets]);
   const coinsOn = (c: string | null) => (assets ?? []).filter((a) => !c || a.chain === c);
+  const q = search.trim().toLowerCase();
+  /** Networks matching the search by name or by a coin on them ("usdt" finds every network with USDT) */
+  const shownChains = chains.filter((c) => !q || c.toLowerCase().includes(q) || coinsOn(c).some((a) => a.symbol.toLowerCase().includes(q)));
+  /** Coins matching the search by symbol, name or network */
+  const shownCoins = coinsOn(chain).filter((a) => !q || [a.symbol, COIN_NAME[a.symbol] ?? "", a.chain].some((t) => t.toLowerCase().includes(q)));
+  const closeList = () => {
+    setPicking(null);
+    setSearch("");
+  };
+  const searchBox = (placeholder: string) => (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, minHeight: 48, paddingHorizontal: space.md, borderRadius: radius.lg, backgroundColor: colors.surfaceAlt }}>
+      <Ionicons name="search" size={18} color={colors.muted} />
+      <TextInput
+        value={search}
+        onChangeText={setSearch}
+        placeholder={placeholder}
+        placeholderTextColor={colors.faint}
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="search"
+        style={{ flex: 1, fontFamily: fonts.medium, fontSize: 15, color: colors.ink, paddingVertical: 10 }}
+      />
+      {search ? (
+        <Pressable onPress={() => setSearch("")} hitSlop={10} accessibilityLabel="Clear search">
+          <Ionicons name="close-circle" size={18} color={colors.muted} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+  const nothing = <Txt variant="small" color={colors.muted} style={{ textAlign: "center", paddingVertical: space.lg }}>Nothing matches &ldquo;{search.trim()}&rdquo;</Txt>;
+
   /** Roughly how much of a coin the order takes, before the real quote */
   const estimate = (a: IntentsAsset) => (usd && a.priceUsd > 0 ? `≈ ${trim((usd / a.priceUsd) * 1.005)}` : undefined);
 
@@ -504,9 +537,11 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
       </KeyboardAvoidingView>
 
       {/* Network list */}
-      <Sheet visible={picking === "chain"} title="Choose a network" onClose={() => setPicking(null)}>
+      <Sheet visible={picking === "chain"} title="Choose a network" onClose={closeList}>
+        {searchBox("Search networks or coins")}
         <View style={{ gap: 2 }}>
-          {chains.map((c) => (
+          {shownChains.length === 0 && nothing}
+          {shownChains.map((c) => (
             <Option
               key={c}
               selected={chain === c}
@@ -516,7 +551,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
               onPress={() => {
                 setChain(c);
                 if (!asset || asset.chain !== c) setAsset(coinsOn(c)[0] ?? null);
-                setPicking(null);
+                closeList();
               }}
             />
           ))}
@@ -524,9 +559,11 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
       </Sheet>
 
       {/* Coin list, on the chosen network */}
-      <Sheet visible={picking === "coin"} title={chain ? `Coins on ${chain}` : "Choose a coin"} onClose={() => setPicking(null)}>
+      <Sheet visible={picking === "coin"} title={chain ? `Coins on ${chain}` : "Choose a coin"} onClose={closeList}>
+        {coinsOn(chain).length > 4 && searchBox("Search coins")}
         <View style={{ gap: 2 }}>
-          {coinsOn(chain).map((a) => (
+          {shownCoins.length === 0 && nothing}
+          {shownCoins.map((a) => (
             <Option
               key={a.assetId}
               selected={asset?.assetId === a.assetId}
@@ -537,7 +574,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
               onPress={() => {
                 setAsset(a);
                 setChain(a.chain);
-                setPicking(null);
+                closeList();
               }}
             />
           ))}
