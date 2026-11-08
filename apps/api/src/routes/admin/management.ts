@@ -217,7 +217,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       paymentMethods: methods,
       cryptoAssets: assets,
       settings: Object.fromEntries(settings.map((s) => [s.key, s.value])),
-      // Pay with any crypto (NEAR Intents) and the NEAR mirror, as the server has them set up
+      // Pay with crypto (NEAR Intents) and the NEAR mirror, as the server has them set up
       intents: { setUp: intentsOn(), recipient: env.INTENTS_RECIPIENT ?? null, keySet: !!env.ONECLICK_JWT },
       near: await nearStats(),
     });

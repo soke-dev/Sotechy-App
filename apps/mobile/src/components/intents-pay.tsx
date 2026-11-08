@@ -1,4 +1,4 @@
-// Pay with any crypto through NEAR Intents: pick a coin, give an address for refunds, then send the exact amount
+// Pay with crypto through NEAR Intents: pick a coin, give an address for refunds, then send the exact amount
 // shown to a one-off deposit address. NEAR Intents swaps it and Sotechy receives the order's total as USDC on Base;
 // this window follows the swap and closes by itself once the order is paid.
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -109,7 +109,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
       <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.sm }}>
           <Ionicons name="flash" size={16} color={colors.brand} />
-          <Txt variant="label" style={{ flex: 1 }}>Pay with any crypto</Txt>
+          <Txt variant="label" style={{ flex: 1 }}>Pay with crypto</Txt>
           <Pressable onPress={() => onDone(false)} hitSlop={10} accessibilityLabel="Close" style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="close" size={18} color={colors.ink} />
           </Pressable>

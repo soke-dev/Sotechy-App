@@ -21,7 +21,7 @@ export type PayMethod = "stablecoin" | "bank" | "intents";
 const PAY_CHOICES: { id: PayMethod; illo: IlloName; title: string; subtitle: string }[] = [
   { id: "stablecoin", illo: "coin", title: "Pay with stablecoin", subtitle: "Pay with USDT or USDC" },
   { id: "bank", illo: "bank", title: "Pay with bank transfer", subtitle: "Send the exact amount from any Nigerian bank app" },
-  { id: "intents", illo: "sparkle", title: "Pay with any crypto", subtitle: "BTC, ETH, SOL, NEAR, USDC or USDT on any chain · NEAR Intents" },
+  { id: "intents", illo: "wallet", title: "Pay with crypto", subtitle: "USDT or USDC on any chain, or BTC, ETH, SOL and NEAR · NEAR Intents" },
 ];
 
 /** Bottom sheet of ways to pay; picking one calls `onPay` with it. `extra` sits above the choices (e.g. paying with tokens). */
