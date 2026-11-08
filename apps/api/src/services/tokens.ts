@@ -29,8 +29,8 @@ const PENDING: OrderStatus[] = ["paid", "processing", "ready_for_pickup", "dispa
 /** A wallet's address: from the user id, so there's no key to lose or steal */
 export const walletAddress = (userId: string): Address => getAddress(`0x${keccak256(toBytes(`sotechy:wallet:${userId}`)).slice(-40)}`);
 
-/** A real transaction (not one marked as moved to a new contract, or skipped on the other chain) */
-const isTxHash = (tx: string | null): tx is string => !!tx && /^0x[0-9a-f]{64}$/i.test(tx);
+/** A real transaction (not one marked as moved to a new contract, or skipped on the other chain): a 0x hash, or NEAR's base58 one */
+const isTxHash = (tx: string | null): tx is string => !!tx && (/^0x[0-9a-f]{64}$/i.test(tx) || /^[1-9A-HJ-NP-Za-km-z]{43,44}$/.test(tx));
 
 /** A ledger id as the bytes32 recorded with the change on chain */
 const refOf = (uuid: string): Hex => `0x${uuid.replace(/-/g, "").padEnd(64, "0")}`;
@@ -721,11 +721,11 @@ export async function latestActivity(limit = 20) {
 export async function orderTokensTx(orderId: string) {
   const spent = await db.select({ id: entries.id }).from(entries).where(and(eq(entries.orderId, orderId), eq(entries.reason, "spent")));
   if (!spent.length) return null;
-  const { cols, explorer } = await chainView();
+  const { cols, links } = await chainView();
   const [op] = await db
     .select({ tx: cols.tx, at: cols.at })
     .from(chainOps)
     .where(and(eq(chainOps.contract, "tokens"), inArray(chainOps.sourceId, spent.map((x) => x.id)), isNotNull(cols.at)))
     .limit(1);
-  return op && isTxHash(op.tx) ? `${explorer}/tx/${op.tx}` : null;
+  return op && isTxHash(op.tx) ? links.tx(op.tx) : null;
 }

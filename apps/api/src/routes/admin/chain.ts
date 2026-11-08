@@ -9,7 +9,10 @@ import { requirePassword, requireRole, type AppEnv } from "../../lib/auth";
 import { HttpError } from "../../lib/errors";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { CHAINS, copyToNewContract, currentContract, needsCopy, publicClient, queueStats, retryStuck, sendBaseBatch, type ChainName } from "../../services/chain";
+import { CHAINS, copyToNewContract, currentContract, needsCopy, publicClient, queueStats, retryStuck, sendBaseBatch, type EvmChain } from "../../services/chain";
+import { nearBalance, nearOn, nearRead } from "../../services/near";
+import { linksOn } from "../../services/chain-primary";
+import { env } from "../../env";
 import { CROSS_BONUS, latestActivity, reserveSummary, tokenRegistry } from "../../services/tokens";
 import { db, schema } from "../../db/client";
 
@@ -18,7 +21,7 @@ const ADMIN = requireRole("admin");
 /** Below this the operator could run out mid-day, so the admin is warned */
 const LOW_GAS = { monad: 2, base: 0.00005 } as const;
 
-async function contractStatus(contract: ContractName, chain: ChainName) {
+async function contractStatus(contract: ContractName, chain: EvmChain) {
   const current = currentContract(contract, chain);
   if (!current) return null;
   const { explorer } = CHAINS[chain];
@@ -49,7 +52,7 @@ async function contractStatus(contract: ContractName, chain: ChainName) {
   }
 }
 
-async function chainStatus(chain: ChainName) {
+async function chainStatus(chain: EvmChain) {
   const [tokens, receipts] = await Promise.all([contractStatus("tokens", chain), contractStatus("receipts", chain)]);
   // Before a chain has contracts, its card still shows the wallets' gas (same wallets everywhere)
   const any = currentContract("tokens", chain) ?? currentContract("receipts", chain) ?? currentContract("tokens", "monad");
@@ -75,24 +78,73 @@ async function chainStatus(chain: ChainName) {
   };
 }
 
+/** Below this the NEAR operator could run out of gas, so the admin is warned */
+const LOW_NEAR = 0.05;
+
+/** The Sotechy contract on NEAR (store tokens and receipts in one), as a card like Monad's and Base's */
+async function nearStatus() {
+  if (!env.NEAR_CONTRACT || !env.NEAR_OPERATOR_ACCOUNT) return null;
+  const links = linksOn("near");
+  const contract = env.NEAR_CONTRACT;
+  const wallet = async (accountId: string) => {
+    const b = await nearBalance(accountId).catch(() => null);
+    return { address: accountId, url: links.address(accountId), balance: b ? Math.round(b.free * 10_000) / 10_000 : null };
+  };
+  const base = { address: contract, version: 1, url: links.address(contract), earlier: [] };
+  let contracts: object[];
+  let owner = { address: "", url: "", balance: null as number | null };
+  try {
+    const [paused, limits, issued, ownerId] = await Promise.all([
+      nearRead<boolean>("is_paused"),
+      nearRead<{ max_mint_per_op: string; max_mint_per_day: string; minted_today: string }>("limits"),
+      nearRead<string>("nft_total_supply"),
+      nearRead<string>("owner"),
+    ]);
+    const state = paused ? "paused" : "running";
+    contracts = [
+      { ...base, contract: "tokens", reachable: true, state, needsCopy: false, perMint: Number(limits?.max_mint_per_op ?? 0), perDay: Number(limits?.max_mint_per_day ?? 0), mintedToday: Number(limits?.minted_today ?? 0) },
+      { ...base, contract: "receipts", reachable: true, state, needsCopy: false, issued: Number(issued ?? 0) },
+    ];
+    if (ownerId) owner = await wallet(ownerId);
+  } catch {
+    contracts = [
+      { ...base, contract: "tokens", reachable: false },
+      { ...base, contract: "receipts", reachable: false },
+    ];
+  }
+  const operator = await wallet(env.NEAR_OPERATOR_ACCOUNT);
+  return {
+    chain: "near" as const,
+    chainName: "NEAR",
+    primary: (await chainView()).chain === "near",
+    symbol: "NEAR",
+    // What's free to spend: the rest of the balance holds the account's storage
+    operator: { ...operator, low: operator.balance !== null && operator.balance < LOW_NEAR },
+    owner,
+    lowGas: LOW_NEAR,
+    contracts,
+    writesOn: nearOn(),
+  };
+}
+
 export const adminChainRoutes = new Hono<AppEnv>()
   .get("/chain", async (c) => {
-    const [chains, queue, tokens, activity, reserve] = await Promise.all([Promise.all((["monad", "base"] as const).map(chainStatus)), queueStats(), tokenRegistry(), latestActivity(), reserveSummary()]);
-    const { chain: primary, explorer } = await chainView();
-    const tokensContract = currentContract("tokens", primary);
+    const [evm, near, queue, tokens, activity, reserve] = await Promise.all([Promise.all((["monad", "base"] as const).map(chainStatus)), nearStatus(), queueStats(), tokenRegistry(), latestActivity(), reserveSummary()]);
+    const chains = [...evm, near];
+    const { chain: primary, links } = await chainView();
     return c.json({
       chains: chains.filter((x) => x !== null),
       primary,
       queue,
       tokens,
-      tokensUrl: tokensContract ? `${explorer}/address/${tokensContract.address}` : null,
-      activity: activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
+      tokensUrl: links.tokensContract,
+      activity: activity.map((a) => ({ ...a, txUrl: a.tx ? links.tx(a.tx) : null })),
       rules: { perNaira: 1, crossBonus: CROSS_BONUS },
       reserve: {
         ...reserve,
         wallets: reserve.wallets.map((w) => ({
           ...w,
-          url: `${explorer}/address/${w.address}`,
+          url: links.address(w.address),
           byToken: w.byToken.map((t) => ({ ...t, ticker: tokens.find((x) => x.tokenId === t.tokenId)?.ticker ?? `#${t.tokenId}` })),
         })),
       },
@@ -126,11 +178,13 @@ export const adminChainRoutes = new Hono<AppEnv>()
       throw new HttpError(400, err instanceof Error ? err.message : "The copy failed");
     }
   })
-  /** Makes Monad or Base the main chain: new changes are written there and every link points at it. Switching to
-   *  Base writes everything Monad already has onto Base too. */
-  .put("/chain/primary", ADMIN, requirePassword, zValidator("json", z.object({ chain: z.enum(["monad", "base"]) })), async (c) => {
+  /** Makes Monad, Base or NEAR the main chain: new changes are written there and every link points at it. Switching
+   *  to Base writes everything already recorded onto Base too. NEAR gets every change whichever chain is main. */
+  .put("/chain/primary", ADMIN, requirePassword, zValidator("json", z.object({ chain: z.enum(["monad", "base", "near"]) })), async (c) => {
     const { chain } = c.req.valid("json");
-    if (!currentContract("tokens", chain) || !currentContract("receipts", chain)) throw new HttpError(400, `The contracts aren't deployed on ${chain === "base" ? "Base" : "Monad"} yet`);
+    if (chain === "near") {
+      if (!nearOn()) throw new HttpError(400, "NEAR isn't set up on this server yet (NEAR_CONTRACT, NEAR_OPERATOR_ACCOUNT and NEAR_OPERATOR_KEY)");
+    } else if (!currentContract("tokens", chain) || !currentContract("receipts", chain)) throw new HttpError(400, `The contracts aren't deployed on ${chain === "base" ? "Base" : "Monad"} yet`);
     const value = { primary: chain };
     await db.insert(schema.appSettings).values({ key: "chain", value }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value } });
     forgetPrimary();

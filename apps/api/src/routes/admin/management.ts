@@ -116,7 +116,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
         .limit(100),
     ]);
     const paid = orderRows.filter((x) => ["paid", "processing", "ready_for_pickup", "dispatched", "delivered"].includes(x.status));
-    const { explorer } = await chainView();
+    const { links } = await chainView();
     return c.json({
       user: { ...publicUser(user), isActive: user.isActive, referredBy: referrer ? (referrer.username ? `@${referrer.username}` : referrer.email) : null },
       stats: {
@@ -133,8 +133,8 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       addresses,
       wallet: {
         ...wallet,
-        addressUrl: `${explorer}/address/${wallet.address}`,
-        activity: wallet.activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
+        addressUrl: links.address(wallet.address),
+        activity: wallet.activity.map((a) => ({ ...a, txUrl: a.tx ? links.tx(a.tx) : null })),
       },
     });
   })

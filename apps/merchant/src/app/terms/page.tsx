@@ -87,7 +87,7 @@ const SECTIONS: { id: string; title: string; points: string[] }[] = [
     title: "Your store token",
     points: [
       "Your store has its own token (for example $SOTECHY). Customers earn it on completed orders and can only spend it at your store. It isn't money, a deposit or an investment, and you must not describe it as one.",
-      "Tokens are run by Sotechy on the Monad blockchain. A store may choose to make its token tradeable in the future; that depends on the merchant and on Sotechy's approval, and isn't promised.",
+      "Tokens are run by Sotechy on public blockchains. A store may choose to make its token tradeable in the future; that depends on the merchant and on Sotechy's approval, and isn't promised.",
       "You must accept your tokens at the value shown in your dashboard when customers spend them at your store.",
     ],
   },

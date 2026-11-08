@@ -10,7 +10,6 @@ import { requireFeature } from "../services/features";
 import { noRecipient, receiptFor, recipientFor, reviewBonus, sendTokens, walletFor } from "../services/tokens";
 import { chatById, chatFor, chatsFor, postChatMessage, startNewChat, tellAdmins } from "../services/support-chat";
 import { customerPulse } from "../services/pulse";
-import { currentContract } from "../services/chain";
 import { chainView } from "../services/chain-primary";
 import { catalogQuery } from "./store";
 import { compressImage } from "../lib/images";
@@ -54,18 +53,17 @@ export const meRoutes = new Hono<AppEnv>()
     }
     return c.json(saved, 201);
   })
-  /** Token balances (held and on the way), activity, and the wallet's address on Monad */
+  /** Token balances (held and on the way), activity, and the wallet's address on the main chain */
   .get("/wallet", async (c) => {
     const wallet = await walletFor(c.get("user").id);
-    const { explorer, chain } = await chainView();
-    const tokens = currentContract("tokens", chain);
+    const { links } = await chainView();
     return c.json({
       ...wallet,
-      addressUrl: `${explorer}/address/${wallet.address}`,
-      contractUrl: tokens ? `${explorer}/address/${tokens.address}` : null,
-      // Each store's token is one id on the ERC-1155 contract
-      balances: wallet.balances.map((b) => ({ ...b, tokenUrl: tokens ? `${explorer}/nft/${tokens.address}/${b.tokenId}` : null })),
-      activity: wallet.activity.map((a) => ({ ...a, txUrl: a.tx ? `${explorer}/tx/${a.tx}` : null })),
+      addressUrl: links.address(wallet.address),
+      contractUrl: links.tokensContract,
+      // Each store's token is one id on the multi-token contract
+      balances: wallet.balances.map((b) => ({ ...b, tokenUrl: links.token(b.tokenId) })),
+      activity: wallet.activity.map((a) => ({ ...a, txUrl: a.tx ? links.tx(a.tx) : null })),
     });
   })
   /** Who an @username or Sotechy wallet address is, shown before sending tokens: first name and last initial only */
@@ -91,12 +89,11 @@ export const meRoutes = new Hono<AppEnv>()
   .get("/orders/:id/receipt", async (c) => {
     const r = await receiptFor(c.get("user").id, c.req.param("id"));
     if (!r) throw notFound("No receipt yet: it's issued when the order is delivered");
-    const { explorer, chain } = await chainView();
-    const contract = currentContract("receipts", chain);
+    const { links } = await chainView();
     return c.json({
       ...r,
-      txUrl: r.tx ? `${explorer}/tx/${r.tx}` : null,
-      nftUrl: contract ? `${explorer}/nft/${contract.address}/${r.id}` : null,
+      txUrl: r.tx ? links.tx(r.tx) : null,
+      nftUrl: links.receipt({ id: r.id, order: (r.content as { order?: string } | null)?.order }),
     });
   })
   /** Stores this account saved with the heart (their slugs) */

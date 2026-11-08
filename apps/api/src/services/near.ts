@@ -251,6 +251,23 @@ export function startNearWorker() {
   setInterval(() => void tick(), 8_000);
 }
 
+/** A read from the Sotechy contract on NEAR, for the admin */
+export const nearRead = <T>(method: string, args: Record<string, unknown> = {}) => view<T>(env.NEAR_CONTRACT!, method, args);
+
+/** An account's NEAR balance, and what's free beyond what its storage locks (1 NEAR per 100 KB) */
+export async function nearBalance(accountId: string) {
+  const res = await fetch(RPC, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: { request_type: "view_account", finality: "final", account_id: accountId } }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const r = ((await res.json()) as { result?: { amount: string; storage_usage: number } }).result;
+  if (!r) return null;
+  const balance = Number(BigInt(r.amount) / 10n ** 18n) / 1e6;
+  return { balance, free: balance - r.storage_usage / 100_000 };
+}
+
 /** Queue numbers for the admin */
 export async function nearStats() {
   const [row] = await db

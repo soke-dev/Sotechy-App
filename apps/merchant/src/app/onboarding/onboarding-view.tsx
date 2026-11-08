@@ -757,7 +757,7 @@ function TokenHelp() {
   const parts: { title: string; body: ReactNode }[] = [
     {
       title: "What it is",
-      body: <>Your store gets its own reward token on the Monad blockchain, named by this ticker (like $SOTECHY for Sotechy Shop). It&apos;s created when Sotechy approves your store.</>,
+      body: <>Your store gets its own reward token on the blockchain, named by this ticker (like $SOTECHY for Sotechy Shop). It&apos;s created when Sotechy approves your store.</>,
     },
     {
       title: "What it's used for",

@@ -47,7 +47,7 @@ export default async function TokenPage() {
           <Illo name="coin" size={72} />
           <div className="flex-1">
             <p className="font-display text-xl font-bold">Your token is created when Sotechy approves your store</p>
-            <p className="mt-1 text-muted">You choose its ticker in setup. Once your store is approved, the token is created on Monad with that ticker, and it shows here.</p>
+            <p className="mt-1 text-muted">You choose its ticker in setup. Once your store is approved, the token is created on the blockchain with that ticker, and it shows here.</p>
           </div>
           <Link href="/onboarding?step=store" className={btn.dark}>
             {store.submittedAt ? "View setup" : "Choose your ticker"}

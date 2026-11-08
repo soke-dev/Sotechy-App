@@ -34,8 +34,8 @@ export async function retryStuck(): Promise<{ retried: number } | { error: strin
   }
 }
 
-/** Makes Monad or Base the main chain */
-export async function setPrimaryChain(chain: "monad" | "base", password: string): Promise<{ primary: string } | { error: string }> {
+/** Makes Monad, Base or NEAR the main chain */
+export async function setPrimaryChain(chain: "monad" | "base" | "near", password: string): Promise<{ primary: string } | { error: string }> {
   try {
     const result = await withPassword<{ primary: string }>("PUT", "/admin/chain/primary", { chain }, password);
     revalidatePath("/tokens");

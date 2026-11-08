@@ -11,12 +11,12 @@ import { db, schema } from "../db/client";
 import { env } from "../env";
 import { getSetting } from "./settings";
 import { ensureStoreTokens, walletAddress } from "./tokens";
-import { colsOf, EXPLORER, primaryChain, type ChainName } from "./chain-primary";
+import { colsOf, EXPLORER, primaryChain, type ChainName, type EvmChain } from "./chain-primary";
 
 const ops = schema.chainOps;
-export type { ChainName };
+export type { ChainName, EvmChain };
 
-export const CHAINS: Record<ChainName, { chain: Chain; explorer: string; rpc?: string }> = {
+export const CHAINS: Record<EvmChain, { chain: Chain; explorer: string; rpc?: string }> = {
   monad: { chain: monad, explorer: EXPLORER.monad, rpc: env.MONAD_RPC_URL },
   base: { chain: base, explorer: EXPLORER.base, rpc: env.BASE_RPC_URL },
 };
@@ -30,9 +30,9 @@ export const chainWritesOn = () => !!env.CHAIN_OPERATOR_KEY && (env.NODE_ENV ===
 /** The contract in use on a chain: the latest deploy */
 export const currentContract = (contract: ContractName, chain: string) => deployments[contract][chain]?.at(-1) ?? null;
 
-export const publicClient = (chain: ChainName) => createPublicClient({ chain: CHAINS[chain].chain, transport: http(CHAINS[chain].rpc) });
+export const publicClient = (chain: EvmChain) => createPublicClient({ chain: CHAINS[chain].chain, transport: http(CHAINS[chain].rpc) });
 
-function walletClient(chain: ChainName) {
+function walletClient(chain: EvmChain) {
   const account = privateKeyToAccount(env.CHAIN_OPERATOR_KEY as Hex);
   return createWalletClient({ chain: CHAINS[chain].chain, transport: http(CHAINS[chain].rpc), account });
 }
@@ -41,7 +41,7 @@ type Op = typeof ops.$inferSelect;
 type Call = { contract: ContractName; functionName: string; args: unknown[] };
 
 /** Sends one transaction and waits for it; throws if it's refused or reverts */
-async function write(chain: ChainName, call: Call): Promise<Hex> {
+async function write(chain: EvmChain, call: Call): Promise<Hex> {
   const deployed = currentContract(call.contract, chain);
   if (!deployed) throw new Error(`No ${call.contract} contract on ${chain}`);
   const pub = publicClient(chain);
@@ -60,13 +60,13 @@ async function write(chain: ChainName, call: Call): Promise<Hex> {
 
 const col = colsOf;
 
-async function markDone(chain: ChainName, list: Op[], hash: Hex) {
+async function markDone(chain: EvmChain, list: Op[], hash: Hex) {
   const ids = list.map((o) => o.id);
   const set = chain === "monad" ? { monadTx: hash, monadAt: new Date(), monadError: null } : { baseTx: hash, baseAt: new Date(), baseError: null };
   await db.update(ops).set(set).where(inArray(ops.id, ids));
 }
 
-async function markFailed(chain: ChainName, op: Op, err: unknown) {
+async function markFailed(chain: EvmChain, op: Op, err: unknown) {
   const e = err as { shortMessage?: string; message?: string };
   const message = (e.shortMessage ?? e.message ?? String(err)).slice(0, 500);
   if (chain === "monad") await db.update(ops).set({ monadError: message, monadTries: sql`${ops.monadTries} + 1` }).where(eq(ops.id, op.id));
@@ -75,7 +75,7 @@ async function markFailed(chain: ChainName, op: Op, err: unknown) {
 }
 
 /** Sends a group in one transaction; if that fails, one by one, stopping at the first that fails (later ones may depend on it) */
-async function sendGroup(chain: ChainName, list: Op[], build: (list: Op[]) => Call): Promise<boolean> {
+async function sendGroup(chain: EvmChain, list: Op[], build: (list: Op[]) => Call): Promise<boolean> {
   if (!list.length) return true;
   try {
     await markDone(chain, list, await write(chain, build(list)));
@@ -111,7 +111,7 @@ const receiptOp = (o: Op) => ({
  * What's waiting on a chain, oldest first. The main chain skips changes that have failed too often; the mirror
  * only copies what the main chain already has.
  */
-async function waiting(chain: ChainName, contract: ContractName, kinds: string[], limit: number) {
+async function waiting(chain: EvmChain, contract: ContractName, kinds: string[], limit: number) {
   const c = col(chain);
   const primary = await primaryChain();
   const extra = chain === primary ? lt(c.tries, MAX_TRIES) : isNotNull(col(primary).at);
@@ -124,7 +124,7 @@ async function waiting(chain: ChainName, contract: ContractName, kinds: string[]
 }
 
 /** Token ids whose token is created on this chain's current contract (registrations from before a move don't count) */
-async function registeredOn(chain: ChainName) {
+async function registeredOn(chain: EvmChain) {
   const c = col(chain);
   const rows = await db
     .select({ data: ops.data })
@@ -162,7 +162,7 @@ async function copiedVersions(): Promise<Versions> {
 }
 
 /** A newer contract is deployed on this chain but the ledger hasn't been copied to it yet */
-export async function needsCopy(contract: ContractName, chain: ChainName) {
+export async function needsCopy(contract: ContractName, chain: EvmChain) {
   const current = currentContract(contract, chain);
   if (!current) return false;
   return current.version > ((await copiedVersions())[`${contract}:${chain}`] ?? current.version);
@@ -175,7 +175,7 @@ const MINT_CHUNK = 10_000_000;
  * Rebuilds a new contract from the ledger: every token and every balance (for receipts: every receipt,
  * same numbers). What went to the old contract isn't sent again, and the other chain is left alone.
  */
-export async function copyToNewContract(contract: ContractName, chain: ChainName) {
+export async function copyToNewContract(contract: ContractName, chain: EvmChain) {
   const current = currentContract(contract, chain);
   if (!current) throw new Error(`No ${contract} contract on ${chain}`);
   if (!(await needsCopy(contract, chain))) throw new Error(`The ${contract} contract on ${chain} is already up to date`);
@@ -238,7 +238,7 @@ export async function copyToNewContract(contract: ContractName, chain: ChainName
 }
 
 /** One pass over a chain: create new tokens, then token changes, then receipts. Returns how many went through. */
-async function pass(chain: ChainName, limit: number) {
+async function pass(chain: EvmChain, limit: number) {
   let done = 0;
   // A newer contract waiting for its copy gets nothing until an admin starts the copy
   if (currentContract("tokens", chain) && !(await needsCopy("tokens", chain))) {
@@ -262,11 +262,13 @@ async function pass(chain: ChainName, limit: number) {
 }
 
 let mainBusy = false;
-/** One round on the main chain (whichever an admin chose) */
+/** One round on the main chain (whichever an admin chose). With NEAR as the main chain the NEAR worker writes,
+ *  and Monad and Base only get what an admin sends them. */
 async function mainTick() {
   if (mainBusy) return;
-  mainBusy = true;
   const chain = await primaryChain().catch(() => "monad" as const);
+  if (chain === "near") return;
+  mainBusy = true;
   try {
     await pass(chain, BATCH);
   } catch (err) {
@@ -288,7 +290,7 @@ export function startChainWorker() {
 }
 
 let baseBusy = false;
-/** An admin's batch to Base: everything Monad has that Base doesn't, in as few transactions as it takes */
+/** An admin's batch to Base: everything the main chain has that Base doesn't, in as few transactions as it takes */
 export async function sendBaseBatch() {
   if (!chainWritesOn()) throw new Error("Chain writes are off on this server");
   if ((await primaryChain()) === "base") throw new Error("Base is the main chain now: everything is written there as it happens");
@@ -302,7 +304,7 @@ export async function sendBaseBatch() {
       total += sent;
       if (sent === 0) break;
     }
-    const [left] = await db.select({ n: sql<number>`count(*)::int` }).from(ops).where(and(isNotNull(ops.monadAt), isNull(ops.baseAt)));
+    const [left] = await db.select({ n: sql<number>`count(*)::int` }).from(ops).where(and(isNotNull(colsOf(await primaryChain()).at), isNull(ops.baseAt)));
     return { sent: total, left: Number(left?.n ?? 0) };
   } finally {
     baseBusy = false;
@@ -321,6 +323,10 @@ export async function queueStats() {
       baseDone: sql<number>`count(*) filter (where ${ops.baseAt} is not null)::int`,
       lastMonad: sql<string | null>`max(${ops.monadAt})`,
       lastBase: sql<string | null>`max(${ops.baseAt})`,
+      nearWaiting: sql<number>`count(*) filter (where ${ops.nearAt} is null and ${ops.nearTries} < ${MAX_TRIES})::int`,
+      nearStuck: sql<number>`count(*) filter (where ${ops.nearAt} is null and ${ops.nearTries} >= ${MAX_TRIES})::int`,
+      nearDone: sql<number>`count(*) filter (where ${ops.nearAt} is not null)::int`,
+      lastNear: sql<string | null>`max(${ops.nearAt})`,
     })
     .from(ops);
   // The main chain's oldest failure
