@@ -181,6 +181,8 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
   const [txHash, setTxHash] = useState("");
   const [sending, setSending] = useState(false);
   const [txNote, setTxNote] = useState<{ ok: boolean; text: string } | null>(null);
+  /** Asking before closing while a payment is open */
+  const [confirmClose, setConfirmClose] = useState(false);
   const open = useRef(true);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const left = useCountdown(quote?.deadline);
@@ -311,9 +313,11 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
 
   const stage = swap ? STAGE[swap] : 0;
   const failed = swap === "REFUNDED" || swap === "FAILED";
+  /** Closing with a payment open asks first; before there's an address, or once it's settled, it just closes */
+  const requestClose = () => (quote && swap !== "SUCCESS" && !failed ? setConfirmClose(true) : onDone(swap === "SUCCESS"));
 
   return (
-    <Modal visible animationType="slide" onRequestClose={() => onDone(false)} statusBarTranslucent>
+    <Modal visible animationType="slide" onRequestClose={requestClose} statusBarTranslucent>
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md }}>
@@ -531,10 +535,46 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
           ) : swap === "SUCCESS" ? (
             <Button title="Paid. Back to your order" icon="checkmark-circle" variant="dark" onPress={() => onDone(true)} />
           ) : (
-            <Button title={stage > 0 ? "Close. It'll confirm by itself" : "Close for now"} variant="ghost" onPress={() => onDone(false)} />
+            <Button title={stage > 0 ? "Close. It'll confirm by itself" : "Close for now"} variant="ghost" onPress={requestClose} />
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* Before closing with a payment open */}
+      <Modal visible={confirmClose} transparent animationType="fade" onRequestClose={() => setConfirmClose(false)}>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: space.xl, backgroundColor: colors.overlay }}>
+          <View style={{ width: 400, maxWidth: "100%", backgroundColor: colors.bg, borderRadius: radius.xl, padding: space.xl, gap: space.md }}>
+            <Txt variant="heading">Close this payment?</Txt>
+            <View style={{ flexDirection: "row", gap: space.sm }}>
+              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+              <Txt variant="small" style={{ flex: 1 }}>
+                <Txt variant="label">Already sent it?</Txt> You&apos;re fine. Your order turns Paid by itself once the payment arrives, even with the app closed.
+              </Txt>
+            </View>
+            <View style={{ flexDirection: "row", gap: space.sm }}>
+              <Ionicons name="time-outline" size={20} color={colors.muted} />
+              <Txt variant="small" style={{ flex: 1 }}>
+                <Txt variant="label">Not paid yet?</Txt> Open your order any time{left && !left.over ? ` in the next ${left.text}` : ""} to pick up where you left off, with the same address.
+              </Txt>
+            </View>
+            <View style={{ flexDirection: "row", gap: space.sm, marginTop: space.sm }}>
+              <View style={{ flex: 1 }}>
+                <Button title="Keep it open" variant="outline" onPress={() => setConfirmClose(false)} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button
+                  title="Close"
+                  variant="dark"
+                  onPress={() => {
+                    setConfirmClose(false);
+                    onDone(false);
+                  }}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Network list */}
       <Sheet visible={picking === "chain"} title="Choose a network" onClose={closeList}>
