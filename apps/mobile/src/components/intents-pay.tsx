@@ -4,8 +4,8 @@
 // as USDC on Base; the window closes by itself once the order is paid.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, TextInput, View, type ImageSourcePropType } from "react-native";
+import { useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from "react";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View, type ImageSourcePropType } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatNaira, type IntentQuote, type IntentsAsset, type IntentSwapStatus } from "@sotechy/shared";
 import { api } from "@/lib/api";
@@ -178,7 +178,10 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
   const [sending, setSending] = useState(false);
   const [txNote, setTxNote] = useState<{ ok: boolean; text: string } | null>(null);
   const open = useRef(true);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const left = useCountdown(quote?.deadline);
+  /** Brings a field near the bottom into view once the keyboard is up */
+  const showField = () => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 250);
 
   useEffect(() => {
     api
@@ -275,7 +278,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
 
   return (
     <Modal visible animationType="slide" onRequestClose={() => onDone(false)} statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md }}>
           <Pressable
@@ -293,7 +296,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
           <View style={{ width: 38 }} />
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.lg, paddingBottom: space.xl }} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scroll} contentContainerStyle={{ padding: space.lg, gap: space.lg, paddingBottom: space.xl }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
           {/* What's being paid */}
           <View style={{ backgroundColor: colors.panel, borderRadius: radius.xl, padding: space.lg, gap: 4 }}>
             <Txt variant="caption" color="rgba(255,255,255,0.6)">Order {order.orderNumber}</Txt>
@@ -344,6 +347,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
                         <TextInput
                           value={refundTo}
                           onChangeText={setRefundTo}
+                          onFocus={showField}
                           placeholder={ADDRESS_HINT[asset.chain] ?? "0x…"}
                           placeholderTextColor={colors.faint}
                           autoCapitalize="none"
@@ -441,6 +445,7 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
                     <TextInput
                       value={txHash}
                       onChangeText={setTxHash}
+                      onFocus={showField}
                       placeholder="Transaction ID (hash)"
                       placeholderTextColor={colors.faint}
                       autoCapitalize="none"
@@ -460,6 +465,14 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
                   {txNote && <Txt variant="caption" color={txNote.ok ? colors.success : colors.danger}>{txNote.text}</Txt>}
                 </View>
               )}
+              {!failed && swap !== "SUCCESS" && (
+                <View style={{ flexDirection: "row", gap: space.sm, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.successSoft }}>
+                  <Ionicons name="shield-checkmark" size={18} color={colors.success} />
+                  <Txt variant="small" style={{ flex: 1 }}>
+                    Paid already? You can close this. Your order turns Paid by itself once your payment arrives, even with the app closed.
+                  </Txt>
+                </View>
+              )}
               <Txt variant="caption" color={colors.muted} style={{ textAlign: "center" }}>
                 Refunds go to {short(refundTo)} · Powered by NEAR Intents
               </Txt>
@@ -474,10 +487,10 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
           ) : swap === "SUCCESS" ? (
             <Button title="Paid. Back to your order" icon="checkmark-circle" variant="dark" onPress={() => onDone(true)} />
           ) : (
-            <Button title="I'll pay later" variant="ghost" onPress={() => onDone(false)} />
+            <Button title={stage > 0 ? "Close. It'll confirm by itself" : "Close for now"} variant="ghost" onPress={() => onDone(false)} />
           )}
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       {/* Network list */}
       <Sheet visible={picking === "chain"} title="Choose a network" onClose={() => setPicking(null)}>

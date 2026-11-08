@@ -17,7 +17,7 @@ import { bachsCheckout, bachsCheckoutPaid, bachsCreateCheckout, type BachsChecko
 import { bankProvider, bankTransferAvailable, stablecoinAvailable } from "../services/bank-pay";
 import { FEATURE_REF, settleFeaturing } from "../services/featuring";
 import { settleWalkIn, WALK_IN_REF } from "../services/walk-in";
-import { checkIntent, intentsAssets, intentsAvailable, openIntent, savedIntent, submitDeposit } from "../services/intents";
+import { checkIntent, intentsAssets, intentsAvailable, keepIntents, openIntent, savedIntent, submitDeposit, withIntent } from "../services/intents";
 
 const isUuid = (v: string | null | undefined): v is string => !!v && /^[0-9a-f-]{36}$/i.test(v);
 
@@ -180,7 +180,7 @@ export const paymentRoutes = new Hono<AppEnv>()
       } catch (err) {
         throw badRequest(err instanceof Error ? `We couldn't get a price for that coin: ${err.message}` : "We couldn't get a price for that coin");
       }
-      await db.update(schema.payments).set({ provider: "near-intents", raw: { intents: intent } }).where(eq(schema.payments.id, payment.id));
+      await db.update(schema.payments).set({ provider: "near-intents", raw: withIntent(payment.raw, intent) }).where(eq(schema.payments.id, payment.id));
       return c.json(intent);
     },
   )
@@ -190,7 +190,7 @@ export const paymentRoutes = new Hono<AppEnv>()
     const { orderId, txHash } = c.req.valid("json");
     const [order] = await db.select({ id: schema.orders.id }).from(schema.orders).where(and(eq(schema.orders.id, orderId), eq(schema.orders.customerId, c.get("user").id)));
     if (!order) throw notFound("Order not found");
-    const [payment] = await db.select().from(schema.payments).where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.provider, "near-intents"), eq(schema.payments.status, "pending")));
+    const payment = (await db.select().from(schema.payments).where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.status, "pending")))).find((p) => savedIntent(p.raw));
     if (!payment) throw badRequest("There's no crypto payment waiting for this order");
     try {
       await submitDeposit(payment, txHash);
@@ -207,7 +207,7 @@ export const paymentRoutes = new Hono<AppEnv>()
     const user = c.get("user");
     const [order] = await db.select({ id: schema.orders.id, status: schema.orders.status }).from(schema.orders).where(and(eq(schema.orders.id, orderId), eq(schema.orders.customerId, user.id)));
     if (!order) throw notFound("Order not found");
-    const [payment] = await db.select().from(schema.payments).where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.provider, "near-intents")));
+    const payment = (await db.select().from(schema.payments).where(eq(schema.payments.orderId, orderId))).find((p) => savedIntent(p.raw));
     if (!payment) return c.json({ swap: null, orderStatus: order.status });
     const swap = payment.status === "pending" ? await checkIntent(payment).catch(() => null) : "SUCCESS";
     const [now] = await db.select({ status: schema.orders.status }).from(schema.orders).where(eq(schema.orders.id, orderId));
@@ -264,7 +264,7 @@ export const paymentRoutes = new Hono<AppEnv>()
       if (!s.checkout_url) throw new HttpError(502, "Bank transfer didn't open. Please try again.");
       await db
         .update(schema.payments)
-        .set({ provider: "bachs", raw: { checkout: { id: s.checkout_id, url: s.checkout_url, attempt, bank: true, provider: "bachs" } satisfies SavedCheckout } })
+        .set({ provider: "bachs", raw: { ...keepIntents(payment.raw), checkout: { id: s.checkout_id, url: s.checkout_url, attempt, bank: true, provider: "bachs" } satisfies SavedCheckout } })
         .where(eq(schema.payments.id, payment.id));
       return c.json({ checkoutUrl: s.checkout_url });
     }
@@ -290,7 +290,7 @@ export const paymentRoutes = new Hono<AppEnv>()
     }
     await db
       .update(schema.payments)
-      .set({ provider: "moneymoves", raw: { checkout: { id: checkout.id, url: checkout.url, attempt, ...(bank && { bank }) } satisfies SavedCheckout } })
+      .set({ provider: "moneymoves", raw: { ...keepIntents(payment.raw), checkout: { id: checkout.id, url: checkout.url, attempt, ...(bank && { bank }) } satisfies SavedCheckout } })
       .where(eq(schema.payments.id, payment.id));
     return c.json({ checkoutUrl: checkout.url });
   })

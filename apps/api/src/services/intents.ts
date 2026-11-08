@@ -93,6 +93,26 @@ export type SavedIntent = {
 
 export const savedIntent = (raw: unknown) => (raw as { intents?: SavedIntent } | null)?.intents ?? null;
 
+/** Every deposit address this payment has been given, newest first: a customer may pay one, leave, and come back
+ *  for another coin, and the first payment must still confirm the order */
+export const allIntents = (raw: unknown): SavedIntent[] => {
+  const r = raw as { intents?: SavedIntent; earlier?: SavedIntent[] } | null;
+  return [...(r?.intents ? [r.intents] : []), ...(r?.earlier ?? [])];
+};
+
+/** payments.raw with a new deposit address in front and the earlier ones kept (the last five) */
+export const withIntent = (raw: unknown, intent: SavedIntent) => ({
+  ...((raw as object | null) ?? {}),
+  intents: intent,
+  earlier: allIntents(raw).filter((i) => i.depositAddress !== intent.depositAddress).slice(0, 5),
+});
+
+/** The crypto deposits on payments.raw, to carry over when another way to pay rewrites it */
+export const keepIntents = (raw: unknown) => {
+  const [intents, ...earlier] = allIntents(raw);
+  return intents ? { intents, earlier } : {};
+};
+
 /**
  * A live quote for the order's pending payment: how much of the chosen coin to send, and where. The amount comes from
  * the database (the order's naira total at today's rate), never from the app.
@@ -136,13 +156,29 @@ type Status = "PENDING_DEPOSIT" | "KNOWN_DEPOSIT_TX" | "PROCESSING" | "SUCCESS" 
 
 /** Where an Intents payment is now; a finished swap confirms the payment (and so the order) */
 export async function checkIntent(payment: typeof schema.payments.$inferSelect): Promise<Status | null> {
-  const saved = savedIntent(payment.raw);
-  if (!saved) return null;
-  const memo = saved.depositMemo ? `&depositMemo=${encodeURIComponent(saved.depositMemo)}` : "";
-  const s = await oneClick<{ status: Status; swapDetails?: { destinationChainTxHashes?: { hash: string }[]; originChainTxHashes?: { hash: string }[] } }>(
-    "GET",
-    `/status?depositAddress=${encodeURIComponent(saved.depositAddress)}${memo}`,
-  );
+  const all = allIntents(payment.raw);
+  if (!all.length) return null;
+  type Swap = { status: Status; swapDetails?: { destinationChainTxHashes?: { hash: string }[]; originChainTxHashes?: { hash: string }[] } };
+  const statusOf = (saved: SavedIntent) =>
+    oneClick<Swap>("GET", `/status?depositAddress=${encodeURIComponent(saved.depositAddress)}${saved.depositMemo ? `&depositMemo=${encodeURIComponent(saved.depositMemo)}` : ""}`);
+  // The newest address first; the earlier ones too, in case the customer paid one of those before switching coins
+  let current: Status | null = null;
+  for (const [i, saved] of all.entries()) {
+    const s = await statusOf(saved).catch(() => null);
+    if (!s) continue;
+    if (i === 0) current = s.status;
+    if (s.status === "SUCCESS") {
+      await settle(payment, saved, s);
+      return "SUCCESS";
+    }
+    // An earlier address that's already received money takes over from an unpaid new one
+    if (i > 0 && current === "PENDING_DEPOSIT" && (s.status === "KNOWN_DEPOSIT_TX" || s.status === "PROCESSING")) current = s.status;
+  }
+  return current;
+}
+
+/** A finished swap confirms the payment, and so the order */
+async function settle(payment: typeof schema.payments.$inferSelect, saved: SavedIntent, s: { status: Status; swapDetails?: { destinationChainTxHashes?: { hash: string }[]; originChainTxHashes?: { hash: string }[] } }) {
   if (s.status === "SUCCESS" && payment.status === "pending") {
     const tx = s.swapDetails?.destinationChainTxHashes?.[0]?.hash ?? s.swapDetails?.originChainTxHashes?.[0]?.hash;
     await confirmPayment(payment.id, {
@@ -151,12 +187,11 @@ export async function checkIntent(payment: typeof schema.payments.$inferSelect):
       provider: "near-intents",
       providerReference: `intents:${saved.depositAddress}`,
       txHash: tx,
-      raw: { intents: saved, status: s },
+      raw: { ...withIntent(payment.raw, saved), status: s },
       verifiedBy: null,
       note: `Paid ${saved.amountInFormatted} ${saved.symbol} on ${saved.chain}; received ${saved.amountOutUsdc} USDC on Base through NEAR Intents`,
     });
   }
-  return s.status;
 }
 
 /**
@@ -177,7 +212,7 @@ export function startIntentsWatcher() {
       const open = await db
         .select()
         .from(schema.payments)
-        .where(and(eq(schema.payments.status, "pending"), eq(schema.payments.provider, "near-intents"), sql`${schema.payments.createdAt} > now() - interval '2 days'`));
+        .where(and(eq(schema.payments.status, "pending"), sql`${schema.payments.raw} ? 'intents'`, sql`${schema.payments.createdAt} > now() - interval '4 days'`));
       for (const p of open) await checkIntent(p).catch((err) => console.error(`Intents check for payment ${p.id} failed`, err instanceof Error ? err.message : err));
     } catch (err) {
       console.error("Intents watcher failed", err);
