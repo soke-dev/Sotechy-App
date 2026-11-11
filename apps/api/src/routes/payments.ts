@@ -357,12 +357,13 @@ export const paymentRoutes = new Hono<AppEnv>()
   })
 
   /**
-   * Nomba webhook (Developer → Webhook on Nomba's dashboard, URL https://<api>/payments/nomba/webhook, with the signature
-   * key also set as NOMBA_WEBHOOK_SECRET): a checkout was paid. The payment is read from Nomba before the order changes.
+   * Nomba webhook (Developer → Webhook on Nomba's dashboard, URL https://<api>/payments/nomba/webhook): a checkout was
+   * paid. Nothing in the body is trusted: only its order reference is used, and the payment is read from Nomba before
+   * the order changes. With a signature key (NOMBA_WEBHOOK_SECRET) the signature is checked too.
    */
   .post("/nomba/webhook", async (c) => {
     const raw = await c.req.text();
-    if (!nombaWebhookIsGenuine(raw, (name) => c.req.header(name))) return c.json({ error: "Invalid signature" }, 401);
+    if (env.NOMBA_WEBHOOK_SECRET && !nombaWebhookIsGenuine(raw, (name) => c.req.header(name))) return c.json({ error: "Invalid signature" }, 401);
     const event = JSON.parse(raw) as { event_type?: string; requestId?: string; data?: { order?: { orderReference?: string } } };
     if (event.requestId) {
       const [fresh] = await db.insert(schema.webhookEvents).values({ id: `nomba:${event.requestId}`, provider: "nomba", type: event.event_type ?? "event" }).onConflictDoNothing().returning();

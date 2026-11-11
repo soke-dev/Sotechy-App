@@ -98,14 +98,14 @@ export default async function SettingsPage() {
             <ul className="mt-3 flex flex-col gap-1 text-sm">
               <Check ok={m.bank.moneymovesReady}>Money Moves direct key set (<code>MONEYMOVES_DIRECT_KEY</code>)</Check>
               <Check ok={!!m.bank.nombaReady}>Nomba keys set (<code>NOMBA_CLIENT_ID</code>, <code>NOMBA_CLIENT_SECRET</code>, <code>NOMBA_ACCOUNT_ID</code>)</Check>
-              <Check ok={!!m.bank.nombaWebhookSecretSet}>Nomba webhook signature key set (<code>NOMBA_WEBHOOK_SECRET</code>)</Check>
+              <Check ok={!!m.bank.nombaWebhookSecretSet}>Optional: Nomba webhook signature key (<code>NOMBA_WEBHOOK_SECRET</code>). Payments are checked with Nomba either way</Check>
               <Check ok={m.bank.bachsReady}>Bachs key set (<code>BACHS_SECRET_KEY</code>)</Check>
               <Check ok={m.bank.bachsWebhookSecretSet}>Bachs webhook secret set (<code>BACHS_WEBHOOK_SECRET</code>)</Check>
               <Check ok={!!data.paymentMethods.find((p) => p.code === "bank_transfer" && p.isEnabled && p.online)}>&quot;Bank transfer&quot; below is enabled and set to Online</Check>
             </ul>
             {m.bank.provider === "nomba" && m.bank.nombaWebhookUrl && (
               <div className="mt-3 rounded-xl border border-line bg-canvas p-3">
-                <p className="text-xs text-muted">In Nomba → Developer → Webhook (Live), create a webhook with this URL, pick the payment success event, and set the same signature key as NOMBA_WEBHOOK_SECRET:</p>
+                <p className="text-xs text-muted">In Nomba → Developer → Webhook (Live), create a webhook with this URL and pick the payment success event (if Nomba gives you a signature key, add it as NOMBA_WEBHOOK_SECRET):</p>
                 <code className="mt-1 block select-all break-all text-sm">{m.bank.nombaWebhookUrl}</code>
               </div>
             )}
