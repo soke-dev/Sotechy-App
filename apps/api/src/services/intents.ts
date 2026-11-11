@@ -8,6 +8,7 @@ import { getUsdRate } from "./moneymoves";
 import { getSetting } from "./settings";
 import { confirmPayment } from "./orders";
 import { findDepositTx } from "./deposit-watch";
+import { HttpError } from "../lib/errors";
 
 const API = "https://1click.chaindefuser.com/v0";
 /** What Sotechy receives: USDC on Base */
@@ -128,7 +129,8 @@ export async function openIntent(payment: typeof schema.payments.$inferSelect, o
   // Rounded up to the cent, so Sotechy never receives less than the order's total
   const usdc = Math.ceil((payment.amount / rate) * 100) / 100;
   const deadline = new Date(Date.now() + 30 * 60_000).toISOString();
-  const q = await oneClick<{ quote: { depositAddress: string; depositMemo?: string; amountIn: string; amountInFormatted: string; deadline?: string } }>("POST", "/quote", {
+  type Quote = { quote: { depositAddress: string; depositMemo?: string; amountIn: string; amountInFormatted: string; deadline?: string } };
+  const q = await oneClick<Quote>("POST", "/quote", {
     dry: false,
     swapType: "EXACT_OUTPUT",
     slippageTolerance: 100,
@@ -141,6 +143,8 @@ export async function openIntent(payment: typeof schema.payments.$inferSelect, o
     recipient: env.INTENTS_RECIPIENT,
     recipientType: "DESTINATION_CHAIN",
     deadline,
+  }).catch((err) => {
+    throw new HttpError(400, quoteRefusal(err instanceof Error ? err.message : String(err), asset));
   });
   return {
     depositAddress: q.quote.depositAddress,
@@ -155,6 +159,22 @@ export async function openIntent(payment: typeof schema.payments.$inferSelect, o
     deadline: q.quote.deadline ?? deadline,
     openedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * NEAR Intents' refusal in plain words. Some coins have a minimum: Bitcoin's bridge fees need an order of a few
+ * dollars, and Tron's USDT has had a temporary $100 minimum. Minimums are given in USDC's smallest units ("try at least
+ * 6131225" is $6.13) or in dollars.
+ */
+function quoteRefusal(message: string, asset: IntentsAsset) {
+  const coin = `${asset.symbol} on ${asset.chain}`;
+  const units = message.match(/at least (\d{4,})/)?.[1];
+  const dollars = message.match(/\$\s?(\d+(?:\.\d+)?)/)?.[1];
+  const minimum = units ? Number(units) / 1_000_000 : dollars ? Number(dollars) : null;
+  if (minimum && /too low|minimum|limit/i.test(message)) {
+    return `${coin} only works for orders of $${minimum.toFixed(2)} or more right now. Pick another coin, like USDC on Solana.`;
+  }
+  return `${coin} isn't available for this order right now. Pick another coin, like USDC on Solana.`;
 }
 
 type Status = "PENDING_DEPOSIT" | "KNOWN_DEPOSIT_TX" | "PROCESSING" | "SUCCESS" | "INCOMPLETE_DEPOSIT" | "REFUNDED" | "FAILED";

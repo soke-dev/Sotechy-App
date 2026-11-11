@@ -215,6 +215,8 @@ export const paymentRoutes = new Hono<AppEnv>()
       try {
         intent = await openIntent(payment, assetId, refundTo.trim());
       } catch (err) {
+        // A coin's minimum or other refusal, already in plain words
+        if (err instanceof HttpError) throw err;
         throw badRequest(err instanceof Error ? `We couldn't get a price for that coin: ${err.message}` : "We couldn't get a price for that coin");
       }
       await db.update(schema.payments).set({ provider: "near-intents", raw: withIntent(payment.raw, intent) }).where(eq(schema.payments.id, payment.id));
