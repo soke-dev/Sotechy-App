@@ -195,8 +195,10 @@ export const adminContentRoutes = new Hono<AppEnv>()
         bachsReady: bankProviderReady("bachs"),
         bachsWebhookSecretSet: Boolean(env.BACHS_WEBHOOK_SECRET),
         bachsWebhookUrl: `${base}/webhooks/bachs`,
-        /** Payout bank accounts are checked with Nomba once all three of its keys are set */
+        /** Payout bank accounts are checked with Nomba once all three of its keys are set; the same keys open its checkout */
         nombaReady: nombaReady(),
+        nombaWebhookSecretSet: Boolean(env.NOMBA_WEBHOOK_SECRET),
+        nombaWebhookUrl: `${base}/payments/nomba/webhook`,
       },
     };
     if (status.configured) {

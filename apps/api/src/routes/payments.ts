@@ -14,6 +14,7 @@ import { requireFeature } from "../services/features";
 import { createCheckout, createDirectCheckout, MoneyMovesError, retrieveCheckout, retrievePayment, verifyWebhookSignature, type MMEvent, type MMPayment } from "../services/moneymoves";
 import { confirmPayment } from "../services/orders";
 import { bachsCheckout, bachsCheckoutPaid, bachsCreateCheckout, type BachsCheckout } from "../services/bachs";
+import { nombaCheckoutPayment, nombaCreateCheckout, nombaWebhookIsGenuine } from "../services/nomba";
 import { bankProvider, bankTransferAvailable, stablecoinAvailable } from "../services/bank-pay";
 import { FEATURE_REF, settleFeaturing } from "../services/featuring";
 import { settleWalkIn, WALK_IN_REF } from "../services/walk-in";
@@ -25,10 +26,19 @@ const isUuid = (v: string | null | undefined): v is string => !!v && /^[0-9a-f-]
  * Checkout we opened for a payment, kept on payments.raw until the payment completes. `bank` = a bank transfer
  * checkout, on Money Moves (direct) or, with `provider: "bachs"`, on Bachs.
  */
-type SavedCheckout = { id: string; url: string; attempt: number; bank?: boolean; provider?: "bachs" };
+/** For Nomba, `id` is our own reference for the page ("<payment id>:<attempt>"), which Nomba looks payments up by */
+type SavedCheckout = { id: string; url: string; attempt: number; bank?: boolean; provider?: "bachs" | "nomba" };
 
 /** A saved checkout as its provider has it now: open (with its page), paid (settled here), or neither */
 async function lookUp(saved: SavedCheckout): Promise<{ state: "open" | "paid" | "other"; url: string; expiresAt: string | null }> {
+  if (saved.provider === "nomba") {
+    const p = await nombaCheckoutPayment(saved.id).catch(() => null);
+    if (p?.paid) {
+      await settleFromNomba(saved.id, p);
+      return { state: "paid", url: saved.url, expiresAt: null };
+    }
+    return { state: "open", url: saved.url, expiresAt: null };
+  }
   if (saved.provider === "bachs") {
     const s = await bachsCheckout(saved.id).catch(() => null);
     if (!s) return { state: "other", url: saved.url, expiresAt: null };
@@ -72,6 +82,33 @@ export async function settleFromBachs(s: BachsCheckout) {
     raw: s,
     verifiedBy: null,
     note: `Bachs ${s.checkout_id} · bank transfer`,
+  });
+}
+
+/**
+ * Applies a paid Nomba checkout to our payment (its reference is "<payment id>:<attempt>"). Read from Nomba, never from
+ * a webhook body. Less than the order's total isn't accepted; that's noted for staff to look at.
+ */
+export async function settleFromNomba(reference: string, p: Awaited<ReturnType<typeof nombaCheckoutPayment>>) {
+  const ourId = reference.split(":")[0];
+  if (!isUuid(ourId) || !p.paid) return;
+  const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.id, ourId));
+  if (!payment || payment.status !== "pending") return;
+  if (p.amount !== null && p.amount + 0.005 < payment.amount) {
+    await db
+      .update(schema.payments)
+      .set({ verificationNote: `Underpaid on Nomba (${p.transactionId ?? reference}): received ₦${p.amount}` })
+      .where(eq(schema.payments.id, ourId));
+    await audit(db, { actorId: null, action: "payment.underpaid", entityType: "payment", entityId: ourId, details: { provider: "nomba", reference, received: p.amount } });
+    return;
+  }
+  await confirmPayment(ourId, {
+    amountPaid: p.amount ?? payment.amount,
+    providerReference: p.transactionId ?? `nomba:${reference}`,
+    provider: "nomba",
+    raw: { ...keepIntents(payment.raw), nomba: p.raw },
+    verifiedBy: null,
+    note: `Nomba checkout ${reference}`,
   });
 }
 
@@ -257,6 +294,16 @@ export const paymentRoutes = new Hono<AppEnv>()
     const expiresAt = new Date(Math.max(Math.min(order.reservationExpiresAt?.getTime() ?? Infinity, Date.now() + 60 * 60_000), Date.now() + 6 * 60_000));
     const returnUrl = publicApiUrl ? `${publicApiUrl}/payments/return?order=${order.id}` : undefined;
     const metadata = { order_id: order.id, order_number: order.orderNumber };
+    if (provider === "nomba") {
+      // Nomba's own checkout page (bank transfer or card); each page gets a new reference. Amount comes from the database.
+      const reference = `${payment.id}:${attempt}`;
+      const n = await nombaCreateCheckout({ reference, amount: payment.amount, email: customer.email, customerId: user.id, callbackUrl: returnUrl });
+      await db
+        .update(schema.payments)
+        .set({ provider: "nomba", raw: { ...keepIntents(payment.raw), checkout: { id: reference, url: n.checkoutLink, attempt, bank: true, provider: "nomba" } satisfies SavedCheckout } })
+        .where(eq(schema.payments.id, payment.id));
+      return c.json({ checkoutUrl: n.checkoutLink });
+    }
     if (provider === "bachs") {
       if (!returnUrl) throw new HttpError(503, "Bank transfer isn't available right now. Please pay with stablecoin.");
       // Amount comes from the database, never from the client. Bachs keeps every reference, so each page gets a new one.
@@ -305,6 +352,29 @@ export const paymentRoutes = new Hono<AppEnv>()
 <style>body{font-family:system-ui,sans-serif;background:#FAF7F3;color:#17120E;text-align:center;padding:64px 24px}a{display:inline-block;margin-top:16px;background:#17120E;color:#fff;padding:14px 22px;border-radius:999px;text-decoration:none;font-weight:600}</style>
 </head><body><h2>Thanks!</h2><p>Head back to the Sotechy app to see your order.</p><a href=${href}>Open Sotechy</a>
 <script>location.href=${href}</script></body></html>`);
+  })
+
+  /**
+   * Nomba webhook (Developer → Webhook on Nomba's dashboard, URL https://<api>/payments/nomba/webhook, with the signature
+   * key also set as NOMBA_WEBHOOK_SECRET): a checkout was paid. The payment is read from Nomba before the order changes.
+   */
+  .post("/nomba/webhook", async (c) => {
+    const raw = await c.req.text();
+    if (!nombaWebhookIsGenuine(raw, (name) => c.req.header(name))) return c.json({ error: "Invalid signature" }, 401);
+    const event = JSON.parse(raw) as { event_type?: string; requestId?: string; data?: { order?: { orderReference?: string } } };
+    if (event.requestId) {
+      const [fresh] = await db.insert(schema.webhookEvents).values({ id: `nomba:${event.requestId}`, provider: "nomba", type: event.event_type ?? "event" }).onConflictDoNothing().returning();
+      if (!fresh) return c.json({ received: true, duplicate: true });
+    }
+    const reference = event.data?.order?.orderReference;
+    if (event.event_type === "payment_success" && reference) {
+      try {
+        await settleFromNomba(reference, await nombaCheckoutPayment(reference));
+      } catch (err) {
+        console.warn("Nomba webhook:", err instanceof Error ? err.message : err);
+      }
+    }
+    return c.json({ received: true });
   })
 
   /** Money Moves webhook: signed with mm-signature; each event handled once. */

@@ -63,6 +63,8 @@ const schema = z.object({
   NOMBA_ACCOUNT_ID: z.string().optional(),
   /** Only to point at Nomba's sandbox (https://sandbox.nomba.com); otherwise the live API */
   NOMBA_API_URL: z.string().url().optional(),
+  /** The signature key set with the webhook on Nomba's dashboard (Developer → Webhook), for checking its events */
+  NOMBA_WEBHOOK_SECRET: z.string().optional(),
   /** The operator wallet's private key (0x…): writes token movements and receipts on chain. Never the owner key. */
   CHAIN_OPERATOR_KEY: z
     .string()

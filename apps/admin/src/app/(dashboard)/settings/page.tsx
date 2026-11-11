@@ -16,7 +16,16 @@ interface MoneyMovesStatus {
   rate: { rate: number; source: string; updatedAt: string };
   account: { name: string; mode: string; verified: boolean } | null;
   error: string | null;
-  bank: { provider: "moneymoves" | "bachs"; moneymovesReady: boolean; bachsReady: boolean; bachsWebhookSecretSet: boolean; bachsWebhookUrl: string; nombaReady?: boolean };
+  bank: {
+    provider: "moneymoves" | "nomba" | "bachs";
+    moneymovesReady: boolean;
+    bachsReady: boolean;
+    bachsWebhookSecretSet: boolean;
+    bachsWebhookUrl: string;
+    nombaReady?: boolean;
+    nombaWebhookSecretSet?: boolean;
+    nombaWebhookUrl?: string;
+  };
 }
 
 function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
@@ -81,16 +90,25 @@ export default async function SettingsPage() {
               <Field label="Provider">
                 <select name="provider" defaultValue={m.bank.provider} className={inputClass}>
                   <option value="moneymoves">Money Moves (direct, no fee)</option>
+                  <option value="nomba">Nomba (its checkout page: transfer or card)</option>
                   <option value="bachs">Bachs</option>
                 </select>
               </Field>
             </ActionForm>
             <ul className="mt-3 flex flex-col gap-1 text-sm">
               <Check ok={m.bank.moneymovesReady}>Money Moves direct key set (<code>MONEYMOVES_DIRECT_KEY</code>)</Check>
+              <Check ok={!!m.bank.nombaReady}>Nomba keys set (<code>NOMBA_CLIENT_ID</code>, <code>NOMBA_CLIENT_SECRET</code>, <code>NOMBA_ACCOUNT_ID</code>)</Check>
+              <Check ok={!!m.bank.nombaWebhookSecretSet}>Nomba webhook signature key set (<code>NOMBA_WEBHOOK_SECRET</code>)</Check>
               <Check ok={m.bank.bachsReady}>Bachs key set (<code>BACHS_SECRET_KEY</code>)</Check>
               <Check ok={m.bank.bachsWebhookSecretSet}>Bachs webhook secret set (<code>BACHS_WEBHOOK_SECRET</code>)</Check>
               <Check ok={!!data.paymentMethods.find((p) => p.code === "bank_transfer" && p.isEnabled && p.online)}>&quot;Bank transfer&quot; below is enabled and set to Online</Check>
             </ul>
+            {m.bank.provider === "nomba" && m.bank.nombaWebhookUrl && (
+              <div className="mt-3 rounded-xl border border-line bg-canvas p-3">
+                <p className="text-xs text-muted">In Nomba → Developer → Webhook (Live), create a webhook with this URL, pick the payment success event, and set the same signature key as NOMBA_WEBHOOK_SECRET:</p>
+                <code className="mt-1 block select-all break-all text-sm">{m.bank.nombaWebhookUrl}</code>
+              </div>
+            )}
             {m.bank.provider === "bachs" && (
               <div className="mt-3 rounded-xl border border-line bg-canvas p-3">
                 <p className="text-xs text-muted">In Bachs → Developer Portal → Webhooks, send checkout.completed, collection.succeeded and collection.underpaid to:</p>

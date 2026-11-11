@@ -1,6 +1,8 @@
-// Nomba (https://developer.nomba.com) for checking the name on a bank account when a store adds its payout
-// account. Paying stores still goes through the payout service (Bachs); only the lookup is Nomba's.
+// Nomba (https://developer.nomba.com): checking the name on a bank account when a store adds its payout account,
+// and customers paying in naira on Nomba's own checkout page (bank transfer or card), when Admin → Settings picks
+// Nomba for "Pay with bank transfer".
 // Locally without keys it stands in, so the flow can be tried end to end.
+import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Bank } from "@sotechy/shared";
 import { env } from "../env";
 import { NIGERIAN_BANKS } from "./banks";
@@ -108,4 +110,78 @@ export async function nombaResolve(bank: { code: string; name: string }, account
     throw new HttpError(502, "The bank didn't answer. Please try again in a minute.");
   }
   throw new HttpError(400, "We couldn't find that account. Check the bank and the 10-digit number.");
+}
+
+// ---------------------------------------------------------------------------
+// Checkout: customers pay in naira on Nomba's hosted page
+// ---------------------------------------------------------------------------
+
+/**
+ * A Nomba checkout page for a payment. `reference` is ours ("<payment id>:<attempt>", unique per page); Nomba sends the
+ * customer back to `callbackUrl` afterwards. Amounts are naira.
+ */
+export async function nombaCreateCheckout(input: { reference: string; amount: number; email: string; customerId: string; callbackUrl?: string }) {
+  const { json } = await call<{ checkoutLink?: string; orderReference?: string }>("POST", "/v1/checkout/order", {
+    order: {
+      orderReference: input.reference,
+      customerId: input.customerId,
+      customerEmail: input.email,
+      amount: input.amount.toFixed(2),
+      currency: "NGN",
+      ...(input.callbackUrl && { callbackUrl: input.callbackUrl }),
+    },
+  });
+  const link = json?.data?.checkoutLink;
+  if (json?.code !== "00" || !link) {
+    console.error(`Nomba checkout failed: ${json?.description ?? json?.message ?? "no answer"}`);
+    throw new HttpError(502, "Bank transfer didn't open. Please try again.");
+  }
+  return { checkoutLink: link, nombaOrderId: json.data?.orderReference ?? null };
+}
+
+/** A checkout's payment as Nomba has it (looked up by our reference): paid only when Nomba says SUCCESS */
+export type NombaCheckoutPayment = { paid: boolean; status: string; amount: number | null; transactionId: string | null; raw: unknown };
+
+export async function nombaCheckoutPayment(reference: string): Promise<NombaCheckoutPayment> {
+  const { json } = await call<Record<string, unknown>>("GET", `/v1/checkout/transaction?idType=ORDER_REFERENCE&id=${encodeURIComponent(reference)}`);
+  const d = (json?.data ?? {}) as Record<string, unknown>;
+  const order = (d.order ?? {}) as Record<string, unknown>;
+  const tx = (d.transaction ?? d.transactionDetails ?? {}) as Record<string, unknown>;
+  const status = String(d.status ?? tx.status ?? "").toUpperCase();
+  const amount = Number(tx.transactionAmount ?? tx.amount ?? d.amount ?? order.amount ?? NaN);
+  // What Nomba reported, for the logs: an order that stays open shows here too
+  if (status || json?.code !== "00") console.log(`Nomba checkout ${reference}: code ${json?.code ?? "-"}, status ${status || "-"}, amount ${Number.isFinite(amount) ? amount : "-"}`);
+  return {
+    paid: json?.code === "00" && status === "SUCCESS",
+    status,
+    amount: Number.isFinite(amount) ? amount : null,
+    transactionId: (tx.transactionId ?? tx.id ?? d.transactionId ?? null) as string | null,
+    raw: json?.data ?? null,
+  };
+}
+
+/**
+ * Whether a webhook really came from Nomba: HMAC-SHA256 (base64) with the dashboard's signature key, over
+ * event_type:requestId:userId:walletId:transactionId:type:time:responseCode:timestamp, compared with nomba-signature.
+ */
+export function nombaWebhookIsGenuine(raw: string, header: (name: string) => string | undefined) {
+  if (!env.NOMBA_WEBHOOK_SECRET) return false;
+  const signature = header("nomba-signature") ?? header("nomba-sig-value");
+  const timestamp = header("nomba-timestamp");
+  if (!signature || !timestamp) return false;
+  let body: Record<string, any>;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  const d = body.data ?? {};
+  const responseCode = d.transaction?.responseCode == null || d.transaction?.responseCode === "null" ? "" : String(d.transaction.responseCode);
+  const message = [body.event_type, body.requestId, d.merchant?.userId, d.merchant?.walletId, d.transaction?.transactionId, d.transaction?.type, d.transaction?.time, responseCode, timestamp]
+    .map((v) => (v == null ? "" : String(v)))
+    .join(":");
+  const expected = createHmac("sha256", env.NOMBA_WEBHOOK_SECRET).update(message).digest("base64");
+  const a = Buffer.from(expected.toLowerCase());
+  const b = Buffer.from(signature.toLowerCase());
+  return a.length === b.length && timingSafeEqual(a, b);
 }
