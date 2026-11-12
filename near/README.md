@@ -1,6 +1,6 @@
 # Sotechy on NEAR
 
-Sotechy is a live marketplace of verified stores (iOS app, web shop at [sotechy.shop](https://sotechy.shop), and a merchant dashboard). Every store has its own reward token: customers earn it on every delivered order and can spend it only at that store.
+Sotechy is a live, tokenized marketplace of verified stores: on the App Store and the web at [sotechy.shop](https://sotechy.shop) (Android coming soon), with a merchant dashboard for stores. Every store has its own reward token: customers earn it on every order, can send it to a friend in the app, and spend it at that store.
 
 This folder is what we built for the NEAR Hackathon to bring Sotechy to NEAR. One contract does both on-chain jobs:
 
@@ -22,25 +22,35 @@ npm install
 npm start
 ```
 
-It reads the live testnet contract (`NETWORK=mainnet npm start` reads mainnet):
-- a store's token supply
-- a customer's balances
-- the receipt for order SO-1024, with its status-drawn picture
+It reads the live mainnet contract, `contract.sotechy.near` (`NETWORK=testnet npm start` reads the testnet copy):
+- every store token and its supply
+- the latest real order's receipt, with its status-drawn picture
 - a fingerprint check that passes with the right fingerprint and fails with a wrong one
+- that customer's token balances
 
-It also gets a live NEAR Intents quote for paying an order in SOL. The output looks like this:
+It also gets a live NEAR Intents quote for paying an order in SOL. If a public RPC is busy, it falls back to another one. The output looks like this (the numbers grow as orders come in):
 
 ```
-Sotechy on NEAR testnet: contract.sotechy-shop.testnet
+Sotechy on NEAR mainnet: contract.sotechy.near
+
 Store tokens (NEP-245)
-  token 1: $SOTECHY, supply 57200
-  ada.sotechy-shop.testnet holds 57200 $SOTECHY and 572000 of store 2's token
+  4 store tokens, one token id per store
+  token 1: $SOTECHY, supply 1,500
+  token 2: $STAND, supply 0
+  ...
 Receipts (soulbound NEP-171)
-  SO-1024: order SO-1024 at Sotechy Shop, delivered, owned by ada.sotechy-shop.testnet
+  6 receipts issued
+  latest: order SOT-1037 at Sotechy Shop, delivered, issued 2026-11-08, updated 2026-11-08
+  owned by 0x6e57…42e9; on chain: only the store, order number, dates and a fingerprint
+  NFT: "Sotechy receipt #SOT-1037": Order SOT-1037 at Sotechy Shop: Delivered
   verify(right fingerprint): true
   verify(wrong fingerprint): false
-NEAR Intents checkout
-  send 0.1136 SOL → Sotechy receives 10.0 USDC on Base, in about 22s
+
+That customer's tokens (0x6e57…42e9)
+  1,500 $SOTECHY
+
+NEAR Intents checkout: what a customer would send in SOL for an order of about 10 USDC
+  send 0.1222 SOL → Sotechy receives 10.0 USDC on Base, in about 22s
 ```
 
 ## Deployments
@@ -66,8 +76,8 @@ Both live in one contract, [`contracts/sotechy`](contracts/sotechy). It has one 
 
 **Rules**
 - One contract holds every store's token, and each store has its own token id. `"1"` is $SOTECHY, which customers earn as a bonus when they buy from other stores.
-- Only Sotechy's operator account can mint, burn or move tokens. Every change carries the order it belongs to as its `memo`.
-- Nobody can trade the tokens. NEP-245's `mt_transfer` and the other transfer calls refuse, because a store's token is meant to bring its customers back, not be sold on.
+- Shoppers send tokens to each other in the app, by @username ([`apps/api/src/services/tokens.ts`](../apps/api/src/services/tokens.ts), `sendTokens`). Each send reaches the contract as a `move` and is logged as a standard `mt_transfer` event.
+- Every change goes through Sotechy's operator account and carries the order or send it belongs to as its `memo`. Direct wallet-to-wallet calls (NEP-245's `mt_transfer` and the other transfer calls) are refused, so the app and the chain always agree, and a store's token isn't sold on outside Sotechy.
 
 **Safety**
 - Mints are capped per operation and per day. A leaked operator key can only do limited harm before the owner pauses the contract (`set_paused`) and swaps the operator (`set_operator`).
@@ -95,8 +105,9 @@ Both live in one contract, [`contracts/sotechy`](contracts/sotechy). It has one 
 1. The customer picks a coin and gives an address for refunds.
 2. The API asks 1Click for an `EXACT_OUTPUT` quote: the order's naira total, at the live rate, in USDC on Base. It returns a one-off deposit address.
 3. The app shows exactly what to send, then follows the swap.
-4. When 1Click reports `SUCCESS`, the payment and the order are confirmed. A background watcher catches customers who close the app.
-5. If the swap can't happen, 1Click returns the coins to the customer's refund address. Nothing is held in between.
+4. The API watches the deposit address on the customer's chain (Solana, Tron, BNB Chain, Base and Ethereum, in [`deposit-watch.ts`](../apps/api/src/services/deposit-watch.ts)) and hands the transaction to 1Click the moment it lands, so the swap starts at once.
+5. When 1Click reports `SUCCESS`, the payment and the order are confirmed. A background watcher catches customers who close the app.
+6. If the swap can't happen, 1Click returns the coins to the customer's refund address. Nothing is held in between.
 
 ### In Sotechy's app
 
@@ -104,7 +115,10 @@ Both live in one contract, [`contracts/sotechy`](contracts/sotechy). It has one 
 |---|---|
 | [`apps/api/src/services/near.ts`](../apps/api/src/services/near.ts) | The API worker that writes every ledger change and receipt to NEAR, in order, with retries. It opens receipts on payment and moves them as orders ship and deliver. |
 | [`apps/api/src/services/intents.ts`](../apps/api/src/services/intents.ts), routes in [`apps/api/src/routes/payments.ts`](../apps/api/src/routes/payments.ts) (`/payments/intents/*`) | The 1Click client: coins on offer, quotes, status checks, and confirming orders. |
-| [`apps/mobile/src/components/intents-pay.tsx`](../apps/mobile/src/components/intents-pay.tsx) | The React Native payment window: pick a coin, send the exact amount, watch the swap. |
+| [`apps/api/src/services/deposit-watch.ts`](../apps/api/src/services/deposit-watch.ts) | Spots the customer's payment on Solana, Tron, BNB Chain, Base or Ethereum and hands it to 1Click straight away. |
+| [`apps/mobile/src/components/intents-pay.tsx`](../apps/mobile/src/components/intents-pay.tsx) | The React Native payment window: pick a network and a coin, send the exact amount, watch the payment go through. |
+| [`apps/api/src/services/tokens.ts`](../apps/api/src/services/tokens.ts) (`sendTokens`), [`apps/mobile/src/app/wallet.tsx`](../apps/mobile/src/app/wallet.tsx) | The wallet: balances, sending tokens to a friend, and a link to each token on chain. |
+| [`apps/admin/src/app/(dashboard)/tokens/chain-card.tsx`](../apps/admin/src/app/(dashboard)/tokens/chain-card.tsx) | What Sotechy's team sees: the operator's gas, changes waiting to be written, and the contract. |
 
 The receipt steps are queued from order changes in [`apps/api/src/services/orders.ts`](../apps/api/src/services/orders.ts), and the database columns come from migration [`0043_near_mirror.sql`](../apps/api/drizzle/0043_near_mirror.sql).
 
@@ -132,7 +146,9 @@ Everything in this folder, and the NEAR code in `apps/`, was written for the NEA
 - the scripts and the demo
 - the NEAR mirror, receipt steps and Intents checkout in the API and app
 
-How the rest of the repo splits between pre-hackathon and hackathon work is in the [main README](../README.md#near-hackathon).
+How the rest of the repo splits between pre-hackathon and hackathon work is in the [main README](../README.md#near-hackathon): tag `pre-hackathon` is the baseline, and tag `hackathon-submission` (branch `near-hackathon`) is the code as submitted.
+
+We're also submitting **Money Moves × NEAR Intents**, a separate project with its own code: [github.com/soke-dev/money-moves-near](https://github.com/soke-dev/money-moves-near). The two share no code.
 
 ## Team
 

@@ -16,9 +16,11 @@ How tokens, the reserve and payouts work is in [docs/tokens/README.md](docs/toke
 
 ## NEAR Hackathon
 
-**Start here: [`near/`](near).** It has the Sotechy contract on NEAR (store tokens as NEP-245, and soulbound receipts as dynamic NEP-171 that change with the order), with tests, deploy scripts and a demo you can run without keys. NEAR is wired into the live app:
-- [`apps/api/src/services/near.ts`](apps/api/src/services/near.ts) mirrors every token change and receipt to NEAR.
-- [`apps/api/src/services/intents.ts`](apps/api/src/services/intents.ts) and [`apps/mobile/src/components/intents-pay.tsx`](apps/mobile/src/components/intents-pay.tsx) let customers pay with any coin on any chain through NEAR Intents.
+This repo is our NEAR Hackathon submission (tracks: **Real-World Money** and **NFTs That Do Something**). **The submission's README is on the [`near-hackathon`](https://github.com/soke-dev/Sotechy-App/tree/near-hackathon) branch**, which holds the code as submitted (tag `hackathon-submission`).
+
+The NEAR code is in [`near/`](near): the Sotechy contract on NEAR (store tokens as NEP-245, and soulbound receipts as dynamic NEP-171 that change with the order), with tests, deploy scripts and a demo that reads the live contract without keys. NEAR is wired into the live app:
+- [`apps/api/src/services/near.ts`](apps/api/src/services/near.ts) writes every token change and receipt step to NEAR.
+- [`apps/api/src/services/intents.ts`](apps/api/src/services/intents.ts), [`apps/api/src/services/deposit-watch.ts`](apps/api/src/services/deposit-watch.ts) and [`apps/mobile/src/components/intents-pay.tsx`](apps/mobile/src/components/intents-pay.tsx) let customers pay with any coin on any chain through NEAR Intents.
 
 Live on mainnet at [`contract.sotechy.near`](https://nearblocks.io/address/contract.sotechy.near).
 
@@ -26,22 +28,24 @@ Live on mainnet at [`contract.sotechy.near`](https://nearblocks.io/address/contr
 - **Sotechy Shop** has been an electronics store in Benin City since 2022. Its old website was a separate codebase and isn't in this repo.
 - **This repo's first commit** ([`4bbbaa4`](https://github.com/soke-dev/Sotechy-App/commit/4bbbaa4), tag `pre-hackathon`, 25 Oct 2026) brought in about 10,850 lines that were already written: the API basics, the admin dashboard, the customer app shell and the landing page. Treat that commit as baseline.
 
-**Built during the hackathon** (every commit after `4bbbaa4`, from 25 Oct 2026; tag `hackathon-submission`):
+**Built during the hackathon** (every commit after `4bbbaa4`, from 25 Oct 2026, to tag `hackathon-submission`; see [`pre-hackathon...hackathon-submission`](https://github.com/soke-dev/Sotechy-App/compare/pre-hackathon...hackathon-submission)):
 - the marketplace: store verification, storefronts, payouts, offers, promotions and walk-in sales
 - the merchant dashboard
-- store tokens and the reserve
+- store tokens, sending them to friends, and the reserve
 - the Base contracts
-- everything in `near/`, the NEAR mirror, and NEAR Intents checkout
+- everything in `near/`, writing tokens and receipts to NEAR, and the NEAR Intents checkout
+
+**Other submission by the same builder.** We're also submitting **Money Moves × NEAR Intents**, a separate, independent project with its own code: [github.com/soke-dev/money-moves-near](https://github.com/soke-dev/money-moves-near). The two share no code and should be judged independently.
 
 ## What the marketplace does
 
 - **Stores and verification.** A store signs up in the merchant dashboard, sets up its business (CAC details or as an individual), passes an ID and selfie check (Didit), adds a payout account and names its token. Admin approves it, asks for changes, or declines it, with a note the owner sees.
 - **Products and categories.** Stores list products under the shared departments in `packages/shared/src/market-categories.ts` (the app's menu browses the same tree). Sotechy's own catalogue uses its own categories alongside.
 - **Delivery and pickup.** Each store sets delivery areas with home delivery prices, and up to 5 pickup points per area (each with an optional price of its own and a Google Maps link). New areas and pickup changes wait for admin approval.
-- **Cart and checkout.** One cart can hold several stores; each store checks out on its own. Customers pay through Money Moves, with stablecoin or by bank transfer (a direct checkout to the business account, turned on by `MONEYMOVES_DIRECT_KEY`), and can put store tokens towards an order.
+- **Cart and checkout.** One cart can hold several stores; each store checks out on its own. Customers pay by bank transfer (Money Moves direct checkout, Nomba's checkout page or Bachs, picked in Admin → Settings), through Money Moves with stablecoins, or with any coin through NEAR Intents, and can put store tokens towards an order.
 - **Orders.** The store accepts, sends it (with tracking and the driver's phone for pickup), and marks it collected or delivered after ticking what it checked. The customer confirms they got it, or says it didn't arrive and Sotechy follows up.
-- **Payouts.** Each order pays the store in two parts: the first when it accepts, the rest when the customer confirms delivery. Admin pays them by hand for now and marks them paid; the store is emailed.
-- **Store tokens.** Customers earn the store's token on every order (plus $SOTECHY), held until it's paid and released on delivery. Tokens are recorded on Base and mirrored to NEAR; every order also gets an on-chain receipt.
+- **Payouts.** Each order pays the store in two parts: the first when it accepts, the rest when the customer confirms delivery. Admin sends each payout through Bachs or Flutterwave (`PAYOUT_PROVIDER`), or pays it by hand and marks it paid; the store is emailed.
+- **Store tokens.** Customers earn the store's token on every order (plus $SOTECHY), held until it's paid and released on delivery. They can send tokens to a friend by @username, and spend them at the store. Tokens are recorded on chain (NEAR and Base); every order also gets an on-chain receipt.
 - **Selling tools.** Price offers, store promo codes, paid featuring and banners, walk-in sales that still earn customers tokens, reviews, followers and store news.
 - **Talking to people.** Push notifications and an in-app notifications list, email (Resend), WhatsApp links, and live chat with Sotechy's team in the app.
 
@@ -94,8 +98,8 @@ pnpm dev:mobile    # app; set EXPO_PUBLIC_API_URL in apps/mobile/.env to the add
 Customer app (Expo) ────────┐
 Merchant dashboard (Next.js) ┼──► API (Hono, Railway) ──► Postgres (Railway)
 Admin dashboard (Next.js) ───┤        │  ▲
-Landing page (Next.js) ──────┘        │  └── Money Moves webhook (payments)
-                                      ├──► Monad (store tokens, receipt fingerprints)
+Landing page (Next.js) ──────┘        │  └── Money Moves, Nomba, NEAR Intents (payments)
+                                      ├──► NEAR, Base (store tokens, receipts)
                                       ├──► Resend (email), Expo push
                                       └──► Didit (store owners' ID checks)
 ```
@@ -105,7 +109,7 @@ Landing page (Next.js) ──────┘        │  └── Money Moves w
 - **Server-side totals.** Prices, discounts and delivery fees are computed in `apps/api/src/services/orders.ts`, and the client only sends variant IDs and quantities.
 - **No overselling.** Stock rows are locked (`SELECT … FOR UPDATE`) inside transactions. Unpaid orders *reserve* stock, payment *commits* it, and expired holds are released automatically every minute.
 - **Paid only when verified.** An order becomes paid only through one of three paths:
-  1. a Money Moves webhook with a valid `mm-signature` (HMAC-SHA256, at most five minutes old), after the payment is re-read from the Money Moves API. Each event is handled once;
+  1. the payment provider confirming it: a Money Moves webhook with a valid `mm-signature` (HMAC-SHA256, at most five minutes old) after the payment is re-read from the Money Moves API; a Nomba payment that Nomba's API reports as `SUCCESS` for our reference; or a NEAR Intents swap that 1Click reports as `SUCCESS`. Each event is handled once;
   2. a manager confirming a bank transfer in Admin → Payments, with the reference recorded (walk-in sales);
   3. cash or POS-terminal payment confirmed at the till by staff.
   Screenshots and customer-submitted hashes never mark an order paid.
@@ -126,7 +130,7 @@ The service setup is also described in [`.railway/railway.ts`](.railway/railway.
 
 **Money Moves.** In the Money Moves dashboard, create an API key and add a webhook endpoint `https://<api-domain>/payments/webhooks/moneymoves`. Put the key and the webhook's `whsec_…` secret in the api service. Admin → Settings shows whether the connection works and the exact webhook URL.
 
-**Chain keys.** The keys that send token and receipt transactions on Monad stay out of the repo. The contract owner key is kept off Railway entirely and only used locally when needed.
+**Chain keys.** The keys that send token and receipt transactions (the NEAR operator `api.sotechy.near`, and the Base operator) stay out of the repo. The contract owner key is kept off Railway entirely and only used locally when needed.
 
 **Customer app.** Point it at the API with `EXPO_PUBLIC_API_URL=https://<api-domain>` in `apps/mobile/.env`. Build Android and iOS with EAS: `cd apps/mobile && npx eas-cli@latest build`.
 
@@ -192,15 +196,15 @@ It uses `expo-auth-session`'s Google provider. Expo now recommends `@react-nativ
 
 Put the logo and images in `brand-assets/`, run `pnpm assets:sync`, and commit. See [brand-assets/README.md](brand-assets/README.md). The images you added to `apps/mobile/assets` were moved there.
 
-## Still needs credentials or decisions
+## Payments and payouts
 
-| Item | Status |
+| What | How it works |
 | --- | --- |
-| **Bank transfer at checkout** | Shown as "Coming soon". Planned with Nomba (a virtual account per order), waiting for the Nomba keys. |
-| **Automatic payouts** | Payouts are paid by hand from admin for now; the Bachs integration is in place but not used. |
-| Orders over ₦1,000,000 | Money Moves takes ₦100 to ₦1,000,000 per checkout. Bigger orders are asked to split the order or contact the store. |
-| Policies (delivery, returns, warranty, privacy) | Placeholder text in `apps/web/src/app/policies` |
-| App icons and store listings | Expo default icons in `brand-assets/app-icon/` |
+| **Bank transfer at checkout** | Admin → Settings picks the provider: Money Moves direct checkout, Nomba's checkout page (bank transfer or card), or Bachs. Nomba payments are confirmed only when Nomba's API says `SUCCESS` for our reference. |
+| **Crypto at checkout** | Stablecoins through Money Moves, and any coin on any chain through NEAR Intents (Admin → Settings → Pay with crypto). |
+| **Payouts to stores** | Sent through Bachs (default) or Flutterwave, set with `PAYOUT_PROVIDER`, or paid by hand and marked paid. |
+| Order size | Online payment works for orders from ₦100 to ₦1,000,000. Bigger orders are asked to split the order or contact the store. |
+| Policies | Terms, delivery, returns, warranty and privacy, in `apps/web/src/app/policies` |
 
 ## Useful commands
 
