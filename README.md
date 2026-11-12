@@ -11,16 +11,20 @@
 
 ---
 
-Sotechy is a marketplace of verified stores in Nigeria. Every store has its own storefront and its own reward token: shoppers earn it on every order, can send it to a friend, and spend it at that store. Sotechy checks every store before it can sell, collects every payment, pays stores out and runs support. It's live with real shoppers and stores. This branch is our NEAR Hackathon submission (tracks: **Real-World Money** and **NFTs That Do Something**).
+This branch is our NEAR Hackathon submission (tracks: **Real-World Money** and **NFTs That Do Something**).
 
-**What we built for the hackathon:** NEAR now runs Sotechy's rewards, its receipts and its crypto checkout.
+**The problem.** Online shopping in Nigeria runs on low trust: fake sellers, and orders that never arrive. And loyalty points are locked inside each platform, so they're worth little to shoppers or to stores.
 
-1. **Store tokens on NEAR (NEP-245).** One contract, live at [`contract.sotechy.near`](https://nearblocks.io/address/contract.sotechy.near), holds every store's token, one token id per store. Every token a shopper earns, sends to a friend or spends in the app is written to it.
-2. **Receipts that do something (dynamic, soulbound NEP-171).** Every order puts a receipt NFT in the shopper's wallet. Its status only moves forward (paid, on its way, delivered), and the contract redraws its picture from that status. It holds no amounts and no personal data, yet anyone holding the full receipt can verify it.
-3. **Pay with any coin through NEAR Intents.** At checkout a shopper can pay with 45 coins on 22 networks. A 1Click *exact output* quote gives them the exact amount and a one-off deposit address, and Sotechy receives the order's total in USDC. The server watches that address on Solana, Tron, BNB Chain, Base and Ethereum and hands the payment to 1Click the moment it lands.
-4. **No crypto setup for shoppers.** Each Sotechy account's wallet address is also its NEAR account (an eth-implicit account), and Sotechy pays all the gas.
+**What we built.** Sotechy is a tokenized marketplace of verified stores, live in production with real stores and orders. Every store is checked before it can sell. Each gets its own storefront and its own reward token, and every order gets a receipt shoppers can trust.
 
-All of it is live in production today.
+**How NEAR fits in.** NEAR runs Sotechy's rewards, its receipts and its crypto checkout.
+
+1. **Store tokens (NEP-245).** One Rust contract on mainnet, [`contract.sotechy.near`](https://nearblocks.io/address/contract.sotechy.near), holds every store's token, one token ID per store. Every token a shopper earns, sends to a friend by username, or spends in the app is written to NEAR.
+2. **Receipts that do something (soulbound, dynamic NEP-171).** Every order mints a receipt NFT. Its status only moves forward (paid, on its way, delivered), and the contract redraws its picture from that status. It holds no amounts or personal data, yet anyone holding the full receipt can verify it on chain.
+3. **Pay with any coin through NEAR Intents.** Checkout uses 1Click exact-output quotes, so shoppers can pay with 45 coins on 22 networks, and the order's total arrives in USDC. Our server spots the deposit on the shopper's chain (Solana, Tron, BNB Chain, Base, Ethereum) and hands it to 1Click straight away.
+4. **No crypto setup.** Each shopper's wallet address is also their NEAR account (an eth-implicit account), and Sotechy pays the gas.
+
+All of this is wired into Sotechy's production API and app. This repo has the contract with tests, deploy scripts, and a demo that reads the live mainnet contract with no keys.
 
 ## Verify it in two minutes (no database, no keys)
 
