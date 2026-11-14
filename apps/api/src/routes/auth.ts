@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { recordNotice } from "../services/push";
 import { db, schema } from "../db/client";
-import { checkPassword, hashPassword, issueToken, requireAuth, STAFF, tokenUserId, type AppEnv } from "../lib/auth";
+import { checkPassword, hashPassword, issueToken, renewToken, requireAuth, STAFF, tokenUserId, type AppEnv } from "../lib/auth";
 import { env } from "../env";
 import { badRequest, conflict, forbidden, HttpError, unauthorized } from "../lib/errors";
 import { sendEmail, sendEmailLater } from "../lib/email";
@@ -226,6 +226,13 @@ export const authRoutes = new Hono<AppEnv>()
   .get("/me", requireAuth, async (c) => {
     const [user] = await db.select().from(schema.users).where(eq(schema.users.id, c.get("user").id));
     return c.json(publicUser(user));
+  })
+  /** Keeps a session going while it's used: a fresh token for a valid one, for an account that's still active
+   *  (the dashboards call this as they're used, so nobody is signed out mid-week) */
+  .post("/refresh", requireAuth, async (c) => {
+    const token = await renewToken(c.req.header("Authorization"));
+    if (!token) throw unauthorized("Session expired, please sign in again");
+    return c.json({ token });
   })
   /** Deletes the account and its personal data (App Store and Play rules). Its orders are kept without a
    *  name, as sales records. Not while it runs a store or has an order on its way. */

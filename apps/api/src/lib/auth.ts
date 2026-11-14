@@ -16,9 +16,10 @@ export interface AuthUser {
 
 export type AppEnv = { Variables: { user: AuthUser } };
 
-const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
-/** Admin sessions last a working day */
-const STAFF_TOKEN_TTL_SECONDS = 60 * 60 * 12;
+/** Sessions are renewed while they're used (POST /auth/refresh), so these are how long one lasts unused */
+const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
+/** Admin sessions (they can move money) end after a week unused */
+const STAFF_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
 
 export const hashPassword = (password: string) => bcrypt.hash(password, 12);
 export const checkPassword = (password: string, hash: string) => bcrypt.compare(password, hash);
@@ -27,6 +28,17 @@ export const checkPassword = (password: string, hash: string) => bcrypt.compare(
 export function issueToken(user: { id: string }, opts: { staff?: boolean } = {}) {
   const now = Math.floor(Date.now() / 1000);
   return sign({ sub: user.id, iat: now, exp: now + (opts.staff ? STAFF_TOKEN_TTL_SECONDS : TOKEN_TTL_SECONDS), ...(opts.staff && { stf: 1 }) }, env.JWT_SECRET, "HS256");
+}
+
+/** A fresh token for a still-valid one, keeping its staff powers (or lack of them). Null when it isn't valid. */
+export async function renewToken(header: string | undefined) {
+  if (!header?.startsWith("Bearer ")) return null;
+  try {
+    const payload = await verify(header.slice(7), env.JWT_SECRET, "HS256");
+    return issueToken({ id: String(payload.sub) }, { staff: payload.stf === 1 });
+  } catch {
+    return null;
+  }
 }
 
 /** The signed-in account's id from a bearer token, or null (for routes anyone may call) */

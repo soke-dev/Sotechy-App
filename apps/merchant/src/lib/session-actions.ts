@@ -18,7 +18,8 @@ async function keepSession(token: string) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    // Kept for 30 days; proxy.ts renews it while the dashboard is used
+    maxAge: 60 * 60 * 24 * 30,
   });
 }
 

@@ -28,7 +28,8 @@ export async function login(prev: LoginState, formData: FormData): Promise<Login
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 12,
+    // Kept for a week; proxy.ts renews it while the dashboard is used
+    maxAge: 60 * 60 * 24 * 7,
   });
   redirect("/");
 }
