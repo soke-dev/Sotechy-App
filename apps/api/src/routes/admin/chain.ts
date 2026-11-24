@@ -1,6 +1,6 @@
 // The contracts on chain, for the admin: where they are, whether they're running, the operator's gas,
 // what's waiting to be written, and the button that sends a batch to Base.
-import { chainView, forgetPrimary, primaryChain } from "../../services/chain-primary";
+import { CHAIN_LABEL, chainView, forgetPrimary, primaryChain } from "../../services/chain-primary";
 import { deployments, sotechyReceiptsAbi, sotechyTokensAbi, type ContractName } from "@sotechy/contracts";
 import { Hono } from "hono";
 import { formatEther } from "viem";
@@ -19,7 +19,7 @@ import { db, schema } from "../../db/client";
 const ADMIN = requireRole("admin");
 
 /** Below this the operator could run out mid-day, so the admin is warned */
-const LOW_GAS = { monad: 2, base: 0.00005 } as const;
+const LOW_GAS = { monad: 2, base: 0.00005, xlayer: 0.001 } as const;
 
 async function contractStatus(contract: ContractName, chain: EvmChain) {
   const current = currentContract(contract, chain);
@@ -124,7 +124,7 @@ async function nearStatus() {
 
 export const adminChainRoutes = new Hono<AppEnv>()
   .get("/chain", async (c) => {
-    const [evm, near, queue, tokens, activity, reserve] = await Promise.all([Promise.all((["monad", "base"] as const).map(chainStatus)), nearStatus(), queueStats(), tokenRegistry(), latestActivity(), reserveSummary()]);
+    const [evm, near, queue, tokens, activity, reserve] = await Promise.all([Promise.all((["monad", "base", "xlayer"] as const).map(chainStatus)), nearStatus(), queueStats(), tokenRegistry(), latestActivity(), reserveSummary()]);
     const chains = [...evm, near];
     const { chain: primary, links } = await chainView();
     return c.json({
@@ -163,7 +163,7 @@ export const adminChainRoutes = new Hono<AppEnv>()
     }
   })
   /** After deploying a new contract: rebuild it from the ledger (tokens, balances or receipts) */
-  .post("/chain/copy", ADMIN, requirePassword, zValidator("json", z.object({ contract: z.enum(["tokens", "receipts"]), chain: z.enum(["monad", "base"]) })), async (c) => {
+  .post("/chain/copy", ADMIN, requirePassword, zValidator("json", z.object({ contract: z.enum(["tokens", "receipts"]), chain: z.enum(["monad", "base", "xlayer"]) })), async (c) => {
     const { contract, chain } = c.req.valid("json");
     try {
       const result = await copyToNewContract(contract, chain);
@@ -173,13 +173,13 @@ export const adminChainRoutes = new Hono<AppEnv>()
       throw new HttpError(400, err instanceof Error ? err.message : "The copy failed");
     }
   })
-  /** Makes Monad, Base or NEAR the main chain: new changes are written there and every link points at it. Switching
+  /** Makes Monad, Base, X Layer or NEAR the main chain: new changes are written there and every link points at it. Switching
    *  to Base writes everything already recorded onto Base too. NEAR gets every change whichever chain is main. */
-  .put("/chain/primary", ADMIN, requirePassword, zValidator("json", z.object({ chain: z.enum(["monad", "base", "near"]) })), async (c) => {
+  .put("/chain/primary", ADMIN, requirePassword, zValidator("json", z.object({ chain: z.enum(["monad", "base", "xlayer", "near"]) })), async (c) => {
     const { chain } = c.req.valid("json");
     if (chain === "near") {
       if (!nearOn()) throw new HttpError(400, "NEAR isn't set up on this server yet (NEAR_CONTRACT, NEAR_OPERATOR_ACCOUNT and NEAR_OPERATOR_KEY)");
-    } else if (!currentContract("tokens", chain) || !currentContract("receipts", chain)) throw new HttpError(400, `The contracts aren't deployed on ${chain === "base" ? "Base" : "Monad"} yet`);
+    } else if (!currentContract("tokens", chain) || !currentContract("receipts", chain)) throw new HttpError(400, `The contracts aren't deployed on ${CHAIN_LABEL[chain]} yet`);
     const value = { primary: chain };
     await db.insert(schema.appSettings).values({ key: "chain", value }).onConflictDoUpdate({ target: schema.appSettings.key, set: { value } });
     forgetPrimary();

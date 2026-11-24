@@ -193,6 +193,8 @@ export async function nearReceiptForStatus(orderId: string, status: OrderStatus)
         monadAt: new Date(),
         baseTx: "n/a",
         baseAt: new Date(),
+        xlayerTx: "n/a",
+        xlayerAt: new Date(),
       })
       .onConflictDoNothing();
   } catch (err) {

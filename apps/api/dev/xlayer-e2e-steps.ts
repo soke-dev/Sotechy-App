@@ -1,7 +1,7 @@
 // The X Layer steps of `dev/xlayer-e2e.mjs`: a real order through the real escrow and circuits, on a local copy of
 // X Layer. Places an order, opens the USDT payment, signs the buyer's permit (the buyer has no OKB), relays it, then
 // ships, delivers and confirms it (release); a second order is cancelled after paying (refund).
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { createPublicClient, http, parseAbi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { db, schema } from "../src/db/client";
@@ -100,6 +100,32 @@ async function main() {
   check("Sotechy's order is refunded", o.status === "refunded", o.status);
   const [rf] = await db.select().from(refunds).where(eq(refunds.orderId, o.id));
   check("the refund is recorded as sent, with the X Layer transaction", rf?.status === "processed" && !!rf.txHash && rf.network === "X Layer", `${rf?.status} ${rf?.txHash}`);
+
+  console.log("\n3. X Layer as the main chain: every token change and receipt is written there, once");
+  await db.insert(appSettings).values({ key: "chain", value: { primary: "xlayer" } }).onConflictDoUpdate({ target: appSettings.key, set: { value: { primary: "xlayer" } } });
+  const { writeQueued } = await import("../src/services/chain");
+  const { forgetPrimary } = await import("../src/services/chain-primary");
+  forgetPrimary();
+  const d = await newPaidOrder(customer.id, stock.variantId, stock.branchId);
+  const cd = await chainOrder(d.order.orderNumber);
+  check("a new USDT order leaves the tokens to Sotechy's record (the escrow mints none)", cd.tokens === 0n, `${cd.tokens}`);
+  // As at server start: Sotechy's own token and each store's are queued for creation on the main chain
+  await (await import("../src/services/tokens")).ensureStoreTokens();
+  let rounds = 0;
+  while ((await writeQueued("xlayer", 200)) > 0 && rounds++ < 10);
+  const ops = schema.chainOps;
+  const left = await db.select().from(ops).where(isNull(ops.xlayerAt));
+  check("the queue is all written to X Layer", left.length === 0, `${left.length} left${left.length ? `: ${left.map((o) => `${o.contract}/${o.kind} ${JSON.stringify(o.data)} ${o.xlayerError ?? ""}`).join("; ")}` : ""}`);
+  const [o1] = await db.select().from(orders).where(eq(orders.id, a.order.id));
+  const total = await chain.readContract({ address: TOKENS, abi: tokens, functionName: "balanceOf", args: [buyer.address, 1n] });
+  check("the paying wallet keeps what the escrow minted, and nothing more", total === BigInt(earning(o1)), `${total} $SOTECHY`);
+  const [{ walletAddress }] = [await import("../src/services/tokens")];
+  const mine = await chain.readContract({ address: TOKENS, abi: tokens, functionName: "balanceOf", args: [walletAddress(customer.id), 1n] });
+  const [{ sum }] = await db.select({ sum: sql<number>`coalesce(sum(case when ${schema.tokenEntries.kind} = 'mint' then ${schema.tokenEntries.amount} else -${schema.tokenEntries.amount} end), 0)::int` }).from(schema.tokenEntries).where(and(eq(schema.tokenEntries.tokenId, 1), sql`coalesce(${schema.tokenEntries.toUserId}, ${schema.tokenEntries.fromUserId}) = ${customer.id}`));
+  check("the customer's Sotechy wallet on X Layer matches Sotechy's record", mine === BigInt(sum), `${mine} on chain, ${sum} in the record`);
+  const STANDARD_RECEIPTS: Address = "0x04779caedcc9ecfd28a6a51cf85536be67db01db";
+  const issued = await chain.readContract({ address: STANDARD_RECEIPTS, abi: parseAbi(["function totalIssued() view returns (uint256)"]), functionName: "totalIssued" });
+  check("Sotechy's standard receipt is issued on X Layer", issued >= 1n, `${issued} issued`);
 
   console.log(failed ? `\n${failed} check(s) failed` : "\nAll checks passed");
   process.exit(failed ? 1 : 0);

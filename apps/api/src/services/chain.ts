@@ -6,12 +6,12 @@ import { deployments, sotechyReceiptsAbi, sotechyTokensAbi, type ContractName } 
 import { and, asc, eq, inArray, isNotNull, isNull, like, lt, lte, not, or, sql } from "drizzle-orm";
 import { createPublicClient, createWalletClient, http, type Address, type Chain, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { base, monad } from "viem/chains";
+import { base, monad, xLayer } from "viem/chains";
 import { db, schema } from "../db/client";
 import { env } from "../env";
 import { getSetting } from "./settings";
 import { ensureStoreTokens, walletAddress } from "./tokens";
-import { colsOf, EXPLORER, primaryChain, type ChainName, type EvmChain } from "./chain-primary";
+import { colKeys, colsOf, EXPLORER, primaryChain, type ChainName, type EvmChain } from "./chain-primary";
 
 const ops = schema.chainOps;
 export type { ChainName, EvmChain };
@@ -19,7 +19,9 @@ export type { ChainName, EvmChain };
 export const CHAINS: Record<EvmChain, { chain: Chain; explorer: string; rpc?: string }> = {
   monad: { chain: monad, explorer: EXPLORER.monad, rpc: env.MONAD_RPC_URL },
   base: { chain: base, explorer: EXPLORER.base, rpc: env.BASE_RPC_URL },
+  xlayer: { chain: xLayer, explorer: EXPLORER.xlayer, rpc: env.XLAYER_RPC_URL ?? "https://rpc.xlayer.tech" },
 };
+const EVM_CHAINS = Object.keys(CHAINS) as EvmChain[];
 
 /** After this many failed tries a change waits for an admin to try it again */
 export const MAX_TRIES = 5;
@@ -60,17 +62,23 @@ async function write(chain: EvmChain, call: Call): Promise<Hex> {
 
 const col = colsOf;
 
-async function markDone(chain: EvmChain, list: Op[], hash: Hex) {
+async function markDone(chain: EvmChain, list: Op[], hash: string) {
   const ids = list.map((o) => o.id);
-  const set = chain === "monad" ? { monadTx: hash, monadAt: new Date(), monadError: null } : { baseTx: hash, baseAt: new Date(), baseError: null };
-  await db.update(ops).set(set).where(inArray(ops.id, ids));
+  const k = colKeys(chain);
+  await db
+    .update(ops)
+    .set({ [k.tx]: hash, [k.at]: new Date(), [k.error]: null } as Partial<Op>)
+    .where(inArray(ops.id, ids));
 }
 
 async function markFailed(chain: EvmChain, op: Op, err: unknown) {
   const e = err as { shortMessage?: string; message?: string };
   const message = (e.shortMessage ?? e.message ?? String(err)).slice(0, 500);
-  if (chain === "monad") await db.update(ops).set({ monadError: message, monadTries: sql`${ops.monadTries} + 1` }).where(eq(ops.id, op.id));
-  else await db.update(ops).set({ baseError: message, baseTries: sql`${ops.baseTries} + 1` }).where(eq(ops.id, op.id));
+  const k = colKeys(chain);
+  await db
+    .update(ops)
+    .set({ [k.error]: message, [k.tries]: sql`${col(chain).tries} + 1` } as Partial<Op>)
+    .where(eq(ops.id, op.id));
   console.error(`Chain write failed on ${chain} (op ${op.id})`, message);
 }
 
@@ -148,12 +156,12 @@ async function copiedVersions(): Promise<Versions> {
   const saved = (await getSetting<Versions>(VERSIONS_KEY)) ?? {};
   let changed = false;
   for (const contract of ["tokens", "receipts"] as const)
-    for (const chain of ["monad", "base"] as const) {
+    for (const chain of EVM_CHAINS) {
       const key = `${contract}:${chain}`;
       const current = currentContract(contract, chain);
       if (current && saved[key] === undefined) {
         // First seen: the first deploy is where everything has been going; any later one needs a copy
-        saved[key] = deployments[contract][chain][0].version;
+        saved[key] = deployments[contract][chain]![0].version;
         changed = true;
       }
     }
@@ -181,8 +189,8 @@ export async function copyToNewContract(contract: ContractName, chain: EvmChain)
   if (!(await needsCopy(contract, chain))) throw new Error(`The ${contract} contract on ${chain} is already up to date`);
   const v = current.version;
   const movedTx = `moved:v${v}`;
-  // The other chain never sees these
-  const skipOther = chain === "monad" ? { baseAt: new Date(), baseTx: "n/a" } : { monadAt: new Date(), monadTx: "n/a" };
+  // The other chains never see these
+  const skipOther = Object.fromEntries(EVM_CHAINS.filter((c) => c !== chain).flatMap((c) => [[colKeys(c).at, new Date()], [colKeys(c).tx, "n/a"]])) as Partial<Op>;
   const zero = `0x${"0".repeat(64)}`;
   let queued = 0;
   await db.transaction(async (tx) => {
@@ -190,10 +198,13 @@ export async function copyToNewContract(contract: ContractName, chain: EvmChain)
     // Everything before now was for the old contract: never send it to the new one
     await tx
       .update(ops)
-      .set(chain === "monad" ? { monadAt: sql`coalesce(${ops.monadAt}, now())`, monadTx: sql`coalesce(${ops.monadTx}, ${movedTx})` } : { baseAt: sql`coalesce(${ops.baseAt}, now())`, baseTx: sql`coalesce(${ops.baseTx}, ${movedTx})` })
+      .set({ [colKeys(chain).at]: sql`coalesce(${col(chain).at}, now())`, [colKeys(chain).tx]: sql`coalesce(${col(chain).tx}, ${movedTx})` } as Partial<Op>)
       .where(and(eq(ops.contract, contract), lte(ops.id, last)));
     if (contract === "tokens") {
-      await tx.update(ops).set(chain === "monad" ? { monadTx: movedTx } : { baseTx: movedTx }).where(and(eq(ops.contract, "tokens"), eq(ops.kind, "register"), lte(ops.id, last)));
+      await tx
+        .update(ops)
+        .set({ [colKeys(chain).tx]: movedTx } as Partial<Op>)
+        .where(and(eq(ops.contract, "tokens"), eq(ops.kind, "register"), lte(ops.id, last)));
       const tokens = await tx.select({ data: ops.data }).from(ops).where(and(eq(ops.contract, "tokens"), eq(ops.kind, "register"), lte(ops.id, last)));
       const seen = new Set<number>();
       for (const t of tokens) {
@@ -261,6 +272,9 @@ async function pass(chain: EvmChain, limit: number) {
   return done;
 }
 
+/** One pass over a chain, from outside (the X Layer end-to-end check) */
+export const writeQueued = (chain: EvmChain, limit = BATCH) => pass(chain, limit);
+
 let mainBusy = false;
 /** One round on the main chain (whichever an admin chose). With NEAR as the main chain the NEAR worker writes,
  *  and Monad and Base only get what an admin sends them. */
@@ -327,6 +341,10 @@ export async function queueStats() {
       nearStuck: sql<number>`count(*) filter (where ${ops.nearAt} is null and ${ops.nearTries} >= ${MAX_TRIES})::int`,
       nearDone: sql<number>`count(*) filter (where ${ops.nearAt} is not null)::int`,
       lastNear: sql<string | null>`max(${ops.nearAt})`,
+      xlayerWaiting: sql<number>`count(*) filter (where ${ops.xlayerAt} is null and ${ops.xlayerTries} < ${MAX_TRIES})::int`,
+      xlayerStuck: sql<number>`count(*) filter (where ${ops.xlayerAt} is null and ${ops.xlayerTries} >= ${MAX_TRIES})::int`,
+      xlayerDone: sql<number>`count(*) filter (where ${ops.xlayerAt} is not null)::int`,
+      lastXlayer: sql<string | null>`max(${ops.xlayerAt})`,
     })
     .from(ops);
   // The main chain's oldest failure
@@ -346,12 +364,13 @@ export async function retryStuck() {
   // Changes that failed too often on any chain go again
   const rows = await db
     .update(ops)
-    .set({ monadTries: 0, monadError: null, baseTries: 0, baseError: null, nearTries: 0, nearError: null })
+    .set({ monadTries: 0, monadError: null, baseTries: 0, baseError: null, nearTries: 0, nearError: null, xlayerTries: 0, xlayerError: null })
     .where(
       or(
         and(isNull(ops.monadAt), sql`${ops.monadTries} >= ${MAX_TRIES}`),
         and(isNull(ops.baseAt), sql`${ops.baseTries} >= ${MAX_TRIES}`),
         and(isNull(ops.nearAt), sql`${ops.nearTries} >= ${MAX_TRIES}`),
+        and(isNull(ops.xlayerAt), sql`${ops.xlayerTries} >= ${MAX_TRIES}`),
       ),
     )
     .returning({ id: ops.id });

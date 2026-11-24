@@ -1274,9 +1274,14 @@ export const chainOps = pgTable(
     nearAt: timestamp({ withTimezone: true }),
     nearError: text(),
     nearTries: integer().notNull().default(0),
+    /** X Layer, as a main chain (its escrow mints USDT orders' earned tokens itself) */
+    xlayerTx: text(),
+    xlayerAt: timestamp({ withTimezone: true }),
+    xlayerError: text(),
+    xlayerTries: integer().notNull().default(0),
     createdAt: createdAt(),
   },
-  (t) => [unique().on(t.contract, t.kind, t.sourceId), index().on(t.monadAt), index().on(t.baseAt), index().on(t.nearAt)],
+  (t) => [unique().on(t.contract, t.kind, t.sourceId), index().on(t.monadAt), index().on(t.baseAt), index().on(t.nearAt), index().on(t.xlayerAt)],
 );
 
 /** A store's payout accounts (up to 3). Payouts always go to the default one, which is also copied onto the store. */

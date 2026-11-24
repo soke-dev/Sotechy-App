@@ -16,6 +16,7 @@ import { STAFF } from "../lib/auth";
 import { badRequest, HttpError } from "../lib/errors";
 import { getUsdRate } from "./moneymoves";
 import { getSetting } from "./settings";
+import { primaryChain } from "./chain-primary";
 import { earning, tokenOf } from "./tokens";
 
 const { orders, payments, merchantPayouts: payouts, refunds, merchants, appSettings, users } = schema;
@@ -191,7 +192,10 @@ export async function openXlayerPayment(order: typeof orders.$inferSelect, payme
 
   const payTo = await reader.readContract({ address: escrow!, abi: ESCROW_ABI, functionName: "treasury" });
   const payBy = now + PAY_WINDOW_S;
-  const tokens = BigInt(earning(order));
+  // The escrow mints the store tokens on release, to the paying wallet. With X Layer as Sotechy's main chain, Sotechy's
+  // own record writes them instead (to the customer's Sotechy wallet, where every other token change is), so the
+  // escrow mints none and nothing is minted twice.
+  const tokens = (await primaryChain()) === "xlayer" ? 0n : BigInt(earning(order));
   await sendEscrow("open", [id, payTo, terms.storeId, amount, payBy, now + SHIP_DAYS * 86_400, terms.storeId, tokens]);
   const next: SavedXlayer = { orderId: id.toString(), amount: amount.toString(), payBy, escrow: escrow! };
   await db
