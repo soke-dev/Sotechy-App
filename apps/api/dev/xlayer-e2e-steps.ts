@@ -2,7 +2,7 @@
 // X Layer. Places an order, opens the USDT payment, signs the buyer's permit (the buyer has no OKB), relays it, then
 // ships, delivers and confirms it (release); a second order is cancelled after paying (refund).
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
-import { createPublicClient, http, parseAbi, type Address, type Hex } from "viem";
+import { createPublicClient, encodeAbiParameters, http, keccak256, parseAbi, toHex, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { db, schema } from "../src/db/client";
 import { cancelOrder, placeOrder, updateOrderStatus } from "../src/services/orders";
@@ -126,6 +126,43 @@ async function main() {
   const STANDARD_RECEIPTS: Address = "0x04779caedcc9ecfd28a6a51cf85536be67db01db";
   const issued = await chain.readContract({ address: STANDARD_RECEIPTS, abi: parseAbi(["function totalIssued() view returns (uint256)"]), functionName: "totalIssued" });
   check("Sotechy's standard receipt is issued on X Layer", issued >= 1n, `${issued} issued`);
+
+  console.log("\n4. Paying with SOL through NEAR Intents (X Layer is the main chain) → the USDT is held in the escrow");
+  const { openIntent, intentsAssets, withIntent } = await import("../src/services/intents");
+  const { payEscrowFromPayIn, payInAddress } = await import("../src/services/xlayer");
+  const e = await placeOrder(customer.id, { items: [{ variantId: stock.variantId, quantity: 1 }], fulfilmentType: "pickup", branchId: stock.branchId, paymentMethod: "online", idempotencyKey: crypto.randomUUID() } as never);
+  let [pe] = await db.select().from(payments).where(and(eq(payments.orderId, e.id), eq(payments.status, "pending")));
+  const sol = (await intentsAssets()).find((x) => x.symbol === "SOL" && x.chain === "Solana")!;
+  // A real 1Click quote; only the local copy of X Layer ever sees the USDT
+  const intent = await openIntent(pe, sol.assetId, "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin");
+  [pe] = await db.select().from(payments).where(eq(payments.id, pe.id));
+  await db.update(payments).set({ provider: "xlayer", raw: withIntent(pe.raw, intent) }).where(eq(payments.id, pe.id));
+  const se = savedXlayer(pe.raw)!;
+  const payIn = payInAddress(se.orderId);
+  console.log(`  ${e.orderNumber}: send ${intent.amountInFormatted} SOL → ${intent.amountOutUsdc} USDT to the order's pay-in address ${payIn}`);
+  check("1Click quotes USDT on X Layer for exactly the escrow's amount", intent.settlesTo === "xlayer" && Math.round(Number(intent.amountOutUsdc) * 1e6) === Number(se.amount), `${intent.amountOutUsdc} vs ${se.amount}`);
+  check("the escrow's terms give a slow coin time to arrive", se.payBy - Date.now() / 1000 > 2 * 3600);
+  check("nothing is paid before the swap delivers", (await payEscrowFromPayIn(pe.id)) === false);
+  // The swap delivers: the USDT lands on the pay-in address (set directly on the local copy)
+  const slot = keccak256(encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [payIn, 51n]));
+  await fetch(process.env.XLAYER_RPC_URL!, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "anvil_setStorageAt", params: [USDT0, slot, toHex(BigInt(se.amount), { size: 32 })] }) });
+  check("the pay-in address has the USDT and no OKB", (await usdt(payIn)) === BigInt(se.amount) && (await chain.getBalance({ address: payIn })) === 0n);
+  check("Sotechy moves it into the escrow", (await payEscrowFromPayIn(pe.id)) === true);
+  const ce = await chainOrder(e.orderNumber);
+  check("held in the escrow, the pay-in address as buyer", ce.stage === 2 && ce.buyer === payIn, `stage ${ce.stage}`);
+  [pe] = await db.select().from(payments).where(eq(payments.id, pe.id));
+  [o] = await db.select().from(orders).where(eq(orders.id, e.id));
+  check("Sotechy's order is paid, noted as paid in SOL", o.status === "paid" && pe.status === "confirmed" && /SOL on Solana through NEAR Intents/.test(pe.verificationNote ?? ""), pe.verificationNote ?? "");
+  const treasury1 = await usdt("0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89");
+  await cancelOrder(actor as never, e.id, "Out of stock");
+  check("the circuits refunded it to the pay-in address, and it went straight on", (await chainOrder(e.orderNumber)).stage === 4 && (await usdt(payIn)) === 0n);
+  const [rfe] = await db.select().from(refunds).where(eq(refunds.orderId, e.id));
+  const toTreasury = (await usdt("0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89")) - treasury1;
+  check(
+    "the refund goes back as SOL through NEAR Intents (or, if 1Click won't take it, to Sotechy's wallet for staff)",
+    (rfe?.status === "processed" && rfe.network === "Solana" && toTreasury === 0n) || (rfe?.status === "approved" && toTreasury === BigInt(se.amount)),
+    `${rfe?.status}: ${rfe?.note}`,
+  );
 
   console.log(failed ? `\n${failed} check(s) failed` : "\nAll checks passed");
   process.exit(failed ? 1 : 0);

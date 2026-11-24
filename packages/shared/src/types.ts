@@ -1088,6 +1088,8 @@ export interface IntentQuote {
   amountOutUsdc: string;
   rate: number;
   deadline: string;
+  /** Swapped into USDT on X Layer and held in Sotechy's escrow there (while X Layer is the main chain) */
+  settlesTo?: "xlayer";
 }
 
 /** 1Click's swap states, from waiting for the deposit to done or refunded */

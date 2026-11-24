@@ -6,7 +6,7 @@
 // sends it, and every later step (shipped, delivered, disputes, settling) is sent by the operator too.
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { createPublicClient, createWalletClient, defineChain, http, parseAbi, parseSignature, type Address, type Hex } from "viem";
+import { createPublicClient, createWalletClient, defineChain, encodePacked, http, keccak256, parseAbi, parseSignature, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { OrderStatus } from "@sotechy/shared";
 import { db, schema } from "../db/client";
@@ -55,12 +55,19 @@ const ESCROW_ABI = parseAbi([
   "event EmergencyRefund(uint256 indexed orderId, address indexed buyer, uint256 amount)",
 ]);
 const TOKENS_ABI = parseAbi(["function tickerOf(uint256 id) view returns (string)", "function registerToken(uint256 id, string ticker)"]);
-const USDT_ABI = parseAbi(["function nonces(address owner) view returns (uint256)"]);
+const USDT_ABI = parseAbi([
+  "function nonces(address owner) view returns (uint256)",
+  "function balanceOf(address owner) view returns (uint256)",
+  "function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)",
+  "function transferFrom(address from, address to, uint256 amount) returns (bool)",
+]);
 
 /** The escrow's stages (SotechyEscrow.Stage) */
 const STAGE = { None: 0, Open: 1, Paid: 2, Released: 3, Refunded: 4 } as const;
 /** How long the buyer has to pay once they choose USDT, and the store to ship */
 const PAY_WINDOW_S = 30 * 60;
+/** Paying with another coin through NEAR Intents: time for the deposit to confirm on its own chain and be swapped */
+export const INTENTS_WINDOW_S = 3 * 60 * 60;
 const SHIP_DAYS = 5;
 /** A new store's orders up to this many $10 steps are released automatically (above it, Sotechy reviews) */
 const NEW_STORE_LIMIT = 10;
@@ -103,7 +110,7 @@ export const usdtText = (units: bigint) => (Number(units) / 1e6).toFixed(2);
 
 let queue: Promise<unknown> = Promise.resolve();
 
-function send(address: Address, abi: typeof ESCROW_ABI | typeof TOKENS_ABI, functionName: string, args: readonly unknown[]): Promise<Hex> {
+function send(address: Address, abi: typeof ESCROW_ABI | typeof TOKENS_ABI | typeof USDT_ABI, functionName: string, args: readonly unknown[]): Promise<Hex> {
   if (!writer || !operator) throw new HttpError(503, "X Layer isn't set up on this server");
   if (!writesAllowed) throw new HttpError(503, "X Layer writes are off outside production (CHAIN_WRITES_IN_DEV)");
   const run = async () => {
@@ -173,15 +180,22 @@ export const savedXlayer = (raw: unknown): SavedXlayer | null => (raw as { xlaye
  * Opens (or reuses) the order's terms on the escrow: the exact USDT (the naira total at today's rate, rounded up to
  * the cent), Sotechy's wallet for the release, the ship-by date and the tokens it earns. Returns the pay page link.
  */
-export async function openXlayerPayment(order: typeof orders.$inferSelect, payment: typeof payments.$inferSelect) {
+export async function openXlayerPayment(
+  order: typeof orders.$inferSelect,
+  payment: typeof payments.$inferSelect,
+  opts: { windowS?: number; minLeftS?: number; amount?: bigint } = {},
+) {
   const saved = savedXlayer(payment.raw);
   const now = Math.floor(Date.now() / 1000);
   const id = chainOrderId(order.orderNumber);
-  if (saved && saved.payBy > now + 5 * 60) return { saved, payUrl: payUrl(payment.id, saved.payBy) };
+  if (saved && saved.payBy > now + (opts.minLeftS ?? 5 * 60) && (!opts.amount || BigInt(saved.amount) === opts.amount)) {
+    return { saved, payUrl: payUrl(payment.id, saved.payBy) };
+  }
 
   const { rate } = await getUsdRate();
   const usd = Math.ceil((payment.amount / rate) * 100) / 100;
-  const amount = BigInt(Math.round(usd * 1_000_000));
+  // A swap that already delivered a set amount gets terms for exactly that
+  const amount = opts.amount ?? BigInt(Math.round(usd * 1_000_000));
   const terms = await storeTerms(order.merchantId);
   await syncStore(terms);
 
@@ -191,7 +205,7 @@ export async function openXlayerPayment(order: typeof orders.$inferSelect, payme
   else if (onChain.stage !== STAGE.None) throw badRequest("This order already has a USDT payment on X Layer");
 
   const payTo = await reader.readContract({ address: escrow!, abi: ESCROW_ABI, functionName: "treasury" });
-  const payBy = now + PAY_WINDOW_S;
+  const payBy = now + (opts.windowS ?? PAY_WINDOW_S);
   // The escrow mints the store tokens on release, to the paying wallet. With X Layer as Sotechy's main chain, Sotechy's
   // own record writes them instead (to the customer's Sotechy wallet, where every other token change is), so the
   // escrow mints none and nothing is minted twice.
@@ -222,8 +236,10 @@ export async function paymentForToken(token: string) {
 }
 
 /** What the pay page shows and asks the buyer's wallet to sign: a USD₮0 permit for the exact amount, to the escrow */
-export async function permitFor(saved: SavedXlayer, buyer: Address) {
-  const nonce = await reader.readContract({ address: USDT0, abi: USDT_ABI, functionName: "nonces", args: [buyer] });
+export const permitFor = (saved: SavedXlayer, buyer: Address) => permit(buyer, saved.escrow as Address, BigInt(saved.amount), BigInt(saved.payBy));
+
+async function permit(owner: Address, spender: Address, value: bigint, deadline: bigint) {
+  const nonce = await reader.readContract({ address: USDT0, abi: USDT_ABI, functionName: "nonces", args: [owner] });
   return {
     domain: { name: "USD₮0", version: "1", chainId: 196, verifyingContract: USDT0 },
     types: {
@@ -236,7 +252,7 @@ export async function permitFor(saved: SavedXlayer, buyer: Address) {
       ],
     },
     primaryType: "Permit" as const,
-    message: { owner: buyer, spender: saved.escrow, value: saved.amount, nonce: nonce.toString(), deadline: String(saved.payBy) },
+    message: { owner, spender, value: value.toString(), nonce: nonce.toString(), deadline: deadline.toString() },
   };
 }
 
@@ -250,6 +266,107 @@ export async function relayXlayerPayment(paymentId: string, buyer: Address, sign
   const hash = await sendEscrow("payFor", [BigInt(saved.orderId), buyer, BigInt(saved.payBy), Number(v ?? 27n), r, s]);
   await paidOnChain(BigInt(saved.orderId), buyer, hash);
   return { paid: true, tx: hash };
+}
+
+// ---------------------------------------------------------------------------
+// Paying with any other coin through NEAR Intents (while X Layer is Sotechy's main chain)
+// ---------------------------------------------------------------------------
+//
+// The swap delivers exactly the order's USD₮0 to a pay-in address Sotechy holds for that one order (its key comes from
+// the operator key and the order's number, so nothing extra is stored). The pay-in address signs the same permit a
+// wallet buyer would and the operator sends it: from there the escrow and its circuits treat the order like any other.
+// A refund comes back to the pay-in address, and Sotechy sends it on to the customer through NEAR Intents.
+
+/** One order's pay-in account */
+function payInAccount(chainId: string) {
+  if (!env.CHAIN_OPERATOR_KEY) throw new HttpError(503, "X Layer isn't set up on this server");
+  return privateKeyToAccount(keccak256(encodePacked(["bytes32", "string"], [env.CHAIN_OPERATOR_KEY as Hex, `sotechy:xlayer:pay-in:${chainId}`])));
+}
+export const payInAddress = (chainId: string) => payInAccount(chainId).address;
+
+/** Paying with other coins goes through the escrow while X Layer is Sotechy's main chain */
+export async function intentsToXlayer() {
+  return xlayerOn() && (await primaryChain()) === "xlayer";
+}
+
+const usdtOf = (owner: Address) => reader.readContract({ address: USDT0, abi: USDT_ABI, functionName: "balanceOf", args: [owner] });
+
+/** A USD₮0 permit signed by an order's pay-in account */
+async function payInPermit(chainId: string, spender: Address, value: bigint, deadline: bigint) {
+  const account = payInAccount(chainId);
+  const p = await permit(account.address, spender, value, deadline);
+  const signature = await account.signTypedData({
+    domain: p.domain,
+    types: p.types,
+    primaryType: "Permit",
+    message: { owner: account.address, spender, value, nonce: BigInt(p.message.nonce), deadline },
+  });
+  return parseSignature(signature);
+}
+
+const paying = new Set<string>();
+
+/**
+ * The swap's USD₮0 is on the pay-in address: it goes into the escrow and the order is paid. Terms that ran out while
+ * the swap was on its way are opened again for the same amount. Until the USD₮0 arrives, nothing happens.
+ */
+export async function payEscrowFromPayIn(paymentId: string) {
+  if (paying.has(paymentId)) return false;
+  paying.add(paymentId);
+  try {
+    const [row] = await db.select({ payment: payments, order: orders }).from(payments).innerJoin(orders, eq(orders.id, payments.orderId)).where(eq(payments.id, paymentId));
+    let saved = row && savedXlayer(row.payment.raw);
+    if (!row || !saved || row.payment.status !== "pending") return false;
+    const payIn = payInAddress(saved.orderId);
+    const amount = BigInt(saved.amount);
+    if ((await usdtOf(payIn)) < amount) return false;
+    const onChain = await chainOrder(row.order.orderNumber);
+    if (onChain.stage === STAGE.Paid) return false; // already in; the watcher records it
+    if (onChain.stage !== STAGE.Open || onChain.payBy < Math.floor(Date.now() / 1000) + 120 || onChain.amount !== amount) {
+      ({ saved } = await openXlayerPayment(row.order, row.payment, { amount, minLeftS: Number.MAX_SAFE_INTEGER }));
+    }
+    const { v, r, s } = await payInPermit(saved.orderId, escrow!, amount, BigInt(saved.payBy));
+    const hash = await sendEscrow("payFor", [BigInt(saved.orderId), payIn, BigInt(saved.payBy), Number(v ?? 27n), r, s]);
+    await paidOnChain(BigInt(saved.orderId), payIn, hash);
+    return true;
+  } finally {
+    paying.delete(paymentId);
+  }
+}
+
+type IntentOnPayment = { originAsset: string; symbol: string; chain: string; refundTo?: string; amountInFormatted: string; settlesTo?: string };
+const intentOf = (raw: unknown) => {
+  const i = (raw as { intents?: IntentOnPayment } | null)?.intents;
+  return i?.settlesTo === "xlayer" ? i : null;
+};
+
+/**
+ * A refund the escrow paid to an order's pay-in address goes back to the customer through NEAR Intents, as the coin
+ * they paid with, to the refund address they gave. If 1Click won't take it (a coin's minimum, say), the USD₮0 moves to
+ * Sotechy's wallet and the refund is left for staff to send another way.
+ */
+async function sendBack(saved: SavedXlayer, intent: IntentOnPayment) {
+  const payIn = payInAddress(saved.orderId);
+  const amount = await usdtOf(payIn);
+  if (amount === 0n) return null;
+  const { quoteBack, handDeposit } = await import("./intents");
+  const back = intent.refundTo
+    ? await quoteBack(amount, intent.originAsset, intent.refundTo, payIn).catch((err) => {
+        console.warn("Refund through NEAR Intents not quoted:", err instanceof Error ? err.message : err);
+        return null;
+      })
+    : null;
+  const to = (back?.depositAddress ?? (await reader.readContract({ address: escrow!, abi: ESCROW_ABI, functionName: "treasury" }))) as Address;
+  // The pay-in address has no OKB: it signs a permit, and the operator moves the USD₮0 and pays the gas
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+  const { v, r, s } = await payInPermit(saved.orderId, operator!.address, amount, deadline);
+  await send(USDT0, USDT_ABI, "permit", [payIn, operator!.address, amount, deadline, Number(v ?? 27n), r, s]);
+  const tx = await send(USDT0, USDT_ABI, "transferFrom", [payIn, to, amount]);
+  if (back) await handDeposit(back.depositAddress, tx).catch(() => null);
+  const usdt = usdtText(amount);
+  return back
+    ? { processed: true, tx, asset: intent.symbol, network: intent.chain, note: `${usdt} USDT from the escrow sent back through NEAR Intents as about ${back.amountOutFormatted} ${intent.symbol} on ${intent.chain} to ${intent.refundTo}` }
+    : { processed: false, tx, asset: "USDT", network: "X Layer", note: `${usdt} USDT from the escrow moved to Sotechy's wallet (${tx}): NEAR Intents couldn't send it back as ${intent.symbol} on ${intent.chain}. Refund the customer another way.` };
 }
 
 // ---------------------------------------------------------------------------
@@ -275,6 +392,7 @@ async function paidOnChain(id: bigint, buyer: string, tx: string) {
   const row = await paymentForChainId(id);
   if (!row || row.payment.status !== "pending") return;
   const saved = savedXlayer(row.payment.raw)!;
+  const intent = intentOf(row.payment.raw);
   await saveXlayer(row.payment.id, row.payment.raw, { buyer, paidTx: tx });
   const { confirmPayment } = await import("./orders");
   await confirmPayment(row.payment.id, {
@@ -283,7 +401,9 @@ async function paidOnChain(id: bigint, buyer: string, tx: string) {
     provider: "xlayer",
     raw: { ...(row.payment.raw as object | null), xlayer: { ...saved, buyer, paidTx: tx } },
     verifiedBy: null,
-    note: `${usdtText(BigInt(saved.amount))} USDT on X Layer, held in the escrow`,
+    note: intent
+      ? `Paid ${intent.amountInFormatted} ${intent.symbol} on ${intent.chain} through NEAR Intents; ${usdtText(BigInt(saved.amount))} USDT held in the escrow on X Layer`
+      : `${usdtText(BigInt(saved.amount))} USDT on X Layer, held in the escrow`,
   });
 }
 
@@ -299,8 +419,21 @@ async function releasedOnChain(id: bigint, tx: string) {
   await audit(db, { actorId: null, action: "xlayer.released", entityType: "order", entityId: row.order.id, details: { tx } });
 }
 
+const refunding = new Set<string>();
+
 /** The circuits sent the money back to the buyer: recorded as a sent refund, the way staff record one */
 async function refundedOnChain(id: bigint, tx: string) {
+  const key = id.toString();
+  if (refunding.has(key)) return;
+  refunding.add(key);
+  try {
+    await recordRefund(id, tx);
+  } finally {
+    refunding.delete(key);
+  }
+}
+
+async function recordRefund(id: bigint, tx: string) {
   const row = await paymentForChainId(id);
   if (!row || row.payment.status === "refunded") return;
   const { cancelOrder } = await import("./orders");
@@ -308,6 +441,14 @@ async function refundedOnChain(id: bigint, tx: string) {
     await cancelOrder(null, row.order.id, "Refunded on X Layer: the TapeOut circuits sent the money back");
   }
   const saved = savedXlayer(row.payment.raw)!;
+  // Paid through NEAR Intents: the refund is on the order's pay-in address, and goes on to the customer from there
+  const intent = intentOf(row.payment.raw);
+  const viaPayIn = !!intent && saved.buyer?.toLowerCase() === payInAddress(saved.orderId).toLowerCase();
+  const sent = viaPayIn ? await sendBack(saved, intent) : null;
+  const done = !viaPayIn || !!sent?.processed;
+  const how = sent
+    ? { txHash: sent.tx, cryptoAsset: sent.asset, network: sent.network, note: sent.note }
+    : { txHash: tx, cryptoAsset: "USDT", network: "X Layer", note: `${usdtText(BigInt(saved.amount))} USDT back to ${saved.buyer ?? "the buyer"}` };
   await db.transaction(async (t) => {
     let [refund] = await t.select().from(refunds).where(and(eq(refunds.orderId, row.order.id), inArray(refunds.status, ["requested", "approved", "needs_info"])));
     if (!refund) {
@@ -315,14 +456,14 @@ async function refundedOnChain(id: bigint, tx: string) {
     }
     await t
       .update(refunds)
-      .set({ status: "processed", processedAt: new Date(), method: "crypto", txHash: tx, cryptoAsset: "USDT", network: "X Layer", note: `${usdtText(BigInt(saved.amount))} USDT back to ${saved.buyer ?? "the buyer"}` })
+      .set(done ? { status: "processed", processedAt: new Date(), method: "crypto", ...how } : { status: "approved", method: "crypto", note: how.note })
       .where(eq(refunds.id, refund.id));
-    await t.update(orders).set({ status: "refunded" }).where(eq(orders.id, row.order.id));
+    if (done) await t.update(orders).set({ status: "refunded" }).where(eq(orders.id, row.order.id));
     await t.update(payments).set({ status: "refunded", raw: { ...(row.payment.raw as object), xlayer: { ...saved, settledTx: tx } } }).where(eq(payments.id, row.payment.id));
     await audit(t, { actorId: null, action: "xlayer.refunded", entityType: "order", entityId: row.order.id, details: { tx } });
   });
   const [{ notifyOrderStatus }, { payoutsForStatus }, { tokensForStatus }] = await Promise.all([import("./order-notices"), import("./payouts"), import("./tokens")]);
-  void notifyOrderStatus(row.order.id, "refunded");
+  if (done) void notifyOrderStatus(row.order.id, "refunded");
   await payoutsForStatus(row.order.id, "refunded");
   await tokensForStatus(row.order.id, "refunded");
 }

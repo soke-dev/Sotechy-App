@@ -1,6 +1,9 @@
 // Pay with almost any coin on almost any chain through NEAR Intents (the 1Click API): the customer sends what they
 // hold to a one-off deposit address, solvers swap it, and Sotechy receives exactly the order's total in USDC on Base.
 // Nothing is held by 1Click; if the swap can't happen, the customer's coins go back to the address they gave.
+//
+// While X Layer is Sotechy's main chain, the swap delivers USD₮0 on X Layer instead, and the money waits in Sotechy's
+// escrow there like any USDT order, with TapeOut circuits deciding when it's released or refunded (see xlayer.ts).
 import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "../db/client";
 import { env } from "../env";
@@ -9,10 +12,13 @@ import { getSetting } from "./settings";
 import { confirmPayment } from "./orders";
 import { findDepositTx } from "./deposit-watch";
 import { HttpError } from "../lib/errors";
+import { INTENTS_WINDOW_S, intentsToXlayer, openXlayerPayment, payEscrowFromPayIn, payInAddress } from "./xlayer";
 
 const API = "https://1click.chaindefuser.com/v0";
 /** What Sotechy receives: USDC on Base */
 export const USDC_BASE = "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near";
+/** What the X Layer escrow holds: USD₮0 on X Layer */
+export const USDT0_XLAYER = "nep245:v2_1.omni.hot.tg:196_2fezDCvVYRsG8wrK6deJ2VRPiAS1";
 
 /** Networks for USDT and USDC, in the order they're offered (Solana first). Keys are 1Click's chain codes. */
 const STABLE_NETWORKS = ["sol", "tron", "bsc", "base", "eth", "ton", "near", "monad", "arb", "pol", "op", "avax", "aptos", "sui", "stellar"];
@@ -94,6 +100,10 @@ export type SavedIntent = {
   deadline: string;
   /** When the address was given out (ISO); a transfer before then isn't this payment */
   openedAt?: string;
+  /** The customer's own address on the coin's chain, where a refund goes */
+  refundTo?: string;
+  /** Swapped into USD₮0 on X Layer and held in the escrow, instead of USDC on Base */
+  settlesTo?: "xlayer";
 };
 
 export const savedIntent = (raw: unknown) => (raw as { intents?: SavedIntent } | null)?.intents ?? null;
@@ -127,7 +137,18 @@ export async function openIntent(payment: typeof schema.payments.$inferSelect, o
   if (!asset) throw new Error("That coin isn't offered");
   const { rate } = await getUsdRate();
   // Rounded up to the cent, so Sotechy never receives less than the order's total
-  const usdc = Math.ceil((payment.amount / rate) * 100) / 100;
+  let usdc = Math.ceil((payment.amount / rate) * 100) / 100;
+  let destinationAsset = USDC_BASE;
+  let recipient = env.INTENTS_RECIPIENT;
+  const toXlayer = await intentsToXlayer();
+  if (toXlayer) {
+    // The order's terms on the escrow (long enough for a slow coin to confirm), and its own pay-in address
+    const [order] = await db.select().from(schema.orders).where(eq(schema.orders.id, payment.orderId));
+    const { saved } = await openXlayerPayment(order, payment, { windowS: INTENTS_WINDOW_S, minLeftS: INTENTS_WINDOW_S / 2 });
+    usdc = Number(saved.amount) / 1_000_000;
+    destinationAsset = USDT0_XLAYER;
+    recipient = payInAddress(saved.orderId);
+  }
   const deadline = new Date(Date.now() + 30 * 60_000).toISOString();
   type Quote = { quote: { depositAddress: string; depositMemo?: string; amountIn: string; amountInFormatted: string; deadline?: string } };
   const q = await oneClick<Quote>("POST", "/quote", {
@@ -136,11 +157,11 @@ export async function openIntent(payment: typeof schema.payments.$inferSelect, o
     slippageTolerance: 100,
     originAsset,
     depositType: "ORIGIN_CHAIN",
-    destinationAsset: USDC_BASE,
+    destinationAsset,
     amount: String(Math.round(usdc * 1_000_000)),
     refundTo,
     refundType: "ORIGIN_CHAIN",
-    recipient: env.INTENTS_RECIPIENT,
+    recipient,
     recipientType: "DESTINATION_CHAIN",
     deadline,
   }).catch((err) => {
@@ -158,8 +179,37 @@ export async function openIntent(payment: typeof schema.payments.$inferSelect, o
     rate,
     deadline: q.quote.deadline ?? deadline,
     openedAt: new Date().toISOString(),
+    refundTo,
+    ...(toXlayer && { settlesTo: "xlayer" as const }),
   };
 }
+
+/**
+ * A refund from the X Layer escrow, back as the coin the customer paid with: 1Click swaps `amount` of USD₮0 (sent from
+ * the order's pay-in address) and delivers it to their refund address. If the swap fails, 1Click returns the USD₮0 to
+ * the pay-in address.
+ */
+export async function quoteBack(amount: bigint, coin: string, to: string, payIn: string) {
+  type Quote = { quote: { depositAddress: string; amountOutFormatted: string } };
+  const q = await oneClick<Quote>("POST", "/quote", {
+    dry: false,
+    swapType: "EXACT_INPUT",
+    slippageTolerance: 100,
+    originAsset: USDT0_XLAYER,
+    depositType: "ORIGIN_CHAIN",
+    destinationAsset: coin,
+    amount: amount.toString(),
+    refundTo: payIn,
+    refundType: "ORIGIN_CHAIN",
+    recipient: to,
+    recipientType: "DESTINATION_CHAIN",
+    deadline: new Date(Date.now() + 60 * 60_000).toISOString(),
+  });
+  return q.quote;
+}
+
+/** Tells 1Click a deposit was sent, so it's picked up straight away */
+export const handDeposit = (depositAddress: string, txHash: string) => oneClick("POST", "/deposit/submit", { depositAddress, txHash });
 
 /**
  * NEAR Intents' refusal in plain words. Some coins have a minimum: Bitcoin's bridge fees need an order of a few
@@ -208,6 +258,11 @@ export async function checkIntent(payment: typeof schema.payments.$inferSelect):
 
 /** A finished swap confirms the payment, and so the order */
 async function settle(payment: typeof schema.payments.$inferSelect, saved: SavedIntent, s: { status: Status; swapDetails?: { destinationChainTxHashes?: { hash: string }[]; originChainTxHashes?: { hash: string }[] } }) {
+  // Swapped into USD₮0 on X Layer: it goes into the escrow, and that pays the order
+  if (saved.settlesTo === "xlayer") {
+    if (s.status === "SUCCESS" && payment.status === "pending") await payEscrowFromPayIn(payment.id);
+    return;
+  }
   if (s.status === "SUCCESS" && payment.status === "pending") {
     const tx = s.swapDetails?.destinationChainTxHashes?.[0]?.hash ?? s.swapDetails?.originChainTxHashes?.[0]?.hash;
     await confirmPayment(payment.id, {

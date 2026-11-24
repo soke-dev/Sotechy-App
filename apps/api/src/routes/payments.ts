@@ -19,7 +19,7 @@ import { bankProvider, bankTransferAvailable, stablecoinAvailable } from "../ser
 import { FEATURE_REF, settleFeaturing } from "../services/featuring";
 import { settleWalkIn, WALK_IN_REF } from "../services/walk-in";
 import { checkIntent, intentsAssets, intentsAvailable, keepIntents, openIntent, savedIntent, submitDeposit, withIntent } from "../services/intents";
-import { openXlayerPayment, paymentForToken, permitFor, relayXlayerPayment, savedXlayer, usdtText, XLAYER_CHECKER, xlayerAvailableFor } from "../services/xlayer";
+import { intentsToXlayer, openXlayerPayment, paymentForToken, permitFor, relayXlayerPayment, savedXlayer, usdtText, XLAYER_CHECKER, xlayerAvailableFor } from "../services/xlayer";
 
 const isUuid = (v: string | null | undefined): v is string => !!v && /^[0-9a-f-]{36}$/i.test(v);
 
@@ -211,7 +211,8 @@ export const paymentRoutes = new Hono<AppEnv>()
       const [payment] = await db.select().from(schema.payments).where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.status, "pending")));
       if (!payment) throw badRequest("No pending payment for this order");
       const open = savedIntent(payment.raw);
-      if (open && open.originAsset === assetId && new Date(open.deadline).getTime() > Date.now() + 5 * 60_000) return c.json(open);
+      const toXlayer = await intentsToXlayer();
+      if (open && open.originAsset === assetId && !!open.settlesTo === toXlayer && new Date(open.deadline).getTime() > Date.now() + 5 * 60_000) return c.json(open);
       let intent;
       try {
         intent = await openIntent(payment, assetId, refundTo.trim());
@@ -220,7 +221,12 @@ export const paymentRoutes = new Hono<AppEnv>()
         if (err instanceof HttpError) throw err;
         throw badRequest(err instanceof Error ? `We couldn't get a price for that coin: ${err.message}` : "We couldn't get a price for that coin");
       }
-      await db.update(schema.payments).set({ provider: "near-intents", raw: withIntent(payment.raw, intent) }).where(eq(schema.payments.id, payment.id));
+      // Settling to X Layer, openIntent has just put the escrow's terms on the payment: kept, and it's an X Layer payment
+      const [now] = await db.select({ raw: schema.payments.raw }).from(schema.payments).where(eq(schema.payments.id, payment.id));
+      await db
+        .update(schema.payments)
+        .set({ provider: intent.settlesTo === "xlayer" ? "xlayer" : "near-intents", raw: withIntent(now?.raw ?? payment.raw, intent) })
+        .where(eq(schema.payments.id, payment.id));
       return c.json(intent);
     },
   )
