@@ -43,7 +43,10 @@ interface SettingsResponse {
   settings: Record<string, Record<string, string | number | null>>;
   intents?: { setUp: boolean; recipient: string | null; keySet: boolean };
   near?: { on: boolean; network: string; explorer: string; contract: string | null; waiting: number; stuck: number; done: number; last: string | null };
+  xlayer?: { setUp: boolean; escrow: string | null; operator: string | null; gas: number | null; mode: "off" | "staff" | "everyone"; checker?: string };
 }
+
+const XLAYER_EXPLORER = "https://www.oklink.com/xlayer/address/";
 
 export default async function SettingsPage() {
   const [{ data, error }, mm] = await Promise.all([load<SettingsResponse>("/admin/settings"), load<MoneyMovesStatus>("/admin/integrations/moneymoves")]);
@@ -163,6 +166,54 @@ export default async function SettingsPage() {
               <p className="mt-3 text-xs text-muted">
                 NEAR mirror: {data.near.on ? `on, writing to ${data.near.contract} (${data.near.network})` : "off"} · {data.near.done} written, {data.near.waiting} waiting
                 {data.near.stuck > 0 ? `, ${data.near.stuck} stuck (Tokens → retry)` : ""}
+              </p>
+            )}
+          </Card>
+        )}
+
+        {data.xlayer && (
+          <Card
+            title="Pay with USDT on X Layer"
+            className="xl:col-span-2"
+            description="The buyer's USDT waits in Sotechy's escrow on X Layer, and TapeOut circuits decide when it moves: to Sotechy once the order is delivered (the store's payouts stay held until then), or back to the buyer. Buyers only sign; Sotechy pays the gas."
+          >
+            <ActionForm action={saveSetting} className="flex flex-wrap items-end gap-3">
+              <input type="hidden" name="key" value="xlayer" />
+              <Field label="Show it to">
+                <select name="mode" defaultValue={data.xlayer.mode} className={inputClass}>
+                  <option value="off">Nobody (off)</option>
+                  <option value="staff">Sotechy staff only, to try it</option>
+                  <option value="everyone">Everyone</option>
+                </select>
+              </Field>
+            </ActionForm>
+            <ul className="mt-3 flex flex-col gap-1 text-sm">
+              <Check ok={data.xlayer.setUp}>
+                Escrow{" "}
+                {data.xlayer.escrow ? (
+                  <a className="font-mono underline" href={`${XLAYER_EXPLORER}${data.xlayer.escrow}`} target="_blank" rel="noreferrer">
+                    {data.xlayer.escrow}
+                  </a>
+                ) : (
+                  "not set"
+                )}{" "}
+                (<code>XLAYER_ESCROW</code>, run with <code>CHAIN_OPERATOR_KEY</code>)
+              </Check>
+              {data.xlayer.operator && (
+                <Check ok={(data.xlayer.gas ?? 0) >= 0.001}>
+                  Operator gas: {data.xlayer.gas === null ? "unknown" : `${data.xlayer.gas.toFixed(4)} OKB`} ({data.xlayer.gas !== null && data.xlayer.gas < 0.001 ? "top it up: it pays every buyer's gas" : "about 0.00003 OKB an order"}) ·{" "}
+                  <a className="font-mono underline" href={`${XLAYER_EXPLORER}${data.xlayer.operator}`} target="_blank" rel="noreferrer">
+                    {data.xlayer.operator}
+                  </a>
+                </Check>
+              )}
+            </ul>
+            {data.xlayer.checker && (
+              <p className="mt-3 text-xs text-muted">
+                Anyone can check an order&apos;s money on the public order checker:{" "}
+                <a className="underline" href={data.xlayer.checker} target="_blank" rel="noreferrer">
+                  {data.xlayer.checker.replace("https://", "")}
+                </a>
               </p>
             )}
           </Card>
