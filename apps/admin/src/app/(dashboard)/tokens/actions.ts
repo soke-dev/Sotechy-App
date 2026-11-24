@@ -14,7 +14,7 @@ export async function sendBaseBatch(password: string): Promise<{ sent: number; l
   }
 }
 
-export async function copyToNewContract(contract: "tokens" | "receipts", chain: "monad" | "base", password: string): Promise<{ version: number; queued: number } | { error: string }> {
+export async function copyToNewContract(contract: "tokens" | "receipts", chain: "monad" | "base" | "xlayer", password: string): Promise<{ version: number; queued: number } | { error: string }> {
   try {
     const result = await withPassword<{ version: number; queued: number }>("POST", "/admin/chain/copy", { contract, chain }, password);
     revalidatePath("/tokens");
@@ -35,7 +35,7 @@ export async function retryStuck(): Promise<{ retried: number } | { error: strin
 }
 
 /** Makes Monad, Base or NEAR the main chain */
-export async function setPrimaryChain(chain: "monad" | "base" | "near", password: string): Promise<{ primary: string } | { error: string }> {
+export async function setPrimaryChain(chain: "monad" | "base" | "xlayer" | "near", password: string): Promise<{ primary: string } | { error: string }> {
   try {
     const result = await withPassword<{ primary: string }>("PUT", "/admin/chain/primary", { chain }, password);
     revalidatePath("/tokens");

@@ -1,6 +1,6 @@
 "use client";
 
-// The contracts on chain (Monad, Base and NEAR): where they are, whether they're running, the operator's gas, what's
+// The contracts on chain (Monad, Base, X Layer and NEAR): where they are, whether they're running, the operator's gas, what's
 // waiting to be written, which chain is the main one, and the button that copies everything to Base.
 import { ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -32,7 +32,7 @@ interface Contract {
   needsCopy?: boolean;
 }
 
-type Chain = "monad" | "base" | "near";
+type Chain = "monad" | "base" | "xlayer" | "near";
 
 export interface ChainStatus {
   chain: Chain;
@@ -60,14 +60,18 @@ export interface QueueStats {
   nearStuck?: number;
   nearDone?: number;
   lastNear?: string | null;
+  xlayerWaiting?: number;
+  xlayerStuck?: number;
+  xlayerDone?: number;
+  lastXlayer?: string | null;
   lastError: string | null;
   writesOn: boolean;
   /** The main chain: written to as things happen, and every link points at it */
   primary?: Chain;
 }
 
-const CHAIN_NAME: Record<Chain, string> = { monad: "Monad", base: "Base", near: "NEAR" };
-const EXPLORER_NAME: Record<Chain, string> = { monad: "MonadVision", base: "Basescan", near: "NearBlocks" };
+const CHAIN_NAME: Record<Chain, string> = { monad: "Monad", base: "Base", xlayer: "X Layer", near: "NEAR" };
+const EXPLORER_NAME: Record<Chain, string> = { monad: "MonadVision", base: "Basescan", xlayer: "OKLink", near: "NearBlocks" };
 
 /** A chain's numbers in the queue */
 const queueOf = (q: QueueStats, chain: Chain) =>
@@ -75,7 +79,9 @@ const queueOf = (q: QueueStats, chain: Chain) =>
     ? { waiting: q.monadWaiting, stuck: q.monadStuck, done: q.monadDone, last: q.lastMonad }
     : chain === "base"
       ? { waiting: q.baseWaiting, stuck: q.baseStuck ?? 0, done: q.baseDone, last: q.lastBase }
-      : { waiting: q.nearWaiting ?? 0, stuck: q.nearStuck ?? 0, done: q.nearDone ?? 0, last: q.lastNear ?? null };
+      : chain === "xlayer"
+        ? { waiting: q.xlayerWaiting ?? 0, stuck: q.xlayerStuck ?? 0, done: q.xlayerDone ?? 0, last: q.lastXlayer ?? null }
+        : { waiting: q.nearWaiting ?? 0, stuck: q.nearStuck ?? 0, done: q.nearDone ?? 0, last: q.lastNear ?? null };
 
 const short = (a: string) => (a.length > 24 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a);
 const amount = (n: number) => n.toLocaleString("en-NG", { maximumFractionDigits: 4 });
@@ -147,7 +153,7 @@ export function ChainCards({ chains, queue, error }: { chains: ChainStatus[]; qu
       router.refresh();
     });
 
-  const copy = (contract: "tokens" | "receipts", chain: "monad" | "base", version: number) =>
+  const copy = (contract: "tokens" | "receipts", chain: "monad" | "base" | "xlayer", version: number) =>
     start(async () => {
       setNote(null);
       const password = await ask(
@@ -157,7 +163,7 @@ export function ChainCards({ chains, queue, error }: { chains: ChainStatus[]; qu
       if (!password) return;
       const r = await copyToNewContract(contract, chain, password);
       if ("error" in r) return setNote({ tone: "bad", text: r.error });
-      setNote({ tone: "good", text: `${r.queued} changes queued for v${r.version}. ${chain === "monad" ? "Monad picks them up within seconds." : "Send a batch to Base to write them."}` });
+      setNote({ tone: "good", text: `${r.queued} changes queued for v${r.version}. ${chain === primary ? `${CHAIN_NAME[chain]} picks them up within seconds.` : chain === "base" ? "Send a batch to Base to write them." : `They're written once ${CHAIN_NAME[chain]} is the main chain.`}` });
       router.refresh();
     });
 
@@ -169,7 +175,9 @@ export function ChainCards({ chains, queue, error }: { chains: ChainStatus[]; qu
         `Make ${name} the main chain?`,
         chain === "base"
           ? "Every new token change and receipt is written to Base as it happens, and everything already recorded is written to Base too. The app and dashboards link to Basescan. Uses the operator's ETH on Base."
-          : chain === "near"
+          : chain === "xlayer"
+            ? "Every new token change and receipt is written to X Layer as it happens, and everything already recorded is written there too. The app and dashboards link to OKLink. USDT orders' earned tokens are minted by the X Layer escrow itself, so they aren't written twice. Uses the operator's OKB."
+            : chain === "near"
             ? "NEAR already gets every token change and receipt as it happens. The app and dashboards will link to NearBlocks, and Monad and Base only get what you send them. Uses the operator's NEAR."
             : "Every new token change and receipt is written to Monad as it happens, and the app and dashboards link to Monad again.",
       );
@@ -195,7 +203,7 @@ export function ChainCards({ chains, queue, error }: { chains: ChainStatus[]; qu
       <Card title="Main chain" description="New token changes and NFT receipts are written here as they happen, and every link in the app and dashboards points at it.">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex rounded-full bg-surface-alt p-1">
-            {(["monad", "base", "near"] as const).map((ch) => (
+            {(["monad", "base", "xlayer", "near"] as const).map((ch) => (
               <button
                 key={ch}
                 type="button"
