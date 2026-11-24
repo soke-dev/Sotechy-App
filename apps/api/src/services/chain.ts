@@ -261,15 +261,65 @@ async function pass(chain: EvmChain, limit: number) {
       else if (await sendGroup(chain, [reg], (l) => ({ contract: "tokens", functionName: "registerToken", args: [BigInt(l[0].data.tokenId), String(l[0].data.ticker)] }))) done++;
     }
     const registered = await registeredOn(chain);
-    const changes = (await waiting(chain, "tokens", ["mint", "burn", "move"], limit)).filter((o) => registered.has(Number(o.data.tokenId)));
+    let changes = (await waiting(chain, "tokens", ["mint", "burn", "move"], limit)).filter((o) => registered.has(Number(o.data.tokenId)));
+    let amounts = new Map<Op, bigint>();
+    if (STARTS_LATE.includes(chain)) {
+      const fitted = await fitToBalances(chain, changes);
+      if (fitted.nothing.length) await markDone(chain, fitted.nothing, "n/a");
+      changes = changes.filter((o) => !fitted.nothing.includes(o));
+      amounts = fitted.amounts;
+    }
+    const opOf = (o: Op) => ({ ...tokenOp(o), amount: amounts.get(o) ?? BigInt(o.data.amount) });
     // Changes for a token that isn't on chain yet wait for it, without holding up the others
-    if (await sendGroup(chain, changes, (l) => ({ contract: "tokens", functionName: "applyOps", args: [l.map(tokenOp)] }))) done += changes.length;
+    if (await sendGroup(chain, changes, (l) => ({ contract: "tokens", functionName: "applyOps", args: [l.map(opOf)] }))) done += changes.length;
   }
   if (currentContract("receipts", chain) && !(await needsCopy("receipts", chain))) {
     const list = await waiting(chain, "receipts", ["receipt"], limit);
     if (await sendGroup(chain, list, (l) => ({ contract: "receipts", functionName: "issue", args: [l.map(receiptOp)] }))) done += list.length;
   }
   return done;
+}
+
+/**
+ * Chains that start partway: X Layer has token changes from 24 November 2026 on (drizzle/0045), not the history
+ * before. Tokens earned before then aren't there, so a spend or send takes at most what the wallet holds on that
+ * chain, and one with nothing there to take is marked "n/a".
+ */
+const STARTS_LATE: EvmChain[] = ["xlayer"];
+
+async function fitToBalances(chain: EvmChain, list: Op[]) {
+  const contract = currentContract("tokens", chain)!.address;
+  const onChain = new Map<string, bigint>();
+  const pending = new Map<string, bigint>();
+  const key = (id: number, who: string) => `${id}:${who.toLowerCase()}`;
+  const held = async (id: number, who: string) => {
+    const k = key(id, who);
+    if (!onChain.has(k)) {
+      onChain.set(k, await publicClient(chain).readContract({ address: contract, abi: sotechyTokensAbi, functionName: "balanceOf", args: [who as Address, BigInt(id)] }));
+    }
+    return onChain.get(k)! + (pending.get(k) ?? 0n);
+  };
+  const add = (id: number, who: string, n: bigint) => pending.set(key(id, who), (pending.get(key(id, who)) ?? 0n) + n);
+  const amounts = new Map<Op, bigint>();
+  const nothing: Op[] = [];
+  for (const o of list) {
+    const id = Number(o.data.tokenId);
+    const want = BigInt(o.data.amount);
+    if (o.kind === "mint") {
+      add(id, String(o.data.to), want);
+      continue;
+    }
+    const from = String(o.data.from);
+    const take = want < (await held(id, from)) ? want : await held(id, from);
+    if (take === 0n) {
+      nothing.push(o);
+      continue;
+    }
+    add(id, from, -take);
+    if (o.kind === "move") add(id, String(o.data.to), take);
+    if (take !== want) amounts.set(o, take);
+  }
+  return { amounts, nothing };
 }
 
 /** One pass over a chain, from outside (the X Layer end-to-end check) */

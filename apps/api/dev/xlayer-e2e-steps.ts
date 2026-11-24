@@ -127,6 +127,24 @@ async function main() {
   const issued = await chain.readContract({ address: STANDARD_RECEIPTS, abi: parseAbi(["function totalIssued() view returns (uint256)"]), functionName: "totalIssued" });
   check("Sotechy's standard receipt is issued on X Layer", issued >= 1n, `${issued} issued`);
 
+  // X Layer starts on 24 Nov 2026: what came before isn't written there (drizzle/0045), and spending older tokens
+  // takes only what the wallet holds on X Layer
+  const ref = (n: number) => `0x${n.toString(16).padStart(64, "0")}`;
+  const [old] = await db.insert(ops).values({ contract: "receipts", kind: "receipt", sourceId: "e2e-old", ref: ref(1), data: {}, createdAt: new Date("2026-11-20T10:00:00Z") }).returning();
+  const { readFileSync } = await import("node:fs");
+  await db.execute(sql.raw(readFileSync(new URL("../drizzle/0045_xlayer_starts_today.sql", import.meta.url), "utf8")));
+  const [oldNow] = await db.select().from(ops).where(eq(ops.id, old.id));
+  check("a receipt from before 24 Nov isn't written to X Layer", oldNow.xlayerTx === "n/a");
+  const someoneElse = "0x000000000000000000000000000000000000dEaD";
+  const [bigSpend] = await db.insert(ops).values({ contract: "tokens", kind: "burn", sourceId: "e2e-spend", ref: ref(2), data: { tokenId: 1, amount: Number(mine) + 5000, from: walletAddress(customer.id) } }).returning();
+  const [oldSpend] = await db.insert(ops).values({ contract: "tokens", kind: "burn", sourceId: "e2e-old-spend", ref: ref(3), data: { tokenId: 1, amount: 700, from: someoneElse } }).returning();
+  while ((await writeQueued("xlayer", 200)) > 0 && rounds++ < 20);
+  const after = await chain.readContract({ address: TOKENS, abi: tokens, functionName: "balanceOf", args: [walletAddress(customer.id), 1n] });
+  const [s1] = await db.select().from(ops).where(eq(ops.id, bigSpend.id));
+  const [s2] = await db.select().from(ops).where(eq(ops.id, oldSpend.id));
+  check("spending more than X Layer holds (older tokens) takes what's there", after === 0n && /^0x[0-9a-f]{64}$/i.test(s1.xlayerTx ?? ""), `${mine} → ${after}`);
+  check("spending only older tokens is skipped on X Layer, not stuck", s2.xlayerTx === "n/a" && !!s2.xlayerAt);
+
   console.log("\n4. Paying with SOL through NEAR Intents (X Layer is the main chain) → the USDT is held in the escrow");
   const { openIntent, intentsAssets, withIntent } = await import("../src/services/intents");
   const { payEscrowFromPayIn, payInAddress } = await import("../src/services/xlayer");
@@ -134,12 +152,14 @@ async function main() {
   let [pe] = await db.select().from(payments).where(and(eq(payments.orderId, e.id), eq(payments.status, "pending")));
   const sol = (await intentsAssets()).find((x) => x.symbol === "SOL" && x.chain === "Solana")!;
   // A real 1Click quote; only the local copy of X Layer ever sees the USDT
-  const intent = await openIntent(pe, sol.assetId, "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin");
+  // 1Click now and then refuses a quote for a moment: SOL, then USDC on Solana
+  const usdcSol = (await intentsAssets()).find((x) => x.symbol === "USDC" && x.chain === "Solana")!;
+  const intent = await openIntent(pe, sol.assetId, "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin").catch(() => openIntent(pe, usdcSol.assetId, "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"));
   [pe] = await db.select().from(payments).where(eq(payments.id, pe.id));
   await db.update(payments).set({ provider: "xlayer", raw: withIntent(pe.raw, intent) }).where(eq(payments.id, pe.id));
   const se = savedXlayer(pe.raw)!;
   const payIn = payInAddress(se.orderId);
-  console.log(`  ${e.orderNumber}: send ${intent.amountInFormatted} SOL → ${intent.amountOutUsdc} USDT to the order's pay-in address ${payIn}`);
+  console.log(`  ${e.orderNumber}: send ${intent.amountInFormatted} ${intent.symbol} → ${intent.amountOutUsdc} USDT to the order's pay-in address ${payIn}`);
   check("1Click quotes USDT on X Layer for exactly the escrow's amount", intent.settlesTo === "xlayer" && Math.round(Number(intent.amountOutUsdc) * 1e6) === Number(se.amount), `${intent.amountOutUsdc} vs ${se.amount}`);
   check("the escrow's terms give a slow coin time to arrive", se.payBy - Date.now() / 1000 > 2 * 3600);
   check("nothing is paid before the swap delivers", (await payEscrowFromPayIn(pe.id)) === false);
@@ -152,7 +172,7 @@ async function main() {
   check("held in the escrow, the pay-in address as buyer", ce.stage === 2 && ce.buyer === payIn, `stage ${ce.stage}`);
   [pe] = await db.select().from(payments).where(eq(payments.id, pe.id));
   [o] = await db.select().from(orders).where(eq(orders.id, e.id));
-  check("Sotechy's order is paid, noted as paid in SOL", o.status === "paid" && pe.status === "confirmed" && /SOL on Solana through NEAR Intents/.test(pe.verificationNote ?? ""), pe.verificationNote ?? "");
+  check("Sotechy's order is paid, noted as paid in SOL", o.status === "paid" && pe.status === "confirmed" && /on Solana through NEAR Intents/.test(pe.verificationNote ?? ""), pe.verificationNote ?? "");
   const treasury1 = await usdt("0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89");
   await cancelOrder(actor as never, e.id, "Out of stock");
   check("the circuits refunded it to the pay-in address, and it went straight on", (await chainOrder(e.orderNumber)).stage === 4 && (await usdt(payIn)) === 0n);
