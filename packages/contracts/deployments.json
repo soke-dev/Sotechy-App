@@ -23,6 +23,18 @@
         "block": 53161663,
         "deployedAt": "2026-10-27T14:51:11.803Z"
       }
+    ],
+    "xlayer": [
+      {
+        "chainId": 196,
+        "address": "0x704c1fc6e6adb2de17436b509e196f1a57968f7b",
+        "version": 1,
+        "owner": "0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89",
+        "operator": "0x5AFD0A521E022904fD61B741CDd3Fc335936804c",
+        "txHash": "0xb2e92d089f7e942177549390e8a78d675cdd232621ee0f2f0690aca32a5ac359",
+        "block": 76691839,
+        "deployedAt": "2026-11-23T12:00:00.000Z"
+      }
     ]
   },
   "receipts": {
@@ -48,6 +60,18 @@
         "txHash": "0x1ea4f391c240e6e665312fe64d908a97884168087ae1dab6bc10cf7889dfc44f",
         "block": 53161665,
         "deployedAt": "2026-10-27T14:51:16.847Z"
+      }
+    ],
+    "xlayer": [
+      {
+        "chainId": 196,
+        "address": "0x04779caedcc9ecfd28a6a51cf85536be67db01db",
+        "version": 1,
+        "owner": "0xB73B75db9Da49F37f6f8aB658355DBE7D1558e89",
+        "operator": "0x5AFD0A521E022904fD61B741CDd3Fc335936804c",
+        "txHash": "0xddd92c3309f1641befc138526d7fe42722652a618b44fcae1602b08c9ed20211",
+        "block": 76742012,
+        "deployedAt": "2026-11-24T09:04:09.014Z"
       }
     ]
   }

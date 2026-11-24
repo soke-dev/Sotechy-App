@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { base, baseSepolia, foundry, monad, monadTestnet } from "viem/chains";
+import { base, baseSepolia, foundry, monad, monadTestnet, xLayer } from "viem/chains";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const DEPLOYMENTS = process.env.SOTECHY_DEPLOYMENTS ?? join(ROOT, "deployments.json");
@@ -16,6 +16,8 @@ export const KEY_FILE = process.env.SOTECHY_KEY_FILE ?? join(homedir(), ".sotech
 export const CHAINS = {
   monad: { chain: monad, explorer: "https://monadvision.com" },
   base: { chain: base, explorer: "https://basescan.org" },
+  // X Layer: use SOTECHY_RPC_URL=https://rpc.xlayer.tech (the default RPC can be slow)
+  xlayer: { chain: xLayer, explorer: "https://www.oklink.com/xlayer" },
   "monad-testnet": { chain: monadTestnet, explorer: "https://testnet.monadvision.com" },
   "base-sepolia": { chain: baseSepolia, explorer: "https://sepolia.basescan.org" },
   // anvil, for trying the scripts
