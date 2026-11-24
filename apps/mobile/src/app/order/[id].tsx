@@ -26,6 +26,9 @@ import { Sheet } from "@/components/shop-filters";
 import { refreshHeldTokens } from "@/lib/held-tokens";
 import { planTokens, TokenChoice } from "@/components/token-choice";
 
+/** The public order checker for USDT orders on X Layer, stored on chain on DeWEB */
+const XLAYER_CHECKER = "https://26-2-272.tapekit.org";
+
 function Section({ title, illo, right, children }: { title: string; illo: IlloName; right?: ReactNode; children: ReactNode }) {
   return (
     <View style={[ui.card, { gap: space.md }]}>
@@ -190,6 +193,8 @@ export default function OrderScreen() {
 
   if (loading && !order) return <Loading />;
   if (error || !order) return <ErrorView message={error ?? "Order not found"} onRetry={reload} />;
+  // Paid in USDT on X Layer: the money waits in Sotechy's escrow until the order arrives
+  const xlayerPaid = order.payments.some((p) => p.provider === "xlayer" && (p.status === "confirmed" || p.status === "refunded"));
 
   const pi = order.paymentInstructions;
   const support = config.data?.support;
@@ -325,6 +330,33 @@ export default function OrderScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.brandSoft, borderRadius: radius.md, padding: space.md }}>
           <ActivityIndicator color={colors.brandPressed} />
           <Txt variant="small" color={colors.ink2} style={{ flex: 1 }}>Checking for your payment. Stablecoin shows in seconds; a bank transfer usually within a minute or two of sending.</Txt>
+        </View>
+      )}
+
+      {xlayerPaid && (
+        <View style={[ui.card, { gap: space.md }]}>
+          <View style={[ui.row, { gap: space.md }]}>
+            <Illo name="coin" size={38} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Txt variant="label">
+                {order.status === "refunded" ? "Your USDT came back to you" : order.customerConfirmedAt ? "Your USDT went to the store" : "Your USDT is held safely"}
+              </Txt>
+              <Txt variant="small">
+                {order.status === "refunded"
+                  ? "It was sent back to your wallet on X Layer."
+                  : order.customerConfirmedAt
+                    ? "Your order arrived, so the escrow on X Layer released it."
+                    : "It waits in Sotechy's escrow on X Layer and only goes to the store once your order arrives. If the store doesn't send it in time, it comes back to you."}
+              </Txt>
+            </View>
+          </View>
+          <Button
+            title="See it on X Layer"
+            icon="open-outline"
+            variant="outline"
+            size="sm"
+            onPress={() => Linking.openURL(`${XLAYER_CHECKER}/?order=${order.orderNumber.replace(/\D/g, "")}`)}
+          />
         </View>
       )}
 

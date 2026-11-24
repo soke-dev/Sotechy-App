@@ -519,6 +519,8 @@ export interface StoreConfig {
   bankTransfer?: boolean;
   /** Any coin on any chain through NEAR Intents, settled to Sotechy as USDC on Base */
   intents?: boolean;
+  /** USDT on X Layer, held by an escrow whose TapeOut circuits release it when the order arrives (or refund it) */
+  xlayer?: boolean;
   branches: Branch[];
   paymentMethods: PaymentMethodConfig[];
   cryptoAssets: CryptoAsset[];
@@ -844,6 +846,8 @@ export interface MerchantOrder {
   customerConfirmedAt?: string | null;
   /** On a single order: how the store is paid for it */
   payoutTerms?: { plan: import("./payouts").PayoutPlan; feeRate: number; finalAfterHours: number };
+  /** On a single order: paid in USDT on X Layer, so its payments wait until the escrow releases the money */
+  paidOnXlayer?: boolean;
   /** On a single order: its payments to the store so far */
   payouts?: { stage: "first" | "final"; amount: number; status: import("./payouts").PayoutStatus; dueAt: string; paidAt: string | null }[];
 }

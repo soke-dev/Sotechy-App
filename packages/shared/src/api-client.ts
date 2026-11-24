@@ -275,6 +275,8 @@ export function createApiClient({ baseUrl, getToken, fetch: fetchImpl = fetch, t
     /** The customer's transaction ID, so NEAR Intents picks the payment up straight away */
     submitIntentsTx: (orderId: string, txHash: string) => send<{ swap: IntentSwapStatus | null }>("POST", "/payments/intents/submit", { orderId, txHash }),
     intentsStatus: (orderId: string) => get<{ swap: IntentSwapStatus | null; orderStatus: string; intent: IntentQuote | null }>(`/payments/intents/status?orderId=${orderId}`),
+    /** USDT on X Layer: opens the order's escrow terms and returns the pay page, where the buyer signs (Sotechy pays the gas) */
+    startXlayerPayment: (orderId: string) => send<{ payUrl: string; amountUsdt: string; payBy: number; checker: string }>("POST", "/payments/xlayer/initialize", { orderId }),
     wishlist: () => get<CatalogProduct[]>("/me/wishlist"),
     toggleWishlist: (productId: string) => send<{ saved: boolean }>("POST", `/me/wishlist/${productId}`),
     /** When anything of the customer's last changed; live screens reload when it moves */

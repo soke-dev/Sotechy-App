@@ -14,21 +14,25 @@ import { IntentsPayWindow } from "./intents-pay";
 import { Sheet } from "./shop-filters";
 import { Button, tap, Txt, ui } from "./ui";
 
-/** stablecoin and bank go through the providers admin picks; intents is any coin through NEAR Intents */
-export type PayMethod = "stablecoin" | "bank" | "intents";
+/** stablecoin and bank go through the providers admin picks; intents is any coin through NEAR Intents; xlayer is
+ *  USDT on X Layer, held in an escrow until the order arrives */
+export type PayMethod = "stablecoin" | "bank" | "intents" | "xlayer";
 
 // Stablecoin goes through Money Moves; bank transfer through Money Moves or Bachs, as admin chooses
 const PAY_CHOICES: { id: PayMethod; illo: IlloName; title: string; subtitle: string }[] = [
   { id: "stablecoin", illo: "coin", title: "Pay with stablecoin", subtitle: "Pay with USDT or USDC" },
   { id: "bank", illo: "bank", title: "Pay with bank transfer", subtitle: "Send the exact amount from any Nigerian bank app" },
   { id: "intents", illo: "wallet", title: "Pay with crypto", subtitle: "USDT or USDC on 15 networks, or SOL, BTC, ETH, BNB, MON and more · NEAR Intents" },
+  { id: "xlayer", illo: "coin", title: "Pay with USDT on X Layer", subtitle: "Held safely until your order arrives · no network fee to pay" },
 ];
 
 /** Bottom sheet of ways to pay; picking one calls `onPay` with it. `extra` sits above the choices (e.g. paying with tokens). */
 export function PayChoiceSheet({ visible, amount, onClose, onPay, extra }: { visible: boolean; amount: number; onClose: () => void; onPay: (method: PayMethod) => void; extra?: ReactNode }) {
   // Each way to pay shows only while admin has it switched on (stablecoin until the settings load)
   const config = useStoreConfig().config;
-  const choices = PAY_CHOICES.filter((c) => (c.id === "bank" ? !!config?.bankTransfer : c.id === "intents" ? !!config?.intents : config?.stablecoin !== false));
+  const choices = PAY_CHOICES.filter((c) =>
+    c.id === "bank" ? !!config?.bankTransfer : c.id === "intents" ? !!config?.intents : c.id === "xlayer" ? !!config?.xlayer : config?.stablecoin !== false,
+  );
   return (
     <Sheet visible={visible} title={`Pay ${formatNaira(amount)}`} onClose={onClose}>
       {extra}
@@ -191,7 +195,8 @@ export function useMoneyMoves() {
         });
       });
     }
-    const { checkoutUrl } = await api.startOnlinePayment(order.id, method);
+    // USDT on X Layer opens Sotechy's pay page, where the buyer signs with their wallet; the rest is as for any checkout
+    const checkoutUrl = method === "xlayer" ? (await api.startXlayerPayment(order.id)).payUrl : (await api.startOnlinePayment(order.id, method)).checkoutUrl;
     let paid = false;
     let open = true;
 
