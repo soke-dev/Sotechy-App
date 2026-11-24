@@ -30,6 +30,7 @@ import { pickupChangeEmail } from "../emails/templates";
 import { answerSchema } from "./offers";
 import { cancelOrder, updateOrderStatus } from "../services/orders";
 import { compressImage } from "../lib/images";
+import { xlayerHoldsPayouts } from "../services/xlayer";
 
 type Store = typeof schema.merchants.$inferSelect;
 type StoreEnv = AppEnv & { Variables: { store: Store; storeRole: StoreRole } };
@@ -994,6 +995,8 @@ export const merchantMarketRoutes = new Hono<StoreEnv>()
     return c.json({
       ...o,
       payoutTerms: { plan: store.payoutPlan ?? settings.standard, feeRate: settings.feeRate, finalAfterHours: settings.finalAfterHours },
+      // Paid in USDT on X Layer: both payments wait until the escrow releases the money (the customer confirms delivery)
+      paidOnXlayer: await xlayerHoldsPayouts(o.id),
       payouts: paid.filter((p) => p.stage !== "payback").map((p) => ({ ...p, dueAt: p.dueAt.toISOString(), paidAt: p.paidAt?.toISOString() ?? null })),
       // Money the store owes back for this order, and where to send it
       ...(payback && {

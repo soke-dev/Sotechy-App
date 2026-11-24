@@ -63,6 +63,8 @@ export function OrderView({ order }: { order: Order }) {
     if (!p) return { label: stage === "first" ? "When you accept" : "When the customer confirms delivery", tone: "neutral" as const, done: false };
     if (p.status === "paid") return { label: `Paid ${new Date(p.paidAt!).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}`, tone: "good" as const, done: true };
     if (p.status === "cancelled") return { label: "Cancelled", tone: "neutral" as const, done: false };
+    // Paid in USDT on X Layer: the escrow holds the money until the customer confirms delivery, then this goes out
+    if (p.status === "held" && order.paidOnXlayer) return { label: "When the customer confirms delivery (USDT on X Layer)", tone: "neutral" as const, done: false };
     if (p.status === "held") return { label: "On hold", tone: "warn" as const, done: false };
     if (stage === "final" && !order.customerConfirmedAt && new Date(p.dueAt).getTime() > Date.now()) return { label: "When the customer confirms delivery", tone: "neutral" as const, done: false };
     return { label: new Date(p.dueAt).getTime() > Date.now() ? `Due ${new Date(p.dueAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}` : "On its way", tone: "info" as const, done: false };
