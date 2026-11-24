@@ -1,7 +1,8 @@
 // Pay with crypto through NEAR Intents, in two steps. First the customer picks a network and a coin (each a dropdown
 // with logos) and gives an address for refunds. Then they send the exact amount shown to a one-off deposit address,
 // and follow it from "waiting" to "paid". NEAR Intents swaps whatever they sent and Sotechy receives the order's total
-// as USDC on Base; the window closes by itself once the order is paid.
+// as USDC on Base (or, while X Layer is Sotechy's main chain, as USDT held in the X Layer escrow); the window closes
+// by itself once the order is paid.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import { useEffect, useMemo, useRef, useState, type ComponentRef, type ReactNode } from "react";
@@ -342,7 +343,13 @@ export function IntentsPayWindow({ order, onDone }: { order: { id: string; order
             <Txt variant="caption" color="rgba(255,255,255,0.6)">Order {order.orderNumber}</Txt>
             <Txt style={{ fontFamily: fonts.displayHeavy, fontSize: 32, lineHeight: 36, color: colors.white }}>{formatNaira(order.total)}</Txt>
             <Txt variant="small" color="rgba(255,255,255,0.7)">
-              {quote ? `Sotechy receives ${quote.amountOutUsdc} USDC` : usd ? `About $${usd.toFixed(2)} in crypto` : "Paid in crypto, settled in USDC"}
+              {quote
+                ? quote.settlesTo === "xlayer"
+                  ? `${quote.amountOutUsdc} USDT, held in Sotechy's escrow on X Layer until your order arrives`
+                  : `Sotechy receives ${quote.amountOutUsdc} USDC`
+                : usd
+                  ? `About $${usd.toFixed(2)} in crypto`
+                  : "Paid in crypto, settled in USDC"}
             </Txt>
           </View>
 
