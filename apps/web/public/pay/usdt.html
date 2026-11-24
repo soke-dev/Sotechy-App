@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Pay with USDT on X Layer · Sotechy</title>
+<style>
+  :root {
+    --bg: #FFF6EA; --card: #FFFFFF; --ink: #17120E; --muted: #6B625A; --line: #EDE3D6;
+    --orange: #F7931E; --orange-ink: #C96A05; --green: #1C8A4C; --red: #C2410C;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 460px; margin: 0 auto; padding: 24px 16px 48px; }
+  .brand { font-weight: 800; letter-spacing: -0.02em; font-size: 20px; }
+  .brand b { color: var(--orange); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 22px; margin-top: 18px; }
+  .dark { background: var(--ink); color: #FFF1DF; border: 0; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .dark .muted { color: #B3A99F; }
+  .amount { font-size: 36px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
+  .row:first-child { border-top: 0; }
+  button, .button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; font: inherit; font-weight: 700; font-size: 17px; padding: 16px; border-radius: 16px; border: 0; background: var(--ink); color: #FFF; cursor: pointer; text-decoration: none; margin-top: 12px; }
+  button.light, .button.light { background: #F2EDE6; color: var(--ink); }
+  button:disabled { opacity: 0.6; cursor: wait; }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .steps li { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; }
+  .steps span { flex-shrink: 0; width: 26px; height: 26px; border-radius: 13px; background: #F2EDE6; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  .note { margin-top: 14px; font-size: 14px; padding: 12px 14px; border-radius: 14px; background: #FFF1DF; }
+  .error { background: #FDE8E1; color: var(--red); }
+  .ok { width: 72px; height: 72px; border-radius: 36px; background: var(--green); color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 38px; margin: 8px auto 12px; }
+  .center { text-align: center; }
+  a { color: var(--orange-ink); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">Sotechy <b>×</b> X Layer</div>
+
+  <div id="loading" class="card muted">Loading your payment…</div>
+  <div id="problem" class="card note error" hidden></div>
+
+  <section id="pay" hidden>
+    <div class="card dark">
+      <div class="muted" id="order"></div>
+      <div class="amount" id="amount"></div>
+      <div class="muted" id="naira"></div>
+    </div>
+
+    <div class="card">
+      <ul class="steps">
+        <li><span>1</span><div>Your USDT waits in Sotechy's escrow on X Layer, not with the store.</div></li>
+        <li><span>2</span><div>When you confirm the order arrived, TapeOut circuits release it. If the store doesn't send it in time, they send it back to you.</div></li>
+        <li><span>3</span><div>You only sign. <b>No OKB needed</b>: Sotechy pays the network fee.</div></li>
+      </ul>
+    </div>
+
+    <div class="card" id="noWallet" hidden>
+      <b>Open this page in your wallet</b>
+      <p class="muted">Paying needs a wallet with USDT on X Layer, like OKX Wallet.</p>
+      <a class="button" id="openOkx" href="#">Open in OKX Wallet</a>
+      <button class="light" id="copyLink">Copy this page's link</button>
+    </div>
+
+    <div id="withWallet" hidden>
+      <button id="connect">Connect wallet</button>
+      <div id="connected" hidden>
+        <div class="card">
+          <div class="row"><span class="muted">Paying from</span><b id="who"></b></div>
+          <div class="row"><span class="muted">USDT on X Layer</span><b id="balance">…</b></div>
+          <div class="row"><span class="muted">Network fee</span><b>Paid by Sotechy</b></div>
+        </div>
+        <button id="sign">Sign and pay</button>
+      </div>
+    </div>
+    <p class="muted center" id="timeLeft"></p>
+  </section>
+
+  <section id="done" class="card center" hidden>
+    <div class="ok">✓</div>
+    <div class="amount" style="font-size: 26px">Paid</div>
+    <p class="muted" id="doneText"></p>
+    <a class="button" id="back" href="#">Back to Sotechy</a>
+    <a class="button light" id="checker" href="#" target="_blank" rel="noopener">See it on X Layer</a>
+  </section>
+</main>
+
+<script>
+const API = "https://api.sotechy.shop";
+const RPC = "https://rpc.xlayer.tech";
+const USDT0 = "0x779Ded0c9e1022225f8E0630b35a9b54bE713736";
+const CHAIN = "0xc4"; // X Layer, 196
+const token = new URLSearchParams(location.search).get("t") || "";
+const $ = (id) => document.getElementById(id);
+const show = (id, on = true) => ($(id).hidden = !on);
+let terms = null;
+let buyer = null;
+
+function problem(text) {
+  show("loading", false);
+  $("problem").textContent = text;
+  show("problem");
+}
+
+async function api(path, init) {
+  const res = await fetch(API + path, { ...init, headers: { "content-type": "application/json" } });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || body.message || "Something went wrong. Please try again.");
+  return body;
+}
+
+function finished() {
+  show("pay", false);
+  show("problem", false);
+  $("doneText").textContent = `${terms.amountUsdt} USDT for ${terms.orderNumber} is held in Sotechy's escrow on X Layer until your order arrives.`;
+  $("back").href = terms.returnTo;
+  $("checker").href = terms.checker;
+  show("done");
+}
+
+function countdown() {
+  const left = terms.payBy - Math.floor(Date.now() / 1000);
+  if (left <= 0) return problem("The time to pay ran out. Go back to the app and choose USDT again.");
+  $("timeLeft").textContent = `Pay within ${Math.floor(left / 60)} min ${left % 60}s`;
+  setTimeout(countdown, 1000);
+}
+
+async function usdtBalance(address) {
+  const data = "0x70a08231" + address.slice(2).toLowerCase().padStart(64, "0");
+  const res = await fetch(RPC, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{ to: USDT0, data }, "latest"] }) });
+  const { result } = await res.json();
+  return Number(BigInt(result)) / 1e6;
+}
+
+async function toXLayer() {
+  try {
+    await ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN }] });
+  } catch (err) {
+    if (err.code !== 4902) throw err;
+    await ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: [{ chainId: CHAIN, chainName: "X Layer", nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 }, rpcUrls: [RPC], blockExplorerUrls: ["https://www.oklink.com/xlayer"] }],
+    });
+  }
+}
+
+$("connect").onclick = async () => {
+  try {
+    $("connect").disabled = true;
+    [buyer] = await ethereum.request({ method: "eth_requestAccounts" });
+    await toXLayer();
+    $("who").textContent = `${buyer.slice(0, 6)}…${buyer.slice(-4)}`;
+    show("connect", false);
+    show("connected");
+    const have = await usdtBalance(buyer);
+    $("balance").textContent = `${have.toFixed(2)} USDT`;
+    if (have < Number(terms.amountUsdt)) problem(`This wallet has ${have.toFixed(2)} USDT on X Layer, and the order needs ${terms.amountUsdt}. Add USDT on X Layer (for example, withdraw from OKX choosing the X Layer network), then try again.`);
+  } catch (err) {
+    $("connect").disabled = false;
+    problem(err.message || "Couldn't connect the wallet");
+  }
+};
+
+$("sign").onclick = async () => {
+  $("sign").disabled = true;
+  show("problem", false);
+  try {
+    const { permit } = await api(`/payments/xlayer/terms?t=${encodeURIComponent(token)}&buyer=${buyer}`);
+    const typed = {
+      ...permit,
+      types: { EIP712Domain: [{ name: "name", type: "string" }, { name: "version", type: "string" }, { name: "chainId", type: "uint256" }, { name: "verifyingContract", type: "address" }], ...permit.types },
+    };
+    $("sign").textContent = "Check your wallet…";
+    const signature = await ethereum.request({ method: "eth_signTypedData_v4", params: [buyer, JSON.stringify(typed)] });
+    $("sign").textContent = "Paying…";
+    await api("/payments/xlayer/pay", { method: "POST", body: JSON.stringify({ t: token, buyer, signature }) });
+    finished();
+  } catch (err) {
+    $("sign").disabled = false;
+    $("sign").textContent = "Sign and pay";
+    problem(err.code === 4001 ? "You cancelled the signature. Nothing was paid." : err.message || "The payment didn't go through");
+  }
+};
+
+$("copyLink").onclick = async () => {
+  await navigator.clipboard.writeText(location.href).catch(() => {});
+  $("copyLink").textContent = "Link copied";
+};
+
+(async () => {
+  if (!token) return problem("This payment link is incomplete. Go back to the app and choose USDT again.");
+  try {
+    terms = await api(`/payments/xlayer/terms?t=${encodeURIComponent(token)}`);
+  } catch (err) {
+    return problem(err.message);
+  }
+  show("loading", false);
+  if (terms.paid) return finished();
+  $("order").textContent = `Order ${terms.orderNumber} at ${terms.store}`;
+  $("amount").textContent = `${terms.amountUsdt} USDT`;
+  $("naira").textContent = `₦${Number(terms.naira).toLocaleString("en-NG")} · on X Layer`;
+  $("openOkx").href = `okx://wallet/dapp/url?dappUrl=${encodeURIComponent(location.href)}`;
+  show(window.ethereum ? "withWallet" : "noWallet");
+  show("pay");
+  countdown();
+})();
+</script>
+</body>
+</html>
