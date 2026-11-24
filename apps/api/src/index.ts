@@ -6,6 +6,7 @@ import { payoutRound } from "./services/payouts";
 import { startChainWorker } from "./services/chain";
 import { startNearWorker } from "./services/near";
 import { startIntentsWatcher } from "./services/intents";
+import { startXlayerWatcher } from "./services/xlayer";
 
 serve({ fetch: app.fetch, port: env.PORT, hostname: "0.0.0.0" }, (info) => {
   console.log(`Sotechy API listening on http://localhost:${info.port}`);
@@ -22,6 +23,8 @@ setInterval(() => {
 startChainWorker();
 startNearWorker();
 startIntentsWatcher();
+// Pay with USDT on X Layer: watch the escrow, and settle what its circuits decide
+startXlayerWatcher();
 
 // Check payouts on their way, and send due ones when automatic sending is on.
 setInterval(() => {

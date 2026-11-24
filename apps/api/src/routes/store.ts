@@ -10,6 +10,8 @@ import { getFeatures, requireFeature } from "../services/features";
 import { getUsdRate } from "../services/moneymoves";
 import { bankTransferAvailable, stablecoinAvailable } from "../services/bank-pay";
 import { intentsAvailable } from "../services/intents";
+import { xlayerAvailableFor } from "../services/xlayer";
+import { tokenUserId } from "../lib/auth";
 import { findPromotion } from "../services/promotions";
 import { liveAreas } from "../services/store-delivery";
 import { payoutSettings } from "../services/payouts";
@@ -195,6 +197,8 @@ export const storeRoutes = new Hono()
       bankTransfer: await bankTransferAvailable(),
       // Any coin on any chain, through NEAR Intents
       intents: await intentsAvailable(),
+      // USDT on X Layer, held by an escrow whose TapeOut circuits decide when it moves (everyone, or Sotechy's team while it's tried)
+      xlayer: await xlayerAvailableFor(await tokenUserId(c.req.header("Authorization"))),
     });
   })
   .post("/promo/check", zValidator("json", z.object({ code: z.string().trim().min(1).max(40), subtotal: z.number().nonnegative(), store: z.string().max(80).optional() })), async (c) => {

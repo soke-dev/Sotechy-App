@@ -19,6 +19,7 @@ import { bankProvider, bankTransferAvailable, stablecoinAvailable } from "../ser
 import { FEATURE_REF, settleFeaturing } from "../services/featuring";
 import { settleWalkIn, WALK_IN_REF } from "../services/walk-in";
 import { checkIntent, intentsAssets, intentsAvailable, keepIntents, openIntent, savedIntent, submitDeposit, withIntent } from "../services/intents";
+import { openXlayerPayment, paymentForToken, permitFor, relayXlayerPayment, savedXlayer, usdtText, XLAYER_CHECKER, xlayerAvailableFor } from "../services/xlayer";
 
 const isUuid = (v: string | null | undefined): v is string => !!v && /^[0-9a-f-]{36}$/i.test(v);
 
@@ -251,6 +252,83 @@ export const paymentRoutes = new Hono<AppEnv>()
     const swap = payment.status === "pending" ? await checkIntent(payment).catch(() => null) : "SUCCESS";
     const [now] = await db.select({ status: schema.orders.status }).from(schema.orders).where(eq(schema.orders.id, orderId));
     return c.json({ swap, orderStatus: now?.status ?? order.status, intent: savedIntent(payment.raw) });
+  })
+
+  /**
+   * Pay with USDT on X Layer: opens the order's terms on Sotechy's escrow (the exact USDT, at today's rate) and
+   * returns the pay page link, where the buyer signs with their wallet. TapeOut circuits then decide when the money
+   * is released or refunded.
+   */
+  .post("/xlayer/initialize", requireAuth, zValidator("json", z.object({ orderId: z.uuid() })), async (c) => {
+    await requireFeature("ordering", "Online ordering is paused right now");
+    const user = c.get("user");
+    if (!(await xlayerAvailableFor(user.id))) throw new HttpError(503, "Paying with USDT on X Layer isn't available right now.");
+    const { orderId } = c.req.valid("json");
+    const [order] = await db.select().from(schema.orders).where(and(eq(schema.orders.id, orderId), eq(schema.orders.customerId, user.id)));
+    if (!order) throw notFound("Order not found");
+    if (order.status !== "pending_payment" || order.paymentMethod !== "online") throw badRequest("This order is not awaiting payment");
+    const [payment] = await db.select().from(schema.payments).where(and(eq(schema.payments.orderId, orderId), eq(schema.payments.status, "pending")));
+    if (!payment) throw badRequest("No pending payment for this order");
+    try {
+      const { saved, payUrl } = await openXlayerPayment(order, payment);
+      return c.json({ payUrl, amountUsdt: usdtText(BigInt(saved.amount)), payBy: saved.payBy, checker: `${XLAYER_CHECKER}/?order=${saved.orderId}` });
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      console.error("X Layer: opening a payment failed", err);
+      throw new HttpError(503, "We couldn't set up the USDT payment just now. Please try again in a minute, or pay another way.");
+    }
+  })
+
+  /** For the pay page, which has no Sotechy session (its link token stands for this one payment): what to sign */
+  .get(
+    "/xlayer/terms",
+    zValidator("query", z.object({ t: z.string().min(10).max(300), buyer: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional() })),
+    async (c) => {
+      const { t, buyer } = c.req.valid("query");
+      const { payment, order } = await paymentForToken(t);
+      const saved = savedXlayer(payment.raw)!;
+      const [store] = order.merchantId ? await db.select({ name: schema.merchants.name }).from(schema.merchants).where(eq(schema.merchants.id, order.merchantId)) : [{ name: "Sotechy Shop" }];
+      return c.json({
+        orderNumber: order.orderNumber,
+        store: store?.name ?? "a Sotechy store",
+        amountUsdt: usdtText(BigInt(saved.amount)),
+        naira: payment.amount,
+        payBy: saved.payBy,
+        paid: payment.status !== "pending",
+        permit: buyer && payment.status === "pending" ? await permitFor(saved, buyer as `0x${string}`) : null,
+        returnTo: `sotechy://order/${order.id}`,
+        checker: `${XLAYER_CHECKER}/?order=${saved.orderId}`,
+      });
+    },
+  )
+
+  /** The pay page sends the buyer's signed permit; Sotechy sends the payment and pays the gas */
+  .post(
+    "/xlayer/pay",
+    zValidator("json", z.object({ t: z.string().min(10).max(300), buyer: z.string().regex(/^0x[0-9a-fA-F]{40}$/), signature: z.string().regex(/^0x[0-9a-fA-F]{130}$/) })),
+    async (c) => {
+      const { t, buyer, signature } = c.req.valid("json");
+      const { payment } = await paymentForToken(t);
+      try {
+        return c.json(await relayXlayerPayment(payment.id, buyer as `0x${string}`, signature as `0x${string}`));
+      } catch (err) {
+        if (err instanceof HttpError) throw err;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("X Layer: relaying a payment failed", msg);
+        if (/TransferFailed/.test(msg)) throw badRequest("Your wallet doesn't have enough USDT on X Layer for this order.");
+        if (/PaymentWindowClosed/.test(msg)) throw badRequest("The time to pay ran out. Go back to the app and choose USDT again.");
+        throw badRequest("The payment didn't go through. Please try again.");
+      }
+    },
+  )
+
+  /** Where the app's USDT payment is, while it waits */
+  .get("/xlayer/status", requireAuth, async (c) => {
+    const orderId = c.req.query("orderId");
+    if (!isUuid(orderId)) throw badRequest("orderId is required");
+    const [order] = await db.select({ status: schema.orders.status }).from(schema.orders).where(and(eq(schema.orders.id, orderId), eq(schema.orders.customerId, c.get("user").id)));
+    if (!order) throw notFound("Order not found");
+    return c.json({ orderStatus: order.status, paid: order.status !== "pending_payment" && order.status !== "payment_failed" && order.status !== "cancelled" });
   })
 
   /**

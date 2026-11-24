@@ -100,6 +100,18 @@ const schema = z.object({
   /** Alchemy key: fast, reliable lookups for spotting crypto payments on Solana, Ethereum, Base and BNB Chain
    *  (free public nodes are used without it, and as a fallback) */
   ALCHEMY_API_KEY: trimmed(z.string().optional()),
+  /** Pay with USDT on X Layer: Sotechy's escrow there (github.com/soke-dev/sotechy-xlayer). TapeOut circuits decide
+   *  when an order's money is released to Sotechy, for the store's normal payout, or refunded. Off without it.
+   *  It's run with CHAIN_OPERATOR_KEY, the escrow's operator. */
+  XLAYER_ESCROW: trimmed(
+    z
+      .string()
+      .regex(/^0x[0-9a-fA-F]{40}$/, "XLAYER_ESCROW must be a 0x… address")
+      .optional(),
+  ),
+  XLAYER_RPC_URL: trimmed(z.string().url().optional()),
+  /** The page where buyers sign their USDT payment (on the website) */
+  XLAYER_PAY_PAGE: z.string().url().default("https://sotechy.shop/pay/usdt"),
   /** The merchant dashboard, where Didit sends people back after their check */
   MERCHANT_APP_URL: z.string().default("https://merchant.sotechy.shop"),
 });

@@ -15,6 +15,7 @@ import { paybackClaimedEmail, paybackRequestEmail, payoutApprovalEmail, payoutSe
 import { paybackAccount } from "./payback-account";
 import { sendPushLater } from "./push";
 import { getSetting } from "./settings";
+import { xlayerHoldsPayouts } from "./xlayer";
 
 const { merchantPayouts: payouts, orders, merchants } = schema;
 
@@ -44,12 +45,14 @@ async function schedule(order: typeof orders.$inferSelect, stage: "first" | "fin
   const amount = stage === "first" ? split.first : split.second;
   if (amount <= 0) return;
   const dueAt = stage === "first" ? new Date() : new Date(Date.now() + settings.finalAfterHours * 3_600_000);
+  // Paid in USDT on X Layer: the money stays in the escrow until its circuits release it, so the payout waits too
+  const held = await xlayerHoldsPayouts(order.id);
   const [created] = await db
     .insert(payouts)
-    .values({ merchantId: order.merchantId!, orderId: order.id, stage, amount, fee: stage === "first" ? split.firstFee : split.secondFee, dueAt, reference: reference(order.orderNumber, stage) })
+    .values({ merchantId: order.merchantId!, orderId: order.id, stage, amount, fee: stage === "first" ? split.firstFee : split.secondFee, dueAt, reference: reference(order.orderNumber, stage), ...(held && { status: "held" as const }) })
     .onConflictDoNothing()
     .returning();
-  if (created) void tellAdmins(created, order.orderNumber);
+  if (created && !held) void tellAdmins(created, order.orderNumber);
 }
 
 /** Every payout waits for an admin: they get an email and a WhatsApp message when one is set up */
@@ -92,6 +95,8 @@ async function tellStorePaid(p: typeof payouts.$inferSelect) {
 /** The customer confirmed they got the order: the store's final payment is due now rather than after the wait.
  *  `release` also frees one held because the customer had said it didn't arrive. */
 export async function finalDueNow(orderId: string, release = false) {
+  // Paid in USDT on X Layer: only the escrow's circuits release the store's payouts
+  if (await xlayerHoldsPayouts(orderId)) return;
   await db
     .update(payouts)
     .set({ dueAt: new Date(), status: "scheduled" })

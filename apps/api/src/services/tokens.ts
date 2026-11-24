@@ -105,7 +105,7 @@ export async function tokenOf(merchantId: string | null, tx: Pick<Tx, "select"> 
 }
 
 /** What an order earns: its goods, less what tokens paid for (delivery doesn't earn) */
-const earning = (o: { subtotal: number; discountTotal: number; tokensValue: number }) => Math.max(0, Math.floor(o.subtotal - o.discountTotal - o.tokensValue));
+export const earning = (o: { subtotal: number; discountTotal: number; tokensValue: number }) => Math.max(0, Math.floor(o.subtotal - o.discountTotal - o.tokensValue));
 
 /** Called after an order's status changes */
 export async function tokensForStatus(orderId: string, status: OrderStatus) {

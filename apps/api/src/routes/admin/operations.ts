@@ -12,6 +12,7 @@ import { cancelOrder, recordWalkInSale, updateOrderStatus, verifyPaymentManually
 import { lineSchema, loadOrderDetail, paymentMethodSchema } from "../orders";
 import { notifyOrderStatus } from "../../services/order-notices";
 import { finalDueNow, payoutsForStatus } from "../../services/payouts";
+import { xlayerIssueResolved } from "../../services/xlayer";
 import { tokensForStatus } from "../../services/tokens";
 import { sendPushLater } from "../../services/push";
 
@@ -125,6 +126,8 @@ export const adminOperationsRoutes = new Hono<AppEnv>()
       .returning();
     if (!o) throw badRequest("This order isn't waiting on the customer");
     await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: "delivered", toStatus: "delivered", note: "Sotechy confirmed the customer got it", changedBy: c.get("user").id });
+    // Paid in USDT on X Layer: the dispute is closed for the store, and the circuits release the money
+    await xlayerIssueResolved(o.id);
     if (o.merchantId) await finalDueNow(o.id, true);
     await audit(db, { actorId: c.get("user").id, action: "order.received", entityType: "order", entityId: o.id });
     return c.json({ ok: true });

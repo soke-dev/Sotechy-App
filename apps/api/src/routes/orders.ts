@@ -11,6 +11,7 @@ import { requireFeature } from "../services/features";
 import { bankTransferAvailable, stablecoinAvailable } from "../services/bank-pay";
 import { cancelOrder, placeOrder, setOrderTokens, updateOrderStatus } from "../services/orders";
 import { finalDueNow, holdFinal } from "../services/payouts";
+import { xlayerAvailableFor, xlayerIssue, xlayerReceived } from "../services/xlayer";
 import { sendEmailLater } from "../lib/email";
 import { orderNotReceivedEmail } from "../emails/templates";
 import { sendPushLater } from "../services/push";
@@ -128,7 +129,9 @@ export const orderRoutes = new Hono<AppEnv>()
     if (input.fulfilmentType === "pickup" && !features.pickup) throw badRequest("Store pickup isn't available right now. Choose delivery.");
     if (input.promoCode && !features.promoCodes) throw badRequest("Promo codes can't be used right now");
     // Don't take an order nobody can pay for.
-    if (input.paymentMethod === "online" && !((await stablecoinAvailable()) || (await bankTransferAvailable()))) throw new HttpError(503, "Online payments aren't set up yet. Please contact us to order.");
+    if (input.paymentMethod === "online" && !((await stablecoinAvailable()) || (await bankTransferAvailable()) || (await xlayerAvailableFor(c.get("user").id)))) {
+      throw new HttpError(503, "Online payments aren't set up yet. Please contact us to order.");
+    }
     const order = await placeOrder(c.get("user").id, input);
     return c.json(order, 201);
   })
@@ -203,6 +206,7 @@ export const orderRoutes = new Hono<AppEnv>()
     if (o.status !== "ready_for_pickup") throw badRequest(o.status === "delivered" ? "This order is already collected" : "This order isn't ready for pickup yet");
     await db.update(orders).set({ customerConfirmedAt: new Date() }).where(eq(orders.id, o.id));
     await updateOrderStatus(user, o.id, "delivered", "Collected (confirmed by the customer)");
+    await xlayerReceived(o.id);
     if (o.merchantId) {
       await finalDueNow(o.id);
       const [store] = await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId));
@@ -224,6 +228,7 @@ export const orderRoutes = new Hono<AppEnv>()
       if (owned.status !== "delivered") throw badRequest("The store hasn't marked this order delivered yet");
     } else {
       await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: "delivered", toStatus: "delivered", note: "Customer confirmed they got it", changedBy: user.id });
+      await xlayerReceived(o.id);
       if (o.merchantId) {
         await finalDueNow(o.id, !!o.customerIssueAt);
         const [store] = await db.select({ ownerId: schema.merchants.ownerId }).from(schema.merchants).where(eq(schema.merchants.id, o.merchantId));
@@ -258,6 +263,7 @@ export const orderRoutes = new Hono<AppEnv>()
       const atPickup = o.status === "ready_for_pickup";
       const what = atPickup ? "Customer says it wasn't at the pickup location" : "Customer says they didn't get it";
       await db.insert(schema.orderStatusHistory).values({ orderId: o.id, fromStatus: o.status, toStatus: o.status, note: note ? `${what}: ${note}` : what, changedBy: user.id });
+      await xlayerIssue(o.id);
       let storeName = "Sotechy";
       if (o.merchantId) {
         await holdFinal(o.id);

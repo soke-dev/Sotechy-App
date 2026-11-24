@@ -13,6 +13,7 @@ import { agreedPriceFor, releaseOffers } from "./offers";
 import { payoutsForStatus } from "./payouts";
 import { commitSpent, spendForOrder, tokensForStatus } from "./tokens";
 import { nearReceiptForStatus } from "./near";
+import { xlayerForStatus } from "./xlayer";
 import { storeDeliveryCharge } from "./store-delivery";
 
 const { orders, orderItems, payments, inventory, productVariants, products, orderStatusHistory } = schema;
@@ -313,7 +314,7 @@ async function releaseReservedStock(tx: Tx, order: OrderRow) {
   }
 }
 
-async function returnCommittedStock(tx: Tx, order: OrderRow, actorId: string) {
+async function returnCommittedStock(tx: Tx, order: OrderRow, actorId: string | null) {
   if (!order.stockCommitted || !order.branchId) return;
   for (const item of await itemsFor(tx, order.id)) {
     await tx
@@ -459,25 +460,27 @@ export async function updateOrderStatus(actor: AuthUser, orderId: string, to: Or
   if (updated.merchantId) await payoutsForStatus(orderId, to);
   await tokensForStatus(orderId, to);
   await nearReceiptForStatus(orderId, to);
+  await xlayerForStatus(orderId, to);
   return updated;
 }
 
-/** `asStoreId`: a marketplace store declining its own order (it can't cancel anyone else's) */
-export async function cancelOrder(actor: AuthUser, orderId: string, note?: string, opts: { asStoreId?: string } = {}) {
+/** `asStoreId`: a marketplace store declining its own order (it can't cancel anyone else's).
+ *  `actor` null: Sotechy itself, e.g. when the X Layer escrow's circuits refunded the buyer. */
+export async function cancelOrder(actor: AuthUser | null, orderId: string, note?: string, opts: { asStoreId?: string } = {}) {
   const updated = await db.transaction(async (tx) => {
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId)).for("update");
     if (!order) throw notFound("Order not found");
 
     if (opts.asStoreId) {
       if (order.merchantId !== opts.asStoreId) throw notFound("Order not found");
-    } else if (actor.role === "customer") {
+    } else if (actor?.role === "customer") {
       if (order.customerId !== actor.id) throw notFound("Order not found");
       if (order.status !== "pending_payment") throw badRequest("Only unpaid orders can be cancelled. Contact support for help.");
     }
     const cancellable: OrderStatus[] = ["pending_payment", "payment_failed", "paid", "processing", "ready_for_pickup"];
     if (!cancellable.includes(order.status)) throw badRequest(`A ${order.status} order cannot be cancelled`);
 
-    if (order.stockCommitted) await returnCommittedStock(tx, order, actor.id);
+    if (order.stockCommitted) await returnCommittedStock(tx, order, actor?.id ?? null);
     else await releaseReservedStock(tx, order);
     if (order.status === "pending_payment" || order.status === "payment_failed") await releaseOffers(tx, orderId);
 
@@ -494,7 +497,7 @@ export async function cancelOrder(actor: AuthUser, orderId: string, note?: strin
         paymentId: confirmed.id,
         amount: confirmed.amount,
         reason: note ?? "Order cancelled",
-        requestedBy: actor.id,
+        requestedBy: actor?.id ?? null,
       });
     }
 
@@ -503,15 +506,17 @@ export async function cancelOrder(actor: AuthUser, orderId: string, note?: strin
       .set({ status: "cancelled", reservationExpiresAt: null })
       .where(eq(orders.id, orderId))
       .returning();
-    await recordStatus(tx, orderId, order.status, "cancelled", actor.id, note ?? "Cancelled");
-    await audit(tx, { actorId: actor.id, action: "order.cancel", entityType: "order", entityId: orderId, details: { from: order.status } });
+    await recordStatus(tx, orderId, order.status, "cancelled", actor?.id ?? null, note ?? "Cancelled");
+    await audit(tx, { actorId: actor?.id ?? null, action: "order.cancel", entityType: "order", entityId: orderId, details: { from: order.status } });
     return updated;
   });
   // Customers who cancel their own unpaid order don't need telling
-  if (actor.id !== updated.customerId) void notifyOrderStatus(orderId, "cancelled");
+  if (actor?.id !== updated.customerId) void notifyOrderStatus(orderId, "cancelled");
   if (updated.merchantId) await payoutsForStatus(orderId, "cancelled");
   await tokensForStatus(orderId, "cancelled");
   await nearReceiptForStatus(orderId, "cancelled");
+  // A paid USDT order on X Layer: the escrow refunds the buyer
+  await xlayerForStatus(orderId, "cancelled");
   return updated;
 }
 

@@ -24,6 +24,7 @@ import { orderCases } from "../../services/order-cases";
 import { replyToTicket, ticketThread } from "../../services/support-chat";
 import { adminPulse } from "../../services/pulse";
 import { adminIdCheck, adminIdChecks, decideIdCheck, idCheckCounts, storeIdCheck } from "../../services/id-checks";
+import { xlayerStatus } from "../../services/xlayer";
 
 const { users, branches, promotions, paymentMethods, cryptoAssets, appSettings, suppliers, purchaseOrders, purchaseOrderItems, supportTickets, auditLogs } =
   schema;
@@ -220,6 +221,8 @@ export const adminManagementRoutes = new Hono<AppEnv>()
       // Pay with crypto (NEAR Intents) and the NEAR mirror, as the server has them set up
       intents: { setUp: intentsOn(), recipient: env.INTENTS_RECIPIENT ?? null, keySet: !!env.ONECLICK_JWT },
       near: await nearStats(),
+      // Pay with USDT on X Layer: the escrow, Sotechy's operator and its gas
+      xlayer: await xlayerStatus(),
     });
   })
   .patch(
@@ -253,7 +256,7 @@ export const adminManagementRoutes = new Hono<AppEnv>()
     },
   )
   .put("/settings/:key", ADMIN, zValidator("json", z.record(z.string(), z.unknown())), async (c) => {
-    const key = z.enum(["delivery", "reservation_hold", "bank_transfer", "bank_provider", "support", "fx", "intents"]).parse(c.req.param("key"));
+    const key = z.enum(["delivery", "reservation_hold", "bank_transfer", "bank_provider", "support", "fx", "intents", "xlayer"]).parse(c.req.param("key"));
     const value = c.req.valid("json");
     const [row] = await db
       .insert(appSettings)
